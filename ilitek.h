@@ -264,9 +264,13 @@ struct ilitek_tddi_dev
 	atomic_t fw_stat;
 	atomic_t tp_suspend;
 	atomic_t tp_resume;
+	atomic_t tp_sw_mode;
 
     int (*write)(struct ilitek_tddi_dev *, void *, size_t);
     int (*read)(struct ilitek_tddi_dev *, void *, size_t);
+	void (*suspend)(struct ilitek_tddi_dev *);
+	void (*resume)(struct ilitek_tddi_dev *);
+	int (*mp_move_code)(struct ilitek_tddi_dev *);
 };
 extern struct ilitek_tddi_dev *idev;
 
@@ -385,9 +389,11 @@ static inline void *ipio_memcpy(void *dest, const void *src, size_t n, size_t de
 #define P5_X_GESTURE_PACKET_ID	        0xAA
 #define P5_X_I2CUART_PACKET_ID	        0x7A
 
+/* Prototypes for tddi mp test */
+extern int ilitek_tddi_mp_move_code_flash(struct ilitek_tddi_dev *idev);
+extern int ilitek_tddi_mp_move_code_iram(struct ilitek_tddi_dev *idev);
+
 /* Prototypes for tddi core functions */
-extern int ilitek_tddi_touch_suspend(struct ilitek_tddi_dev *);
-extern int ilitek_tddi_touch_resume(struct ilitek_tddi_dev *);
 extern void ilitek_tddi_report_ap_mode(struct ilitek_tddi_dev *, u8 *);
 extern void ilitek_tddi_report_debug_mode(struct ilitek_tddi_dev *);
 extern void ilitek_tddi_report_gesture_mode(struct ilitek_tddi_dev *);

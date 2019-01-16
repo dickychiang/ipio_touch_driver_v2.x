@@ -26,6 +26,12 @@
 u32 ipio_debug_level = DEBUG_ALL;
 EXPORT_SYMBOL(ipio_debug_level);
 
+int ilitek_tddi_mp_test_handler(struct ilitek_tddi_dev *idev, bool lcm_on)
+{
+    ipio_info();
+    return 0;
+}
+
 int ilitek_tddi_esd_handler(struct ilitek_tddi_dev *idev)
 {
 	ipio_info();
@@ -119,7 +125,6 @@ int ilitek_tddi_reset_ctrl(struct ilitek_tddi_dev *idev, int mode)
 	ipio_info("reset mode = %d\n", mode);
 
 	atomic_set(&idev->tp_reset, TP_RST_START);
-	ilitek_plat_irq_disable(idev);
 
 	switch (mode) {
 		case TP_RST_SW:
@@ -139,7 +144,6 @@ int ilitek_tddi_reset_ctrl(struct ilitek_tddi_dev *idev, int mode)
 			break;
 	}
 
-	ilitek_plat_irq_enable(idev);
 	atomic_set(&idev->tp_reset, TP_RST_END);
 	return ret;
 }
@@ -160,6 +164,9 @@ int ilitek_tddi_init(struct ilitek_tddi_dev *idev)
 	atomic_set(&idev->tp_resume, DONE);
 
 	idev->actual_fw_mode = P5_X_FW_DEMO_MODE;
+
+    idev->suspend = ilitek_tddi_touch_suspend;
+    idev->resume = ilitek_tddi_touch_resume;
 
 	if (ilitek_tddi_ic_init(idev) < 0) {
 		ipio_err("Init tddi ic info failed\n");

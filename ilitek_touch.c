@@ -73,7 +73,64 @@ u8 ilitek_calc_packet_checksum(u8 *packet, size_t len)
 	return (u8) ((-sum) & 0xFF);
 }
 
-int ilitek_tddi_touch_suspend(struct ilitek_tddi_dev *idev)
+void ilitek_tddi_touch_switch_mode(struct ilitek_tddi_dev *idev, u8 *data)
+{
+	int ret = 0, i, mode, prev_mode;
+	int checksum = 0;
+	u8 mp_code[14] = {0};
+	u8 cmd[4] = {0};
+
+	if (!data) {
+		ipio_err("data is null\n");
+		return;
+	}
+
+	atomic_set(&idev->tp_sw_mode, START);
+
+	mode = data[0];
+	prev_mode = idev->actual_fw_mode;
+	idev->actual_fw_mode = mode;
+
+	ipio_info("switch tp mode from (%d) to (%d).\n", prev_mode, core_fr->actual_fw_mode);
+
+	switch(idev->actual_fw_mode) {
+		case P5_X_FW_I2CUART_MODE:
+			break;
+		case P5_X_FW_DEMO_MODE:
+			ipio_info("Switch to Demo mode by hw reset\n");
+			ilitek_tddi_reset_ctrl(idev, idev->reset_mode);
+			break;
+		case P5_X_FW_DEBUG_MODE:
+			cmd[0] = P5_X_READ_DATA_CTRL;
+			cmd[1] = mode;
+
+			ipio_info("Switch to Debug mode\n");
+			ret = idev->write(idev, cmd, 2);
+			if (ret < 0)
+				ipio_err("Failed to switch Debug mode\n");
+			break;
+		case P5_X_FW_GESTURE_MODE:
+			ret = ilitek_tddi_ic_func_ctrl(idev, "lpwg", ON);
+			break;
+		case P5_X_FW_TEST_MODE:
+			ret = idev->mp_move_code(idev);
+			break;
+		default:
+			ipio_err("Unknown firmware mode: %x\n", mode);
+			ret = -1;
+			break;
+	}
+
+	if (ret < 0) {
+		idev->actual_fw_mode = prev_mode;
+		ipio_err("switch mode failed, return to previous mode (%d)\n", idev->actual_fw_mode);
+	}
+
+	ipio_info("Actual TP mode = %d\n", idev->actual_fw_mode);
+	atomic_set(&idev->tp_sw_mode, DONE);
+}
+
+void ilitek_tddi_touch_suspend(struct ilitek_tddi_dev *idev)
 {
 	ipio_info("TP suspend start\n");
 	atomic_set(&idev->tp_suspend, START);
@@ -87,10 +144,9 @@ int ilitek_tddi_touch_suspend(struct ilitek_tddi_dev *idev)
 
 	atomic_set(&idev->tp_suspend, DONE);
 	ipio_info("TP suspend done\n");
-	return 0;
 }
 
-int ilitek_tddi_touch_resume(struct ilitek_tddi_dev *idev)
+void ilitek_tddi_touch_resume(struct ilitek_tddi_dev *idev)
 {
 	ipio_info("TP resume start\n");
 	atomic_set(&idev->tp_resume, START);
@@ -105,7 +161,6 @@ int ilitek_tddi_touch_resume(struct ilitek_tddi_dev *idev)
 	ilitek_plat_irq_enable(idev);
 	atomic_set(&idev->tp_resume, DONE);
 	ipio_info("TP resume done\n");
-	return 0;
 }
 
 void ilitek_tddi_touch_press(struct ilitek_tddi_dev *idev, u16 x, u16 y, u16 pressure, u16 id)

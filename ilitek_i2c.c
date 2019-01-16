@@ -147,6 +147,7 @@ static int ilitek_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id *
 
     idev->reset_mode = TP_RST_HW_ONLY;
     idev->fw_upgrade_mode = UPGRADE_FLASH;
+	idev->mp_move_code = ilitek_tddi_mp_move_code_flash;
 
 	idev->delay_time_high = 10;
 	idev->delay_time_low = 5;

@@ -211,8 +211,7 @@ int ilitek_tddi_ic_func_ctrl(struct ilitek_tddi_dev *idev, const char *name, int
     ipio_info("func = %s, len = %d, cmd = 0x%x, 0%x, 0x%x\n", func_ctrl[i].name, func_ctrl[i].len,
         func_ctrl[i].cmd[0], func_ctrl[i].cmd[1], func_ctrl[i].cmd[2]);
 
-    idev->write(idev, func_ctrl[i].cmd, func_ctrl[i].len);
-    return 0;
+    return idev->write(idev, func_ctrl[i].cmd, func_ctrl[i].len);;
 }
 
 u32 ilitek_tddi_ic_get_pc_counter(struct ilitek_tddi_dev *idev)
@@ -221,8 +220,6 @@ u32 ilitek_tddi_ic_get_pc_counter(struct ilitek_tddi_dev *idev)
     u32 pc = 0;
 
     ice = atomic_read(&idev->ice_stat);
-
-    ipio_info("ice = %d\n", ice);
 
     if (ice == ICE_DISABLE)
         ilitek_ice_mode_ctrl(idev, ICE_ENABLE, MCU_STOP);

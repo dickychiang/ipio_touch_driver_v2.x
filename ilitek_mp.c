@@ -22,7 +22,13 @@
 
 #include "ilitek.h"
 
-int ilitek_tddi_mp_test_handler(struct ilitek_tddi_dev *idev, bool lcm_on)
+int ilitek_tddi_mp_move_code_flash(struct ilitek_tddi_dev *idev)
+{
+    ipio_info();
+    return 0;
+}
+
+int ilitek_tddi_mp_move_code_iram(struct ilitek_tddi_dev *idev)
 {
     ipio_info();
     return 0;

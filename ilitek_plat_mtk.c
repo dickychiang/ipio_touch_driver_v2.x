@@ -175,6 +175,14 @@ static irqreturn_t ilitek_plat_isr_top_half(int irq, void *dev_id)
 {
 	ipio_info();
 
+	if (irq != idev->irq_num)
+		return IRQ_NONE;
+
+	if (atomic_read(&idev->tp_reset) == TP_RST_START ||
+		atomic_read(&idev->fw_stat) == FW_RUNNING ||
+		atomic_read(&idev->tp_sw_mode) == START ||)
+		return IRQ_HANDLED;
+
 	return IRQ_WAKE_THREAD;
 }
 
@@ -222,7 +230,7 @@ static void tpd_resume(struct device *h)
 	ipio_info("TP Resume\n");
 
 	if (atomic_read(&idev->fw_stat) == FW_IDLE)
-		ilitek_tddi_touch_resume(idev);
+		idev->resume(idev);
 }
 
 static void tpd_suspend(struct device *h)
@@ -230,7 +238,7 @@ static void tpd_suspend(struct device *h)
 	ipio_info("TP Suspend\n");
 
 	if (atomic_read(&idev->fw_stat) == FW_IDLE)
-		ilitek_tddi_touch_suspend(idev);
+		idev->suspend(idev);
 }
 
 static int ilitek_plat_probe(struct ilitek_tddi_dev *idev)
