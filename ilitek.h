@@ -121,6 +121,7 @@ enum {
 	DEBUG_ALL = ~0,
 };
 
+extern u32 ipio_debug_level;
 #define ipio_info(fmt, arg...)	\
 	pr_info("ILITEK: (%s, %d): " fmt, __func__, __LINE__, ##arg);
 
@@ -147,8 +148,8 @@ enum ICE_MODE_STATUS {
 };
 
 enum MCU_STATUS {
-	NO_STOP_MCU = 0,
-	STOP_MCU
+	MCU_STOP = 0,
+	MCU_ON
 };
 
 enum TP_RST_METHOD{
@@ -177,6 +178,22 @@ enum TP_FW_UPGRADE_TYPE {
 	UPGRADE_IRAM
 };
 
+enum TP_FW_UPGRADE_STATUS {
+	FW_IDLE = 0,
+	FW_RUNNING
+};
+
+enum TP_SUSP_STATUS {
+	DONE = 0,
+	START,
+};
+
+enum TP_FUNC_CTRL_STATUS {
+	DISABLE = 0,
+	ENABLE = 1,
+	OFF = 0,
+	ON = 1
+};
 
 #define TDDI_I2C_ADDR	0x41
 #define TDDI_DEV_ID	"ILITEK_TDDI"
@@ -241,13 +258,17 @@ struct ilitek_tddi_dev
 	int delay_time_low;
 	int edge_delay;
 
-	atomic_t irq_status;
+	atomic_t irq_stat;
 	atomic_t tp_reset;
-	atomic_t ice_status;
+	atomic_t ice_stat;
+	atomic_t fw_stat;
+	atomic_t tp_suspend;
+	atomic_t tp_resume;
 
     int (*write)(struct ilitek_tddi_dev *, void *, size_t);
     int (*read)(struct ilitek_tddi_dev *, void *, size_t);
 };
+extern struct ilitek_tddi_dev *idev;
 
 struct ilitek_touch_info
 {
@@ -270,6 +291,13 @@ struct ilitek_protocol_info
 	int window_len;
 	int cdc_len;
 	int mp_info_len;
+};
+
+struct ilitek_ic_func_ctrl
+{
+	const char *name;
+	u8 cmd[3];
+	int len;
 };
 
 struct ilitek_ic_info
@@ -325,9 +353,6 @@ static inline void *ipio_memcpy(void *dest, const void *src, size_t n, size_t de
     return memcpy(dest, src, n);
 }
 
-extern u32 ipio_debug_level;
-extern struct ilitek_tddi_dev *idev;
-
 /* Protocol command definiation */
 #define P5_X_READ_DATA_CTRL			    0xF6
 #define P5_X_GET_TP_INFORMATION		    0x20
@@ -361,14 +386,20 @@ extern struct ilitek_tddi_dev *idev;
 #define P5_X_I2CUART_PACKET_ID	        0x7A
 
 /* Prototypes for tddi core functions */
+extern int ilitek_tddi_touch_suspend(struct ilitek_tddi_dev *);
+extern int ilitek_tddi_touch_resume(struct ilitek_tddi_dev *);
 extern void ilitek_tddi_report_ap_mode(struct ilitek_tddi_dev *, u8 *);
 extern void ilitek_tddi_report_debug_mode(struct ilitek_tddi_dev *);
 extern void ilitek_tddi_report_gesture_mode(struct ilitek_tddi_dev *);
+extern int ilitek_tddi_ic_func_ctrl(struct ilitek_tddi_dev *, const char *, int);
+extern u32 ilitek_tddi_ic_get_pc_counter(struct ilitek_tddi_dev *);
+extern int ilitek_tddi_ic_check_busy(struct ilitek_tddi_dev *idev, int, int);
 extern int ilitek_tddi_ic_get_panel_info(struct ilitek_tddi_dev *);
 extern int ilitek_tddi_ic_get_tp_info(struct ilitek_tddi_dev *);
 extern int ilitek_tddi_ic_get_protocl_ver(struct ilitek_tddi_dev *);
 extern int ilitek_tddi_ic_get_fw_ver(struct ilitek_tddi_dev *);
 extern int ilitek_tddi_ic_get_info(struct ilitek_tddi_dev *);
+extern int ilitek_ice_mode_ctrl(struct ilitek_tddi_dev *, bool, bool);
 extern int ilitek_tddi_ic_init(struct ilitek_tddi_dev *);
 
 /* Prototypes for tddi events */

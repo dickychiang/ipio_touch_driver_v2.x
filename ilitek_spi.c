@@ -430,7 +430,7 @@ static int core_spi_write(struct ilitek_tddi_dev *idev, u8 *data, size_t len)
 	u8 *txbuf = NULL;
 	size_t safe_size = len;
 
-	if (!atomic_read(&idev->ice_status)) {
+	if (atomic_read(&idev->ice_stat) == ICE_DISABLE) {
 		do {
 			ret = core_spi_ice_mode_write(idev, data, len);
 			if (ret >= 0)
@@ -467,7 +467,7 @@ static int core_spi_read(struct ilitek_tddi_dev *idev, u8 *rxbuf, size_t len)
 
 	txbuf[0] = SPI_READ;
 
-	if (!atomic_read(&idev->ice_status)) {
+	if (atomic_read(&idev->ice_stat) == ICE_DISABLE) {
 		do {
 			ret = core_spi_ice_mode_read(idev, rxbuf);
 			if (ret >= 0)
@@ -546,7 +546,7 @@ static int ilitek_spi_write(struct ilitek_tddi_dev *idev, void *buf, size_t len)
 
     ret = core_spi_write(idev, buf, len);
     if (ret < 0) {
-		if (atomic_read(&idev->tp_reset)) {
+		if (atomic_read(&idev->tp_reset) == TP_RST_START) {
 			ret = 0;
 			goto out;
 		}
@@ -567,7 +567,7 @@ static int ilitek_spi_read(struct ilitek_tddi_dev *idev, void *buf, size_t len)
 
     ret = core_spi_read(idev, buf, len);
     if (ret < 0) {
-		if (atomic_read(&idev->tp_reset)) {
+		if (atomic_read(&idev->tp_reset) == TP_RST_START) {
 			ret = 0;
 			goto out;
 		}

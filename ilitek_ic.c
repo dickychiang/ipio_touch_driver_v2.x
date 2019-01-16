@@ -39,13 +39,33 @@
 
 #define PROTOCL_VER_NUM     7
 static struct ilitek_protocol_info protocol_info[PROTOCL_VER_NUM] = {
-    [0] = {PROTOCOL_VER_500, 9, 4, 14, 30, 5, 5, 8, 15, 14},
-    [1] = {PROTOCOL_VER_510, 9, 4, 14, 30, 5, 5, 8, 15, 14},
-    [2] = {PROTOCOL_VER_520, 9, 4, 14, 30, 5, 5, 8, 15, 14},
-    [3] = {PROTOCOL_VER_530, 9, 4, 14, 30, 5, 5, 8, 15, 14},
-    [4] = {PROTOCOL_VER_540, 9, 4, 14, 30, 5, 5, 8, 15, 14},
-    [5] = {PROTOCOL_VER_550, 9, 4, 14, 30, 5, 5, 8, 15, 14},
-    [6] = {PROTOCOL_VER_560, 9, 4, 14, 30, 5, 5, 8, 15, 14},
+    /* length -> fw, protocol, tp, key, panel, core, func, window, cdc, mp_info */
+    [0] = {PROTOCOL_VER_500, 4, 4, 14, 30, 5, 5, 2, 3, 8},
+    [1] = {PROTOCOL_VER_510, 4, 3, 14, 30, 5, 5, 3, 3, 8},
+    [2] = {PROTOCOL_VER_520, 4, 4, 14, 30, 5, 5, 3, 3, 8},
+    [3] = {PROTOCOL_VER_530, 9, 4, 14, 30, 5, 5, 3, 3, 8},
+    [4] = {PROTOCOL_VER_540, 9, 4, 14, 30, 5, 5, 3, 15, 8},
+    [5] = {PROTOCOL_VER_550, 9, 4, 14, 30, 5, 5, 3, 15, 14},
+    [6] = {PROTOCOL_VER_560, 9, 4, 14, 30, 5, 5, 3, 15, 14},
+};
+
+#define FUNC_CTRL_NUM   14
+static struct ilitek_ic_func_ctrl func_ctrl[FUNC_CTRL_NUM] = {
+    /* cmd[3] = cmd, func, ctrl */
+    [0] = {"sense", {0x1,0x1,0x0}, 3},
+    [1] = {"sleep", {0x1,0x2,0x0}, 3},
+    [2] = {"glove", {0x1,0x6,0x0}, 3},
+    [3] = {"stylus", {0x1,0x7,0x0}, 3},
+    [4] = {"tp_scan_mode", {0x1,0x8,0x0}, 3},
+    [5] = {"lpwg", {0x1,0xA,0x0}, 3},
+    [6] = {"gesture", {0x1,0xB,0x3F}, 3},
+    [7] = {"phone_cover", {0x1,0xC,0x0}, 3},
+    [8] = {"finger_sense", {0x1,0xF,0x0}, 3},
+    [9] = {"phone_cover_window", {0xE,0x0,0x0}, 3},
+    [10] = {"proximity", {0x1,0x10,0x0}, 3},
+    [11] = {"edge_palm", {0x1,0x12,0x0}, 3},
+    [12] = {"lock_point", {0x1,0x13,0x0}, 3},
+    [13] = {"active", {0x1,0x14,0x0}, 3},
 };
 
 static int ilitek_ice_mode_write(struct ilitek_tddi_dev *idev, u32 addr, u32 data, size_t len)
@@ -53,7 +73,7 @@ static int ilitek_ice_mode_write(struct ilitek_tddi_dev *idev, u32 addr, u32 dat
     int ret = 0, i;
     u8 txbuf[64] = {0};
 
-    if (!atomic_read(&idev->ice_status)) {
+    if (atomic_read(&idev->ice_stat) == IRQ_DISABLE) {
         ipio_err("ICE Mode isn't enabled\n");
         return -1;
     }
@@ -78,7 +98,7 @@ static int ilitek_ice_mode_read(struct ilitek_tddi_dev *idev, u32 addr, u32 *dat
     int ret = 0;
     u8 txbuf[64] = {0};
 
-    if (!atomic_read(&idev->ice_status)) {
+    if (atomic_read(&idev->ice_stat) == IRQ_DISABLE) {
         ipio_err("ICE Mode isn't enabled\n");
         return -1;
     }
@@ -111,7 +131,7 @@ out:
     return ret;
 }
 
-static int ilitek_ice_mode_ctrl(struct ilitek_tddi_dev *idev, bool enable, bool mcu)
+int ilitek_ice_mode_ctrl(struct ilitek_tddi_dev *idev, bool enable, bool mcu)
 {
     int ret = 0;
     u8 cmd_open[4] = {0x25, 0x62, 0x10, 0x18};
@@ -121,7 +141,7 @@ static int ilitek_ice_mode_ctrl(struct ilitek_tddi_dev *idev, bool enable, bool 
         if (!mcu)
             cmd_open[0] = 0x1F;
 
-        atomic_set(&idev->ice_status, ICE_ENABLE);
+        atomic_set(&idev->ice_stat, ICE_ENABLE);
 
         ret = idev->write(idev, cmd_open, sizeof(cmd_open));
         if (ret < 0)
@@ -131,10 +151,116 @@ static int ilitek_ice_mode_ctrl(struct ilitek_tddi_dev *idev, bool enable, bool 
         if (ret < 0)
             ipio_err("Exit to ICE Mode failed\n");
 
-        atomic_set(&idev->ice_status, ICE_DISABLE);
+        atomic_set(&idev->ice_stat, ICE_DISABLE);
     }
 
     return ret;
+}
+
+int ilitek_tddi_ic_func_ctrl(struct ilitek_tddi_dev *idev, const char *name, int ctrl)
+{
+    int i = 0;
+
+    for (i = 0; i < FUNC_CTRL_NUM; i++) {
+        if (strncmp(name, func_ctrl[i].name, strlen(name)) == 0) {
+            if (!CHECK_EQUAL(strlen(name), strlen(func_ctrl[i].name)))
+                continue;
+            break;
+        }
+    }
+
+    if (i >= FUNC_CTRL_NUM) {
+        ipio_err("Not found func ctrl, %s\n", name);
+        return -1;
+    }
+
+    if (idev->protocol->ver == PROTOCOL_VER_500) {
+        ipio_err("Non support func ctrl with protocol v5.0\n");
+        return -1;
+    }
+
+    if (idev->protocol->ver >= PROTOCOL_VER_560) {
+        if (strncmp(func_ctrl[i].name, "gesture", strlen("gesture")) == 0 ||
+            strncmp(func_ctrl[i].name, "phone_cover_window", strlen("phone_cover_window")) == 0) {
+            ipio_info("Non support %s ctrl\n", func_ctrl[i].name);
+            return 0;
+        }
+    }
+
+    if (ctrl == ENABLE || ctrl == ON)
+        func_ctrl[i].cmd[2] = 0x1;
+    else
+        func_ctrl[i].cmd[2] = 0x0;
+
+    ipio_info("func = %s, len = %d, cmd = 0x%x, 0%x, 0x%x\n", func_ctrl[i].name, func_ctrl[i].len,
+        func_ctrl[i].cmd[0], func_ctrl[i].cmd[1], func_ctrl[i].cmd[2]);
+
+    idev->write(idev, func_ctrl[i].cmd, func_ctrl[i].len);
+    return 0;
+}
+
+u32 ilitek_tddi_ic_get_pc_counter(struct ilitek_tddi_dev *idev)
+{
+    bool ice = ICE_DISABLE;
+    u32 pc = 0;
+
+    ice = atomic_read(&idev->ice_stat);
+
+    ipio_info("ice = %d\n", ice);
+
+    if (ice == ICE_DISABLE)
+        ilitek_ice_mode_ctrl(idev, ICE_ENABLE, MCU_STOP);
+
+    idev->chip->ice_read(idev, idev->chip->pc_counter_addr, &pc);
+
+    ipio_info("pc counter = 0x%x\n", pc);
+
+    if (ice == ICE_DISABLE)
+        ilitek_ice_mode_ctrl(idev, ICE_DISABLE, MCU_STOP);
+
+    return pc;
+}
+
+int ilitek_tddi_ic_check_busy(struct ilitek_tddi_dev *idev, int count, int delay)
+{
+    u8 cmd[2] = {0};
+    u8 busy = 0, rby = 0;
+
+    cmd[0] = P5_X_READ_DATA_CTRL;
+    cmd[1] = P5_X_CDC_BUSY_STATE;
+
+    if (idev->actual_fw_mode == P5_X_FW_DEMO_MODE)
+        rby = 0x41;
+    else if (idev->actual_fw_mode == P5_X_FW_TEST_MODE)
+        rby = 0x51;
+    else {
+        ipio_err("Unknown fw mode (0x%x)\n", idev->actual_fw_mode);
+        return -EINVAL;
+    }
+
+    ipio_info("read byte = %x, delay = %d\n", rby, delay);
+
+    do {
+        idev->write(idev, cmd, sizeof(cmd));
+        idev->write(idev, &cmd[1], sizeof(u8));
+        idev->read(idev, &busy, sizeof(u8));
+
+        ipio_info("busy = 0x%x\n", busy);
+
+        if (CHECK_EQUAL(busy, rby)) {
+            ipio_info("Check busy free\n");
+            goto out;
+        }
+
+        mdelay(delay);
+    } while (--count > 0);
+
+    ipio_err("Check busy (%x) timeout !, pc = 0x%x\n", busy,
+        ilitek_tddi_ic_get_pc_counter(idev));
+    return -1;
+
+out:
+    return 0;
 }
 
 int ilitek_tddi_ic_get_fw_ver(struct ilitek_tddi_dev *idev)
@@ -334,7 +460,7 @@ int ilitek_tddi_ic_get_info(struct ilitek_tddi_dev *idev)
 {
     int ret = 0;
 
-	ilitek_ice_mode_ctrl(idev, ICE_ENABLE, NO_STOP_MCU);
+	ilitek_ice_mode_ctrl(idev, ICE_ENABLE, MCU_STOP);
 
     idev->chip->ice_read(idev, idev->chip->pid_addr, &idev->chip->pid);
     idev->chip->id = idev->chip->pid >> 16;
@@ -354,7 +480,7 @@ int ilitek_tddi_ic_get_info(struct ilitek_tddi_dev *idev)
 	ipio_info("CHIP OTP ID = 0x%x\n", idev->chip->otp_id);
 	ipio_info("CHIP ANA ID = 0x%x\n", idev->chip->ana_id);
 
-	ilitek_ice_mode_ctrl(idev, ICE_DISABLE, NO_STOP_MCU);
+	ilitek_ice_mode_ctrl(idev, ICE_DISABLE, MCU_STOP);
     return ret;
 }
 
@@ -368,7 +494,6 @@ int ilitek_tddi_ic_init(struct ilitek_tddi_dev *idev)
         return -ENOMEM;
     }
 
-    chip->ice_mode_ctrl =   ilitek_ice_mode_ctrl;
     chip->ice_write =       ilitek_ice_mode_write;
     chip->ice_read =        ilitek_ice_mode_read;
 

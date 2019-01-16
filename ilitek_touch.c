@@ -75,13 +75,36 @@ u8 ilitek_calc_packet_checksum(u8 *packet, size_t len)
 
 int ilitek_tddi_touch_suspend(struct ilitek_tddi_dev *idev)
 {
-	ipio_info();
+	ipio_info("TP suspend start\n");
+	atomic_set(&idev->tp_suspend, START);
+	ilitek_plat_irq_disable(idev);
+
+	ilitek_tddi_ic_func_ctrl(idev, "sense", DISABLE);
+
+	ilitek_tddi_ic_check_busy(idev, 50, 50);
+
+	ilitek_tddi_ic_func_ctrl(idev, "sleep", DISABLE);
+
+	atomic_set(&idev->tp_suspend, DONE);
+	ipio_info("TP suspend done\n");
 	return 0;
 }
 
 int ilitek_tddi_touch_resume(struct ilitek_tddi_dev *idev)
 {
-	ipio_info();
+	ipio_info("TP resume start\n");
+	atomic_set(&idev->tp_resume, START);
+	ilitek_plat_irq_disable(idev);
+
+	ilitek_tddi_ic_func_ctrl(idev, "sleep", ENABLE);
+
+	ilitek_tddi_ic_check_busy(idev, 50, 50);
+
+	ilitek_tddi_ic_func_ctrl(idev, "sense", ENABLE);
+
+	ilitek_plat_irq_enable(idev);
+	atomic_set(&idev->tp_resume, DONE);
+	ipio_info("TP resume done\n");
 	return 0;
 }
 

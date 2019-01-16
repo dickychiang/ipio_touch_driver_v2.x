@@ -44,10 +44,8 @@ void ilitek_tddi_report_handler(struct ilitek_tddi_dev *idev)
 	u8 *buf = NULL, checksum = 0;
 	size_t rlen = 0;
 
-	if (atomic_read(&idev->tp_reset)) {
-		ipio_err("IC is resetting, do nothing\n");
+	if (atomic_read(&idev->tp_reset) == TP_RST_START)
 		return;
-	}
 
 	switch (idev->actual_fw_mode) {
 		case P5_X_FW_DEMO_MODE:
@@ -154,9 +152,12 @@ int ilitek_tddi_init(struct ilitek_tddi_dev *idev)
 	mutex_init(&idev->touch_mutex);
 	spin_lock_init(&idev->irq_spin);
 
-	atomic_set(&idev->irq_status, IRQ_DISABLE);
-	atomic_set(&idev->ice_status, ICE_DISABLE);
+	atomic_set(&idev->irq_stat, IRQ_DISABLE);
+	atomic_set(&idev->ice_stat, ICE_DISABLE);
 	atomic_set(&idev->tp_reset, TP_RST_END);
+	atomic_set(&idev->fw_stat, FW_IDLE);
+	atomic_set(&idev->tp_suspend, DONE);
+	atomic_set(&idev->tp_resume, DONE);
 
 	idev->actual_fw_mode = P5_X_FW_DEMO_MODE;
 

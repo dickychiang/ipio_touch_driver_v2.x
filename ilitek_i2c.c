@@ -75,7 +75,7 @@ static int ilitek_i2c_write(struct ilitek_tddi_dev *idev, void *buf, size_t len)
 
     ret = core_i2c_write(idev, buf, len);
     if (ret < 0) {
-		if (atomic_read(&idev->tp_reset)) {
+		if (atomic_read(&idev->tp_reset) == TP_RST_START) {
 			ret = 0;
 			goto out;
 		}
@@ -95,7 +95,7 @@ static int ilitek_i2c_read(struct ilitek_tddi_dev *idev, void *buf, size_t len)
 
     ret = core_i2c_read(idev, buf, len);
     if (ret < 0) {
-		if (atomic_read(&idev->tp_reset)) {
+		if (atomic_read(&idev->tp_reset) == TP_RST_START) {
 			ret = 0;
 			goto out;
 		}

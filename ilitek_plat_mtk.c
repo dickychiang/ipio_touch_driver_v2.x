@@ -133,7 +133,7 @@ void ilitek_plat_irq_disable(struct ilitek_tddi_dev *idev)
 
 	spin_lock_irqsave(&idev->irq_spin, flag);
 
-	if (!atomic_read(&idev->irq_status))
+	if (atomic_read(&idev->irq_stat) == IRQ_DISABLE)
 		goto out;
 
 	if (!idev->irq_num) {
@@ -142,7 +142,7 @@ void ilitek_plat_irq_disable(struct ilitek_tddi_dev *idev)
 	}
 
 	disable_irq_nosync(idev->irq_num);
-	atomic_set(&idev->irq_status, IRQ_DISABLE);
+	atomic_set(&idev->irq_stat, IRQ_DISABLE);
 	ipio_debug(DEBUG_IRQ, "Disable irq success\n");
 
 out:
@@ -155,7 +155,7 @@ void ilitek_plat_irq_enable(struct ilitek_tddi_dev *idev)
 
 	spin_lock_irqsave(&idev->irq_spin, flag);
 
-	if (atomic_read(&idev->irq_status))
+	if (atomic_read(&idev->irq_stat) == IRQ_ENABLE)
 		goto out;
 
 	if (!idev->irq_num) {
@@ -164,7 +164,7 @@ void ilitek_plat_irq_enable(struct ilitek_tddi_dev *idev)
 	}
 
 	enable_irq(idev->irq_num);
-	atomic_set(&idev->irq_status, IRQ_ENABLE);
+	atomic_set(&idev->irq_stat, IRQ_ENABLE);
 	ipio_debug(DEBUG_IRQ, "Enable irq success\n");
 
 out:
@@ -174,6 +174,7 @@ out:
 static irqreturn_t ilitek_plat_isr_top_half(int irq, void *dev_id)
 {
 	ipio_info();
+
 	return IRQ_WAKE_THREAD;
 }
 
@@ -211,7 +212,7 @@ static int ilitek_plat_irq_register(struct ilitek_tddi_dev *idev)
 	if (ret != 0)
 		ipio_err("Failed to register irq handler, irq = %d, ret = %d\n", idev->irq_num, ret);
 
-	atomic_set(&idev->irq_status, IRQ_ENABLE);
+	atomic_set(&idev->irq_stat, IRQ_ENABLE);
 
 	return ret;
 }
@@ -220,20 +221,16 @@ static void tpd_resume(struct device *h)
 {
 	ipio_info("TP Resume\n");
 
-	ilitek_tddi_reset_ctrl(idev, TP_RST_HW_ONLY);
-
-	// if (!core_firmware->isUpgrading) {
-	// 	core_config_ic_resume();
-	// }
+	if (atomic_read(&idev->fw_stat) == FW_IDLE)
+		ilitek_tddi_touch_resume(idev);
 }
 
 static void tpd_suspend(struct device *h)
 {
 	ipio_info("TP Suspend\n");
 
-	// if (!core_firmware->isUpgrading) {
-	// 	core_config_ic_suspend();
-	// }
+	if (atomic_read(&idev->fw_stat) == FW_IDLE)
+		ilitek_tddi_touch_suspend(idev);
 }
 
 static int ilitek_plat_probe(struct ilitek_tddi_dev *idev)
