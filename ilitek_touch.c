@@ -75,9 +75,7 @@ u8 ilitek_calc_packet_checksum(u8 *packet, size_t len)
 
 void ilitek_tddi_touch_switch_mode(struct ilitek_tddi_dev *idev, u8 *data)
 {
-	int ret = 0, i, mode, prev_mode;
-	int checksum = 0;
-	u8 mp_code[14] = {0};
+	int ret = 0, mode, prev_mode;
 	u8 cmd[4] = {0};
 
 	if (!data) {
@@ -91,7 +89,7 @@ void ilitek_tddi_touch_switch_mode(struct ilitek_tddi_dev *idev, u8 *data)
 	prev_mode = idev->actual_fw_mode;
 	idev->actual_fw_mode = mode;
 
-	ipio_info("switch tp mode from (%d) to (%d).\n", prev_mode, core_fr->actual_fw_mode);
+	ipio_info("switch tp mode from (%d) to (%d).\n", prev_mode, idev->actual_fw_mode);
 
 	switch(idev->actual_fw_mode) {
 		case P5_X_FW_I2CUART_MODE:
@@ -186,8 +184,8 @@ void litek_tddi_touch_release(struct ilitek_tddi_dev *idev, u16 x, u16 y, u16 id
 	input_mt_slot(idev->input, id);
 	input_mt_report_slot_state(idev->input, MT_TOOL_FINGER, false);
 #else
-	// input_report_key(core_fr->input_device, BTN_TOUCH, 0);
-	// input_mt_sync(core_fr->input_device);
+	input_report_key(idev->input_device, BTN_TOUCH, 0);
+	input_mt_sync(idev->input_device);
 #endif /* MT_B_TYPE */
 }
 

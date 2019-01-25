@@ -40,7 +40,25 @@ int ilitek_tddi_esd_handler(struct ilitek_tddi_dev *idev)
 
 int ilitek_tddi_fw_upgrade_handler(struct ilitek_tddi_dev *idev)
 {
-	ipio_info();
+	int ret = 0, fw_file = 0;
+
+	if (atomic_read(&idev->tp_suspend)) {
+		ipio_info("TP is suspending, upgrade failed\n");
+		return -1;
+	}
+
+	mutex_lock(&idev->touch_mutex);
+	atomic_set(&idev->fw_stat, FW_RUNNING);
+
+	if (idev->fw_boot)
+		fw_file = ILI_FILE;
+	else
+		fw_file = HEX_FILE;
+
+	ret = ilitek_tddi_fw_upgrade(idev, idev->fw_upgrade_mode, fw_file, idev->fw_open);
+
+	atomic_set(&idev->fw_stat, FW_IDLE);
+	mutex_unlock(&idev->touch_mutex);
 	return 0;
 }
 
@@ -50,7 +68,7 @@ void ilitek_tddi_report_handler(struct ilitek_tddi_dev *idev)
 	u8 *buf = NULL, checksum = 0;
 	size_t rlen = 0;
 
-	if (atomic_read(&idev->tp_reset) == TP_RST_START)
+	if (atomic_read(&idev->tp_reset) || atomic_read(&idev->fw_stat))
 		return;
 
 	switch (idev->actual_fw_mode) {
@@ -165,6 +183,10 @@ int ilitek_tddi_init(struct ilitek_tddi_dev *idev)
 
 	idev->actual_fw_mode = P5_X_FW_DEMO_MODE;
 
+	/* firmware settings */
+	idev->fw_boot = DISABLE;
+	idev->fw_open = FILP_OPEN;
+
     idev->suspend = ilitek_tddi_touch_suspend;
     idev->resume = ilitek_tddi_touch_resume;
 
@@ -180,6 +202,8 @@ int ilitek_tddi_init(struct ilitek_tddi_dev *idev)
 	ilitek_tddi_ic_get_fw_ver(idev);
 	ilitek_tddi_ic_get_tp_info(idev);
 	ilitek_tddi_ic_get_panel_info(idev);
+	ilitek_tddi_fw_read_flash_info(idev, idev->fw_upgrade_mode);
+	ilitek_tddi_node_init(idev);
 	return 0;
 }
 

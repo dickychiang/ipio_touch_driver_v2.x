@@ -34,11 +34,11 @@ extern struct tpd_device *tpd;
 void ilitek_plat_tp_reset(struct ilitek_tddi_dev *idev)
 {
     tpd_gpio_output(idev->tp_rst, 1);
-    mdelay(idev->delay_time_high);
+    mdelay(10);
     tpd_gpio_output(idev->tp_rst, 0);
-    mdelay(idev->delay_time_low);
+    mdelay(5);
     tpd_gpio_output(idev->tp_rst, 1);
-    mdelay(idev->edge_delay);
+    mdelay(100);
 }
 
 static int ilitek_plat_input_register(struct ilitek_tddi_dev *idev)
@@ -180,7 +180,7 @@ static irqreturn_t ilitek_plat_isr_top_half(int irq, void *dev_id)
 
 	if (atomic_read(&idev->tp_reset) == TP_RST_START ||
 		atomic_read(&idev->fw_stat) == FW_RUNNING ||
-		atomic_read(&idev->tp_sw_mode) == START ||)
+		atomic_read(&idev->tp_sw_mode) == START)
 		return IRQ_HANDLED;
 
 	return IRQ_WAKE_THREAD;
