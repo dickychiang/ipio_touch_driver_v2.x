@@ -60,7 +60,7 @@ int ilitek_tddi_fw_upgrade_handler(void *data)
 
 	atomic_set(&idev->fw_stat, FW_IDLE);
 	mutex_unlock(&idev->touch_mutex);
-	return 0;
+	return ret;
 }
 
 void ilitek_tddi_report_handler(struct ilitek_tddi_dev *idev)
