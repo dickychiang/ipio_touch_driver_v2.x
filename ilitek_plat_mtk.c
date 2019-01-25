@@ -41,7 +41,7 @@ void ilitek_plat_tp_reset(struct ilitek_tddi_dev *idev)
     mdelay(100);
 }
 
-static int ilitek_plat_input_register(struct ilitek_tddi_dev *idev)
+void ilitek_plat_input_register(struct ilitek_tddi_dev *idev)
 {
 	int i;
 
@@ -76,8 +76,6 @@ static int ilitek_plat_input_register(struct ilitek_tddi_dev *idev)
 #else
 	input_set_abs_params(idev->input, ABS_MT_TRACKING_ID, 0, MAX_TOUCH_NUM, 0, 0);
 #endif /* MT_B_TYPE */
-
-	return 0;
 }
 
 static int ilitek_plat_gpio_register(struct ilitek_tddi_dev *idev)
@@ -253,13 +251,7 @@ static int ilitek_plat_probe(struct ilitek_tddi_dev *idev)
     }
 
     ilitek_plat_irq_register(idev);
-
-	ilitek_plat_input_register(idev);
-
-    /* TODO: */
-
  	tpd_load_status = 1;
-
     return 0;
 }
 

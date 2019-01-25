@@ -39,7 +39,7 @@ static ssize_t ilitek_node_fw_upgrade_read(struct file *filp, char __user *buff,
 
     memset(g_user_buf, 0, USER_STR_BUFF * sizeof(unsigned char));
 
-    ret = ilitek_tddi_fw_upgrade_handler(idev);
+    ret = ilitek_tddi_fw_upgrade_handler((void *)idev);
 	len = sprintf(g_user_buf, "upgrade firwmare %s\n", (ret != 0) ? "failed" : "succeed");
 
 	ret = copy_to_user((uint32_t *) buff, g_user_buf, len);

@@ -790,6 +790,7 @@ static void ilitek_tddi_fw_update_tp_info(struct ilitek_tddi_dev *idev, int ret)
 	ilitek_tddi_ic_get_fw_ver(idev);
 	ilitek_tddi_ic_get_tp_info(idev);
 	ilitek_tddi_ic_get_panel_info(idev);
+	ilitek_plat_input_register(idev);
 }
 
 int ilitek_tddi_fw_upgrade(struct ilitek_tddi_dev * idev,

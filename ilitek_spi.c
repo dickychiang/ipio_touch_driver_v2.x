@@ -609,11 +609,6 @@ static int ilitek_spi_probe(struct spi_device *spi)
 
     idev->reset_mode = TP_RST_HOST_DOWNLOAD;
     idev->fw_upgrade_mode = UPGRADE_IRAM;
-
-	idev->delay_time_high = 10;
-	idev->delay_time_low = 5;
-	idev->edge_delay = 1;
-
     return info->hwif->plat_probe(idev);
 }
 

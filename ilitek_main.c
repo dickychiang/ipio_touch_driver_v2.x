@@ -38,9 +38,10 @@ int ilitek_tddi_esd_handler(struct ilitek_tddi_dev *idev)
 	return 0;
 }
 
-int ilitek_tddi_fw_upgrade_handler(struct ilitek_tddi_dev *idev)
+int ilitek_tddi_fw_upgrade_handler(void *data)
 {
 	int ret = 0, fw_file = 0;
+	struct ilitek_tddi_dev *idev = data;
 
 	if (atomic_read(&idev->tp_suspend)) {
 		ipio_info("TP is suspending, upgrade failed\n");
@@ -182,13 +183,10 @@ int ilitek_tddi_init(struct ilitek_tddi_dev *idev)
 	atomic_set(&idev->tp_resume, DONE);
 
 	idev->actual_fw_mode = P5_X_FW_DEMO_MODE;
-
-	/* firmware settings */
-	idev->fw_boot = DISABLE;
-	idev->fw_open = FILP_OPEN;
-
     idev->suspend = ilitek_tddi_touch_suspend;
     idev->resume = ilitek_tddi_touch_resume;
+	idev->fw_boot = DISABLE;
+	idev->fw_open = FILP_OPEN;
 
 	if (ilitek_tddi_ic_init(idev) < 0) {
 		ipio_err("Init tddi ic info failed\n");
@@ -196,13 +194,21 @@ int ilitek_tddi_init(struct ilitek_tddi_dev *idev)
 	}
 
 	ilitek_tddi_reset_ctrl(idev, idev->reset_mode);
-
 	ilitek_tddi_ic_get_info(idev);
+	ilitek_tddi_fw_read_flash_info(idev, idev->fw_upgrade_mode);
+
+	if (idev->fw_boot == ENABLE) {
+		idev->fw_boot_th = kthread_run(ilitek_tddi_fw_upgrade_handler, (void *)idev, "ili_fw_boot");
+		if (idev->fw_boot_th == (struct task_struct *)ERR_PTR) {
+			idev->fw_boot_th = NULL;
+			ipio_err("Failed to create fw upgrade thread\n");
+		}
+	}
+
 	ilitek_tddi_ic_get_protocl_ver(idev);
 	ilitek_tddi_ic_get_fw_ver(idev);
 	ilitek_tddi_ic_get_tp_info(idev);
 	ilitek_tddi_ic_get_panel_info(idev);
-	ilitek_tddi_fw_read_flash_info(idev, idev->fw_upgrade_mode);
 	ilitek_tddi_node_init(idev);
 	return 0;
 }

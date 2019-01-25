@@ -419,6 +419,8 @@ struct ilitek_tddi_dev
 	struct mutex io_mutex;
 	spinlock_t irq_spin;
 
+	struct task_struct *fw_boot_th;
+
 	u16 max_x;
 	u16 max_y;
 	u16 min_x;
@@ -579,7 +581,7 @@ extern int ilitek_ice_mode_ctrl(struct ilitek_tddi_dev *, bool, bool);
 extern int ilitek_tddi_ic_init(struct ilitek_tddi_dev *);
 
 /* Prototypes for tddi events */
-extern int ilitek_tddi_fw_upgrade_handler(struct ilitek_tddi_dev *);
+extern int ilitek_tddi_fw_upgrade_handler(void *);
 extern int ilitek_tddi_esd_handler(struct ilitek_tddi_dev *);
 extern int ilitek_tddi_mp_test_handler(struct ilitek_tddi_dev *, bool);
 extern void ilitek_tddi_report_handler(struct ilitek_tddi_dev *);
@@ -596,6 +598,7 @@ extern int ilitek_i2c_dev_init(struct ilitek_hwif_info *);
 //extern int ilitek_spi_dev_init(struct ilitek_hwif_info *);
 
 /* Prototypes for platform level */
+extern void ilitek_plat_input_register(struct ilitek_tddi_dev *idev);
 extern void ilitek_plat_irq_disable(struct ilitek_tddi_dev *);
 extern void ilitek_plat_irq_enable(struct ilitek_tddi_dev *);
 extern void ilitek_plat_tp_reset(struct ilitek_tddi_dev *);
