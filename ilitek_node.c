@@ -27,6 +27,47 @@
 
 unsigned char g_user_buf[USER_STR_BUFF] = {0};
 
+static int dev_mkdir(char *name, umode_t mode)
+{
+    struct dentry *dentry;
+    struct path path;
+    int err;
+
+	ipio_info("mkdir: %s\n", name);
+
+    dentry = kern_path_create(AT_FDCWD, name, &path, LOOKUP_DIRECTORY);
+    if (IS_ERR(dentry))
+        return PTR_ERR(dentry);
+
+    err = vfs_mkdir(path.dentry->d_inode, dentry, mode);
+    done_path_create(&path, dentry);
+    return err;
+}
+
+static ssize_t ilitek_node_mp_lcm_on_test_read(struct file *filp, char __user *buff, size_t size, loff_t *pPos)
+{
+	int ret = 0;
+
+	ipio_info("Run MP test with LCM on\n");
+
+	if (*pPos != 0)
+		return 0;
+
+	/* Create the directory for mp_test result */
+	ret = dev_mkdir(CSV_LCM_ON_PATH, S_IRUGO | S_IWUSR);
+    if (ret != 0)
+        ipio_err("Failed to create directory for mp_test\n");
+
+	ilitek_tddi_mp_test_handler(idev, ON);
+	return 0;
+}
+
+static ssize_t ilitek_node_mp_lcm_off_test_read(struct file *filp, char __user *buff, size_t size, loff_t *pPos)
+{
+	ilitek_tddi_mp_test_handler(idev, OFF);
+	return 0;
+}
+
 static ssize_t ilitek_node_fw_upgrade_read(struct file *filp, char __user *buff, size_t size, loff_t *pPos)
 {
 	int ret = 0;
@@ -60,16 +101,6 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 }
 
 struct proc_dir_entry *proc_dir_ilitek;
-struct proc_dir_entry *proc_ioctl;
-// struct proc_dir_entry *proc_fw_process;
-struct proc_dir_entry *proc_fw_upgrade;
-// struct proc_dir_entry *proc_gesture;
-// struct proc_dir_entry *proc_debug_level;
-// struct proc_dir_entry *proc_mp_test;
-// struct proc_dir_entry *proc_debug_message;
-// struct proc_dir_entry *proc_debug_message_switch;
-// struct proc_dir_entry *proc_fw_pc_counter;
-// struct proc_dir_entry *proc_get_debug_mode_data;
 
 typedef struct {
 	char *name;
@@ -77,6 +108,14 @@ typedef struct {
 	struct file_operations *fops;
 	bool isCreated;
 } proc_node_t;
+
+struct file_operations proc_mp_lcm_on_test_fops = {
+	.read = ilitek_node_mp_lcm_on_test_read,
+};
+
+struct file_operations proc_mp_lcm_off_test_fops = {
+	.read = ilitek_node_mp_lcm_off_test_read,
+};
 
 struct file_operations proc_ioctl_fops = {
 	.unlocked_ioctl = ilitek_node_ioctl,
@@ -95,8 +134,8 @@ proc_node_t proc_table[] = {
 	// {"check_battery", NULL, &proc_check_battery_fops, false},
 	// {"check_esd", NULL, &proc_check_esd_fops, false},
 	// {"debug_level", NULL, &proc_debug_level_fops, false},
-	// {"mp_lcm_on_test", NULL, &proc_mp_lcm_on_test_fops, false},
-	// {"mp_lcm_off_test", NULL, &proc_mp_lcm_off_test_fops, false},
+	{"mp_lcm_on_test", NULL, &proc_mp_lcm_on_test_fops, false},
+	{"mp_lcm_off_test", NULL, &proc_mp_lcm_off_test_fops, false},
 	// {"debug_message", NULL, &proc_debug_message_fops, false},
 	// {"debug_message_switch", NULL, &proc_debug_message_switch_fops, false},
 	// {"fw_pc_counter", NULL, &proc_fw_pc_counter_fops, false},

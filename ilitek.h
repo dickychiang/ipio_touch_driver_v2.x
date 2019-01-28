@@ -459,6 +459,7 @@ struct ilitek_tddi_dev
 	atomic_t tp_reset;
 	atomic_t ice_stat;
 	atomic_t fw_stat;
+	atomic_t mp_stat;
 	atomic_t tp_suspend;
 	atomic_t tp_resume;
 	atomic_t tp_sw_mode;
@@ -559,8 +560,9 @@ extern int ilitek_tddi_fw_read_flash(struct ilitek_tddi_dev *, u32, u32, u8 *, s
 extern int ilitek_tddi_fw_upgrade(struct ilitek_tddi_dev *, int, int, int);
 
 /* Prototypes for tddi mp test */
-extern int ilitek_tddi_mp_move_code_flash(struct ilitek_tddi_dev *idev);
-extern int ilitek_tddi_mp_move_code_iram(struct ilitek_tddi_dev *idev);
+extern int ilitek_tddi_mp_test_run(struct ilitek_tddi_dev *idev);
+extern int ilitek_tddi_mp_move_code_flash(struct ilitek_tddi_dev *);
+extern int ilitek_tddi_mp_move_code_iram(struct ilitek_tddi_dev *);
 
 /* Prototypes for tddi core functions */
 extern void ilitek_tddi_report_ap_mode(struct ilitek_tddi_dev *, u8 *);
@@ -576,7 +578,7 @@ extern int ilitek_tddi_ic_get_fw_ver(struct ilitek_tddi_dev *);
 extern int ilitek_tddi_ic_get_info(struct ilitek_tddi_dev *);
 extern int ilitek_tddi_ic_check_support(struct ilitek_tddi_dev *, u32);
 extern int ilitek_ice_mode_write(struct ilitek_tddi_dev *, u32 , u32 , size_t);
-extern u32 ilitek_ice_mode_read(struct ilitek_tddi_dev *idev, u32 addr, size_t len);
+extern u32 ilitek_ice_mode_read(struct ilitek_tddi_dev *, u32, size_t);
 extern int ilitek_ice_mode_ctrl(struct ilitek_tddi_dev *, bool, bool);
 extern int ilitek_tddi_ic_init(struct ilitek_tddi_dev *);
 
@@ -598,7 +600,7 @@ extern int ilitek_i2c_dev_init(struct ilitek_hwif_info *);
 //extern int ilitek_spi_dev_init(struct ilitek_hwif_info *);
 
 /* Prototypes for platform level */
-extern void ilitek_plat_input_register(struct ilitek_tddi_dev *idev);
+extern void ilitek_plat_input_register(struct ilitek_tddi_dev *);
 extern void ilitek_plat_irq_disable(struct ilitek_tddi_dev *);
 extern void ilitek_plat_irq_enable(struct ilitek_tddi_dev *);
 extern void ilitek_plat_tp_reset(struct ilitek_tddi_dev *);

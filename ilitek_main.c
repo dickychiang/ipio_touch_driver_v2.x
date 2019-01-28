@@ -28,8 +28,21 @@ EXPORT_SYMBOL(ipio_debug_level);
 
 int ilitek_tddi_mp_test_handler(struct ilitek_tddi_dev *idev, bool lcm_on)
 {
+	int ret = 0;
+
     ipio_info();
-    return 0;
+
+	if (atomic_read(&idev->fw_stat) == FW_RUNNING)
+		return -1;
+
+	mutex_lock(&idev->touch_mutex);
+	atomic_set(&idev->mp_stat, ENABLE);
+
+	ret = ilitek_tddi_mp_test_run(idev);
+
+	mutex_unlock(&idev->touch_mutex);
+	atomic_set(&idev->mp_stat, DISABLE);
+    return ret;
 }
 
 int ilitek_tddi_esd_handler(struct ilitek_tddi_dev *idev)
@@ -58,8 +71,8 @@ int ilitek_tddi_fw_upgrade_handler(void *data)
 
 	ret = ilitek_tddi_fw_upgrade(idev, idev->fw_upgrade_mode, fw_file, idev->fw_open);
 
-	atomic_set(&idev->fw_stat, FW_IDLE);
 	mutex_unlock(&idev->touch_mutex);
+	atomic_set(&idev->fw_stat, FW_IDLE);
 	return ret;
 }
 
@@ -179,6 +192,7 @@ int ilitek_tddi_init(struct ilitek_tddi_dev *idev)
 	atomic_set(&idev->ice_stat, ICE_DISABLE);
 	atomic_set(&idev->tp_reset, TP_RST_END);
 	atomic_set(&idev->fw_stat, FW_IDLE);
+	atomic_set(&idev->mp_stat, DISABLE);
 	atomic_set(&idev->tp_suspend, DONE);
 	atomic_set(&idev->tp_resume, DONE);
 
@@ -209,6 +223,7 @@ int ilitek_tddi_init(struct ilitek_tddi_dev *idev)
 	ilitek_tddi_ic_get_fw_ver(idev);
 	ilitek_tddi_ic_get_tp_info(idev);
 	ilitek_tddi_ic_get_panel_info(idev);
+	ilitek_plat_input_register(idev);
 	ilitek_tddi_node_init(idev);
 	return 0;
 }
