@@ -609,6 +609,7 @@ static int ilitek_spi_probe(struct spi_device *spi)
 
     idev->reset_mode = TP_RST_HOST_DOWNLOAD;
     idev->fw_upgrade_mode = UPGRADE_IRAM;
+	idev->mp_move_code = ilitek_tddi_mp_move_code_iram;
     return info->hwif->plat_probe(idev);
 }
 

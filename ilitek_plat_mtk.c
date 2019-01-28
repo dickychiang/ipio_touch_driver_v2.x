@@ -178,7 +178,8 @@ static irqreturn_t ilitek_plat_isr_top_half(int irq, void *dev_id)
 
 	if (atomic_read(&idev->tp_reset) == TP_RST_START ||
 		atomic_read(&idev->fw_stat) == FW_RUNNING ||
-		atomic_read(&idev->tp_sw_mode) == START)
+		atomic_read(&idev->tp_sw_mode) == START ||
+		atomic_read(&idev->mp_stat) == ENABLE)
 		return IRQ_HANDLED;
 
 	return IRQ_WAKE_THREAD;

@@ -32,13 +32,13 @@
 #define PROTOCL_VER_NUM     7
 static struct ilitek_protocol_info protocol_info[PROTOCL_VER_NUM] = {
     /* length -> fw, protocol, tp, key, panel, core, func, window, cdc, mp_info */
-    [0] = {PROTOCOL_VER_500, 4, 4, 14, 30, 5, 5, 2, 3, 8},
-    [1] = {PROTOCOL_VER_510, 4, 3, 14, 30, 5, 5, 3, 3, 8},
-    [2] = {PROTOCOL_VER_520, 4, 4, 14, 30, 5, 5, 3, 3, 8},
-    [3] = {PROTOCOL_VER_530, 9, 4, 14, 30, 5, 5, 3, 3, 8},
-    [4] = {PROTOCOL_VER_540, 9, 4, 14, 30, 5, 5, 3, 15, 8},
-    [5] = {PROTOCOL_VER_550, 9, 4, 14, 30, 5, 5, 3, 15, 14},
-    [6] = {PROTOCOL_VER_560, 9, 4, 14, 30, 5, 5, 3, 15, 14},
+    [0] = {PROTOCOL_VER_500, 4, 4, 14, 30, 5, 5, 2, 8, 3, 8},
+    [1] = {PROTOCOL_VER_510, 4, 3, 14, 30, 5, 5, 3, 8, 3, 8},
+    [2] = {PROTOCOL_VER_520, 4, 4, 14, 30, 5, 5, 3, 8, 3, 8},
+    [3] = {PROTOCOL_VER_530, 9, 4, 14, 30, 5, 5, 3, 8, 3, 8},
+    [4] = {PROTOCOL_VER_540, 9, 4, 14, 30, 5, 5, 3, 8, 15, 8},
+    [5] = {PROTOCOL_VER_550, 9, 4, 14, 30, 5, 5, 3, 8, 15, 14},
+    [6] = {PROTOCOL_VER_560, 9, 4, 14, 30, 5, 5, 3, 8, 15, 14},
 };
 
 #define FUNC_CTRL_NUM   14
@@ -73,19 +73,40 @@ static u32 ic_sup_list[CHIP_SUP_NUM] = {
     [3] = ILI7807G_AA_CHIP
 };
 
-int ilitek_tddi_ic_check_support(struct ilitek_tddi_dev *idev, u32 pid)
+int ilitek_tddi_ic_check_support(struct ilitek_tddi_dev *idev, u32 pid, u16 id)
 {
     int i = 0;
 
     for (i = 0; i < CHIP_SUP_NUM; i++) {
         if (CHECK_EQUAL(pid, ic_sup_list[i]) ||
-            CHECK_EQUAL(pid >> 16, ic_sup_list[i]))
+            CHECK_EQUAL(id, ic_sup_list[i]))
             break;
     }
 
-    if (i >= CHIP_SUP_NUM)
+    if (i >= CHIP_SUP_NUM) {
+        ipio_info("CHIP ID isn't matched, pid = %x, id = %x\n", pid, id);
         return -1;
+    }
     return 0;
+}
+
+int ilitek_ice_mode_bit_mask_write(struct ilitek_tddi_dev *idev, u32 addr, u32 mask, u32 value)
+{
+	int ret = 0;
+	u32 data = 0;
+
+    data = ilitek_ice_mode_read(idev, addr, sizeof(u32));
+
+    data &= (~mask);
+	data |= (value & mask);
+
+	ipio_info("mask value data = %x\n", data);
+
+    ret = ilitek_ice_mode_write(idev, addr, data, sizeof(u32));
+	if (ret < 0)
+		ipio_err("Failed to re-write data in ICE mode, ret = %d\n", ret);
+
+	return ret;
 }
 
 int ilitek_ice_mode_write(struct ilitek_tddi_dev *idev, u32 addr, u32 data, size_t len)
@@ -167,7 +188,7 @@ static int ilitek_ice_mode_enter_check(struct ilitek_tddi_dev *idev)
 
     do {
         pid = ilitek_ice_mode_read(idev, idev->chip->pid_addr, sizeof(u32));
-        if (ilitek_tddi_ic_check_support(idev, pid) == 0)
+        if (ilitek_tddi_ic_check_support(idev, pid, pid >> 16) == 0)
             break;
         idev->write(idev, cmd_open, sizeof(cmd_open));
         mdelay(25);
@@ -262,6 +283,31 @@ int ilitek_tddi_ic_func_ctrl(struct ilitek_tddi_dev *idev, const char *name, int
     return idev->write(idev, func_ctrl[i].cmd, func_ctrl[i].len);;
 }
 
+int ilitek_tddi_ic_code_reset(struct ilitek_tddi_dev *idev)
+{
+    return ilitek_ice_mode_write(idev, 0x40040, 0xAE, 1);
+}
+
+int ilitek_tddi_ic_whole_reset(struct ilitek_tddi_dev *idev)
+{
+	int ret = 0;
+	u32 key = 0;
+
+    if (CHECK_EQUAL(idev->chip->id, ILI9881H_CHIP))
+        key = 0x00019881;
+    else
+        key = 0x00019878;
+
+	ipio_info("ic whole reset key = 0x%x\n", key);
+
+    ret = ilitek_ice_mode_write(idev, idev->chip->reset_addr, key, sizeof(u32));
+    if (ret < 0)
+        ipio_err("ic whole reset failed, ret = %d\n", ret);
+
+	msleep(100);
+	return ret;
+}
+
 u32 ilitek_tddi_ic_get_pc_counter(struct ilitek_tddi_dev *idev)
 {
     bool ice = ICE_DISABLE;
@@ -316,7 +362,7 @@ int ilitek_tddi_ic_check_busy(struct ilitek_tddi_dev *idev, int count, int delay
         mdelay(delay);
     } while (--count > 0);
 
-    ipio_err("Check busy (%x) timeout !, pc = 0x%x\n", busy,
+    ipio_err("Check busy (0x%x) timeout ! pc = 0x%x\n", busy,
         ilitek_tddi_ic_get_pc_counter(idev));
     return -1;
 
@@ -519,7 +565,7 @@ out:
 
 int ilitek_tddi_ic_get_info(struct ilitek_tddi_dev *idev)
 {
-    int i, ret = 0, ice = 0;
+    int ret = 0, ice = 0;
 
     ice = atomic_read(&idev->ice_stat);
 
@@ -544,12 +590,7 @@ int ilitek_tddi_ic_get_info(struct ilitek_tddi_dev *idev)
 	ipio_info("CHIP OTP ID = 0x%x\n", idev->chip->otp_id);
 	ipio_info("CHIP ANA ID = 0x%x\n", idev->chip->ana_id);
 
-    for (i = 0; i < CHIP_SUP_NUM; i++)
-        if (CHECK_EQUAL(idev->chip->id, ic_sup_list[i]))
-            break;
-
-    if (i >= CHIP_SUP_NUM)
-        ret = -1;
+    ret = ilitek_tddi_ic_check_support(idev, idev->chip->pid, idev->chip->id);
 
     if (ice == ICE_DISABLE)
 	    ilitek_ice_mode_ctrl(idev, ICE_DISABLE, MCU_STOP);

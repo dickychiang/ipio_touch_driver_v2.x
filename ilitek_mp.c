@@ -238,6 +238,86 @@ static struct mp_test_items tItems[MP_TEST_ITEM] = {
 
 int g_ini_items = 0;
 
+static void dma_clear_reg_setting(struct ilitek_tddi_dev *idev)
+{
+	ipio_info("[Clear register setting]\n");
+
+	ipio_info("interrupt t0/t1 enable flag\n");
+	ilitek_ice_mode_bit_mask_write(idev, INTR32_ADDR, INTR32_reg_t0_int_en, (0 << 24));
+	ilitek_ice_mode_bit_mask_write(idev, INTR32_ADDR, INTR32_reg_t1_int_en, (0 << 25));
+
+	ipio_info("clear tdi_err_int_flag\n");
+	ilitek_ice_mode_bit_mask_write(idev, INTR2_ADDR, INTR2_tdi_err_int_flag_clear, (1 << 18));
+
+	ipio_info("clear dma channel 0 src1 info\n");
+	ilitek_ice_mode_write(idev, DMA49_reg_dma_ch0_src1_addr, 0x00000000, 4);
+	ilitek_ice_mode_write(idev, DMA50_reg_dma_ch0_src1_step_inc, 0x00, 1);
+	ilitek_ice_mode_bit_mask_write(idev, DMA50_ADDR, DMA50_reg_dma_ch0_src1_format, (0 << 24));
+	ilitek_ice_mode_bit_mask_write(idev, DMA50_ADDR, DMA50_reg_dma_ch0_src1_en, (1 << 31));
+
+	ipio_info("clear dma channel 0 src2 info\n");
+	ilitek_ice_mode_bit_mask_write(idev, DMA52_ADDR, DMA52_reg_dma_ch0_src2_en, (0 << 31));
+
+	ipio_info("clear dma channel 0 trafer info\n");
+	ilitek_ice_mode_write(idev, DMA55_reg_dma_ch0_trafer_counts, 0x00000000, 4);
+	ilitek_ice_mode_bit_mask_write(idev, DMA55_ADDR, DMA55_reg_dma_ch0_trafer_mode, (0 << 24));
+
+	ipio_info("clear dma channel 0 trigger select\n");
+	ilitek_ice_mode_bit_mask_write(idev, DMA48_ADDR, DMA48_reg_dma_ch0_trigger_sel, (0 << 16));
+
+	ilitek_ice_mode_bit_mask_write(idev, INTR1_ADDR, INTR1_reg_flash_int_flag, (1 << 25));
+
+	ipio_info("clear dma flash setting\n");
+	ilitek_tddi_flash_clear_dma(idev);
+}
+
+static void dma_trigger_reg_setting(uint32_t reg_dest_addr, uint32_t flash_start_addr, uint32_t copy_size)
+{
+	ipio_info("set dma channel 0 clear\n");
+	ilitek_ice_mode_bit_mask_write(idev, DMA48_ADDR, DMA48_reg_dma_ch0_start_clear, (1 << 25));
+
+	ipio_info("set dma channel 0 src1 info\n");
+	ilitek_ice_mode_write(idev, DMA49_reg_dma_ch0_src1_addr, 0x00041010, 4);
+	ilitek_ice_mode_write(idev, DMA50_reg_dma_ch0_src1_step_inc, 0x00, 1);
+	ilitek_ice_mode_bit_mask_write(idev, DMA50_ADDR, DMA50_reg_dma_ch0_src1_format, (0 << 24));
+	ilitek_ice_mode_bit_mask_write(idev, DMA50_ADDR, DMA50_reg_dma_ch0_src1_en, (1 << 31));
+
+	ipio_info("set dma channel 0 src2 info\n");
+	ilitek_ice_mode_bit_mask_write(idev, DMA52_ADDR, DMA52_reg_dma_ch0_src2_en, (0 << 31));
+
+	ipio_info("set dma channel 0 dest info\n");
+	ilitek_ice_mode_write(idev, DMA53_reg_dma_ch0_dest_addr, reg_dest_addr, 3);
+	ilitek_ice_mode_write(idev, DMA54_reg_dma_ch0_dest_step_inc, 0x01, 1);
+	ilitek_ice_mode_bit_mask_write(idev, DMA54_ADDR, DMA54_reg_dma_ch0_dest_format, (0 << 24));
+	ilitek_ice_mode_bit_mask_write(idev, DMA54_ADDR, DMA54_reg_dma_ch0_dest_en, (1 << 31));
+
+	ipio_info("set dma channel 0 trafer info\n");
+	ilitek_ice_mode_write(idev, DMA55_reg_dma_ch0_trafer_counts, copy_size, 4);
+	ilitek_ice_mode_bit_mask_write(idev, DMA55_ADDR, DMA55_reg_dma_ch0_trafer_mode, (0 << 24));
+
+	ipio_info("set dma channel 0 int info\n");
+	ilitek_ice_mode_bit_mask_write(idev, INTR33_ADDR, INTR33_reg_dma_ch0_int_en, (1 << 17));
+
+	ipio_info("set dma channel 0 trigger select\n");
+	ilitek_ice_mode_bit_mask_write(idev, DMA48_ADDR, DMA48_reg_dma_ch0_trigger_sel, (1 << 16));
+
+	ipio_info("set dma flash setting, FlashAddr = 0x%x\n",flash_start_addr);
+	ilitek_tddi_flash_dma_write(idev, flash_start_addr,(flash_start_addr+copy_size), copy_size);
+
+	ipio_info("clear flash and dma ch0 int flag\n");
+	ilitek_ice_mode_bit_mask_write(idev, INTR1_ADDR, INTR1_reg_flash_int_flag, (1 << 25));
+	ilitek_ice_mode_bit_mask_write(idev, INTR1_ADDR, INTR1_reg_dma_ch0_int_flag, (1 << 17));
+	ilitek_ice_mode_bit_mask_write(idev, 0x041013, BIT(0), 1); //patch
+
+	/* DMA Trigger */
+	ilitek_ice_mode_write(idev, FLASH4_reg_rcv_data, 0xFF, 1);
+	mdelay(30);
+
+	/* CS High */
+	ilitek_ice_mode_write(idev, FLASH0_reg_flash_csb, 0x1, 1);
+	mdelay(60);
+}
+
 /* Count the number of each line and assign the content to tmp buffer */
 static int get_ini_phy_line(char *data, char *buffer, int maxlen)
 {
@@ -659,6 +739,7 @@ static void ilitek_tddi_mp_init_item(struct ilitek_tddi_dev *idev)
 int ilitek_tddi_mp_test_run(struct ilitek_tddi_dev *idev)
 {
     int ret = 0;
+	u8 tp_mode;
 
     ilitek_tddi_mp_init_item(idev);
 
@@ -668,15 +749,113 @@ int ilitek_tddi_mp_test_run(struct ilitek_tddi_dev *idev)
 		goto out;
 	}
 
+	/* Switch to Test mode nad move mp code into iram */
+	tp_mode = P5_X_FW_TEST_MODE;
+	ret = ilitek_tddi_touch_switch_mode(idev, &tp_mode);
+	if (ret < 0) {
+		ipio_err("Switch to test mode failed\n");
+		goto out;
+	}
+
 out:
+	/* Switch to Demo mode */
+	tp_mode = P5_X_FW_DEMO_MODE;
+	ret = ilitek_tddi_touch_switch_mode(idev, &tp_mode);
+	if (ret < 0) {
+		ipio_err("Switch to test mode failed\n");
+		goto out;
+	}
+
     return ret;
 };
 
-
 int ilitek_tddi_mp_move_code_flash(struct ilitek_tddi_dev *idev)
 {
-    ipio_info();
-    return 0;
+	int ret = 0;
+	u32 mp_text_size = 0, mp_andes_init_size = 0;
+	u8 cmd[16] = {0};
+
+	cmd[0] = P5_X_MODE_CONTROL;
+	cmd[1] = P5_X_FW_TEST_MODE;
+	ret = idev->write(idev, cmd, 2);
+	if (ret < 0)
+		goto out;
+
+	cmd[0] = P5_X_MP_TEST_MODE_INFO;
+	ret = idev->write(idev, cmd, 1);
+	if (ret < 0)
+		goto out;
+
+	memset(cmd, 0, sizeof(cmd));
+
+	ipio_info("read mp info length = %d\n", idev->protocol->mp_info_len);
+	ret = idev->read(idev, cmd, idev->protocol->mp_info_len);
+	if (ret < 0)
+		goto out;
+
+	ilitek_dump_data(cmd, 8, idev->protocol->mp_info_len, 0, "MP overlay info");
+
+	core_mp.dma_trigger_enable = 0;
+
+	core_mp.mp_flash_addr = cmd[3] + (cmd[2] << 8) + (cmd[1] << 16);
+	core_mp.mp_size = cmd[6] + (cmd[5] << 8) + (cmd[4] << 16);
+	core_mp.overlay_start_addr = cmd[9] + (cmd[8] << 8) + (cmd[7] << 16);
+	core_mp.overlay_end_addr = cmd[12] + (cmd[11] << 8) + (cmd[10] << 16);
+
+	if (core_mp.overlay_start_addr != 0x0 && core_mp.overlay_end_addr != 0x0
+		&& cmd[0] == P5_X_MP_TEST_MODE_INFO)
+		core_mp.dma_trigger_enable = 1;
+
+	ipio_info("MP info Overlay: Enable = %d, addr = 0x%x ~ 0x%x, flash addr = 0x%x, mp size = 0x%x\n",
+		core_mp.dma_trigger_enable, core_mp.overlay_start_addr,
+		core_mp.overlay_end_addr, core_mp.mp_flash_addr, core_mp.mp_size);
+
+	/* Check if ic is ready switching test mode from demo mode */
+	idev->actual_fw_mode = P5_X_FW_DEMO_MODE;
+	ret = ilitek_tddi_ic_check_busy(idev, 50, 50); /* Set busy as 0x41 */
+	if (ret < 0)
+		goto out;
+
+	ret = ilitek_ice_mode_ctrl(idev, ICE_ENABLE, MCU_STOP);
+	if (ret < 0)
+		goto out;
+
+	if (core_mp.dma_trigger_enable) {
+		mp_andes_init_size = core_mp.overlay_start_addr;
+		mp_text_size = (core_mp.mp_size - core_mp.overlay_end_addr) + 1;
+		ipio_info("MP andes init size = %d , MP text size = %d\n",mp_andes_init_size, mp_text_size);
+
+		dma_clear_reg_setting(idev);
+
+		ipio_info("[Move ANDES.INIT to DRAM]\n");
+		dma_trigger_reg_setting(0, core_mp.mp_flash_addr, mp_andes_init_size);   /* DMA ANDES.INIT */
+
+		dma_clear_reg_setting(idev);
+
+		ipio_info("[Move MP.TEXT to DRAM]\n");
+		dma_trigger_reg_setting(core_mp.overlay_end_addr, (core_mp.mp_flash_addr + core_mp.overlay_start_addr), mp_text_size);
+	} else {
+		/* DMA Trigger */
+		ilitek_ice_mode_write(idev, FLASH4_reg_rcv_data, 0xFF, 1);
+		mdelay(30);
+
+		/* CS High */
+		ilitek_ice_mode_write(idev, FLASH0_reg_flash_csb, 0x1, 1);
+		mdelay(60);
+	}
+
+	ilitek_tddi_reset_ctrl(idev, TP_IC_CODE_RST);
+
+	ret = ilitek_ice_mode_ctrl(idev, ICE_DISABLE, MCU_STOP);
+	if (ret < 0)
+		goto out;
+
+	/* Check if ic is already in test mode */
+	idev->actual_fw_mode = P5_X_FW_TEST_MODE; /* set busy as 0x51 */
+	ret = ilitek_tddi_ic_check_busy(idev, 300, 50);
+
+out:
+    return ret;
 }
 
 int ilitek_tddi_mp_move_code_iram(struct ilitek_tddi_dev *idev)

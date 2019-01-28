@@ -73,14 +73,14 @@ u8 ilitek_calc_packet_checksum(u8 *packet, size_t len)
 	return (u8) ((-sum) & 0xFF);
 }
 
-void ilitek_tddi_touch_switch_mode(struct ilitek_tddi_dev *idev, u8 *data)
+int ilitek_tddi_touch_switch_mode(struct ilitek_tddi_dev *idev, u8 *data)
 {
 	int ret = 0, mode, prev_mode;
 	u8 cmd[4] = {0};
 
 	if (!data) {
 		ipio_err("data is null\n");
-		return;
+		return -EINVAL;
 	}
 
 	atomic_set(&idev->tp_sw_mode, START);
@@ -89,7 +89,7 @@ void ilitek_tddi_touch_switch_mode(struct ilitek_tddi_dev *idev, u8 *data)
 	prev_mode = idev->actual_fw_mode;
 	idev->actual_fw_mode = mode;
 
-	ipio_info("switch tp mode from (%d) to (%d).\n", prev_mode, idev->actual_fw_mode);
+	ipio_info("Switch TP mode from (%d) to (%d).\n", prev_mode, idev->actual_fw_mode);
 
 	switch(idev->actual_fw_mode) {
 		case P5_X_FW_I2CUART_MODE:
@@ -99,7 +99,7 @@ void ilitek_tddi_touch_switch_mode(struct ilitek_tddi_dev *idev, u8 *data)
 			ilitek_tddi_reset_ctrl(idev, idev->reset_mode);
 			break;
 		case P5_X_FW_DEBUG_MODE:
-			cmd[0] = P5_X_READ_DATA_CTRL;
+			cmd[0] = P5_X_MODE_CONTROL;
 			cmd[1] = mode;
 
 			ipio_info("Switch to Debug mode\n");
@@ -111,6 +111,7 @@ void ilitek_tddi_touch_switch_mode(struct ilitek_tddi_dev *idev, u8 *data)
 			ret = ilitek_tddi_ic_func_ctrl(idev, "lpwg", ON);
 			break;
 		case P5_X_FW_TEST_MODE:
+			ipio_info("Start moving MP code\n");
 			ret = idev->mp_move_code(idev);
 			break;
 		default:
@@ -126,6 +127,7 @@ void ilitek_tddi_touch_switch_mode(struct ilitek_tddi_dev *idev, u8 *data)
 
 	ipio_info("Actual TP mode = %d\n", idev->actual_fw_mode);
 	atomic_set(&idev->tp_sw_mode, DONE);
+	return ret;
 }
 
 void ilitek_tddi_touch_suspend(struct ilitek_tddi_dev *idev)

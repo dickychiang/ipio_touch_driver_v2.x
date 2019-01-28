@@ -156,7 +156,8 @@ enum MCU_STATUS {
 };
 
 enum TP_RST_METHOD{
-	TP_RST_SW = 0,
+	TP_IC_WHOLE_RST = 0,
+	TP_IC_CODE_RST,
 	TP_RST_HW_ONLY,
 	TP_RST_HOST_DOWNLOAD
 };
@@ -258,6 +259,53 @@ enum TP_FUNC_CTRL_STATUS {
 #define SPI_UPGRADE_LEN				2048
 #define SPI_READ_LEN				2048
 #define FW_BLOCK_INFO_NUM			7
+
+/* DMA Control Registers */
+#define DMA_BASED_ADDR 						0x72000
+#define DMA48_ADDR  						(DMA_BASED_ADDR + 0xC0)
+#define DMA48_reg_dma_ch0_busy_flag         DMA48_ADDR
+#define DMA48_reserved_0                    0xFFFE
+#define DMA48_reg_dma_ch0_trigger_sel       BIT(16)|BIT(17)|BIT(18)|BIT(19)
+#define DMA48_reserved_1                    BIT(20)|BIT(21)|BIT(22)|BIT(23)
+#define DMA48_reg_dma_ch0_start_set         BIT(24)
+#define DMA48_reg_dma_ch0_start_clear       BIT(25)
+#define DMA48_reg_dma_ch0_trigger_src_mask  BIT(26)
+#define DMA48_reserved_2                    BIT(27)
+
+#define DMA49_ADDR  						(DMA_BASED_ADDR + 0xC4)
+#define DMA49_reg_dma_ch0_src1_addr         DMA49_ADDR
+#define DMA49_reserved_0                    BIT(20)
+
+#define DMA50_ADDR  						(DMA_BASED_ADDR + 0xC8)
+#define DMA50_reg_dma_ch0_src1_step_inc     DMA50_ADDR
+#define DMA50_reserved_0                    (DMA50_ADDR + 0x01)
+#define DMA50_reg_dma_ch0_src1_format       BIT(24)|BIT(25)
+#define DMA50_reserved_1                    BIT(26)|BIT(27)|BIT(28)|BIT(29)|BIT(30)
+#define DMA50_reg_dma_ch0_src1_en           BIT(31)
+
+#define DMA52_ADDR  						(DMA_BASED_ADDR + 0xD0)
+#define DMA52_reg_dma_ch0_src2_step_inc     DMA52_ADDR
+#define DMA52_reserved_0                    (DMA52_ADDR + 0x01)
+#define DMA52_reg_dma_ch0_src2_format       BIT(24)|BIT(25)
+#define DMA52_reserved_1                    BIT(26)|BIT(27)|BIT(28)|BIT(29)|BIT(30)
+#define DMA52_reg_dma_ch0_src2_en           BIT(31) // [RESET] h0
+
+#define DMA53_ADDR  						(DMA_BASED_ADDR + 0xD4)
+#define DMA53_reg_dma_ch0_dest_addr         DMA53_ADDR
+#define DMA53_reserved_0                    BIT(20)
+
+#define DMA54_ADDR  						(DMA_BASED_ADDR + 0xD8)
+#define DMA54_reg_dma_ch0_dest_step_inc     DMA54_ADDR
+#define DMA54_reserved_0                    (DMA54_ADDR + 0x01)
+#define DMA54_reg_dma_ch0_dest_format       BIT(24)|BIT(25)
+#define DMA54_reserved_1                    BIT(26)|BIT(27)|BIT(28)|BIT(29)|BIT(30)
+#define DMA54_reg_dma_ch0_dest_en           BIT(31)
+
+#define DMA55_ADDR  						(DMA_BASED_ADDR + 0xDC)
+#define DMA55_reg_dma_ch0_trafer_counts     DMA55_ADDR
+#define DMA55_reserved_0                    BIT(17)|BIT(18)|BIT(19)|BIT(20)|BIT(21)|BIT(22)|BIT(23)
+#define DMA55_reg_dma_ch0_trafer_mode       BIT(24)|BIT(25)|BIT(26)|BIT(27)
+#define DMA55_reserved_1                    BIT(28)|BIT(29)|BIT(30)|BIT(31)
 
 /* INT Function Registers */
 #define INTR_BASED_ADDR     					0x48000
@@ -554,29 +602,35 @@ static inline void *ipio_memcpy(void *dest, const void *src, size_t n, size_t de
 }
 
 /* Prototypes for tddi firmware/flash functions */
+extern void ilitek_tddi_flash_dma_write(struct ilitek_tddi_dev *, u32, u32, u32);
+extern void ilitek_tddi_flash_clear_dma(struct ilitek_tddi_dev *);
 extern void ilitek_tddi_fw_read_flash_info(struct ilitek_tddi_dev *, bool);
 extern u32 ilitek_tddi_fw_read_hw_crc(struct ilitek_tddi_dev *, u32, u32);
 extern int ilitek_tddi_fw_read_flash(struct ilitek_tddi_dev *, u32, u32, u8 *, size_t);
 extern int ilitek_tddi_fw_upgrade(struct ilitek_tddi_dev *, int, int, int);
 
 /* Prototypes for tddi mp test */
-extern int ilitek_tddi_mp_test_run(struct ilitek_tddi_dev *idev);
+extern int ilitek_tddi_mp_test_run(struct ilitek_tddi_dev *);
 extern int ilitek_tddi_mp_move_code_flash(struct ilitek_tddi_dev *);
 extern int ilitek_tddi_mp_move_code_iram(struct ilitek_tddi_dev *);
 
 /* Prototypes for tddi core functions */
+extern int ilitek_tddi_touch_switch_mode(struct ilitek_tddi_dev *, u8 *);
 extern void ilitek_tddi_report_ap_mode(struct ilitek_tddi_dev *, u8 *);
 extern void ilitek_tddi_report_debug_mode(struct ilitek_tddi_dev *);
 extern void ilitek_tddi_report_gesture_mode(struct ilitek_tddi_dev *);
+extern int ilitek_tddi_ic_whole_reset(struct ilitek_tddi_dev *);
+extern int ilitek_tddi_ic_code_reset(struct ilitek_tddi_dev *);
 extern int ilitek_tddi_ic_func_ctrl(struct ilitek_tddi_dev *, const char *, int);
 extern u32 ilitek_tddi_ic_get_pc_counter(struct ilitek_tddi_dev *);
-extern int ilitek_tddi_ic_check_busy(struct ilitek_tddi_dev *idev, int, int);
+extern int ilitek_tddi_ic_check_busy(struct ilitek_tddi_dev *, int, int);
 extern int ilitek_tddi_ic_get_panel_info(struct ilitek_tddi_dev *);
 extern int ilitek_tddi_ic_get_tp_info(struct ilitek_tddi_dev *);
 extern int ilitek_tddi_ic_get_protocl_ver(struct ilitek_tddi_dev *);
 extern int ilitek_tddi_ic_get_fw_ver(struct ilitek_tddi_dev *);
 extern int ilitek_tddi_ic_get_info(struct ilitek_tddi_dev *);
-extern int ilitek_tddi_ic_check_support(struct ilitek_tddi_dev *, u32);
+extern int ilitek_tddi_ic_check_support(struct ilitek_tddi_dev *, u32, u16);
+extern int ilitek_ice_mode_bit_mask_write(struct ilitek_tddi_dev *, u32, u32, u32);
 extern int ilitek_ice_mode_write(struct ilitek_tddi_dev *, u32 , u32 , size_t);
 extern u32 ilitek_ice_mode_read(struct ilitek_tddi_dev *, u32, size_t);
 extern int ilitek_ice_mode_ctrl(struct ilitek_tddi_dev *, bool, bool);

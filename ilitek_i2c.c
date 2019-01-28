@@ -71,6 +71,11 @@ static int ilitek_i2c_write(struct ilitek_tddi_dev *idev, void *buf, size_t len)
 {
     int ret = 0;
 
+	if (len == 0) {
+		ipio_err("i2c write len is zero\n");
+		return -EINVAL;
+	}
+
     mutex_lock(&idev->io_mutex);
 
     ret = core_i2c_write(idev, buf, len);
@@ -90,6 +95,11 @@ out:
 static int ilitek_i2c_read(struct ilitek_tddi_dev *idev, void *buf, size_t len)
 {
     int ret = 0;
+
+	if (len == 0) {
+		ipio_err("i2c read len is zero\n");
+		return -EINVAL;
+	}
 
     mutex_lock(&idev->io_mutex);
 

@@ -159,8 +159,13 @@ int ilitek_tddi_reset_ctrl(struct ilitek_tddi_dev *idev, int mode)
 	atomic_set(&idev->tp_reset, TP_RST_START);
 
 	switch (mode) {
-		case TP_RST_SW:
-			ipio_info("Doing TP SW RST only\n");
+		case TP_IC_CODE_RST:
+			ipio_info("Doing TP IC Code RST \n");
+			ret = ilitek_tddi_ic_code_reset(idev);
+			break;
+		case TP_IC_WHOLE_RST:
+			ipio_info("Doing TP IC whole RST\n");
+			ret = ilitek_tddi_ic_whole_reset(idev);
 			break;
 		case TP_RST_HW_ONLY:
 			ipio_info("Doing TP RST only\n");

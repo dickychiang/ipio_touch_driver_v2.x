@@ -146,6 +146,52 @@ static int ilitek_tddi_flash_poll_busy(struct ilitek_tddi_dev *idev, int timer)
 	return ret;
 }
 
+void ilitek_tddi_flash_clear_dma(struct ilitek_tddi_dev *idev)
+{
+	ilitek_ice_mode_bit_mask_write(idev, INTR1_ADDR, INTR1_reg_flash_int_flag, (1 << 25));
+
+	ilitek_ice_mode_bit_mask_write(idev, FLASH0_ADDR, FLASH0_reg_preclk_sel, (2 << 16));
+	ilitek_ice_mode_write(idev, FLASH_BASED_ADDR, 0x01, 1);	/* CS high */
+
+	ilitek_ice_mode_bit_mask_write(idev, FLASH4_ADDR, FLASH4_reg_flash_dma_trigger_en, (0 << 24));
+	ilitek_ice_mode_bit_mask_write(idev, FLASH0_ADDR, FLASH0_reg_rx_dual, (0 << 24));
+
+	ilitek_ice_mode_write(idev, FLASH3_reg_rcv_cnt, 0x00, 1);
+	ilitek_ice_mode_write(idev, FLASH4_reg_rcv_data, 0xFF, 1);
+}
+
+void ilitek_tddi_flash_dma_write(struct ilitek_tddi_dev *idev, u32 start, u32 end, u32 len)
+{
+	ilitek_ice_mode_bit_mask_write(idev, FLASH0_ADDR, FLASH0_reg_preclk_sel, 1 << 16);
+
+	ilitek_ice_mode_write(idev, FLASH0_reg_flash_csb, 0x00, 1);	/* CS low */
+	ilitek_ice_mode_write(idev, FLASH1_reg_flash_key1, 0x66aa55, 3);	/* Key */
+
+	ilitek_ice_mode_write(idev, FLASH2_reg_tx_data, 0x0b, 1);
+	while(!(ilitek_ice_mode_read(idev, INTR1_ADDR & BIT(25), sizeof(u32))));
+	ilitek_ice_mode_bit_mask_write(idev, INTR1_ADDR, INTR1_reg_flash_int_flag, (1 << 25));
+
+	ilitek_ice_mode_write(idev, FLASH2_reg_tx_data, (start & 0xFF0000) >> 16, 1);
+	while(!(ilitek_ice_mode_read(idev, INTR1_ADDR & BIT(25), sizeof(u32))));
+	ilitek_ice_mode_bit_mask_write(idev, INTR1_ADDR, INTR1_reg_flash_int_flag, (1 << 25));
+
+	ilitek_ice_mode_write(idev, FLASH2_reg_tx_data, (start & 0x00FF00) >> 8, 1);
+	while(!(ilitek_ice_mode_read(idev, INTR1_ADDR & BIT(25), sizeof(u32))));
+	ilitek_ice_mode_bit_mask_write(idev, INTR1_ADDR, INTR1_reg_flash_int_flag, (1 << 25));
+
+	ilitek_ice_mode_write(idev, FLASH2_reg_tx_data, (start & 0x0000FF), 1);
+	while(!(ilitek_ice_mode_read(idev, INTR1_ADDR & BIT(25), sizeof(u32))));
+	ilitek_ice_mode_bit_mask_write(idev, INTR1_ADDR, INTR1_reg_flash_int_flag, (1 << 25));
+
+	ilitek_ice_mode_bit_mask_write(idev, FLASH0_ADDR, FLASH0_reg_rx_dual, 0 << 24);
+
+	ilitek_ice_mode_write(idev, FLASH2_reg_tx_data, 0x00, 1);	/* Dummy */
+	while(!(ilitek_ice_mode_read(idev, INTR1_ADDR & BIT(25), sizeof(u32))));
+	ilitek_ice_mode_bit_mask_write(idev, INTR1_ADDR, INTR1_reg_flash_int_flag, (1 << 25));
+
+	ilitek_ice_mode_write(idev, FLASH3_reg_rcv_cnt, len, 4);	/* Write Length */
+}
+
 static void ilitek_tddi_flash_write_enable(struct ilitek_tddi_dev *idev)
 {
 	ilitek_ice_mode_write(idev, FLASH_BASED_ADDR, 0x0, 1); /* CS low */
