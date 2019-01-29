@@ -643,7 +643,7 @@ extern int ilitek_tddi_fw_read_flash(struct ilitek_tddi_dev *, u32, u32, u8 *, s
 extern int ilitek_tddi_fw_upgrade(struct ilitek_tddi_dev *, int, int, int);
 
 /* Prototypes for tddi mp test */
-extern int ilitek_tddi_mp_test_main(struct ilitek_tddi_dev *, bool);
+extern int ilitek_tddi_mp_test_main(struct ilitek_tddi_dev *, char *, bool);
 extern int ilitek_tddi_mp_move_code_flash(struct ilitek_tddi_dev *);
 extern int ilitek_tddi_mp_move_code_iram(struct ilitek_tddi_dev *);
 
@@ -672,7 +672,7 @@ extern int ilitek_tddi_ic_init(struct ilitek_tddi_dev *);
 /* Prototypes for tddi events */
 extern int ilitek_tddi_fw_upgrade_handler(void *);
 extern int ilitek_tddi_esd_handler(struct ilitek_tddi_dev *);
-extern int ilitek_tddi_mp_test_handler(struct ilitek_tddi_dev *, bool);
+extern int ilitek_tddi_mp_test_handler(struct ilitek_tddi_dev *, char *, bool);
 extern void ilitek_tddi_report_handler(struct ilitek_tddi_dev *);
 extern void ilitek_tddi_touch_suspend(struct ilitek_tddi_dev *);
 extern void ilitek_tddi_touch_resume(struct ilitek_tddi_dev *);

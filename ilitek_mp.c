@@ -3186,13 +3186,34 @@ static void mp_test_free(void)
 	ipio_kfree((void **)&key_buf);
 }
 
-int ilitek_tddi_mp_test_main(struct ilitek_tddi_dev *idev, bool lcm_on)
+/* The method to copy results to user depends on what APK needs */
+static void mp_copy_ret_to_apk(char *buf)
+{
+	int i, run = 0;
+
+	if (!buf) {
+		ipio_err("apk buffer is null\n");
+		return;
+	}
+
+	for (i = 0; i < MP_TEST_ITEM; i++) {
+		buf[i] = 2;
+		if (tItems[i].run) {
+			if (tItems[i].item_result == MP_FAIL)
+				buf[i] = 1;
+			else
+				buf[i] = 0;
+
+			run++;
+		}
+	}
+}
+
+int ilitek_tddi_mp_test_main(struct ilitek_tddi_dev *idev, char *apk, bool lcm_on)
 {
     int ret = 0;
 	u8 tp_mode;
 	const char *csv_path = NULL;
-
-    ilitek_tddi_mp_init_item(idev);
 
 	ret = ilitek_tddi_mp_ini_parser(INI_NAME_PATH);
 	if (ret < 0) {
@@ -3249,6 +3270,8 @@ int ilitek_tddi_mp_test_main(struct ilitek_tddi_dev *idev, bool lcm_on)
 
 	mp_show_result(csv_path);
 
+	mp_copy_ret_to_apk(apk);
+
 	mp_test_free();
 
 out:
@@ -3259,7 +3282,6 @@ out:
 		ipio_err("Switch to test mode failed\n");
 		goto out;
 	}
-
     return ret;
 };
 
@@ -3268,6 +3290,8 @@ int ilitek_tddi_mp_move_code_flash(struct ilitek_tddi_dev *idev)
 	int ret = 0;
 	u32 mp_text_size = 0, mp_andes_init_size = 0;
 	u8 cmd[16] = {0};
+
+	ilitek_tddi_mp_init_item(idev);
 
 	cmd[0] = P5_X_MODE_CONTROL;
 	cmd[1] = P5_X_FW_TEST_MODE;

@@ -85,6 +85,7 @@ static int dev_mkdir(char *name, umode_t mode)
 static ssize_t ilitek_node_mp_lcm_on_test_read(struct file *filp, char __user *buff, size_t size, loff_t *pPos)
 {
 	int ret = 0;
+	char apk_ret[100] = {0};
 
 	ipio_info("Run MP test with LCM on\n");
 
@@ -96,13 +97,36 @@ static ssize_t ilitek_node_mp_lcm_on_test_read(struct file *filp, char __user *b
     if (ret != 0)
         ipio_err("Failed to create directory for mp_test\n");
 
-	ilitek_tddi_mp_test_handler(idev, ON);
+	ilitek_tddi_mp_test_handler(idev, apk_ret, ON);
+
+	ret = copy_to_user((char *)buff, apk_ret, sizeof(apk_ret) * 100);
+	if (ret < 0)
+		ipio_err("Failed to copy data to user space\n");
+
 	return 0;
 }
 
 static ssize_t ilitek_node_mp_lcm_off_test_read(struct file *filp, char __user *buff, size_t size, loff_t *pPos)
 {
-	ilitek_tddi_mp_test_handler(idev, OFF);
+	int ret = 0;
+	char apk_ret[100] = {0};
+
+	ipio_info("Run MP test with LCM off\n");
+
+	if (*pPos != 0)
+		return 0;
+
+	/* Create the directory for mp_test result */
+	ret = dev_mkdir(CSV_LCM_OFF_PATH, S_IRUGO | S_IWUSR);
+    if (ret != 0)
+        ipio_err("Failed to create directory for mp_test\n");
+
+	ilitek_tddi_mp_test_handler(idev, apk_ret, OFF);
+
+	ret = copy_to_user((char *)buff, apk_ret, sizeof(apk_ret) * 100);
+	if (ret < 0)
+		ipio_err("Failed to copy data to user space\n");
+
 	return 0;
 }
 

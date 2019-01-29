@@ -55,7 +55,7 @@ int katoi(char *str)
 	return result;
 }
 
-int ilitek_tddi_mp_test_handler(struct ilitek_tddi_dev *idev, bool lcm_on)
+int ilitek_tddi_mp_test_handler(struct ilitek_tddi_dev *idev, char *apk, bool lcm_on)
 {
 	int ret = 0;
 
@@ -67,7 +67,7 @@ int ilitek_tddi_mp_test_handler(struct ilitek_tddi_dev *idev, bool lcm_on)
 	mutex_lock(&idev->touch_mutex);
 	atomic_set(&idev->mp_stat, ENABLE);
 
-	ret = ilitek_tddi_mp_test_main(idev, lcm_on);
+	ret = ilitek_tddi_mp_test_main(idev, apk, lcm_on);
 
 	mutex_unlock(&idev->touch_mutex);
 	atomic_set(&idev->mp_stat, DISABLE);
