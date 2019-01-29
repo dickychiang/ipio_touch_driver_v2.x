@@ -26,6 +26,35 @@
 u32 ipio_debug_level = DEBUG_ALL;
 EXPORT_SYMBOL(ipio_debug_level);
 
+int katoi(char *str)
+{
+	int result = 0;
+	unsigned int digit;
+	int sign;
+
+	if (*str == '-') {
+		sign = 1;
+		str += 1;
+	} else {
+		sign = 0;
+		if (*str == '+') {
+			str += 1;
+		}
+	}
+
+	for (;; str += 1) {
+		digit = *str - '0';
+		if (digit > 9)
+			break;
+		result = (10 * result) + digit;
+	}
+
+	if (sign) {
+		return -result;
+	}
+	return result;
+}
+
 int ilitek_tddi_mp_test_handler(struct ilitek_tddi_dev *idev, bool lcm_on)
 {
 	int ret = 0;
@@ -38,7 +67,7 @@ int ilitek_tddi_mp_test_handler(struct ilitek_tddi_dev *idev, bool lcm_on)
 	mutex_lock(&idev->touch_mutex);
 	atomic_set(&idev->mp_stat, ENABLE);
 
-	ret = ilitek_tddi_mp_test_run(idev);
+	ret = ilitek_tddi_mp_test_main(idev, lcm_on);
 
 	mutex_unlock(&idev->touch_mutex);
 	atomic_set(&idev->mp_stat, DISABLE);
@@ -198,6 +227,7 @@ int ilitek_tddi_init(struct ilitek_tddi_dev *idev)
 	atomic_set(&idev->mp_stat, DISABLE);
 	atomic_set(&idev->tp_suspend, DONE);
 	atomic_set(&idev->tp_resume, DONE);
+	atomic_set(&idev->mp_int_check, DISABLE);
 
 	idev->actual_fw_mode = P5_X_FW_DEMO_MODE;
     idev->suspend = ilitek_tddi_touch_suspend;

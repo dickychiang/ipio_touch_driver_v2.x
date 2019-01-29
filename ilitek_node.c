@@ -27,6 +27,44 @@
 
 unsigned char g_user_buf[USER_STR_BUFF] = {0};
 
+static int str2hex(char *str)
+{
+	int strlen, result, intermed, intermedtop;
+	char *s = str;
+
+	while (*s != 0x0) {
+		s++;
+	}
+
+	strlen = (int)(s - str);
+	s = str;
+	if (*s != 0x30) {
+		return -1;
+	}
+
+	s++;
+
+	if (*s != 0x78 && *s != 0x58) {
+		return -1;
+	}
+	s++;
+
+	strlen = strlen - 3;
+	result = 0;
+	while (*s != 0x0) {
+		intermed = *s & 0x0f;
+		intermedtop = *s & 0xf0;
+		if (intermedtop == 0x60 || intermedtop == 0x40) {
+			intermed += 0x09;
+		}
+		intermed = intermed << (strlen << 2);
+		result = result | intermed;
+		strlen -= 1;
+		s++;
+	}
+	return result;
+}
+
 static int dev_mkdir(char *name, umode_t mode)
 {
     struct dentry *dentry;
@@ -92,7 +130,52 @@ static ssize_t ilitek_node_fw_upgrade_read(struct file *filp, char __user *buff,
 
 static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size_t size, loff_t *pPos)
 {
-	return 0;
+	int ret = 0, count = 0;
+	char cmd[512] = { 0 };
+	char *token = NULL, *cur = NULL;
+	//u8 temp[256] = { 0 };
+	u8 *data = NULL;
+
+	if (buff != NULL) {
+		ret = copy_from_user(cmd, buff, size - 1);
+		if (ret < 0) {
+			ipio_info("copy data from user space, failed\n");
+			return -1;
+		}
+	}
+
+	ipio_info("size = %d, cmd = %s\n", (int)size, cmd);
+
+	token = cur = cmd;
+
+	data = kcalloc(512, sizeof(u8), GFP_KERNEL);
+
+	while ((token = strsep(&cur, ",")) != NULL) {
+		data[count] = str2hex(token);
+		ipio_info("data[%d] = %x\n",count, data[count]);
+		count++;
+	}
+
+	ipio_info("cmd = %s\n", cmd);
+
+	if (strcmp(cmd, "hwreset") == 0) {
+		ilitek_tddi_reset_ctrl(idev, TP_RST_HW_ONLY);
+	} else if (strcmp(cmd, "icwholereset") == 0) {
+		ilitek_ice_mode_ctrl(idev, ICE_ENABLE, MCU_STOP);
+		ilitek_tddi_reset_ctrl(idev, TP_IC_WHOLE_RST);
+		ilitek_ice_mode_ctrl(idev, ICE_DISABLE, MCU_STOP);
+	} else if (strcmp(cmd, "iccodereset") == 0) {
+		ilitek_ice_mode_ctrl(idev, ICE_ENABLE, MCU_STOP);
+		ilitek_tddi_reset_ctrl(idev, TP_IC_CODE_RST);
+		ilitek_ice_mode_ctrl(idev, ICE_DISABLE, MCU_STOP);
+	} else if (strcmp(cmd, "hostdownloadreset") == 0) {
+		ilitek_tddi_reset_ctrl(idev, TP_RST_HOST_DOWNLOAD);
+	} else {
+		ipio_err("Unknown command\n");
+	}
+
+	ipio_kfree((void **)&data);
+	return size;
 }
 
 static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)

@@ -95,11 +95,6 @@
 #include "sync_write.h"
 #endif
 
-#define ILI9881H_CHIP       0x9881
-#define ILI9881H_AE_CHIP    0x98811103
-#define ILI7807G_CHIP       0x7807
-#define ILI7807G_AA_CHIP    0x78071100
-
 #define QCOM 1
 #define MTK  2
 #define PLATFORM MTK
@@ -447,6 +442,16 @@ enum TP_FUNC_CTRL_STATUS {
 #define P5_X_GESTURE_PACKET_ID	        0xAA
 #define P5_X_I2CUART_PACKET_ID	        0x7A
 
+/* Chipes */
+#define ILI9881H_CHIP       			0x9881
+#define ILI9881_H						0x11
+#define ILI9881_F						0x0F
+#define ILI9881H_AE_CHIP    			0x98811103
+#define ILI7807G_CHIP       			0x7807
+#define ILI7807G_AA_CHIP    			0x78071100
+#define RAWDATA_NO_BK_SHIFT_9881H 		8192
+#define RAWDATA_NO_BK_SHIFT_9881F 		4096
+
 /* Path */
 #define CSV_LCM_ON_PATH     "/sdcard/ilitek_mp_lcm_on_log"
 #define CSV_LCM_OFF_PATH	"/sdcard/ilitek_mp_lcm_off_log"
@@ -516,6 +521,7 @@ struct ilitek_tddi_dev
 	atomic_t tp_suspend;
 	atomic_t tp_resume;
 	atomic_t tp_sw_mode;
+	atomic_t mp_int_check;
 
     int (*write)(struct ilitek_tddi_dev *, void *, size_t);
     int (*read)(struct ilitek_tddi_dev *, void *, size_t);
@@ -572,6 +578,9 @@ struct ilitek_ic_info
     u32 fw_ver;
 	u32 max_count;
 	u32 reset_key;
+	int no_bk_shift;
+	s32 (*open_sp_formula)(int dac, int raw);
+	s32 (*open_c_formula)(int dac, int raw, int tvch, int gain);
 };
 
 struct ilitek_hwif_info
@@ -607,6 +616,22 @@ static inline void *ipio_memcpy(void *dest, const void *src, size_t n, size_t de
     return memcpy(dest, src, n);
 }
 
+static inline s32 open_sp_formula_ili9881h(int dac, int raw)
+{
+	return (int)((int)(dac * 2 * 10000 * 161 / 100) - (int)(16384 / 2 - (int)raw) * 20000 * 7 / 16384 * 36 / 10) / 31 / 2;
+}
+
+static inline s32 open_sp_formula_ili7807g(int dac, int raw)
+{
+	return (int)((int)(dac * 2 * 10000 * 131 / 100) - (int)(16384 / 2 - (int)raw) * 20000 * 7 / 16384 * 36 / 10) / 31 / 2;
+}
+
+static inline s32 open_c_formula(int dac, int raw, int tvch, int gain)
+{
+	return (int)((int)(dac * 414 * 39 / 2) + (int)(((int)raw - 8192) * 36 * (7 * 100 - 22) * 10 / 16384)) /
+						tvch / 100 / gain;
+}
+
 /* Prototypes for tddi firmware/flash functions */
 extern void ilitek_tddi_flash_dma_write(struct ilitek_tddi_dev *, u32, u32, u32);
 extern void ilitek_tddi_flash_clear_dma(struct ilitek_tddi_dev *);
@@ -616,7 +641,7 @@ extern int ilitek_tddi_fw_read_flash(struct ilitek_tddi_dev *, u32, u32, u8 *, s
 extern int ilitek_tddi_fw_upgrade(struct ilitek_tddi_dev *, int, int, int);
 
 /* Prototypes for tddi mp test */
-extern int ilitek_tddi_mp_test_run(struct ilitek_tddi_dev *);
+extern int ilitek_tddi_mp_test_main(struct ilitek_tddi_dev *, bool);
 extern int ilitek_tddi_mp_move_code_flash(struct ilitek_tddi_dev *);
 extern int ilitek_tddi_mp_move_code_iram(struct ilitek_tddi_dev *);
 
@@ -629,6 +654,7 @@ extern int ilitek_tddi_ic_whole_reset(struct ilitek_tddi_dev *);
 extern int ilitek_tddi_ic_code_reset(struct ilitek_tddi_dev *);
 extern int ilitek_tddi_ic_func_ctrl(struct ilitek_tddi_dev *, const char *, int);
 extern u32 ilitek_tddi_ic_get_pc_counter(struct ilitek_tddi_dev *);
+extern int ilitek_tddi_ic_check_int_stat(bool high);
 extern int ilitek_tddi_ic_check_busy(struct ilitek_tddi_dev *, int, int);
 extern int ilitek_tddi_ic_get_panel_info(struct ilitek_tddi_dev *);
 extern int ilitek_tddi_ic_get_tp_info(struct ilitek_tddi_dev *);
@@ -668,4 +694,5 @@ extern void ilitek_plat_tp_reset(struct ilitek_tddi_dev *);
 extern void ilitek_tddi_node_init(struct ilitek_tddi_dev *);
 extern void ilitek_dump_data(void *, int, int, int, const char *);
 extern u8 ilitek_calc_packet_checksum(u8 *, size_t);
+extern int katoi(char *);
 #endif /* __ILITEK_H */

@@ -320,6 +320,29 @@ u32 ilitek_tddi_ic_get_pc_counter(struct ilitek_tddi_dev *idev)
     return pc;
 }
 
+int ilitek_tddi_ic_check_int_stat(bool high)
+{
+	int timer = 5000;
+
+    atomic_set(&idev->mp_int_check, ENABLE);
+
+    /* From FW request, timeout should at least be 5 sec */
+    while (--timer > 0) {
+        if (atomic_read(&idev->mp_int_check) == DISABLE)
+            break;
+        mdelay(1);
+    }
+
+    if (timer > 0) {
+        ipio_info("Interrupt for MP is active\n");
+        return 0;
+    }
+
+    ipio_err("Error! Interrupt for MP isn't received\n");
+    atomic_set(&idev->mp_int_check, DISABLE);
+    return -1;
+}
+
 int ilitek_tddi_ic_check_busy(struct ilitek_tddi_dev *idev, int count, int delay)
 {
     u8 cmd[2] = {0};
@@ -559,12 +582,21 @@ static void ilitek_tddi_ic_init_vars(struct ilitek_tddi_dev *idev)
 {
     ipio_info();
 
-    if (CHECK_EQUAL(idev->chip->id, ILI9881H_CHIP))
+    if (CHECK_EQUAL(idev->chip->id, ILI9881H_CHIP)) {
         idev->chip->reset_key = 0x00019881;
-    else
+        idev->chip->open_sp_formula = open_sp_formula_ili9881h;
+    } else {
         idev->chip->reset_key = 0x00019878;
+        idev->chip->open_sp_formula = open_sp_formula_ili7807g;
+    }
+
+    if (CHECK_EQUAL(idev->chip->type_hi, ILI9881_F))
+        idev->chip->no_bk_shift = RAWDATA_NO_BK_SHIFT_9881F;
+    else
+        idev->chip->no_bk_shift = RAWDATA_NO_BK_SHIFT_9881H;
 
     idev->chip->max_count = 0x1FFFF;
+    idev->chip->open_c_formula = open_c_formula;
 }
 
 int ilitek_tddi_ic_get_info(struct ilitek_tddi_dev *idev)

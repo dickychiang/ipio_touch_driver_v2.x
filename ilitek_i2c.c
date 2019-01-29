@@ -32,6 +32,8 @@ struct ilitek_tddi_dev *idev = NULL;
 static int core_i2c_write(struct ilitek_tddi_dev *idev, void *buf, size_t len)
 {
     u8 *txbuf = (u8 *)buf;
+	u8 check_sum = 0;
+	u8 *mpbuf = NULL;
 
 	struct i2c_msg msgs[] = {
 		{
@@ -41,6 +43,25 @@ static int core_i2c_write(struct ilitek_tddi_dev *idev, void *buf, size_t len)
 		 .buf = txbuf,
 		 },
 	};
+
+	/*
+	 * NOTE: If TP driver is doing MP test and commanding 0xF1 to FW, we add a checksum
+	 * to the last index and plus 1 with size.
+	 */
+	if (idev->protocol->ver >= PROTOCOL_VER_540) {
+		if (txbuf[0] == P5_X_SET_CDC_INIT && idev->actual_fw_mode == P5_X_FW_TEST_MODE) {
+			check_sum = ilitek_calc_packet_checksum(txbuf, len);
+			mpbuf = kcalloc(len + 1, sizeof(u8), GFP_KERNEL);
+			if (ERR_ALLOC_MEM(mpbuf)) {
+				ipio_err("Failed to allocate mpbuf mem\n");
+				return -ENOMEM;
+			}
+			ipio_memcpy(mpbuf, txbuf, len, msgs[0].len);
+			mpbuf[len] = check_sum;
+			msgs[0].buf = mpbuf;
+			msgs[0].len = len + 1;
+		}
+	}
 
 	if (i2c_transfer(idev->i2c->adapter, msgs, 1) < 0)
 		return -EIO;
