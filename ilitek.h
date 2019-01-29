@@ -95,6 +95,8 @@
 #include "sync_write.h"
 #endif
 
+#define DRIVER_VERSION "2.0.0.0"
+
 #define QCOM 1
 #define MTK  2
 #define PLATFORM MTK

@@ -169,6 +169,8 @@ struct open_test_c_spec {
 } open_c_spec;
 
 struct core_mp_test_data {
+	u32 chip_pid;
+	u32 fw_ver;
 	u32 protocol_ver;
 	int no_bk_shift;
 	bool retry;
@@ -1050,6 +1052,202 @@ static void run_tx_rx_delta_test(int index)
 			}
 		}
 	}
+}
+
+static char *get_date_time_str(void)
+{
+	struct timespec now_time;
+	struct rtc_time rtc_now_time;
+	static char time_data_buf[128] = { 0 };
+
+	getnstimeofday(&now_time);
+	rtc_time_to_tm(now_time.tv_sec, &rtc_now_time);
+	sprintf(time_data_buf, "%04d%02d%02d-%02d%02d%02d",
+		(rtc_now_time.tm_year + 1900), rtc_now_time.tm_mon + 1,
+		rtc_now_time.tm_mday, rtc_now_time.tm_hour, rtc_now_time.tm_min,
+		rtc_now_time.tm_sec);
+
+	return time_data_buf;
+}
+
+static void mp_print_csv_header(char *csv, int *csv_len, int *csv_line)
+{
+	int i, tmp_len = *csv_len, tmp_line = *csv_line;
+
+	/* header must has 19 line*/
+	tmp_len += sprintf(csv + tmp_len,"==============================================================================\n");
+	tmp_line++;
+	tmp_len += sprintf(csv + tmp_len,"ILITek C-TP Utility V%s  %x : Driver Sensor Test\n", DRIVER_VERSION, core_mp.chip_pid);
+	tmp_line++;
+	tmp_len += sprintf(csv + tmp_len,"Confidentiality Notice:\n");
+	tmp_line++;
+	tmp_len += sprintf(csv + tmp_len,"Any information of this tool is confidential and privileged.\n");
+	tmp_line++;
+	tmp_len += sprintf(csv + tmp_len,"@ ILI TECHNOLOGY CORP. All Rights Reserved.\n");
+	tmp_line++;
+	tmp_len += sprintf(csv + tmp_len,"==============================================================================\n");
+	tmp_line++;
+	tmp_len += sprintf(csv + tmp_len,"Firmware Version ,0x%x\n", core_mp.fw_ver);
+	tmp_line++;
+	tmp_len += sprintf(csv + tmp_len,"Panel information ,XCH=%d, YCH=%d\n", core_mp.xch_len, core_mp.ych_len);
+	tmp_line++;
+	tmp_len += sprintf(csv + tmp_len,"Test Item:\n");
+	tmp_line++;
+
+	for (i = 0; i < ARRAY_SIZE(tItems); i++) {
+		if (tItems[i].run == 1) {
+			tmp_len += sprintf(csv + tmp_len, "	  ---%s\n", tItems[i].desp);
+			tmp_line++;
+		}
+	}
+
+	while(tmp_line < 19) {
+		tmp_len += sprintf(csv + tmp_len,"\n");
+		tmp_line++;
+	}
+
+	tmp_len += sprintf(csv + tmp_len,"==============================================================================\n");
+
+	*csv_len = tmp_len;
+	*csv_line = tmp_line;
+}
+
+static void mp_print_csv_tail(char *csv, int *csv_len)
+{
+	int i, tmp_len = *csv_len;;
+
+	tmp_len += sprintf(csv + tmp_len,"==============================================================================\n");
+	tmp_len += sprintf(csv + tmp_len,"Result_Summary           \n");
+
+	for (i = 0; i < ARRAY_SIZE(tItems); i++) {
+		if (tItems[i].run) {
+			if (tItems[i].item_result == MP_PASS)
+				tmp_len += sprintf(csv + tmp_len, "   {%s}     ,OK\n", tItems[i].desp);
+			else
+				tmp_len += sprintf(csv + tmp_len, "   {%s}     ,NG\n", tItems[i].desp);
+		}
+	}
+
+	*csv_len = tmp_len;
+}
+
+static void mp_print_csv_cdc_cmd(char *csv, int *csv_len, int index)
+{
+	int i, slen = 0, tmp_len = *csv_len;
+	char str[128] = {0};
+	char *open_sp_cmd[] = {"open dac", "open raw1", "open raw2", "open raw3"};
+	char *open_c_cmd[] = {"open cap1 dac", "open cap1 raw", "open cap2 dac", "open cap2 raw"};
+	char *name = tItems[index].desp;
+
+	if (strncmp(name, "open test(integration)_sp", strlen(name)) == 0) {
+		for (i = 0; i < ARRAY_SIZE(open_sp_cmd); i++) {
+			slen = parser_get_int_data("pv5_4 command", open_sp_cmd[i], str);
+			if(slen < 0) {
+				ipio_err("Failed to get CDC command %s from ini\n", open_sp_cmd[i]);
+			} else {
+				tmp_len += sprintf(csv + tmp_len, "%s = ,%s\n", open_sp_cmd[i], str);
+			}
+		}
+	} else if (strncmp(name, "open test_c", strlen(name)) == 0) {
+		for (i = 0; i < ARRAY_SIZE(open_c_cmd); i++) {
+			slen = parser_get_int_data("pv5_4 command", open_c_cmd[i], str);
+			if(slen < 0) {
+				ipio_err("Failed to get CDC command %s from ini\n", open_sp_cmd[i]);
+			} else {
+				tmp_len += sprintf(csv + tmp_len, "%s = ,%s\n", open_c_cmd[i], str);
+			}
+		}
+	} else {
+		slen = parser_get_int_data("pv5_4 command", name, str);
+		if(slen < 0) {
+			ipio_err("Failed to get CDC command %s from ini\n", name);
+		} else {
+			tmp_len += sprintf(csv + tmp_len, "CDC command = ,%s\n", str);
+		}
+	}
+	*csv_len = tmp_len;
+}
+
+static void mp_compare_cdc_show_result(int index, s32 *tmp, char *csv,
+									int *csv_len, int type, s32 *max_ts,
+									s32 *min_ts, const char *desp)
+{
+	int x, y, tmp_len = *csv_len;
+	int mp_result = MP_PASS;
+
+	if (ERR_ALLOC_MEM(tmp)) {
+		ipio_err("The data of test item is null (%p)\n", tmp);
+		mp_result = MP_FAIL;
+		goto out;
+	}
+
+	/* print X raw only */
+	for (x = 0; x < core_mp.xch_len; x++) {
+		if (x == 0) {
+			DUMP(DEBUG_MP_TEST, "\n %s ", desp);
+			tmp_len += sprintf(csv + tmp_len, "\n      %s ,", desp);
+		}
+		DUMP(DEBUG_MP_TEST, "  X_%d  ,", (x+1));
+		tmp_len += sprintf(csv + tmp_len, "  X_%d  ,", (x+1));
+	}
+
+	DUMP(DEBUG_MP_TEST, "\n");
+	tmp_len += sprintf(csv + tmp_len, "\n");
+
+	for (y = 0; y < core_mp.ych_len; y++) {
+		DUMP(DEBUG_MP_TEST, "  Y_%d  ,", (y+1));
+		tmp_len += sprintf(csv + tmp_len, "  Y_%d  ,", (y+1));
+
+		for (x = 0; x < core_mp.xch_len; x++) {
+			int shift = y * core_mp.xch_len + x;
+
+			/* In Short teset, we only identify if its value is low than min threshold. */
+			if (tItems[index].catalog == SHORT_TEST) {
+				if (tmp[shift] < min_ts[shift]) {
+					DUMP(DEBUG_MP_TEST, " #%7d ", tmp[shift]);
+					tmp_len += sprintf(csv + tmp_len, "#%7d,", tmp[shift]);
+					mp_result = MP_FAIL;
+				} else {
+					DUMP(DEBUG_MP_TEST, " %7d ", tmp[shift]);
+					tmp_len += sprintf(csv + tmp_len, " %7d, ", tmp[shift]);
+				}
+				continue;
+			}
+
+			if ((tmp[shift] <= max_ts[shift] && tmp[shift] >= min_ts[shift]) || (type != TYPE_JUGE)) {
+				if ((tmp[shift] == INT_MAX || tmp[shift] == INT_MIN) && (type == TYPE_BENCHMARK)) {
+					DUMP(DEBUG_MP_TEST, "%s", "BYPASS,");
+					tmp_len += sprintf(csv + tmp_len,"BYPASS,");
+				} else {
+					DUMP(DEBUG_MP_TEST, " %7d ", tmp[shift]);
+					tmp_len += sprintf(csv + tmp_len, " %7d, ", tmp[shift]);
+				}
+			} else {
+				if (tmp[shift] > max_ts[shift]) {
+					DUMP(DEBUG_MP_TEST, " *%7d ", tmp[shift]);
+					tmp_len += sprintf(csv + tmp_len, "*%7d,", tmp[shift]);
+				} else {
+					DUMP(DEBUG_MP_TEST, " #%7d ", tmp[shift]);
+					tmp_len += sprintf(csv + tmp_len, "#%7d,", tmp[shift]);
+				}
+				mp_result = MP_FAIL;
+			}
+		}
+		DUMP(DEBUG_MP_TEST, "\n");
+		tmp_len += sprintf(csv + tmp_len, "\n");
+	}
+
+out:
+	if (type == TYPE_JUGE) {
+		if (mp_result == MP_PASS) {
+			pr_info("\n Result : PASS\n");
+			tmp_len += sprintf(csv + tmp_len, "Result : PASS\n");
+		} else {
+			pr_info("\n Result : FAIL\n");
+			tmp_len += sprintf(csv + tmp_len, "Result : FAIL\n");
+		}
+	}
+	*csv_len = tmp_len;
 }
 
 #define ABS(a, b) ((a > b) ? (a - b) : (b - a))
@@ -2524,6 +2722,213 @@ static void mp_do_retry(int index, int count)
 		return mp_do_retry(index, count - 1);
 }
 
+static void mp_show_result(const char *csv_path)
+{
+	int i, x, y, j, csv_len = 0, pass_item_count = 0, line_count = 0, get_frame_cont = 1;
+	s32 *max_threshold = NULL, *min_threshold = NULL;
+	char *csv = NULL;
+	char csv_name[128] = { 0 };
+	char *ret_pass_name = NULL, *ret_fail_name = NULL;
+	struct file *f = NULL;
+	mm_segment_t fs;
+	loff_t pos;
+
+	csv = vmalloc(CSV_FILE_SIZE);
+	if (ERR_ALLOC_MEM(csv)) {
+		ipio_err("Failed to allocate CSV mem\n");
+		goto fail_open;
+	}
+
+	max_threshold = kcalloc(core_mp.frame_len, sizeof(s32), GFP_KERNEL);
+	min_threshold = kcalloc(core_mp.frame_len, sizeof(s32), GFP_KERNEL);
+	if (ERR_ALLOC_MEM(max_threshold) || ERR_ALLOC_MEM(min_threshold)) {
+		ipio_err("Failed to allocate threshold FRAME buffer\n");
+		goto fail_open;
+	}
+
+	mp_print_csv_header(csv, &csv_len, &line_count);
+
+	for (i = 0; i < ARRAY_SIZE(tItems); i++) {
+		if (tItems[i].run != 1)
+			continue;
+
+		if (tItems[i].item_result == MP_PASS) {
+			pr_info("\n\n[%s],OK \n", tItems[i].desp);
+			csv_len += sprintf(csv + csv_len, "\n\n[%s],OK\n", tItems[i].desp);
+		} else {
+			pr_info("\n\n[%s],NG \n", tItems[i].desp);
+			csv_len += sprintf(csv + csv_len, "\n\n[%s],NG\n", tItems[i].desp);
+		}
+
+		mp_print_csv_cdc_cmd(csv, &csv_len, i);
+
+		pr_info("Frame count = %d\n",tItems[i].frame_count);
+		csv_len += sprintf(csv + csv_len, "Frame count = %d\n", tItems[i].frame_count);
+
+		if (tItems[i].trimmed_mean && tItems[i].catalog != PEAK_TO_PEAK_TEST) {
+			pr_info("lowest percentage = %d\n",tItems[i].lowest_percentage);
+			csv_len += sprintf(csv + csv_len, "lowest percentage = %d\n", tItems[i].lowest_percentage);
+
+			pr_info("highest percentage = %d\n",tItems[i].highest_percentage);
+			csv_len += sprintf(csv + csv_len, "highest percentage = %d\n", tItems[i].highest_percentage);
+		}
+
+		/* Show result of benchmark max and min */
+		if ( tItems[i].spec_option == BENCHMARK) {
+			for (j = 0 ;j < core_mp.frame_len ; j++) {
+				max_threshold[j] = tItems[i].bench_mark_max[j];
+				min_threshold[j] = tItems[i].bench_mark_min[j];
+			}
+			mp_compare_cdc_show_result(i, tItems[i].bench_mark_max, csv, &csv_len, TYPE_BENCHMARK, max_threshold, min_threshold,"Max_Bench");
+			mp_compare_cdc_show_result(i, tItems[i].bench_mark_min, csv, &csv_len, TYPE_BENCHMARK, max_threshold, min_threshold,"Min_Bench");
+		} else {
+			for (j = 0 ;j < core_mp.frame_len ; j++) {
+				max_threshold[j] = tItems[i].max;
+				min_threshold[j] = tItems[i].min;
+			}
+
+			pr_info("Max = %d\n",tItems[i].max);
+			csv_len += sprintf(csv + csv_len, "Max = %d\n", tItems[i].max);
+
+			pr_info("Min = %d\n",tItems[i].min);
+			csv_len += sprintf(csv + csv_len, "Min = %d\n", tItems[i].min);
+		}
+
+		if (strcmp(tItems[i].name, "open_integration_sp") == 0) {
+			mp_compare_cdc_show_result(i, frame1_cbk700, csv, &csv_len, TYPE_NO_JUGE, max_threshold, min_threshold, "frame1 cbk700");
+			mp_compare_cdc_show_result(i, frame1_cbk250, csv, &csv_len, TYPE_NO_JUGE, max_threshold, min_threshold, "frame1 cbk250");
+			mp_compare_cdc_show_result(i, frame1_cbk200, csv, &csv_len, TYPE_NO_JUGE, max_threshold, min_threshold, "frame1 cbk200");
+		}
+
+		if (strcmp(tItems[i].name, "open test_c") == 0) {
+			mp_compare_cdc_show_result(i, cap1_dac, csv, &csv_len, TYPE_NO_JUGE, max_threshold, min_threshold, "CAP1_DAC");
+			mp_compare_cdc_show_result(i, cap1_raw, csv, &csv_len, TYPE_NO_JUGE, max_threshold, min_threshold, "CAP1_RAW");
+			mp_compare_cdc_show_result(i, cap2_dac, csv, &csv_len, TYPE_NO_JUGE, max_threshold, min_threshold, "CAP2_DAC");
+			mp_compare_cdc_show_result(i, cap2_raw, csv, &csv_len, TYPE_NO_JUGE, max_threshold, min_threshold, "CAP2_RAW");
+		}
+
+		if (tItems[i].catalog == TX_RX_DELTA) {
+			if (ERR_ALLOC_MEM(core_mp.rx_delta_buf) || ERR_ALLOC_MEM(core_mp.tx_delta_buf)) {
+				ipio_err("This test item (%s) has no data inside its buffer\n", tItems[i].desp);
+				continue;
+			}
+		} else {
+			if (ERR_ALLOC_MEM(tItems[i].buf) || ERR_ALLOC_MEM(tItems[i].max_buf) ||
+					ERR_ALLOC_MEM(tItems[i].min_buf)) {
+				ipio_err("This test item (%s) has no data inside its buffer\n", tItems[i].desp);
+				continue;
+			}
+		}
+
+		/* Show test result as below */
+		if (tItems[i].catalog == KEY_TEST) {
+			for (x = 0; x < core_mp.key_len; x++) {
+				DUMP(DEBUG_MP_TEST, "KEY_%02d ", x);
+				csv_len += sprintf(csv + csv_len, "KEY_%02d,", x);
+			}
+
+			DUMP(DEBUG_MP_TEST, "\n");
+			csv_len += sprintf(csv + csv_len, "\n");
+
+			for (y = 0; y < core_mp.key_len; y++) {
+				DUMP(DEBUG_MP_TEST, " %3d   ", tItems[i].buf[y]);
+				csv_len += sprintf(csv + csv_len, " %3d, ", tItems[i].buf[y]);
+			}
+
+			DUMP(DEBUG_MP_TEST, "\n");
+			csv_len += sprintf(csv + csv_len, "\n");
+		} else if (tItems[i].catalog == TX_RX_DELTA) {
+			for (j = 0 ;j < core_mp.frame_len ; j++) {
+				max_threshold[j] = core_mp.TxDeltaMax;
+				min_threshold[j] = core_mp.TxDeltaMin;
+			}
+			mp_compare_cdc_show_result(i, core_mp.tx_max_buf, csv, &csv_len, TYPE_JUGE, max_threshold, min_threshold,"TX Max Hold");
+			mp_compare_cdc_show_result(i, core_mp.tx_min_buf, csv, &csv_len, TYPE_JUGE, max_threshold, min_threshold,"TX Min Hold");
+
+			for (j = 0 ;j < core_mp.frame_len ; j++) {
+				max_threshold[j] = core_mp.RxDeltaMax;
+				min_threshold[j] = core_mp.RxDeltaMin;
+			}
+			mp_compare_cdc_show_result(i, core_mp.rx_max_buf, csv, &csv_len, TYPE_JUGE, max_threshold, min_threshold,"RX Max Hold");
+			mp_compare_cdc_show_result(i, core_mp.rx_min_buf, csv, &csv_len, TYPE_JUGE, max_threshold, min_threshold,"RX Min Hold");
+		} else {
+			/* general result */
+			if (tItems[i].trimmed_mean && tItems[i].catalog != PEAK_TO_PEAK_TEST) {
+				mp_compare_cdc_show_result(i, tItems[i].result_buf, csv, &csv_len, TYPE_JUGE, max_threshold, min_threshold,"Mean result");
+			} else {
+				mp_compare_cdc_show_result(i, tItems[i].buf, csv, &csv_len, TYPE_JUGE, max_threshold, min_threshold,"Max Hold");
+				mp_compare_cdc_show_result(i, tItems[i].buf, csv, &csv_len, TYPE_JUGE, max_threshold, min_threshold,"Min Hold");
+			}
+			if (tItems[i].catalog != PEAK_TO_PEAK_TEST)
+				get_frame_cont = tItems[i].frame_count;
+
+			/* result of each frame */
+			for (j = 0; j < get_frame_cont; j++) {
+				char frame_name[128] = {0};
+				sprintf(frame_name, "Frame %d", (j+1));
+				mp_compare_cdc_show_result(i, &tItems[i].buf[(j*core_mp.frame_len)], csv, &csv_len, TYPE_NO_JUGE, max_threshold, min_threshold, frame_name);
+			}
+		}
+	}
+
+	memset(csv_name, 0, 128 * sizeof(char));
+
+	mp_print_csv_tail(csv, &csv_len);
+
+	for (i = 0; i < ARRAY_SIZE(tItems); i++) {
+		if (tItems[i].run) {
+			if (tItems[i].item_result == MP_FAIL) {
+				pass_item_count = 0;
+				break;
+			}
+			pass_item_count++;
+		}
+	}
+
+	/* define csv file name */
+	ret_pass_name = NORMAL_CSV_PASS_NAME;
+	ret_fail_name = NORMAL_CSV_FAIL_NAME;
+
+	if (pass_item_count == 0) {
+		core_mp.final_result = MP_FAIL;
+		sprintf(csv_name, "%s/%s_%s.csv", csv_path, get_date_time_str(), ret_fail_name);
+	} else {
+		core_mp.final_result = MP_PASS;
+		sprintf(csv_name, "%s/%s_%s.csv", csv_path, get_date_time_str(), ret_pass_name);
+	}
+
+	ipio_info("Open CSV : %s\n", csv_name);
+
+	if (f == NULL)
+		f = filp_open(csv_name, O_WRONLY | O_CREAT | O_TRUNC, 644);
+
+	if (ERR_ALLOC_MEM(f)) {
+		ipio_err("Failed to open CSV file");
+		goto fail_open;
+	}
+
+	ipio_info("Open CSV succeed, its length = %d\n ", csv_len);
+
+	if (csv_len >= CSV_FILE_SIZE) {
+		ipio_err("The length saved to CSV is too long !\n");
+		goto fail_open;
+	}
+
+	fs = get_fs();
+	set_fs(KERNEL_DS);
+	pos = 0;
+	vfs_write(f, csv, csv_len, &pos);
+	set_fs(fs);
+	filp_close(f, NULL);
+
+	ipio_info("Writing Data into CSV succeed\n");
+
+fail_open:
+	ipio_vfree((void **)&csv);
+	ipio_kfree((void **)&max_threshold);
+	ipio_kfree((void **)&min_threshold);
+}
+
 static void ilitek_tddi_mp_init_item(struct ilitek_tddi_dev *idev)
 {
     int i = 0;
@@ -2532,6 +2937,8 @@ static void ilitek_tddi_mp_init_item(struct ilitek_tddi_dev *idev)
 
     memset(&core_mp, 0, sizeof(core_mp));
 
+	core_mp.chip_pid = idev->chip->pid;
+	core_mp.fw_ver = idev->chip->fw_ver;
 	core_mp.protocol_ver = idev->protocol->ver;
 	core_mp.cdc_len = idev->protocol->cdc_len;
 	core_mp.no_bk_shift = idev->chip->no_bk_shift;
@@ -2839,6 +3246,8 @@ int ilitek_tddi_mp_test_main(struct ilitek_tddi_dev *idev, bool lcm_on)
 		mp_test_run("pixel raw (no bk)");
 		mp_test_run("pixel raw (have bk)");
 	}
+
+	mp_show_result(csv_path);
 
 	mp_test_free();
 
