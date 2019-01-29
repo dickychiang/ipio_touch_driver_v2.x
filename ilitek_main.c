@@ -154,8 +154,6 @@ int ilitek_tddi_reset_ctrl(struct ilitek_tddi_dev *idev, int mode)
 {
 	int ret = 0;
 
-	ipio_info("reset mode = %d\n", mode);
-
 	atomic_set(&idev->tp_reset, TP_RST_START);
 
 	switch (mode) {

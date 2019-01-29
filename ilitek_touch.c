@@ -89,13 +89,11 @@ int ilitek_tddi_touch_switch_mode(struct ilitek_tddi_dev *idev, u8 *data)
 	prev_mode = idev->actual_fw_mode;
 	idev->actual_fw_mode = mode;
 
-	ipio_info("Switch TP mode from (%d) to (%d).\n", prev_mode, idev->actual_fw_mode);
-
 	switch(idev->actual_fw_mode) {
 		case P5_X_FW_I2CUART_MODE:
 			break;
 		case P5_X_FW_DEMO_MODE:
-			ipio_info("Switch to Demo mode by hw reset\n");
+			ipio_info("Switch to Demo moden");
 			ilitek_tddi_reset_ctrl(idev, idev->reset_mode);
 			break;
 		case P5_X_FW_DEBUG_MODE:
@@ -111,7 +109,7 @@ int ilitek_tddi_touch_switch_mode(struct ilitek_tddi_dev *idev, u8 *data)
 			ret = ilitek_tddi_ic_func_ctrl(idev, "lpwg", ON);
 			break;
 		case P5_X_FW_TEST_MODE:
-			ipio_info("Start moving MP code\n");
+			ipio_info("Switch to Test mode\n");
 			ret = idev->mp_move_code(idev);
 			break;
 		default:

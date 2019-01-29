@@ -60,11 +60,6 @@ static struct ilitek_ic_func_ctrl func_ctrl[FUNC_CTRL_NUM] = {
     [13] = {"active", {0x1,0x14,0x0}, 3},
 };
 
-#define ILI9881H_CHIP       0x9881
-#define ILI9881H_AE_CHIP    0x98811103
-#define ILI7807G_CHIP       0x7807
-#define ILI7807G_AA_CHIP    0x78071100
-
 #define CHIP_SUP_NUM        4
 static u32 ic_sup_list[CHIP_SUP_NUM] = {
     [0] = ILI9881H_CHIP,
@@ -73,7 +68,7 @@ static u32 ic_sup_list[CHIP_SUP_NUM] = {
     [3] = ILI7807G_AA_CHIP
 };
 
-int ilitek_tddi_ic_check_support(struct ilitek_tddi_dev *idev, u32 pid, u16 id)
+static int ilitek_tddi_ic_check_support(struct ilitek_tddi_dev *idev, u32 pid, u16 id)
 {
     int i = 0;
 
@@ -84,9 +79,10 @@ int ilitek_tddi_ic_check_support(struct ilitek_tddi_dev *idev, u32 pid, u16 id)
     }
 
     if (i >= CHIP_SUP_NUM) {
-        ipio_info("CHIP ID isn't matched, pid = %x, id = %x\n", pid, id);
+        ipio_info("Error, ILITEK CHIP (%x, %x) isn't matched!\n", pid, id);
         return -1;
     }
+    ipio_info("ILITEK CHIP (%x, %x) matched.\n", pid, id);
     return 0;
 }
 
@@ -291,16 +287,12 @@ int ilitek_tddi_ic_code_reset(struct ilitek_tddi_dev *idev)
 int ilitek_tddi_ic_whole_reset(struct ilitek_tddi_dev *idev)
 {
 	int ret = 0;
-	u32 key = 0;
-
-    if (CHECK_EQUAL(idev->chip->id, ILI9881H_CHIP))
-        key = 0x00019881;
-    else
-        key = 0x00019878;
+	u32 key = idev->chip->reset_key;
+    u32 addr = idev->chip->reset_addr;
 
 	ipio_info("ic whole reset key = 0x%x\n", key);
 
-    ret = ilitek_ice_mode_write(idev, idev->chip->reset_addr, key, sizeof(u32));
+    ret = ilitek_ice_mode_write(idev, addr, key, sizeof(u32));
     if (ret < 0)
         ipio_err("ic whole reset failed, ret = %d\n", ret);
 
@@ -563,6 +555,18 @@ out:
     return ret;
 }
 
+static void ilitek_tddi_ic_init_vars(struct ilitek_tddi_dev *idev)
+{
+    ipio_info();
+
+    if (CHECK_EQUAL(idev->chip->id, ILI9881H_CHIP))
+        idev->chip->reset_key = 0x00019881;
+    else
+        idev->chip->reset_key = 0x00019878;
+
+    idev->chip->max_count = 0x1FFFF;
+}
+
 int ilitek_tddi_ic_get_info(struct ilitek_tddi_dev *idev)
 {
     int ret = 0, ice = 0;
@@ -591,6 +595,8 @@ int ilitek_tddi_ic_get_info(struct ilitek_tddi_dev *idev)
 	ipio_info("CHIP ANA ID = 0x%x\n", idev->chip->ana_id);
 
     ret = ilitek_tddi_ic_check_support(idev, idev->chip->pid, idev->chip->id);
+    if (ret == 0)
+        ilitek_tddi_ic_init_vars(idev);
 
     if (ice == ICE_DISABLE)
 	    ilitek_ice_mode_ctrl(idev, ICE_DISABLE, MCU_STOP);
@@ -614,7 +620,6 @@ int ilitek_tddi_ic_init(struct ilitek_tddi_dev *idev)
     chip->otp_addr =        TDDI_OTP_ID_ADDR;
     chip->ana_addr =        TDDI_ANA_ID_ADDR;
     chip->reset_addr =      TDDI_CHIP_RESET_ADDR;
-    chip->max_count =       0x1FFFF;
 
     idev->protocol = &protocol_info[PROTOCL_VER_NUM - 1];
     idev->chip = chip;

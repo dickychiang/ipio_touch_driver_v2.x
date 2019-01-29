@@ -95,6 +95,11 @@
 #include "sync_write.h"
 #endif
 
+#define ILI9881H_CHIP       0x9881
+#define ILI9881H_AE_CHIP    0x98811103
+#define ILI7807G_CHIP       0x7807
+#define ILI7807G_AA_CHIP    0x78071100
+
 #define QCOM 1
 #define MTK  2
 #define PLATFORM MTK
@@ -566,6 +571,7 @@ struct ilitek_ic_info
 	u32 ana_id;
     u32 fw_ver;
 	u32 max_count;
+	u32 reset_key;
 };
 
 struct ilitek_hwif_info
@@ -629,7 +635,6 @@ extern int ilitek_tddi_ic_get_tp_info(struct ilitek_tddi_dev *);
 extern int ilitek_tddi_ic_get_protocl_ver(struct ilitek_tddi_dev *);
 extern int ilitek_tddi_ic_get_fw_ver(struct ilitek_tddi_dev *);
 extern int ilitek_tddi_ic_get_info(struct ilitek_tddi_dev *);
-extern int ilitek_tddi_ic_check_support(struct ilitek_tddi_dev *, u32, u16);
 extern int ilitek_ice_mode_bit_mask_write(struct ilitek_tddi_dev *, u32, u32, u32);
 extern int ilitek_ice_mode_write(struct ilitek_tddi_dev *, u32 , u32 , size_t);
 extern u32 ilitek_ice_mode_read(struct ilitek_tddi_dev *, u32, size_t);

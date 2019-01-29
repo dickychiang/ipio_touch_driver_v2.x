@@ -318,8 +318,95 @@ static void dma_trigger_reg_setting(uint32_t reg_dest_addr, uint32_t flash_start
 	mdelay(60);
 }
 
+static int isspace_t(int x)
+{
+    if (x==' '||x=='\t'||x=='\n'||x=='\f'||x=='\b'||x=='\r')
+        return 1;
+    else
+        return 0;
+}
+
+static int parser_get_ini_key_value(char *section, char *key, char *value)
+{
+	int i = 0;
+	int ret = -2;
+	int len = 0;
+
+	len = strlen(key);
+
+	for (i = 0; i < g_ini_items; i++) {
+		if (strcmp(section, ilitek_ini_file_data[i].pSectionName) != 0)
+			continue;
+
+		if (strcmp(key, ilitek_ini_file_data[i].pKeyName) == 0) {
+			ipio_memcpy(value, ilitek_ini_file_data[i].pKeyValue, ilitek_ini_file_data[i].iKeyValueLen, PARSER_MAX_KEY_VALUE_LEN);
+			ipio_debug(DEBUG_PARSER, " value:%s , pKeyValue: %s\n", value, ilitek_ini_file_data[i].pKeyValue);
+			ret = 0;
+			break;
+		}
+	}
+	return ret;
+}
+
+static int parser_get_u8_array(char *key, uint8_t *buf, uint16_t base, size_t len)
+{
+	char *s = key;
+	char *pToken;
+	int ret, conut = 0;
+    long s_to_long = 0;
+
+	if (strlen(s) == 0 || len <= 0) {
+		ipio_err("Can't find any characters inside buffer\n");
+		return -1;
+	}
+
+	/*
+	*  @base: The number base to use. The maximum supported base is 16. If base is
+	*  given as 0, then the base of the string is automatically detected with the
+	*  conventional semantics - If it begins with 0x the number will be parsed as a
+	*  hexadecimal (case insensitive), if it otherwise begins with 0, it will be
+	*  parsed as an octal number. Otherwise it will be parsed as a decimal.
+	*/
+	if (isspace_t((int)(unsigned char)*s) == 0)
+	{
+		while((pToken = strsep(&s, ",")) != NULL) {
+			ret = kstrtol(pToken, base, &s_to_long);
+			if (ret == 0)
+				buf[conut] = s_to_long;
+			else
+				ipio_info("convert string too long, ret = %d\n", ret);
+			conut++;
+
+			if (conut >= len)
+				break;
+		}
+	}
+
+	return conut;
+}
+
+static int parser_get_int_data(char *section, char *keyname, char *rv)
+{
+	int len = 0;
+	char value[512] = { 0 };
+
+	if (rv == NULL || section == NULL || keyname == NULL) {
+		ipio_err("Parameters are invalid\n");
+		return -EINVAL;
+	}
+
+	/* return a white-space string if get nothing */
+	if (parser_get_ini_key_value(section, keyname, value) < 0) {
+		sprintf(rv, "%s", value);
+		return 0;
+	}
+
+	len = sprintf(rv, "%s", value);
+	return len;
+}
+
 /* Count the number of each line and assign the content to tmp buffer */
-static int get_ini_phy_line(char *data, char *buffer, int maxlen)
+static int parser_get_ini_phy_line(char *data, char *buffer, int maxlen)
 {
 	int i = 0;
 	int j = 0;
@@ -348,7 +435,7 @@ static int get_ini_phy_line(char *data, char *buffer, int maxlen)
 	return iRetNum;
 }
 
-static char *ini_str_trim_r(char *buf)
+static char *parser_ini_str_trim_r(char *buf)
 {
 	int len, i;
 	char tmp[512] = { 0 };
@@ -367,7 +454,7 @@ static char *ini_str_trim_r(char *buf)
 	return buf;
 }
 
-static int get_ini_phy_data(char *data, int fsize)
+static int parser_get_ini_phy_data(char *data, int fsize)
 {
 	int i, n = 0, ret = 0 , banchmark_flag = 0, empty_section, nodetype_flag = 0;
 	int offset = 0, isEqualSign = 0;
@@ -410,7 +497,7 @@ static int get_ini_phy_data(char *data, int fsize)
 		if (offset >= fsize)
 			goto out;/*over size*/
 
-		n = get_ini_phy_line(data + offset, ini_buf, PARSER_MAX_CFG_BUF);
+		n = parser_get_ini_phy_line(data + offset, ini_buf, PARSER_MAX_CFG_BUF);
 		if (n < 0) {
 			ipio_err("End of Line\n");
 			goto out;
@@ -418,7 +505,7 @@ static int get_ini_phy_data(char *data, int fsize)
 
 		offset += n;
 
-		n = strlen(ini_str_trim_r(ini_buf));
+		n = strlen(parser_ini_str_trim_r(ini_buf));
 
 		if (n == 0 || ini_buf[0] == M_CFG_NTS)
 			continue;
@@ -578,7 +665,7 @@ static int ilitek_tddi_mp_ini_parser(const char *path)
 	for (i = 0; i < strlen(tmp); i++)
 		tmp[i] = tolower(tmp[i]);
 
-	ret = get_ini_phy_data(tmp, fsize);
+	ret = parser_get_ini_phy_data(tmp, fsize);
 	if (ret < 0) {
 		ipio_err("Failed to get physical ini data, ret = %d\n", ret);
 		goto out;
@@ -622,6 +709,29 @@ static int st_test(int index)
 {
 	ipio_err("ST Test is not supported by the driver\n");
 	return -1;
+}
+
+static int mp_get_timing_info(void)
+{
+	int slen = 0;
+	char str[256] = {0};
+	uint8_t info[64] = {0};
+	char *key = "timing_info_raw";
+
+	core_mp.isLongV = 0;
+
+	slen = parser_get_int_data("pv5_4 command", key, str);
+	if (slen < 0)
+		return -1;
+
+	if (parser_get_u8_array(str, info, 16, slen) < 0)
+		return -1;
+
+	core_mp.isLongV = info[6];
+
+	ipio_info("DDI Mode = %s\n", (core_mp.isLongV ? "Long V" : "Long H"));
+
+	return 0;
 }
 
 static void ilitek_tddi_mp_init_item(struct ilitek_tddi_dev *idev)
@@ -754,6 +864,13 @@ int ilitek_tddi_mp_test_run(struct ilitek_tddi_dev *idev)
 	ret = ilitek_tddi_touch_switch_mode(idev, &tp_mode);
 	if (ret < 0) {
 		ipio_err("Switch to test mode failed\n");
+		goto out;
+	}
+
+	/* Read timing info from ini file */
+	ret = mp_get_timing_info();
+	if (ret < 0) {
+		ipio_err("Failed to get timing info from ini\n");
 		goto out;
 	}
 
