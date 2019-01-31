@@ -194,6 +194,14 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 		ilitek_ice_mode_ctrl(idev, ICE_DISABLE, MCU_STOP);
 	} else if (strcmp(cmd, "hostdownloadreset") == 0) {
 		ilitek_tddi_reset_ctrl(idev, TP_RST_HOST_DOWNLOAD);
+	} else if (strcmp(cmd, "enablewqesd") == 0) {
+		ilitek_tddi_wq_ctrl(ESD, ENABLE);
+	} else if (strcmp(cmd, "enablewqbat") == 0) {
+		ilitek_tddi_wq_ctrl(BAT, ENABLE);
+	} else if (strcmp(cmd, "disablewqesd") == 0) {
+		ilitek_tddi_wq_ctrl(ESD, DISABLE);
+	} else if (strcmp(cmd, "disablewqbat") == 0) {
+		ilitek_tddi_wq_ctrl(BAT, DISABLE);
 	} else {
 		ipio_err("Unknown command\n");
 	}

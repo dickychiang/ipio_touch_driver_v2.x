@@ -41,7 +41,7 @@ static struct ilitek_protocol_info protocol_info[PROTOCL_VER_NUM] = {
     [6] = {PROTOCOL_VER_560, 9, 4, 14, 30, 5, 5, 3, 8, 15, 14},
 };
 
-#define FUNC_CTRL_NUM   14
+#define FUNC_CTRL_NUM   15
 static struct ilitek_ic_func_ctrl func_ctrl[FUNC_CTRL_NUM] = {
     /* cmd[3] = cmd, func, ctrl */
     [0] = {"sense", {0x1,0x1,0x0}, 3},
@@ -55,9 +55,10 @@ static struct ilitek_ic_func_ctrl func_ctrl[FUNC_CTRL_NUM] = {
     [8] = {"finger_sense", {0x1,0xF,0x0}, 3},
     [9] = {"phone_cover_window", {0xE,0x0,0x0}, 3},
     [10] = {"proximity", {0x1,0x10,0x0}, 3},
-    [11] = {"edge_palm", {0x1,0x12,0x0}, 3},
-    [12] = {"lock_point", {0x1,0x13,0x0}, 3},
-    [13] = {"active", {0x1,0x14,0x0}, 3},
+    [11] = {"plug", {0x1,0x11,0x0}, 3},
+    [12] = {"edge_palm", {0x1,0x12,0x0}, 3},
+    [13] = {"lock_point", {0x1,0x13,0x0}, 3},
+    [14] = {"active", {0x1,0x14,0x0}, 3},
 };
 
 #define CHIP_SUP_NUM        4

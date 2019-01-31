@@ -227,6 +227,12 @@ enum TP_FUNC_CTRL_STATUS {
 	ON = 1
 };
 
+enum TP_WQ_TYPE {
+	ESD = 0,
+	BAT,
+	SUSPEND
+};
+
 #define TDDI_I2C_ADDR	0x41
 #define TDDI_DEV_ID	"ILITEK_TDDI"
 
@@ -459,11 +465,13 @@ enum TP_FUNC_CTRL_STATUS {
 #define CSV_LCM_OFF_PATH	"/sdcard/ilitek_mp_lcm_off_log"
 #define INI_NAME_PATH		"/sdcard/mp.ini"
 #define UPDATE_FW_PATH		"/sdcard/ILITEK_FW"
+#define POWER_STATUS_PATH 	"/sys/class/power_supply/battery/status"
 
-/* Linux multiple touch protocol, either B type or A type. */
+/* Options */
 #define MT_B_TYPE
-/* Report points with pressule value */
 #define MT_PRESSURE
+// #define WQ_ESD_BOOT
+// #define WQ_BAT_BOOT
 
 struct ilitek_tddi_dev
 {
@@ -505,6 +513,8 @@ struct ilitek_tddi_dev
 	int fw_update_stat;
 	int fw_boot;
 	int fw_open;
+	bool wq_esd_ctrl;
+	bool wq_bat_ctrl;
 
 	u16 flash_mid;
 	u16 flash_devid;
@@ -530,6 +540,7 @@ struct ilitek_tddi_dev
 	void (*suspend)(struct ilitek_tddi_dev *);
 	void (*resume)(struct ilitek_tddi_dev *);
 	int (*mp_move_code)(struct ilitek_tddi_dev *);
+	void (*esd_callabck)(void);
 };
 extern struct ilitek_tddi_dev *idev;
 
@@ -671,7 +682,9 @@ extern int ilitek_tddi_ic_init(struct ilitek_tddi_dev *);
 
 /* Prototypes for tddi events */
 extern int ilitek_tddi_fw_upgrade_handler(void *);
-extern int ilitek_tddi_esd_handler(struct ilitek_tddi_dev *);
+extern void ilitek_tddi_wq_esd_i2c_check(void);
+extern void ilitek_tddi_wq_esd_spi_check(void);
+extern void ilitek_tddi_wq_ctrl(int, int);
 extern int ilitek_tddi_mp_test_handler(struct ilitek_tddi_dev *, char *, bool);
 extern void ilitek_tddi_report_handler(struct ilitek_tddi_dev *);
 extern void ilitek_tddi_touch_suspend(struct ilitek_tddi_dev *);
