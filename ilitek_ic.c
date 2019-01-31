@@ -218,6 +218,9 @@ int ilitek_ice_mode_ctrl(struct ilitek_tddi_dev *idev, bool enable, bool mcu)
         if (ret < 0)
             ipio_err("Enter to ICE Mode failed\n");
 
+        if (CHECK_EQUAL(idev->spi_setup, NULL) == 0)
+            idev->spi_setup(idev, 1000000);
+
         mdelay(25);
 
         ret = ilitek_ice_mode_enter_check(idev);
@@ -236,6 +239,67 @@ int ilitek_ice_mode_ctrl(struct ilitek_tddi_dev *idev, bool enable, bool mcu)
         atomic_set(&idev->ice_stat, ICE_DISABLE);
     }
     return ret;
+}
+
+int ilitek_set_watch_dog(struct ilitek_tddi_dev * idev, bool enable)
+{
+	int timeout = 100, ret = 0;
+	uint8_t off_bit = 0x5A, on_bit = 0xA5;
+
+	if (idev->chip->wdt_addr <= 0 || idev->chip->id <= 0) {
+		ipio_err("WDT/CHIP ID is invalid\n");
+		return -EINVAL;
+	}
+
+	/* FW will automatiacally disable WDT in I2C */
+	if (CHECK_EQUAL(idev->wtd_ctrl, OFF)) {
+		ipio_info("Interface is I2C, do nothing\n");
+		return 0;
+	}
+
+	if (enable) {
+		ilitek_ice_mode_write(idev, idev->chip->wdt_addr, 1, 1);
+	} else {
+		ilitek_ice_mode_write(idev, idev->chip->wdt_addr, (idev->chip->wtd_key && 0xff), 1);
+		ilitek_ice_mode_write(idev, idev->chip->wdt_addr, (idev->chip->wtd_key >> 8), 1);
+		/* need to delay 300us after stop mcu to wait fw relaod */
+		udelay(300);
+	}
+
+	while (timeout > 0) {
+		ret = ilitek_ice_mode_read(idev, 0x51018, sizeof(u8));
+		//ipio_debug(DEBUG_CONFIG, "bit = %x\n", ret);
+
+		if (enable) {
+			if (CHECK_EQUAL(ret, on_bit) == 0)
+				break;
+		} else {
+			if (CHECK_EQUAL(ret, off_bit) == 0)
+				break;
+
+			/* If WDT can't be disabled, try to command and wait to see */
+			ilitek_ice_mode_write(idev, idev->chip->wdt_addr, 0x00, 1);
+			ilitek_ice_mode_write(idev, idev->chip->wdt_addr, 0x98, 1);
+		}
+
+		timeout--;
+		mdelay(10);
+	}
+
+	if (timeout > 0) {
+		if (enable) {
+			ipio_info("WDT turn on succeed\n");
+		} else {
+			ilitek_ice_mode_write(idev, idev->chip->wdt_addr, 0, 1);
+			ipio_info("WDT turn off succeed\n");
+		}
+	} else {
+		ipio_err("WDT turn on/off timeout !, ret = %x\n", ret);
+		// core_config_read_pc_counter();
+		return -EINVAL;
+	}
+
+	return 0;
 }
 
 int ilitek_tddi_ic_func_ctrl(struct ilitek_tddi_dev *idev, const char *name, int ctrl)
@@ -584,9 +648,11 @@ static void ilitek_tddi_ic_init_vars(struct ilitek_tddi_dev *idev)
 
     if (CHECK_EQUAL(idev->chip->id, ILI9881H_CHIP)) {
         idev->chip->reset_key = 0x00019881;
+        idev->chip->wtd_key = 0x9881;
         idev->chip->open_sp_formula = open_sp_formula_ili9881h;
     } else {
         idev->chip->reset_key = 0x00019878;
+        idev->chip->wtd_key = 0x9878;
         idev->chip->open_sp_formula = open_sp_formula_ili7807g;
     }
 

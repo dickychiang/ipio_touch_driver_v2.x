@@ -265,10 +265,10 @@ int ilitek_tddi_dev_init(struct ilitek_hwif_info *hwif)
 {
 	ipio_info();
 
-	if (hwif->bus_type == TP_BUS_I2C)
-		return ilitek_i2c_dev_init(hwif);
+	// if (hwif->bus_type == TP_BUS_I2C)
+	// 	return ilitek_i2c_dev_init(hwif);
 	// else
-	// 	return ilitek_spi_dev_init(hwif);
+		return ilitek_spi_dev_init(hwif);
 
 	ipio_err("Unknown touch interface, %d\n", hwif->bus_type);
 	return -ENODEV;

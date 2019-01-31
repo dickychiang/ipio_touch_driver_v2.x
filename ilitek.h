@@ -514,6 +514,7 @@ struct ilitek_tddi_dev
 	/* host download */
 	int reset_mode;
 	int fw_upgrade_mode;
+	bool wtd_ctrl;
 
 	atomic_t irq_stat;
 	atomic_t tp_reset;
@@ -525,6 +526,7 @@ struct ilitek_tddi_dev
 	atomic_t tp_sw_mode;
 	atomic_t mp_int_check;
 
+	int (*spi_setup)(struct ilitek_tddi_dev *, u32 freq);
     int (*write)(struct ilitek_tddi_dev *, void *, size_t);
     int (*read)(struct ilitek_tddi_dev *, void *, size_t);
 	void (*suspend)(struct ilitek_tddi_dev *);
@@ -580,6 +582,7 @@ struct ilitek_ic_info
     u32 fw_ver;
 	u32 max_count;
 	u32 reset_key;
+	u16 wtd_key;
 	int no_bk_shift;
 	s32 (*open_sp_formula)(int dac, int raw);
 	s32 (*open_c_formula)(int dac, int raw, int tvch, int gain);
@@ -667,6 +670,7 @@ extern int ilitek_ice_mode_bit_mask_write(struct ilitek_tddi_dev *, u32, u32, u3
 extern int ilitek_ice_mode_write(struct ilitek_tddi_dev *, u32 , u32 , size_t);
 extern u32 ilitek_ice_mode_read(struct ilitek_tddi_dev *, u32, size_t);
 extern int ilitek_ice_mode_ctrl(struct ilitek_tddi_dev *, bool, bool);
+extern int ilitek_set_watch_dog(struct ilitek_tddi_dev * idev, bool enable);
 extern int ilitek_tddi_ic_init(struct ilitek_tddi_dev *);
 
 /* Prototypes for tddi events */
@@ -684,7 +688,7 @@ extern int ilitek_tddi_dev_init(struct ilitek_hwif_info *);
 extern int ilitek_i2c_dev_init(struct ilitek_hwif_info *);
 
 /* Prototypes for spi interface */
-//extern int ilitek_spi_dev_init(struct ilitek_hwif_info *);
+extern int ilitek_spi_dev_init(struct ilitek_hwif_info *);
 
 /* Prototypes for platform level */
 extern void ilitek_plat_input_register(struct ilitek_tddi_dev *);

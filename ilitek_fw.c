@@ -361,8 +361,63 @@ static int ilitek_tddi_fw_check_ver(struct ilitek_tddi_dev *idev, u8 *pfw)
 
 static int ilitek_tddi_fw_iram_upgrade(struct ilitek_tddi_dev * idev, u8 *pfw)
 {
+	//  int ret = UPDATE_OK;
+	int ret = 0;
+	// uint32_t mode, crc, dma;
+	u8 *fw_ptr = NULL;
+
 	ipio_info();
-	return 0;
+
+	/* Reset before load AP and MP code*/
+	// if (!core_gesture->entry) summer
+	// 	ilitek_platform_tp_hw_reset(true);
+
+       	ret = ilitek_ice_mode_ctrl(idev, ICE_ENABLE, MCU_STOP);
+	if (ret < 0)
+		return ret;
+
+	if (ilitek_set_watch_dog(idev, false) < 0) {
+		ipio_err("Failed to disable watch dog\n");
+		ret = -EINVAL;
+		goto out;
+	}
+
+	fw_ptr = pfw;
+	// if (core_fr->actual_fw_mode == protocol->test_mode) {
+	// 	mode = MP;
+	// } else if (core_gesture->entry) {
+	// 	mode = GESTURE;
+	// 	fw_ptr = gestrue_fw;
+	// } else {
+	// 	mode = AP;
+	// }
+
+	// /* Program data to iram acorrding to each block */
+	// for (i = 0; i < ARRAY_SIZE(fbi); i++) {
+	// 	if (fbi[i].mode == mode && fbi[i].len != 0) {
+	// 		ipio_info("Download %s code from hex 0x%x to IRAN 0x%x len = 0x%x\n", fbi[i].name, fbi[i].start, fbi[i].mem_start, fbi[i].len);
+	// 		write_download(fbi[i].mem_start, fbi[i].len, (fw_ptr + fbi[i].start) , SPI_UPGRADE_LEN);
+
+	// 		crc = calc_crc32(fbi[i].start, fbi[i].len - 4 , fw_ptr);
+	// 		dma = host_download_dma_check(fbi[i].mem_start, fbi[i].len - 4);
+
+	// 		ipio_info("%s CRC is %s (%x) : (%x)\n",fbi[i].name, (crc != dma ? "Invalid !" : "Correct !"), crc, dma);
+
+	// 		if (CHECK_EQUAL(crc, dma) == UPDATE_FAIL)
+	// 			ret = UPDATE_FAIL;
+	// 	}
+	// }
+
+out:
+	// if (!core_gesture->entry) {
+	// 	/* ice mode code reset */
+	// 	ipio_info("Doing code reset ...\n");
+	// 	ilitek_ice_mode_write(0x40040, 0xAE, 1);
+	// }
+
+	ilitek_ice_mode_ctrl(idev, ICE_DISABLE, MCU_STOP);
+	mdelay(10);
+	return ret;
 }
 
 static int ilitek_tddi_fw_do_program(struct ilitek_tddi_dev * idev, u8 *pfw)
