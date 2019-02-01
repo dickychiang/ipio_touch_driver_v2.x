@@ -705,7 +705,7 @@ int ilitek_tddi_ic_get_info(struct ilitek_tddi_dev *idev)
 
 static struct ilitek_ic_info chip;
 
-int ilitek_tddi_ic_init(struct ilitek_tddi_dev *idev)
+void ilitek_tddi_ic_init(struct ilitek_tddi_dev *idev)
 {
     chip.pid_addr =        TDDI_PID_ADDR;
     chip.wdt_addr =        TDDI_WDT_ADDR;
@@ -716,5 +716,4 @@ int ilitek_tddi_ic_init(struct ilitek_tddi_dev *idev)
 
     idev->protocol = &protocol_info[PROTOCL_VER_NUM - 1];
     idev->chip = &chip;
-    return 0;
 }

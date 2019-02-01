@@ -216,7 +216,7 @@ static int ilitek_plat_irq_register(struct ilitek_tddi_dev *idev)
 
 	ipio_info("idev->irq_num = %d\n", idev->irq_num);
 
-	ret = request_threaded_irq(idev->irq_num,
+	ret = devm_request_threaded_irq(idev->dev, idev->irq_num,
 				   ilitek_plat_isr_top_half,
 				   ilitek_plat_isr_bottom_half,
 				   IRQF_TRIGGER_FALLING | IRQF_ONESHOT, "ilitek", NULL);
@@ -264,9 +264,7 @@ static int ilitek_plat_probe(struct ilitek_tddi_dev *idev)
 static int ilitek_plat_remove(struct ilitek_tddi_dev *idev)
 {
     ipio_info();
-
-    ilitek_tddi_init(idev);
-
+    ilitek_tddi_dev_remove();
     return 0;
 }
 

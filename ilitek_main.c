@@ -164,11 +164,10 @@ void ilitek_tddi_wq_ctrl(int type, int ctrl)
 
 	ipio_info("wq type = %d, ctrl = %d\n", type, ctrl);
 
-	if (!esd_wq || !bat_wq)
-		return;
-
 	switch (type) {
 		case ESD:
+			if (!esd_wq)
+				return;
 			idev->wq_esd_ctrl = ctrl;
 			if (ctrl == ENABLE) {
 				delay = msecs_to_jiffies(2000);
@@ -181,6 +180,8 @@ void ilitek_tddi_wq_ctrl(int type, int ctrl)
 			}
 			break;
 		case BAT:
+			if (!bat_wq)
+				return;
 			idev->wq_bat_ctrl = ctrl;
 			if (ctrl == ENABLE) {
 				delay = msecs_to_jiffies(4000);
@@ -387,6 +388,8 @@ int ilitek_tddi_reset_ctrl(struct ilitek_tddi_dev *idev, int mode)
 
 int ilitek_tddi_init(struct ilitek_tddi_dev *idev)
 {
+	struct task_struct *fw_boot_th;
+
 	ipio_info();
 
 	mutex_init(&idev->io_mutex);
@@ -402,38 +405,48 @@ int ilitek_tddi_init(struct ilitek_tddi_dev *idev)
 	atomic_set(&idev->tp_resume, END);
 	atomic_set(&idev->mp_int_check, DISABLE);
 
-	idev->actual_fw_mode = P5_X_FW_DEMO_MODE;
-    idev->suspend = ilitek_tddi_touch_suspend;
-    idev->resume = ilitek_tddi_touch_resume;
-	idev->fw_boot = DISABLE;
-	idev->fw_open = FILP_OPEN;
-
+	ilitek_tddi_ic_init(idev);
 	ilitek_tddi_wq_init(idev);
 
-	if (ilitek_tddi_ic_init(idev) < 0) {
-		ipio_err("Init tddi ic info failed\n");
-		return -ENOMEM;
+	/* Must do hw reset once in first time in order to get chip id */
+	ilitek_tddi_reset_ctrl(idev, TP_RST_HW_ONLY);
+	if (ilitek_tddi_ic_get_info(idev) < 0) {
+		ipio_err("Not found ilitek chipes\n");
+		return -ENODEV;
 	}
 
-	ilitek_tddi_reset_ctrl(idev, idev->reset_mode);
-	ilitek_tddi_ic_get_info(idev);
 	ilitek_tddi_fw_read_flash_info(idev, idev->fw_upgrade_mode);
 
-	if (idev->fw_boot == ENABLE) {
-		idev->fw_boot_th = kthread_run(ilitek_tddi_fw_upgrade_handler, (void *)idev, "ili_fw_boot");
-		if (idev->fw_boot_th == (struct task_struct *)ERR_PTR) {
-			idev->fw_boot_th = NULL;
-			ipio_err("Failed to create fw upgrade thread\n");
-		}
+	fw_boot_th = kthread_run(ilitek_tddi_fw_upgrade_handler, (void *)idev, "ili_fw_boot");
+	if (fw_boot_th == (struct task_struct *)ERR_PTR) {
+		fw_boot_th = NULL;
+		WARN_ON(!fw_boot_th);
+		ipio_err("Failed to create fw upgrade thread\n");
 	}
 
-	ilitek_tddi_ic_get_protocl_ver(idev);
-	ilitek_tddi_ic_get_fw_ver(idev);
-	ilitek_tddi_ic_get_tp_info(idev);
-	ilitek_tddi_ic_get_panel_info(idev);
-	ilitek_plat_input_register(idev);
 	ilitek_tddi_node_init(idev);
 	return 0;
+}
+
+void ilitek_tddi_dev_remove(void)
+{
+	ipio_info();
+
+	if (!idev)
+		return;
+
+	gpio_free(idev->tp_int);
+	gpio_free(idev->tp_rst);
+	if (esd_wq) {
+		cancel_delayed_work_sync(&esd_work);
+		flush_workqueue(esd_wq);
+		destroy_workqueue(esd_wq);
+	}
+	if (bat_wq) {
+		cancel_delayed_work_sync(&bat_work);
+		flush_workqueue(bat_wq);
+		destroy_workqueue(bat_wq);
+	}
 }
 
 int ilitek_tddi_dev_init(struct ilitek_hwif_info *hwif)

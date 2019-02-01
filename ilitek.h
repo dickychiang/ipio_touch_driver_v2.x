@@ -439,8 +439,8 @@ enum TP_WQ_TYPE {
 /* Options */
 #define MT_B_TYPE
 #define MT_PRESSURE
-// #define WQ_ESD_BOOT
-// #define WQ_BAT_BOOT
+#define WQ_ESD_BOOT
+#define WQ_BAT_BOOT
 
 struct ilitek_tddi_dev
 {
@@ -455,8 +455,6 @@ struct ilitek_tddi_dev
 	struct mutex touch_mutex;
 	struct mutex io_mutex;
 	spinlock_t irq_spin;
-
-	struct task_struct *fw_boot_th;
 
 	u16 max_x;
 	u16 max_y;
@@ -651,7 +649,7 @@ extern int ilitek_ice_mode_write(struct ilitek_tddi_dev *, u32 , u32 , size_t);
 extern u32 ilitek_ice_mode_read(struct ilitek_tddi_dev *, u32, size_t);
 extern int ilitek_ice_mode_ctrl(struct ilitek_tddi_dev *, bool, bool);
 extern int ilitek_set_watch_dog(struct ilitek_tddi_dev * idev, bool enable);
-extern int ilitek_tddi_ic_init(struct ilitek_tddi_dev *);
+extern void ilitek_tddi_ic_init(struct ilitek_tddi_dev *);
 
 /* Prototypes for tddi events */
 extern int ilitek_tddi_fw_upgrade_handler(void *);
@@ -665,6 +663,7 @@ extern void ilitek_tddi_touch_resume(struct ilitek_tddi_dev *);
 extern int ilitek_tddi_reset_ctrl(struct ilitek_tddi_dev *, int);
 extern int ilitek_tddi_init(struct ilitek_tddi_dev *);
 extern int ilitek_tddi_dev_init(struct ilitek_hwif_info *);
+extern void ilitek_tddi_dev_remove(void);
 
 /* Prototypes for i2c/spi interface */
 extern int ilitek_tddi_interface_dev_init(struct ilitek_hwif_info *hwif);

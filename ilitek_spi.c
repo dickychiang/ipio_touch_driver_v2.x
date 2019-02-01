@@ -604,20 +604,22 @@ static int ilitek_spi_probe(struct spi_device *spi)
 
 	idev->write = ilitek_spi_write;
 	idev->read = ilitek_spi_read;
-
+	idev->actual_fw_mode = P5_X_FW_DEMO_MODE;
+    idev->suspend = ilitek_tddi_touch_suspend;
+    idev->resume = ilitek_tddi_touch_resume;
 	idev->spi_setup = core_spi_setup;
-
+	idev->fw_boot = ENABLE;
+	idev->fw_open = FILP_OPEN;
 	idev->wtd_ctrl = ON;
+    idev->reset_mode = TP_RST_HOST_DOWNLOAD;
+    idev->fw_upgrade_mode = UPGRADE_IRAM;
+	idev->mp_move_code = ilitek_tddi_mp_move_code_iram;
 
 #ifdef CONFIG_MTK_SPI
     ilitek_spi_write_then_read = core_mtk_spi_write_then_read;
 #else
     ilitek_spi_write_then_read = spi_write_then_read;
 #endif
-
-    idev->reset_mode = TP_RST_HOST_DOWNLOAD;
-    idev->fw_upgrade_mode = UPGRADE_IRAM;
-	idev->mp_move_code = ilitek_tddi_mp_move_code_iram;
 	core_spi_setup(idev, 1000000);
     return info->hwif->plat_probe(idev);
 }

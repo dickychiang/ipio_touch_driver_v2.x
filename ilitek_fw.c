@@ -886,7 +886,6 @@ static void ilitek_tddi_fw_update_tp_info(struct ilitek_tddi_dev *idev, int ret)
 		ilitek_ice_mode_ctrl(idev, DISABLE, OFF);
 		ilitek_tddi_reset_ctrl(idev, TP_RST_HW_ONLY);
 	}
-
 	ilitek_tddi_ic_get_protocl_ver(idev);
 	ilitek_tddi_ic_get_fw_ver(idev);
 	ilitek_tddi_ic_get_tp_info(idev);
@@ -913,6 +912,10 @@ int ilitek_tddi_fw_upgrade(struct ilitek_tddi_dev * idev,
 
     ilitek_tddi_fw_file_handle(idev, file_type, pfw, open_file_method);
 	ilitek_tddi_fw_update_block_info(idev, pfw, upgrade_type);
+
+	/* Get firmware version from chip for comparison in after */
+	ilitek_tddi_ic_get_protocl_ver(idev);
+	ilitek_tddi_ic_get_fw_ver(idev);
 
 	do {
 		if (upgrade_type == UPGRADE_FLASH)
