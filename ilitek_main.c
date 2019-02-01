@@ -162,12 +162,13 @@ void ilitek_tddi_wq_ctrl(int type, int ctrl)
 {
 	unsigned long delay = 0;
 
+	mutex_lock(&idev->wq_mutex);
 	ipio_info("wq type = %d, ctrl = %d\n", type, ctrl);
 
 	switch (type) {
 		case ESD:
 			if (!esd_wq)
-				return;
+				goto out;
 			idev->wq_esd_ctrl = ctrl;
 			if (ctrl == ENABLE) {
 				delay = msecs_to_jiffies(2000);
@@ -181,7 +182,7 @@ void ilitek_tddi_wq_ctrl(int type, int ctrl)
 			break;
 		case BAT:
 			if (!bat_wq)
-				return;
+				goto out;
 			idev->wq_bat_ctrl = ctrl;
 			if (ctrl == ENABLE) {
 				delay = msecs_to_jiffies(4000);
@@ -200,6 +201,8 @@ void ilitek_tddi_wq_ctrl(int type, int ctrl)
 			ipio_err("Unknown WQ type, %d\n", type);
 			break;
 	}
+out:
+	mutex_unlock(&idev->wq_mutex);
 }
 
 static void ilitek_tddi_wq_init(void)
@@ -393,6 +396,7 @@ int ilitek_tddi_init(void)
 
 	mutex_init(&idev->io_mutex);
 	mutex_init(&idev->touch_mutex);
+	mutex_init(&idev->wq_mutex);
 	spin_lock_init(&idev->irq_spin);
 
 	atomic_set(&idev->irq_stat, DISABLE);

@@ -454,6 +454,7 @@ struct ilitek_tddi_dev
 
 	struct mutex touch_mutex;
 	struct mutex io_mutex;
+	struct mutex wq_mutex;
 	spinlock_t irq_spin;
 
 	u16 max_x;
