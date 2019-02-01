@@ -141,32 +141,18 @@ extern u32 ipio_debug_level;
 #define ERR_ALLOC_MEM(X)	((IS_ERR(X) || X == NULL) ? 1 : 0)
 #define K (1024)
 #define M (K * K)
-
-enum IRQ_STATUS {
-	IRQ_DISABLE = 0,
-	IRQ_ENABLE
-};
-
-enum ICE_MODE_STATUS {
-	ICE_DISABLE = 0,
-	ICE_ENABLE
-};
-
-enum MCU_STATUS {
-	MCU_STOP = 0,
-	MCU_ON
-};
+#define ENABLE	1
+#define START	1
+#define ON		1
+#define DISABLE 0
+#define END		0
+#define OFF		0
 
 enum TP_RST_METHOD{
 	TP_IC_WHOLE_RST = 0,
 	TP_IC_CODE_RST,
 	TP_RST_HW_ONLY,
 	TP_RST_HOST_DOWNLOAD
-};
-
-enum TP_RST_STATUS {
-	TP_RST_END = 0,
-	TP_RST_START
 };
 
 enum TP_BUS_TYPE {
@@ -194,11 +180,6 @@ enum TP_FW_OPEN_METHOD {
 	FILP_OPEN
 };
 
-enum TP_FW_UPGRADE_STATUS {
-	FW_IDLE = 0,
-	FW_RUNNING
-};
-
 enum TP_FW_BLOCK_NUM {
 	AP = 1,
 	DATA = 2,
@@ -213,18 +194,6 @@ enum TP_FW_BLOCK_TAG {
 	BLOCK_TAG_AE = 0xAE,
 	BLOCK_TAG_AF = 0xAF,
 	BLOCK_TAG_B0 = 0xB0
-};
-
-enum TP_SUSP_STATUS {
-	DONE = 0,
-	START,
-};
-
-enum TP_FUNC_CTRL_STATUS {
-	DISABLE = 0,
-	ENABLE = 1,
-	OFF = 0,
-	ON = 1
 };
 
 enum TP_WQ_TYPE {
@@ -383,7 +352,7 @@ enum TP_WQ_TYPE {
 #define INTR33_reg_dma_tdi_done_int_en        BIT(19)
 #define INTR33_reserved_2                     BIT(20)|BIT(21)|BIT(22)|BIT(23)
 #define INTR33_reg_flash_error_en             BIT(24)
-#define INTR33_reg_flash_int_en               BIT(25) 
+#define INTR33_reg_flash_int_en               BIT(25)
 #define INTR33_reserved_3                     BIT(26)|BIT(27)|BIT(28)|BIT(29)|BIT(30)|BIT(31)
 
 /* Flash */

@@ -490,7 +490,7 @@ static int ilitek_tddi_fw_flash_upgrade(struct ilitek_tddi_dev * idev, u8 *pfw)
 
 	ilitek_tddi_reset_ctrl(idev, idev->reset_mode);
 
-	ret = ilitek_ice_mode_ctrl(idev, ICE_ENABLE, MCU_STOP);
+	ret = ilitek_ice_mode_ctrl(idev, ENABLE, OFF);
 	if (ret < 0)
 		return UPDATE_FAIL;
 
@@ -514,14 +514,14 @@ static int ilitek_tddi_fw_flash_upgrade(struct ilitek_tddi_dev * idev, u8 *pfw)
 	/* the delay time moving code depends on what the touch IC you're using. */
 	mdelay(200);
 
-	ret = ilitek_ice_mode_ctrl(idev, ICE_ENABLE, MCU_STOP);
+	ret = ilitek_ice_mode_ctrl(idev, ENABLE, OFF);
 	if (ret < 0)
 		goto out;
 
 	ret = ilitek_tddi_fw_check_hex_hw_crc(idev, pfw);
 
 out:
-	ilitek_ice_mode_ctrl(idev, ICE_DISABLE, MCU_STOP);
+	ilitek_ice_mode_ctrl(idev, DISABLE, OFF);
 	return ret;
 }
 
@@ -826,9 +826,9 @@ static void ilitek_tddi_fw_update_tp_info(struct ilitek_tddi_dev *idev, int ret)
 
 	if (ret == UPDATE_FAIL) {
 		ipio_info("Erase all fw data\n");
-		ilitek_ice_mode_ctrl(idev, ICE_ENABLE, MCU_STOP);
+		ilitek_ice_mode_ctrl(idev, ENABLE, OFF);
 		ilitek_tddi_fw_do_erase(idev);
-		ilitek_ice_mode_ctrl(idev, ICE_DISABLE, MCU_STOP);
+		ilitek_ice_mode_ctrl(idev, DISABLE, OFF);
 		ilitek_tddi_reset_ctrl(idev, TP_RST_HW_ONLY);
 	}
 
@@ -913,7 +913,7 @@ void ilitek_tddi_fw_read_flash_info(struct ilitek_tddi_dev *idev, bool mode)
 	if (mode == UPGRADE_IRAM)
 		return;
 
-	ilitek_ice_mode_ctrl(idev, ICE_ENABLE, MCU_STOP);
+	ilitek_ice_mode_ctrl(idev, ENABLE, OFF);
 
 	ilitek_ice_mode_write(idev, FLASH_BASED_ADDR, 0x0, 1); /* CS low */
 	ilitek_ice_mode_write(idev, FLASH1_ADDR, 0x66aa55, 3); /* Key */
@@ -953,5 +953,5 @@ void ilitek_tddi_fw_read_flash_info(struct ilitek_tddi_dev *idev, bool mode)
 
 	ilitek_tddi_flash_protect(idev, DISABLE);
 
-	ilitek_ice_mode_ctrl(idev, ICE_DISABLE, MCU_STOP);
+	ilitek_ice_mode_ctrl(idev, DISABLE, OFF);
 }

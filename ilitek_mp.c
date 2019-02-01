@@ -905,7 +905,7 @@ static int ilitek_tddi_mp_ini_parser(const char *path)
 		goto out;
 	}
 
-	ipio_info("Parsed INI file done\n");
+	ipio_info("Parsed ini file done\n");
 out:
 	ipio_vfree((void **)&tmp);
 	filp_close(f, NULL);
@@ -3334,7 +3334,7 @@ int ilitek_tddi_mp_move_code_flash(struct ilitek_tddi_dev *idev)
 	if (ret < 0)
 		goto out;
 
-	ret = ilitek_ice_mode_ctrl(idev, ICE_ENABLE, MCU_STOP);
+	ret = ilitek_ice_mode_ctrl(idev, ENABLE, OFF);
 	if (ret < 0)
 		goto out;
 
@@ -3364,7 +3364,7 @@ int ilitek_tddi_mp_move_code_flash(struct ilitek_tddi_dev *idev)
 
 	ilitek_tddi_reset_ctrl(idev, TP_IC_CODE_RST);
 
-	ret = ilitek_ice_mode_ctrl(idev, ICE_DISABLE, MCU_STOP);
+	ret = ilitek_ice_mode_ctrl(idev, DISABLE, OFF);
 	if (ret < 0)
 		goto out;
 

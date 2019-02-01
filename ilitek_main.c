@@ -71,7 +71,7 @@ int ilitek_tddi_mp_test_handler(struct ilitek_tddi_dev *idev, char *apk, bool lc
 	ilitek_tddi_wq_ctrl(ESD, DISABLE);
 	ilitek_tddi_wq_ctrl(BAT, DISABLE);
 
-	if (atomic_read(&idev->fw_stat) == FW_RUNNING)
+	if (atomic_read(&idev->fw_stat) == START)
 		return -1;
 
 	mutex_lock(&idev->touch_mutex);
@@ -240,7 +240,7 @@ int ilitek_tddi_fw_upgrade_handler(void *data)
 	}
 
 	mutex_lock(&idev->touch_mutex);
-	atomic_set(&idev->fw_stat, FW_RUNNING);
+	atomic_set(&idev->fw_stat, START);
 
 	if (idev->fw_boot)
 		fw_file = ILI_FILE;
@@ -250,7 +250,7 @@ int ilitek_tddi_fw_upgrade_handler(void *data)
 	ret = ilitek_tddi_fw_upgrade(idev, idev->fw_upgrade_mode, fw_file, idev->fw_open);
 
 	mutex_unlock(&idev->touch_mutex);
-	atomic_set(&idev->fw_stat, FW_IDLE);
+	atomic_set(&idev->fw_stat, END);
 
 	if (esd)
 		ilitek_tddi_wq_ctrl(ESD, ENABLE);
@@ -351,7 +351,7 @@ int ilitek_tddi_reset_ctrl(struct ilitek_tddi_dev *idev, int mode)
 	ilitek_tddi_wq_ctrl(ESD, DISABLE);
 	ilitek_tddi_wq_ctrl(BAT, DISABLE);
 
-	atomic_set(&idev->tp_reset, TP_RST_START);
+	atomic_set(&idev->tp_reset, START);
 
 	switch (mode) {
 		case TP_IC_CODE_RST:
@@ -376,7 +376,7 @@ int ilitek_tddi_reset_ctrl(struct ilitek_tddi_dev *idev, int mode)
 			break;
 	}
 
-	atomic_set(&idev->tp_reset, TP_RST_END);
+	atomic_set(&idev->tp_reset, END);
 
 	if (esd)
 		ilitek_tddi_wq_ctrl(ESD, ENABLE);
@@ -393,13 +393,13 @@ int ilitek_tddi_init(struct ilitek_tddi_dev *idev)
 	mutex_init(&idev->touch_mutex);
 	spin_lock_init(&idev->irq_spin);
 
-	atomic_set(&idev->irq_stat, IRQ_DISABLE);
-	atomic_set(&idev->ice_stat, ICE_DISABLE);
-	atomic_set(&idev->tp_reset, TP_RST_END);
-	atomic_set(&idev->fw_stat, FW_IDLE);
+	atomic_set(&idev->irq_stat, DISABLE);
+	atomic_set(&idev->ice_stat, DISABLE);
+	atomic_set(&idev->tp_reset, END);
+	atomic_set(&idev->fw_stat, END);
 	atomic_set(&idev->mp_stat, DISABLE);
-	atomic_set(&idev->tp_suspend, DONE);
-	atomic_set(&idev->tp_resume, DONE);
+	atomic_set(&idev->tp_suspend, END);
+	atomic_set(&idev->tp_resume, END);
 	atomic_set(&idev->mp_int_check, DISABLE);
 
 	idev->actual_fw_mode = P5_X_FW_DEMO_MODE;
