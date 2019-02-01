@@ -93,7 +93,7 @@ static u32 CalculateCRC32(u32 start_addr, u32 len, u8 *pfw)
 	return tmp_crc;
 }
 
-static int ilitek_tddi_fw_check_hex_hw_crc(struct ilitek_tddi_dev *idev, u8 *pfw)
+static int ilitek_tddi_fw_check_hex_hw_crc(u8 *pfw)
 {
 	u32 i = 0, len = 0;
 	u32 hex_crc = 0, hw_crc;
@@ -105,7 +105,7 @@ static int ilitek_tddi_fw_check_hex_hw_crc(struct ilitek_tddi_dev *idev, u8 *pfw
 		len = fbi[i].end - fbi[i].start + 1 - 4;
 
 		hex_crc = CalculateCRC32(fbi[i].start, len, pfw);
-		hw_crc = ilitek_tddi_fw_read_hw_crc(idev, fbi[i].start, len);
+		hw_crc = ilitek_tddi_fw_read_hw_crc(fbi[i].start, len);
 
 		ipio_info("Block = %d, Hex CRC = %x, HW CRC = %x\n", i, hex_crc, hw_crc);
 
@@ -119,24 +119,24 @@ static int ilitek_tddi_fw_check_hex_hw_crc(struct ilitek_tddi_dev *idev, u8 *pfw
 	return UPDATE_PASS;
 }
 
-static int ilitek_tddi_flash_poll_busy(struct ilitek_tddi_dev *idev, int timer)
+static int ilitek_tddi_flash_poll_busy(int timer)
 {
 	int ret = UPDATE_PASS, retry = timer;
 	u8 cmd = 0x5, temp = 0;
 
-	ilitek_ice_mode_write(idev, FLASH_BASED_ADDR, 0x0, 1); /* CS low */
-	ilitek_ice_mode_write(idev, FLASH1_ADDR, 0x66aa55, 3); /* Key */
-	ilitek_ice_mode_write(idev, FLASH2_ADDR, cmd, 1);
+	ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x0, 1); /* CS low */
+	ilitek_ice_mode_write(FLASH1_ADDR, 0x66aa55, 3); /* Key */
+	ilitek_ice_mode_write(FLASH2_ADDR, cmd, 1);
 
 	do {
-		ilitek_ice_mode_write(idev, FLASH2_ADDR, 0xFF, 1); /* Dummy */
+		ilitek_ice_mode_write(FLASH2_ADDR, 0xFF, 1); /* Dummy */
 		mdelay(1);
-		temp = ilitek_ice_mode_read(idev, FLASH4_ADDR, sizeof(u8));
+		temp = ilitek_ice_mode_read(FLASH4_ADDR, sizeof(u8));
 		if ((temp & 0x3) == 0)
 			break;
 	} while (--retry >= 0);
 
-	ilitek_ice_mode_write(idev, FLASH_BASED_ADDR, 0x1, 1); /* CS high */
+	ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x1, 1); /* CS high */
 
 	if (retry <= 0) {
 		ipio_err("Flash polling busy timeout ! tmp = %x\n", temp);
@@ -146,61 +146,61 @@ static int ilitek_tddi_flash_poll_busy(struct ilitek_tddi_dev *idev, int timer)
 	return ret;
 }
 
-void ilitek_tddi_flash_clear_dma(struct ilitek_tddi_dev *idev)
+void ilitek_tddi_flash_clear_dma(void)
 {
-	ilitek_ice_mode_bit_mask_write(idev, INTR1_ADDR, INTR1_reg_flash_int_flag, (1 << 25));
+	ilitek_ice_mode_bit_mask_write(INTR1_ADDR, INTR1_reg_flash_int_flag, (1 << 25));
 
-	ilitek_ice_mode_bit_mask_write(idev, FLASH0_ADDR, FLASH0_reg_preclk_sel, (2 << 16));
-	ilitek_ice_mode_write(idev, FLASH_BASED_ADDR, 0x01, 1);	/* CS high */
+	ilitek_ice_mode_bit_mask_write(FLASH0_ADDR, FLASH0_reg_preclk_sel, (2 << 16));
+	ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x01, 1);	/* CS high */
 
-	ilitek_ice_mode_bit_mask_write(idev, FLASH4_ADDR, FLASH4_reg_flash_dma_trigger_en, (0 << 24));
-	ilitek_ice_mode_bit_mask_write(idev, FLASH0_ADDR, FLASH0_reg_rx_dual, (0 << 24));
+	ilitek_ice_mode_bit_mask_write(FLASH4_ADDR, FLASH4_reg_flash_dma_trigger_en, (0 << 24));
+	ilitek_ice_mode_bit_mask_write(FLASH0_ADDR, FLASH0_reg_rx_dual, (0 << 24));
 
-	ilitek_ice_mode_write(idev, FLASH3_reg_rcv_cnt, 0x00, 1);
-	ilitek_ice_mode_write(idev, FLASH4_reg_rcv_data, 0xFF, 1);
+	ilitek_ice_mode_write(FLASH3_reg_rcv_cnt, 0x00, 1);
+	ilitek_ice_mode_write(FLASH4_reg_rcv_data, 0xFF, 1);
 }
 
-void ilitek_tddi_flash_dma_write(struct ilitek_tddi_dev *idev, u32 start, u32 end, u32 len)
+void ilitek_tddi_flash_dma_write(u32 start, u32 end, u32 len)
 {
-	ilitek_ice_mode_bit_mask_write(idev, FLASH0_ADDR, FLASH0_reg_preclk_sel, 1 << 16);
+	ilitek_ice_mode_bit_mask_write(FLASH0_ADDR, FLASH0_reg_preclk_sel, 1 << 16);
 
-	ilitek_ice_mode_write(idev, FLASH0_reg_flash_csb, 0x00, 1);	/* CS low */
-	ilitek_ice_mode_write(idev, FLASH1_reg_flash_key1, 0x66aa55, 3);	/* Key */
+	ilitek_ice_mode_write(FLASH0_reg_flash_csb, 0x00, 1);	/* CS low */
+	ilitek_ice_mode_write(FLASH1_reg_flash_key1, 0x66aa55, 3);	/* Key */
 
-	ilitek_ice_mode_write(idev, FLASH2_reg_tx_data, 0x0b, 1);
-	while(!(ilitek_ice_mode_read(idev, INTR1_ADDR & BIT(25), sizeof(u32))));
-	ilitek_ice_mode_bit_mask_write(idev, INTR1_ADDR, INTR1_reg_flash_int_flag, (1 << 25));
+	ilitek_ice_mode_write(FLASH2_reg_tx_data, 0x0b, 1);
+	while(!(ilitek_ice_mode_read(INTR1_ADDR & BIT(25), sizeof(u32))));
+	ilitek_ice_mode_bit_mask_write(INTR1_ADDR, INTR1_reg_flash_int_flag, (1 << 25));
 
-	ilitek_ice_mode_write(idev, FLASH2_reg_tx_data, (start & 0xFF0000) >> 16, 1);
-	while(!(ilitek_ice_mode_read(idev, INTR1_ADDR & BIT(25), sizeof(u32))));
-	ilitek_ice_mode_bit_mask_write(idev, INTR1_ADDR, INTR1_reg_flash_int_flag, (1 << 25));
+	ilitek_ice_mode_write(FLASH2_reg_tx_data, (start & 0xFF0000) >> 16, 1);
+	while(!(ilitek_ice_mode_read(INTR1_ADDR & BIT(25), sizeof(u32))));
+	ilitek_ice_mode_bit_mask_write(INTR1_ADDR, INTR1_reg_flash_int_flag, (1 << 25));
 
-	ilitek_ice_mode_write(idev, FLASH2_reg_tx_data, (start & 0x00FF00) >> 8, 1);
-	while(!(ilitek_ice_mode_read(idev, INTR1_ADDR & BIT(25), sizeof(u32))));
-	ilitek_ice_mode_bit_mask_write(idev, INTR1_ADDR, INTR1_reg_flash_int_flag, (1 << 25));
+	ilitek_ice_mode_write(FLASH2_reg_tx_data, (start & 0x00FF00) >> 8, 1);
+	while(!(ilitek_ice_mode_read(INTR1_ADDR & BIT(25), sizeof(u32))));
+	ilitek_ice_mode_bit_mask_write(INTR1_ADDR, INTR1_reg_flash_int_flag, (1 << 25));
 
-	ilitek_ice_mode_write(idev, FLASH2_reg_tx_data, (start & 0x0000FF), 1);
-	while(!(ilitek_ice_mode_read(idev, INTR1_ADDR & BIT(25), sizeof(u32))));
-	ilitek_ice_mode_bit_mask_write(idev, INTR1_ADDR, INTR1_reg_flash_int_flag, (1 << 25));
+	ilitek_ice_mode_write(FLASH2_reg_tx_data, (start & 0x0000FF), 1);
+	while(!(ilitek_ice_mode_read(INTR1_ADDR & BIT(25), sizeof(u32))));
+	ilitek_ice_mode_bit_mask_write(INTR1_ADDR, INTR1_reg_flash_int_flag, (1 << 25));
 
-	ilitek_ice_mode_bit_mask_write(idev, FLASH0_ADDR, FLASH0_reg_rx_dual, 0 << 24);
+	ilitek_ice_mode_bit_mask_write(FLASH0_ADDR, FLASH0_reg_rx_dual, 0 << 24);
 
-	ilitek_ice_mode_write(idev, FLASH2_reg_tx_data, 0x00, 1);	/* Dummy */
-	while(!(ilitek_ice_mode_read(idev, INTR1_ADDR & BIT(25), sizeof(u32))));
-	ilitek_ice_mode_bit_mask_write(idev, INTR1_ADDR, INTR1_reg_flash_int_flag, (1 << 25));
+	ilitek_ice_mode_write(FLASH2_reg_tx_data, 0x00, 1);	/* Dummy */
+	while(!(ilitek_ice_mode_read(INTR1_ADDR & BIT(25), sizeof(u32))));
+	ilitek_ice_mode_bit_mask_write(INTR1_ADDR, INTR1_reg_flash_int_flag, (1 << 25));
 
-	ilitek_ice_mode_write(idev, FLASH3_reg_rcv_cnt, len, 4);	/* Write Length */
+	ilitek_ice_mode_write(FLASH3_reg_rcv_cnt, len, 4);	/* Write Length */
 }
 
-static void ilitek_tddi_flash_write_enable(struct ilitek_tddi_dev *idev)
+static void ilitek_tddi_flash_write_enable(void)
 {
-	ilitek_ice_mode_write(idev, FLASH_BASED_ADDR, 0x0, 1); /* CS low */
-	ilitek_ice_mode_write(idev, FLASH1_ADDR, 0x66aa55, 3); /* Key */
-	ilitek_ice_mode_write(idev, FLASH2_ADDR, 0x6, 1);
-	ilitek_ice_mode_write(idev, FLASH_BASED_ADDR, 0x1, 1); /* CS high */
+	ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x0, 1); /* CS low */
+	ilitek_ice_mode_write(FLASH1_ADDR, 0x66aa55, 3); /* Key */
+	ilitek_ice_mode_write(FLASH2_ADDR, 0x6, 1);
+	ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x1, 1); /* CS high */
 }
 
-u32 ilitek_tddi_fw_read_hw_crc(struct ilitek_tddi_dev *idev, u32 start, u32 end)
+u32 ilitek_tddi_fw_read_hw_crc(u32 start, u32 end)
 {
 	int retry = 500;
 	u8 busy = 0;
@@ -213,40 +213,40 @@ u32 ilitek_tddi_fw_read_hw_crc(struct ilitek_tddi_dev *idev, u32 start, u32 end)
 		return -1;
 	}
 
-	ilitek_ice_mode_write(idev, FLASH_BASED_ADDR, 0x0, 1); /* CS low */
-	ilitek_ice_mode_write(idev, FLASH1_ADDR, 0x66aa55, 3); /* Key */
-	ilitek_ice_mode_write(idev, FLASH2_ADDR, 0x3b, 1);
-	ilitek_ice_mode_write(idev, FLASH2_ADDR, (start & 0xFF0000) >> 16, 1);
-	ilitek_ice_mode_write(idev, FLASH2_ADDR, (start & 0x00FF00) >> 8, 1);
-	ilitek_ice_mode_write(idev, FLASH2_ADDR, (start & 0x0000FF), 1);
-	ilitek_ice_mode_write(idev, 0x041003, 0x01, 1); /* Enable Dio_Rx_dual */
-	ilitek_ice_mode_write(idev, FLASH2_ADDR, 0xFF, 1); /* Dummy */
-	ilitek_ice_mode_write(idev, 0x04100C, write_len, 3); /* Set Receive count */
-	ilitek_ice_mode_write(idev, 0x048007, 0x02, 1);/* Clear Int Flag */
-	ilitek_ice_mode_write(idev, 0x041016, 0x00, 1);
-	ilitek_ice_mode_write(idev, 0x041016, 0x01, 1);	/* Checksum_En */
+	ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x0, 1); /* CS low */
+	ilitek_ice_mode_write(FLASH1_ADDR, 0x66aa55, 3); /* Key */
+	ilitek_ice_mode_write(FLASH2_ADDR, 0x3b, 1);
+	ilitek_ice_mode_write(FLASH2_ADDR, (start & 0xFF0000) >> 16, 1);
+	ilitek_ice_mode_write(FLASH2_ADDR, (start & 0x00FF00) >> 8, 1);
+	ilitek_ice_mode_write(FLASH2_ADDR, (start & 0x0000FF), 1);
+	ilitek_ice_mode_write(0x041003, 0x01, 1); /* Enable Dio_Rx_dual */
+	ilitek_ice_mode_write(FLASH2_ADDR, 0xFF, 1); /* Dummy */
+	ilitek_ice_mode_write(0x04100C, write_len, 3); /* Set Receive count */
+	ilitek_ice_mode_write(0x048007, 0x02, 1);/* Clear Int Flag */
+	ilitek_ice_mode_write(0x041016, 0x00, 1);
+	ilitek_ice_mode_write(0x041016, 0x01, 1);	/* Checksum_En */
 
-	ilitek_ice_mode_write(idev, FLASH4_ADDR, 0xFF, 1); /* Start to receive */
+	ilitek_ice_mode_write(FLASH4_ADDR, 0xFF, 1); /* Start to receive */
 
 	do {
-		busy = ilitek_ice_mode_read(idev, 0x048007, sizeof(u8));
+		busy = ilitek_ice_mode_read(0x048007, sizeof(u8));
 		if (((busy >> 1) & 0x01) == 0x01)
 			break;
 	} while (--retry >= 0);
 
-	ilitek_ice_mode_write(idev, FLASH_BASED_ADDR, 0x1, 1); /* CS high */
+	ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x1, 1); /* CS high */
 
 	if (retry <= 0) {
 		ipio_err("Read HW CRC timeout !, busy = 0x%x\n", busy);
 		return -1;
 	}
 
-	ilitek_ice_mode_write(idev, 0x041003, 0x0, 1); /* Disable dio_Rx_dual */
-	iram_check = ilitek_ice_mode_read(idev, 0x04101C, sizeof(u32));
+	ilitek_ice_mode_write(0x041003, 0x0, 1); /* Disable dio_Rx_dual */
+	iram_check = ilitek_ice_mode_read(0x04101C, sizeof(u32));
 	return iram_check;
 }
 
-int ilitek_tddi_fw_read_flash_data(struct ilitek_tddi_dev *idev, u32 start, u32 end,
+int ilitek_tddi_fw_read_flash_data(u32 start, u32 end,
 								u8 *data, size_t len)
 {
 	u32 i, index = 0;
@@ -256,50 +256,50 @@ int ilitek_tddi_fw_read_flash_data(struct ilitek_tddi_dev *idev, u32 start, u32 
 		return -1;
 	}
 
-	ilitek_ice_mode_write(idev, FLASH_BASED_ADDR, 0x0, 1); /* CS low */
-	ilitek_ice_mode_write(idev, FLASH1_ADDR, 0x66aa55, 3); /* Key */
-	ilitek_ice_mode_write(idev, FLASH2_ADDR, 0x03, 1);
-	ilitek_ice_mode_write(idev, FLASH2_ADDR, (start & 0xFF0000) >> 16, 1);
-	ilitek_ice_mode_write(idev, FLASH2_ADDR, (start & 0x00FF00) >> 8, 1);
-	ilitek_ice_mode_write(idev, FLASH2_ADDR, (start & 0x0000FF), 1);
+	ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x0, 1); /* CS low */
+	ilitek_ice_mode_write(FLASH1_ADDR, 0x66aa55, 3); /* Key */
+	ilitek_ice_mode_write(FLASH2_ADDR, 0x03, 1);
+	ilitek_ice_mode_write(FLASH2_ADDR, (start & 0xFF0000) >> 16, 1);
+	ilitek_ice_mode_write(FLASH2_ADDR, (start & 0x00FF00) >> 8, 1);
+	ilitek_ice_mode_write(FLASH2_ADDR, (start & 0x0000FF), 1);
 
 	for (i = start; i <= end; i++) {
-		ilitek_ice_mode_write(idev, FLASH2_ADDR, 0xFF, 1); /* Dummy */
-		data[index] = ilitek_ice_mode_read(idev, FLASH4_ADDR, sizeof(u8));
+		ilitek_ice_mode_write(FLASH2_ADDR, 0xFF, 1); /* Dummy */
+		data[index] = ilitek_ice_mode_read(FLASH4_ADDR, sizeof(u8));
 		//ipio_info("flash_data[%d] = %x\n", index, data[index]);
 		index++;
 	}
 
-	ilitek_ice_mode_write(idev, FLASH_BASED_ADDR, 0x1, 1); /* CS high */
+	ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x1, 1); /* CS high */
 	return 0;
 }
 
-static void ilitek_tddi_flash_protect(struct ilitek_tddi_dev *idev, bool enable)
+static void ilitek_tddi_flash_protect(bool enable)
 {
 	ipio_info("%s flash protection\n", enable ? "Enable" : "Disable");
 
-	ilitek_tddi_flash_write_enable(idev);
+	ilitek_tddi_flash_write_enable();
 
-	ilitek_ice_mode_write(idev, FLASH_BASED_ADDR, 0x0, 1); /* CS low */
-	ilitek_ice_mode_write(idev, FLASH1_ADDR, 0x66aa55, 3); /* Key */
-	ilitek_ice_mode_write(idev, FLASH2_ADDR, 0x1, 1);
-	ilitek_ice_mode_write(idev, FLASH2_ADDR, 0x0, 1);
+	ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x0, 1); /* CS low */
+	ilitek_ice_mode_write(FLASH1_ADDR, 0x66aa55, 3); /* Key */
+	ilitek_ice_mode_write(FLASH2_ADDR, 0x1, 1);
+	ilitek_ice_mode_write(FLASH2_ADDR, 0x0, 1);
 
 	switch (idev->flash_mid) {
 	case 0xEF:
 		if (idev->flash_devid == 0x6012 || idev->flash_devid == 0x6011) {
 			if (enable)
-				ilitek_ice_mode_write(idev, FLASH2_ADDR, 0x7E, 1);
+				ilitek_ice_mode_write(FLASH2_ADDR, 0x7E, 1);
 			else
-				ilitek_ice_mode_write(idev, FLASH2_ADDR, 0x0, 1);
+				ilitek_ice_mode_write(FLASH2_ADDR, 0x0, 1);
 		}
 		break;
 	case 0xC8:
 		if (idev->flash_devid == 0x6012 || idev->flash_devid == 0x6013) {
 			if (enable)
-				ilitek_ice_mode_write(idev, FLASH2_ADDR, 0x7A, 1);
+				ilitek_ice_mode_write(FLASH2_ADDR, 0x7A, 1);
 			else
-				ilitek_ice_mode_write(idev, FLASH2_ADDR, 0x0, 1);
+				ilitek_ice_mode_write(FLASH2_ADDR, 0x0, 1);
 		}
 		break;
 	default:
@@ -307,10 +307,10 @@ static void ilitek_tddi_flash_protect(struct ilitek_tddi_dev *idev, bool enable)
 		break;
 	}
 
-	ilitek_ice_mode_write(idev, FLASH_BASED_ADDR, 0x1, 1); /* CS high */
+	ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x1, 1); /* CS high */
 }
 
-static int ilitek_tddi_fw_check_ver(struct ilitek_tddi_dev *idev, u8 *pfw)
+static int ilitek_tddi_fw_check_ver(u8 *pfw)
 {
 	int i, crc_byte_len = 4;
 	u8 flash_crc[4] = {0};
@@ -335,7 +335,7 @@ static int ilitek_tddi_fw_check_ver(struct ilitek_tddi_dev *idev, u8 *pfw)
 		if (end_addr == 0)
 			continue;
 
-		if (ilitek_tddi_fw_read_flash_data(idev, end_addr - crc_byte_len + 1, end_addr,
+		if (ilitek_tddi_fw_read_flash_data(end_addr - crc_byte_len + 1, end_addr,
 					flash_crc, sizeof(flash_crc)) < 0) {
 			ipio_err("Read Flash failed\n");
 			return UPDATE_FAIL;
@@ -343,7 +343,7 @@ static int ilitek_tddi_fw_check_ver(struct ilitek_tddi_dev *idev, u8 *pfw)
 
 		flash_crc_cb = flash_crc[0] << 24 | flash_crc[1] << 16 | flash_crc[2] << 8 | flash_crc[3];
 
-		block_crc = ilitek_tddi_fw_read_hw_crc(idev, start_addr, end_addr - start_addr - crc_byte_len + 1);
+		block_crc = ilitek_tddi_fw_read_hw_crc(start_addr, end_addr - start_addr - crc_byte_len + 1);
 
 		ipio_info("Block = %d, HW CRC = 0x%06x, Flash CRC = 0x%06x\n", i, block_crc, flash_crc_cb);
 
@@ -359,7 +359,7 @@ static int ilitek_tddi_fw_check_ver(struct ilitek_tddi_dev *idev, u8 *pfw)
 	return UPDATE_PASS;
 }
 
-static int ilitek_tddi_fw_iram_upgrade(struct ilitek_tddi_dev * idev, u8 *pfw)
+static int ilitek_tddi_fw_iram_upgrade(u8 *pfw)
 {
 	//  int ret = UPDATE_OK;
 	int ret = 0;
@@ -372,11 +372,11 @@ static int ilitek_tddi_fw_iram_upgrade(struct ilitek_tddi_dev * idev, u8 *pfw)
 	// if (!core_gesture->entry) summer
 	// 	ilitek_platform_tp_hw_reset(true);
 
-    ret = ilitek_ice_mode_ctrl(idev, ENABLE, OFF);
+    ret = ilitek_ice_mode_ctrl(ENABLE, OFF);
 	if (ret < 0)
 		return ret;
 
-	if (ilitek_set_watch_dog(idev, false) < 0) {
+	if (ilitek_set_watch_dog(false) < 0) {
 		ipio_err("Failed to disable watch dog\n");
 		ret = -EINVAL;
 		goto out;
@@ -415,12 +415,12 @@ out:
 	// 	ilitek_ice_mode_write(0x40040, 0xAE, 1);
 	// }
 
-	ilitek_ice_mode_ctrl(idev, DISABLE, OFF);
+	ilitek_ice_mode_ctrl(DISABLE, OFF);
 	mdelay(10);
 	return ret;
 }
 
-static int ilitek_tddi_fw_do_program(struct ilitek_tddi_dev * idev, u8 *pfw)
+static int ilitek_tddi_fw_do_program(u8 *pfw)
 {
 	u8 buf[512] = {0};
 	u32 i = 0, addr = 0, k = 0, recv_addr = 0;
@@ -453,26 +453,26 @@ static int ilitek_tddi_fw_do_program(struct ilitek_tddi_dev * idev, u8 *pfw)
 			}
 
 			if (skip) {
-				ilitek_ice_mode_write(idev, FLASH_BASED_ADDR, 0x1, 1); /* CS high */
+				ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x1, 1); /* CS high */
 				return UPDATE_FAIL;
 			}
 
-			ilitek_tddi_flash_write_enable(idev);
+			ilitek_tddi_flash_write_enable();
 
-			ilitek_ice_mode_write(idev, FLASH_BASED_ADDR, 0x0, 1); /* CS low */
-			ilitek_ice_mode_write(idev, FLASH1_ADDR, 0x66aa55, 3); /* Key */
-			ilitek_ice_mode_write(idev, FLASH2_ADDR, 0x2, 1);
+			ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x0, 1); /* CS low */
+			ilitek_ice_mode_write(FLASH1_ADDR, 0x66aa55, 3); /* Key */
+			ilitek_ice_mode_write(FLASH2_ADDR, 0x2, 1);
 			recv_addr = ((addr & 0xFF0000) >> 16) | (addr & 0x00FF00) | ((addr & 0x0000FF) << 16);
-			ilitek_ice_mode_write(idev, FLASH2_ADDR, recv_addr, 3);
+			ilitek_ice_mode_write(FLASH2_ADDR, recv_addr, 3);
 
-			if (idev->write(idev, buf, idev->program_page + 4) < 0) {
+			if (idev->write(buf, idev->program_page + 4) < 0) {
 				ipio_err("Failed to program data at start_addr = 0x%X, k = 0x%X, addr = 0x%x\n",
 				addr, k, addr + k);
-				ilitek_ice_mode_write(idev, FLASH_BASED_ADDR, 0x1, 1); /* CS high */
+				ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x1, 1); /* CS high */
 				return UPDATE_FAIL;
 			}
 
-			ilitek_ice_mode_write(idev, FLASH_BASED_ADDR, 0x1, 1); /* CS high */
+			ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x1, 1); /* CS high */
 
 			if (idev->flash_mid == 0x85)
 				mdelay(2);
@@ -489,7 +489,7 @@ static int ilitek_tddi_fw_do_program(struct ilitek_tddi_dev * idev, u8 *pfw)
 	return UPDATE_PASS;
 }
 
-static int ilitek_tddi_fw_do_erase(struct ilitek_tddi_dev * idev)
+static int ilitek_tddi_fw_do_erase(void)
 {
 	int ret = 0;
 	u32 i = 0, addr = 0, recv_addr = 0;
@@ -505,32 +505,32 @@ static int ilitek_tddi_fw_do_erase(struct ilitek_tddi_dev * idev)
 		ipio_info("Block[%d]: Erasing from (0x%x) to (0x%x) \n", i, fbi[i].start, fbi[i].end);
 
 		for(addr = fbi[i].start; addr <= fbi[i].end; addr += idev->flash_sector) {
-			ilitek_tddi_flash_write_enable(idev);
+			ilitek_tddi_flash_write_enable();
 
-			ilitek_ice_mode_write(idev, FLASH_BASED_ADDR, 0x0, 1); /* CS low */
-			ilitek_ice_mode_write(idev, FLASH1_ADDR, 0x66aa55, 3); /* Key */
+			ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x0, 1); /* CS low */
+			ilitek_ice_mode_write(FLASH1_ADDR, 0x66aa55, 3); /* Key */
 
 			if (CHECK_EQUAL(addr, fbi[AP].start))
-				ilitek_ice_mode_write(idev, FLASH2_ADDR, 0xD8, 1);
+				ilitek_ice_mode_write(FLASH2_ADDR, 0xD8, 1);
 			else
-				ilitek_ice_mode_write(idev, FLASH2_ADDR, 0x20, 1);
+				ilitek_ice_mode_write(FLASH2_ADDR, 0x20, 1);
 
 			recv_addr = ((addr & 0xFF0000) >> 16) | (addr & 0x00FF00) | ((addr & 0x0000FF) << 16);
-			ilitek_ice_mode_write(idev, FLASH2_ADDR, recv_addr, 3);
+			ilitek_ice_mode_write(FLASH2_ADDR, recv_addr, 3);
 
-			ilitek_ice_mode_write(idev, FLASH_BASED_ADDR, 0x1, 1); /* CS high */
+			ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x1, 1); /* CS high */
 
 			mdelay(1);
 
 			if (CHECK_EQUAL(addr, fbi[AP].start))
-				ret = ilitek_tddi_flash_poll_busy(idev, TIMEOUT_PAGE);
+				ret = ilitek_tddi_flash_poll_busy(TIMEOUT_PAGE);
 			else
-				ret = ilitek_tddi_flash_poll_busy(idev, TIMEOUT_SECTOR);
+				ret = ilitek_tddi_flash_poll_busy(TIMEOUT_SECTOR);
 
 			if (ret < 0)
 				return UPDATE_FAIL;
 
-			ilitek_ice_mode_write(idev, FLASH_BASED_ADDR, 0x1, 1); /* CS high */
+			ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x1, 1); /* CS high */
 
 			if (fbi[i].start == fbi[AP].start)
 				break;
@@ -539,48 +539,48 @@ static int ilitek_tddi_fw_do_erase(struct ilitek_tddi_dev * idev)
 	return UPDATE_PASS;
 }
 
-static int ilitek_tddi_fw_flash_upgrade(struct ilitek_tddi_dev * idev, u8 *pfw)
+static int ilitek_tddi_fw_flash_upgrade(u8 *pfw)
 {
 	int ret = UPDATE_PASS;
 
-	ilitek_tddi_reset_ctrl(idev, idev->reset_mode);
+	ilitek_tddi_reset_ctrl(idev->reset_mode);
 
-	ret = ilitek_ice_mode_ctrl(idev, ENABLE, OFF);
+	ret = ilitek_ice_mode_ctrl(ENABLE, OFF);
 	if (ret < 0)
 		return UPDATE_FAIL;
 
-	ret = ilitek_tddi_fw_check_ver(idev, pfw);
+	ret = ilitek_tddi_fw_check_ver(pfw);
 	if (ret == UPDATE_PASS)
 		goto out;
 
-	ret = ilitek_tddi_fw_do_erase(idev);
+	ret = ilitek_tddi_fw_do_erase();
 	if (ret == UPDATE_FAIL)
 		goto out;
 
 	mdelay(1);
 
-	ret = ilitek_tddi_fw_do_program(idev, pfw);
+	ret = ilitek_tddi_fw_do_program(pfw);
 	if (ret == UPDATE_FAIL)
 		goto out;
 
 	/* We do have to reset chip in order to move new code from flash to iram. */
-	ilitek_tddi_reset_ctrl(idev, idev->reset_mode);
+	ilitek_tddi_reset_ctrl(idev->reset_mode);
 
 	/* the delay time moving code depends on what the touch IC you're using. */
 	mdelay(200);
 
-	ret = ilitek_ice_mode_ctrl(idev, ENABLE, OFF);
+	ret = ilitek_ice_mode_ctrl(ENABLE, OFF);
 	if (ret < 0)
 		goto out;
 
-	ret = ilitek_tddi_fw_check_hex_hw_crc(idev, pfw);
+	ret = ilitek_tddi_fw_check_hex_hw_crc(pfw);
 
 out:
-	ilitek_ice_mode_ctrl(idev, DISABLE, OFF);
+	ilitek_ice_mode_ctrl(DISABLE, OFF);
 	return ret;
 }
 
-static void ilitek_tddi_fw_update_block_info(struct ilitek_tddi_dev * idev, u8 *pfw, u8 type)
+static void ilitek_tddi_fw_update_block_info(u8 *pfw, u8 type)
 {
 	u32 ges_info_addr, ges_fw_start, ges_fw_end;
 
@@ -660,7 +660,7 @@ static void ilitek_tddi_fw_update_block_info(struct ilitek_tddi_dev * idev, u8 *
 	ipio_info("star_addr = 0x%06X, end_addr = 0x%06X, Block Num = %d\n", tfd.start_addr, tfd.end_addr, tfd.block_number);
 }
 
-static void ilitek_tdd_fw_ili_convert(struct ilitek_tddi_dev * idev, u8 *pfw)
+static void ilitek_tdd_fw_ili_convert(u8 *pfw)
 {
 	int i = 0, block_enable = 0, num = 0;
 
@@ -705,8 +705,7 @@ out:
 	tfd.end_addr = (sizeof(CTPM_FW) - ILI_FILE_HEADER);
 }
 
-static int ilitek_tddi_fw_hex_convert(struct ilitek_tddi_dev * idev,
-							u8 *phex, size_t size, u8 *pfw)
+static int ilitek_tddi_fw_hex_convert(u8 *phex, size_t size, u8 *pfw)
 {
 	int block = 0;
 	u32 i = 0, j = 0, k = 0, num = 0;
@@ -777,8 +776,7 @@ static int ilitek_tddi_fw_hex_convert(struct ilitek_tddi_dev * idev,
 	return 0;
 }
 
-static int ilitek_tdd_fw_hex_open(struct ilitek_tddi_dev * idev,
-                                    u8 open_file_method, u8 *pfw)
+static int ilitek_tdd_fw_hex_open(u8 open_file_method, u8 *pfw)
 {
 	int fsize = 1;
 	u8 *hex_buffer = NULL;
@@ -852,49 +850,47 @@ static int ilitek_tdd_fw_hex_open(struct ilitek_tddi_dev * idev,
     }
 
 	/* Convert hex and copy data from hex_buffer to pfw */
-	ilitek_tddi_fw_hex_convert(idev, hex_buffer, fsize, pfw);
+	ilitek_tddi_fw_hex_convert(hex_buffer, fsize, pfw);
 
 	ipio_vfree((void **)&hex_buffer);
     return 0;
 }
 
-static void ilitek_tddi_fw_file_handle(struct ilitek_tddi_dev * idev,
-                        int target, u8 *pfw, int open_file_method)
+static void ilitek_tddi_fw_file_handle(int target, u8 *pfw, int open_file_method)
 {
 	ipio_info("Convert fw data from %s\n", (target == ILI_FILE ? "ILI_FILE" : "HEX_FILE"));
 
     if (target == HEX_FILE) {
         /* Feed ili file if can't find hex file from filesystem. */
-        if (ilitek_tdd_fw_hex_open(idev, open_file_method, pfw) < 0) {
+        if (ilitek_tdd_fw_hex_open(open_file_method, pfw) < 0) {
             ipio_err("Open hex file fail, try ili file upgrade");
-            ilitek_tdd_fw_ili_convert(idev, pfw);
+            ilitek_tdd_fw_ili_convert(pfw);
         }
 		return;
     }
 
-    ilitek_tdd_fw_ili_convert(idev, pfw);
+    ilitek_tdd_fw_ili_convert(pfw);
 }
 
-static void ilitek_tddi_fw_update_tp_info(struct ilitek_tddi_dev *idev, int ret)
+static void ilitek_tddi_fw_update_tp_info(int ret)
 {
 	ipio_info("FW upgrade %s\n", (ret == UPDATE_PASS ? "PASS" : "FAIL"));
 
 	if (ret == UPDATE_FAIL) {
 		ipio_info("Erase all fw data\n");
-		ilitek_ice_mode_ctrl(idev, ENABLE, OFF);
-		ilitek_tddi_fw_do_erase(idev);
-		ilitek_ice_mode_ctrl(idev, DISABLE, OFF);
-		ilitek_tddi_reset_ctrl(idev, TP_RST_HW_ONLY);
+		ilitek_ice_mode_ctrl(ENABLE, OFF);
+		ilitek_tddi_fw_do_erase();
+		ilitek_ice_mode_ctrl(DISABLE, OFF);
+		ilitek_tddi_reset_ctrl(TP_RST_HW_ONLY);
 	}
-	ilitek_tddi_ic_get_protocl_ver(idev);
-	ilitek_tddi_ic_get_fw_ver(idev);
-	ilitek_tddi_ic_get_tp_info(idev);
-	ilitek_tddi_ic_get_panel_info(idev);
-	ilitek_plat_input_register(idev);
+	ilitek_tddi_ic_get_protocl_ver();
+	ilitek_tddi_ic_get_fw_ver();
+	ilitek_tddi_ic_get_tp_info();
+	ilitek_tddi_ic_get_panel_info();
+	ilitek_plat_input_register();
 }
 
-int ilitek_tddi_fw_upgrade(struct ilitek_tddi_dev * idev,
-                int upgrade_type, int file_type, int open_file_method)
+int ilitek_tddi_fw_upgrade(int upgrade_type, int file_type, int open_file_method)
 {
     int ret = 0, retry = 3;
     u8 *pfw = NULL;
@@ -910,18 +906,18 @@ int ilitek_tddi_fw_upgrade(struct ilitek_tddi_dev * idev,
 
 	memset(pfw, 0xFF, MAX_HEX_FILE_SIZE * sizeof(u8));
 
-    ilitek_tddi_fw_file_handle(idev, file_type, pfw, open_file_method);
-	ilitek_tddi_fw_update_block_info(idev, pfw, upgrade_type);
+    ilitek_tddi_fw_file_handle(file_type, pfw, open_file_method);
+	ilitek_tddi_fw_update_block_info(pfw, upgrade_type);
 
 	/* Get firmware version from chip for comparison in after */
-	ilitek_tddi_ic_get_protocl_ver(idev);
-	ilitek_tddi_ic_get_fw_ver(idev);
+	ilitek_tddi_ic_get_protocl_ver();
+	ilitek_tddi_ic_get_fw_ver();
 
 	do {
 		if (upgrade_type == UPGRADE_FLASH)
-			ret = ilitek_tddi_fw_flash_upgrade(idev, pfw);
+			ret = ilitek_tddi_fw_flash_upgrade(pfw);
 		else
-			ret = ilitek_tddi_fw_iram_upgrade(idev, pfw);
+			ret = ilitek_tddi_fw_iram_upgrade(pfw);
 
 		if (ret == 0)
 			break;
@@ -933,7 +929,7 @@ int ilitek_tddi_fw_upgrade(struct ilitek_tddi_dev * idev,
 		ret = UPDATE_FAIL;
 	}
 
-	ilitek_tddi_fw_update_tp_info(idev, ret);
+	ilitek_tddi_fw_update_tp_info(ret);
 
 out:
 	if (ret == UPDATE_PASS)
@@ -961,7 +957,7 @@ struct flash_table {
 	[7] = {0x1C, 0x3812, (256 * K), 256, (4 * K)},
 };
 
-void ilitek_tddi_fw_read_flash_info(struct ilitek_tddi_dev *idev, bool mode)
+void ilitek_tddi_fw_read_flash_info(bool mode)
 {
 	int i = 0;
 	u8 buf[4] = {0};
@@ -971,19 +967,19 @@ void ilitek_tddi_fw_read_flash_info(struct ilitek_tddi_dev *idev, bool mode)
 	if (mode == UPGRADE_IRAM)
 		return;
 
-	ilitek_ice_mode_ctrl(idev, ENABLE, OFF);
+	ilitek_ice_mode_ctrl(ENABLE, OFF);
 
-	ilitek_ice_mode_write(idev, FLASH_BASED_ADDR, 0x0, 1); /* CS low */
-	ilitek_ice_mode_write(idev, FLASH1_ADDR, 0x66aa55, 3); /* Key */
-	ilitek_ice_mode_write(idev, FLASH2_ADDR, cmd, 1);
+	ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x0, 1); /* CS low */
+	ilitek_ice_mode_write(FLASH1_ADDR, 0x66aa55, 3); /* Key */
+	ilitek_ice_mode_write(FLASH2_ADDR, cmd, 1);
 
 	for (i = 0; i < ARRAY_SIZE(buf); i++) {
-		ilitek_ice_mode_write(idev, FLASH2_ADDR, 0xFF, 1);
-		buf[i] = ilitek_ice_mode_read(idev, FLASH4_ADDR, sizeof(u8));
+		ilitek_ice_mode_write(FLASH2_ADDR, 0xFF, 1);
+		buf[i] = ilitek_ice_mode_read(FLASH4_ADDR, sizeof(u8));
 		//ipio_info("buf[%d] = %x\n", i, buf[i]);
 	}
 
-	ilitek_ice_mode_write(idev, FLASH_BASED_ADDR, 0x1, 1); /* CS high */
+	ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x1, 1); /* CS high */
 
 	flash_mid = buf[0];
 	flash_id = buf[1] << 8 | buf[2];
@@ -1010,7 +1006,6 @@ void ilitek_tddi_fw_read_flash_info(struct ilitek_tddi_dev *idev, bool mode)
 	ipio_info("Flash program page = %d\n", idev->program_page);
 	ipio_info("Flash sector = %d\n", idev->flash_sector);
 
-	ilitek_tddi_flash_protect(idev, DISABLE);
-
-	ilitek_ice_mode_ctrl(idev, DISABLE, OFF);
+	ilitek_tddi_flash_protect(DISABLE);
+	ilitek_ice_mode_ctrl(DISABLE, OFF);
 }

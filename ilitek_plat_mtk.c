@@ -31,7 +31,7 @@
 
 extern struct tpd_device *tpd;
 
-void ilitek_plat_tp_reset(struct ilitek_tddi_dev *idev)
+void ilitek_plat_tp_reset(void)
 {
     tpd_gpio_output(idev->tp_rst, 1);
     mdelay(10);
@@ -41,7 +41,7 @@ void ilitek_plat_tp_reset(struct ilitek_tddi_dev *idev)
     mdelay(100);
 }
 
-void ilitek_plat_input_register(struct ilitek_tddi_dev *idev)
+void ilitek_plat_input_register(void)
 {
 	int i;
 
@@ -78,7 +78,7 @@ void ilitek_plat_input_register(struct ilitek_tddi_dev *idev)
 #endif /* MT_B_TYPE */
 }
 
-static int ilitek_plat_gpio_register(struct ilitek_tddi_dev *idev)
+static int ilitek_plat_gpio_register(void)
 {
 	int ret = 0;
 
@@ -125,7 +125,7 @@ out:
 	return ret;
 }
 
-void ilitek_plat_irq_disable(struct ilitek_tddi_dev *idev)
+void ilitek_plat_irq_disable(void)
 {
 	unsigned long flag;
 
@@ -147,7 +147,7 @@ out:
 	spin_unlock_irqrestore(&idev->irq_spin, flag);
 }
 
-void ilitek_plat_irq_enable(struct ilitek_tddi_dev *idev)
+void ilitek_plat_irq_enable(void)
 {
 	unsigned long flag;
 
@@ -196,15 +196,15 @@ static irqreturn_t ilitek_plat_isr_bottom_half(int irq, void *dev_id)
 
 	mutex_lock(&idev->touch_mutex);
 
-	ilitek_plat_irq_disable(idev);
-	ilitek_tddi_report_handler(idev);
-	ilitek_plat_irq_enable(idev);
+	ilitek_plat_irq_disable();
+	ilitek_tddi_report_handler();
+	ilitek_plat_irq_enable();
 
 	mutex_unlock(&idev->touch_mutex);
 	return IRQ_HANDLED;
 }
 
-static int ilitek_plat_irq_register(struct ilitek_tddi_dev *idev)
+static int ilitek_plat_irq_register(void)
 {
 	int ret = 0;
 
@@ -225,7 +225,6 @@ static int ilitek_plat_irq_register(struct ilitek_tddi_dev *idev)
 		ipio_err("Failed to register irq handler, irq = %d, ret = %d\n", idev->irq_num, ret);
 
 	atomic_set(&idev->irq_stat, ENABLE);
-
 	return ret;
 }
 
@@ -234,7 +233,7 @@ static void tpd_resume(struct device *h)
 	ipio_info("TP Resume\n");
 
 	if (atomic_read(&idev->fw_stat) == END)
-		idev->resume(idev);
+		idev->resume();
 }
 
 static void tpd_suspend(struct device *h)
@@ -242,26 +241,26 @@ static void tpd_suspend(struct device *h)
 	ipio_info("TP Suspend\n");
 
 	if (atomic_read(&idev->fw_stat) == END)
-		idev->suspend(idev);
+		idev->suspend();
 }
 
-static int ilitek_plat_probe(struct ilitek_tddi_dev *idev)
+static int ilitek_plat_probe(void)
 {
     ipio_info();
 
-    ilitek_plat_gpio_register(idev);
+    ilitek_plat_gpio_register();
 
-    if (ilitek_tddi_init(idev) < 0) {
+    if (ilitek_tddi_init() < 0) {
         ipio_err("Platform probe failed\n");
         return -ENODEV;
     }
 
-    ilitek_plat_irq_register(idev);
+    ilitek_plat_irq_register();
  	tpd_load_status = 1;
     return 0;
 }
 
-static int ilitek_plat_remove(struct ilitek_tddi_dev *idev)
+static int ilitek_plat_remove(void)
 {
     ipio_info();
     ilitek_tddi_dev_remove();
@@ -291,21 +290,18 @@ static int tpd_local_init(void)
         ipio_err("Failed to register i2c/spi bus driver\n");
         return -ENODEV;
     }
-
 	if (tpd_load_status == 0) {
 		ipio_err("Add error touch panel driver\n");
 		// i2c_del_driver(&tp_i2c_driver);
 		// spi_unregister_driver(&tp_spi_driver);
 		return -1;
 	}
-
 	if (tpd_dts_data.use_tpd_button) {
 		tpd_button_setting(tpd_dts_data.tpd_key_num, tpd_dts_data.tpd_key_local,
 				   tpd_dts_data.tpd_key_dim_local);
 	}
 
 	tpd_type_cap = 1;
-
 	return 0;
 }
 
@@ -321,9 +317,7 @@ static int __init ilitek_plat_dev_init(void)
 	int ret = 0;
 
 	ipio_info("ILITEK TP driver init for MTK\n");
-
 	tpd_get_dts_info();
-
 	ret = tpd_driver_add(&tpd_device_driver);
 	if (ret < 0) {
 		ipio_err("ILITEK add TP driver failed\n");
@@ -337,7 +331,6 @@ static int __init ilitek_plat_dev_init(void)
 static void __exit ilitek_plat_dev_exit(void)
 {
 	ipio_info("ilitek driver has been removed\n");
-
 	tpd_driver_remove(&tpd_device_driver);
 }
 

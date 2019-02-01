@@ -26,7 +26,7 @@
 #define DTS_RESET_GPIO	"touch,reset-gpio"
 #define DTS_OF_NAME		"tchip,ilitek"
 
-void ilitek_plat_tp_reset(struct ilitek_tddi_dev *idev)
+void ilitek_plat_tp_reset(void)
 {
 	gpio_direction_output(ipd->reset_gpio, 1);
 	mdelay(ipd->delay_time_high);
@@ -36,7 +36,7 @@ void ilitek_plat_tp_reset(struct ilitek_tddi_dev *idev)
 	mdelay(ipd->edge_delay);
 }
 
-static int ilitek_plat_gpio_register(struct ilitek_tddi_dev *idev)
+static int ilitek_plat_gpio_register(void)
 {
 	int ret = 0;
 
@@ -83,7 +83,7 @@ out:
 	return ret;
 }
 
-void ilitek_plat_irq_disable(struct ilitek_tddi_dev *idev)
+void ilitek_plat_irq_disable(void)
 {
 	unsigned long flag;
 
@@ -105,7 +105,7 @@ out:
 	spin_unlock_irqrestore(&idev->irq_spin, flag);
 }
 
-void ilitek_plat_irq_enable(struct ilitek_tddi_dev *idev)
+void ilitek_plat_irq_enable(void)
 {
 	unsigned long flag;
 
@@ -139,16 +139,16 @@ static irqreturn_t ilitek_plat_isr_bottom_half(int irq, void *dev_id)
 
 	mutex_lock(&idev->touch_mutex);
 
-	ilitek_plat_irq_disable(idev);
+	ilitek_plat_irq_disable();
 	//core_fr_handler();
-	ilitek_plat_irq_enable(idev);
+	ilitek_plat_irq_enable();
 
 	mutex_unlock(&idev->touch_mutex);
 
 	return IRQ_HANDLED;
 }
 
-static int ilitek_plat_irq_register(struct ilitek_tddi_dev *idev)
+static int ilitek_plat_irq_register(void)
 {
 	int ret = 0;
 
@@ -171,7 +171,7 @@ out:
 	return ret;
 }
 
-static int ilitek_plat_probe(struct ilitek_tddi_dev *idev)
+static int ilitek_plat_probe(void)
 {
     ipio_info();
 
@@ -179,7 +179,7 @@ static int ilitek_plat_probe(struct ilitek_tddi_dev *idev)
 
     ilitek_plat_irq_register();
 
-    if (ilitek_tddi_init(idev) < 0) {
+    if (ilitek_tddi_init() < 0) {
         ipio_err("Platform probe failed\n");
         return -ENODEV;
     }
@@ -189,7 +189,7 @@ static int ilitek_plat_probe(struct ilitek_tddi_dev *idev)
     return 0;
 }
 
-static int ilitek_plat_remove(struct ilitek_tddi_dev *idev)
+static int ilitek_plat_remove(void)
 {
     ipio_info();
     return 0;

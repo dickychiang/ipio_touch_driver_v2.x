@@ -29,7 +29,7 @@ struct touch_bus_info {
 
 struct ilitek_tddi_dev *idev = NULL;
 
-static int core_i2c_write(struct ilitek_tddi_dev *idev, void *buf, size_t len)
+static int core_i2c_write(void *buf, size_t len)
 {
     u8 *txbuf = (u8 *)buf;
 	u8 check_sum = 0;
@@ -69,7 +69,7 @@ static int core_i2c_write(struct ilitek_tddi_dev *idev, void *buf, size_t len)
 	return 0;
 }
 
-static int core_i2c_read(struct ilitek_tddi_dev *idev, void *buf, size_t len)
+static int core_i2c_read(void *buf, size_t len)
 {
     u8 *rxbuf = (u8 *)buf;
 
@@ -88,7 +88,7 @@ static int core_i2c_read(struct ilitek_tddi_dev *idev, void *buf, size_t len)
 	return 0;
 }
 
-static int ilitek_i2c_write(struct ilitek_tddi_dev *idev, void *buf, size_t len)
+static int ilitek_i2c_write(void *buf, size_t len)
 {
     int ret = 0;
 
@@ -99,7 +99,7 @@ static int ilitek_i2c_write(struct ilitek_tddi_dev *idev, void *buf, size_t len)
 
     mutex_lock(&idev->io_mutex);
 
-    ret = core_i2c_write(idev, buf, len);
+    ret = core_i2c_write(buf, len);
     if (ret < 0) {
 		if (atomic_read(&idev->tp_reset) == START) {
 			ret = 0;
@@ -113,7 +113,7 @@ out:
     return ret;
 }
 
-static int ilitek_i2c_read(struct ilitek_tddi_dev *idev, void *buf, size_t len)
+static int ilitek_i2c_read(void *buf, size_t len)
 {
     int ret = 0;
 
@@ -124,7 +124,7 @@ static int ilitek_i2c_read(struct ilitek_tddi_dev *idev, void *buf, size_t len)
 
     mutex_lock(&idev->io_mutex);
 
-    ret = core_i2c_read(idev, buf, len);
+    ret = core_i2c_read(buf, len);
     if (ret < 0) {
 		if (atomic_read(&idev->tp_reset) == START) {
 			ret = 0;
@@ -187,7 +187,7 @@ static int ilitek_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id *
 	idev->fw_open = FILP_OPEN;
 	idev->mp_move_code = ilitek_tddi_move_mp_code_flash;
 	idev->esd_callabck = ilitek_tddi_wq_esd_i2c_check;
-    return info->hwif->plat_probe(idev);
+    return info->hwif->plat_probe();
 }
 
 static int ilitek_i2c_remove(struct i2c_client *i2c)
@@ -197,9 +197,7 @@ static int ilitek_i2c_remove(struct i2c_client *i2c)
 			struct touch_bus_info, bus_driver);
 
     ipio_info();
-
-    info->hwif->plat_remove(idev);
-
+    info->hwif->plat_remove();
     return 0;
 }
 

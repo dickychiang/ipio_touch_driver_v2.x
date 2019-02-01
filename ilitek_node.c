@@ -97,7 +97,7 @@ static ssize_t ilitek_node_mp_lcm_on_test_read(struct file *filp, char __user *b
     if (ret != 0)
         ipio_err("Failed to create directory for mp_test\n");
 
-	ilitek_tddi_mp_test_handler(idev, apk_ret, ON);
+	ilitek_tddi_mp_test_handler(apk_ret, ON);
 
 	ret = copy_to_user((char *)buff, apk_ret, sizeof(apk_ret) * 100);
 	if (ret < 0)
@@ -121,7 +121,7 @@ static ssize_t ilitek_node_mp_lcm_off_test_read(struct file *filp, char __user *
     if (ret != 0)
         ipio_err("Failed to create directory for mp_test\n");
 
-	ilitek_tddi_mp_test_handler(idev, apk_ret, OFF);
+	ilitek_tddi_mp_test_handler(apk_ret, OFF);
 
 	ret = copy_to_user((char *)buff, apk_ret, sizeof(apk_ret) * 100);
 	if (ret < 0)
@@ -142,7 +142,7 @@ static ssize_t ilitek_node_fw_upgrade_read(struct file *filp, char __user *buff,
 
     memset(g_user_buf, 0, USER_STR_BUFF * sizeof(unsigned char));
 
-    ret = ilitek_tddi_fw_upgrade_handler((void *)idev);
+    ret = ilitek_tddi_fw_upgrade_handler(NULL);
 	len = sprintf(g_user_buf, "upgrade firwmare %s\n", (ret != 0) ? "failed" : "succeed");
 
 	ret = copy_to_user((uint32_t *) buff, g_user_buf, len);
@@ -183,17 +183,17 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 	ipio_info("cmd = %s\n", cmd);
 
 	if (strcmp(cmd, "hwreset") == 0) {
-		ilitek_tddi_reset_ctrl(idev, TP_RST_HW_ONLY);
+		ilitek_tddi_reset_ctrl(TP_RST_HW_ONLY);
 	} else if (strcmp(cmd, "icwholereset") == 0) {
-		ilitek_ice_mode_ctrl(idev, ENABLE, OFF);
-		ilitek_tddi_reset_ctrl(idev, TP_IC_WHOLE_RST);
-		ilitek_ice_mode_ctrl(idev, DISABLE, OFF);
+		ilitek_ice_mode_ctrl(ENABLE, OFF);
+		ilitek_tddi_reset_ctrl(TP_IC_WHOLE_RST);
+		ilitek_ice_mode_ctrl(DISABLE, OFF);
 	} else if (strcmp(cmd, "iccodereset") == 0) {
-		ilitek_ice_mode_ctrl(idev, ENABLE, OFF);
-		ilitek_tddi_reset_ctrl(idev, TP_IC_CODE_RST);
-		ilitek_ice_mode_ctrl(idev, DISABLE, OFF);
+		ilitek_ice_mode_ctrl(ENABLE, OFF);
+		ilitek_tddi_reset_ctrl(TP_IC_CODE_RST);
+		ilitek_ice_mode_ctrl(DISABLE, OFF);
 	} else if (strcmp(cmd, "hostdownloadreset") == 0) {
-		ilitek_tddi_reset_ctrl(idev, TP_RST_HOST_DOWNLOAD);
+		ilitek_tddi_reset_ctrl(TP_RST_HOST_DOWNLOAD);
 	} else if (strcmp(cmd, "enablewqesd") == 0) {
 		ilitek_tddi_wq_ctrl(ESD, ENABLE);
 	} else if (strcmp(cmd, "enablewqbat") == 0) {
@@ -204,13 +204,13 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 		ilitek_tddi_wq_ctrl(BAT, DISABLE);
 	} else if (strcmp(cmd, "switchtestmode") == 0) {
 		tp_mode = P5_X_FW_TEST_MODE;
-		ilitek_tddi_touch_switch_mode(idev, &tp_mode);
+		ilitek_tddi_touch_switch_mode(&tp_mode);
 	} else if (strcmp(cmd, "switchdebugmode") == 0) {
 		tp_mode = P5_X_FW_DEBUG_MODE;
-		ilitek_tddi_touch_switch_mode(idev, &tp_mode);
+		ilitek_tddi_touch_switch_mode(&tp_mode);
 	} else if (strcmp(cmd, "switchdemomode") == 0) {
 		tp_mode = P5_X_FW_DEMO_MODE;
-		ilitek_tddi_touch_switch_mode(idev, &tp_mode);
+		ilitek_tddi_touch_switch_mode(&tp_mode);
 	} else {
 		ipio_err("Unknown command\n");
 	}
@@ -269,7 +269,7 @@ proc_node_t proc_table[] = {
 	// {"read_write_register", NULL, &proc_read_write_register_fops, false},
 };
 
-void ilitek_tddi_node_init(struct ilitek_tddi_dev *idev)
+void ilitek_tddi_node_init(void)
 {
 	int i = 0, ret = 0;
 

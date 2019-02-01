@@ -60,7 +60,7 @@ int katoi(char *str)
 	return result;
 }
 
-int ilitek_tddi_mp_test_handler(struct ilitek_tddi_dev *idev, char *apk, bool lcm_on)
+int ilitek_tddi_mp_test_handler(char *apk, bool lcm_on)
 {
 	int ret = 0;
 	bool esd = idev->wq_esd_ctrl;
@@ -77,7 +77,7 @@ int ilitek_tddi_mp_test_handler(struct ilitek_tddi_dev *idev, char *apk, bool lc
 	mutex_lock(&idev->touch_mutex);
 	atomic_set(&idev->mp_stat, ENABLE);
 
-	ret = ilitek_tddi_mp_test_main(idev, apk, lcm_on);
+	ret = ilitek_tddi_mp_test_main(apk, lcm_on);
 
 	mutex_unlock(&idev->touch_mutex);
 	atomic_set(&idev->mp_stat, DISABLE);
@@ -145,13 +145,13 @@ static void ilitek_tddi_wq_bat_check(struct work_struct *work)
 	    || strstr(str, "Fully charged") != NULL) {
 		if (charge_mode != 1) {
 			ipio_debug(DEBUG_BATTERY, "Charging mode\n");
-			ilitek_tddi_ic_func_ctrl(idev, "plug", DISABLE);// plug in
+			ilitek_tddi_ic_func_ctrl("plug", DISABLE);// plug in
 			charge_mode = 1;
 		}
 	} else {
 		if (charge_mode != 2) {
 			ipio_debug(DEBUG_BATTERY, "Not charging mode\n");
-			ilitek_tddi_ic_func_ctrl(idev, "plug", ENABLE);// plug out
+			ilitek_tddi_ic_func_ctrl("plug", ENABLE);// plug out
 			charge_mode = 2;
 		}
 	}
@@ -202,7 +202,7 @@ void ilitek_tddi_wq_ctrl(int type, int ctrl)
 	}
 }
 
-static void ilitek_tddi_wq_init(struct ilitek_tddi_dev *idev)
+static void ilitek_tddi_wq_init(void)
 {
 	ipio_info();
 
@@ -228,7 +228,6 @@ static void ilitek_tddi_wq_init(struct ilitek_tddi_dev *idev)
 int ilitek_tddi_fw_upgrade_handler(void *data)
 {
 	int ret = 0, fw_file = 0;
-	struct ilitek_tddi_dev *idev = data;
 	bool esd = idev->wq_esd_ctrl;
 	bool bat = idev->wq_bat_ctrl;
 
@@ -248,7 +247,7 @@ int ilitek_tddi_fw_upgrade_handler(void *data)
 	else
 		fw_file = HEX_FILE;
 
-	ret = ilitek_tddi_fw_upgrade(idev, idev->fw_upgrade_mode, fw_file, idev->fw_open);
+	ret = ilitek_tddi_fw_upgrade(idev->fw_upgrade_mode, fw_file, idev->fw_open);
 
 	mutex_unlock(&idev->touch_mutex);
 	atomic_set(&idev->fw_stat, END);
@@ -260,7 +259,7 @@ int ilitek_tddi_fw_upgrade_handler(void *data)
 	return ret;
 }
 
-void ilitek_tddi_report_handler(struct ilitek_tddi_dev *idev)
+void ilitek_tddi_report_handler(void)
 {
 	int ret = 0, pid = 0;
 	u8 *buf = NULL, checksum = 0;
@@ -301,7 +300,7 @@ void ilitek_tddi_report_handler(struct ilitek_tddi_dev *idev)
 		return;
 	}
 
-	ret = idev->read(idev, buf, rlen);
+	ret = idev->read(buf, rlen);
 	if (ret < 0) {
 		ipio_err("Read report packet buf failed\n");
 		goto out;
@@ -320,15 +319,15 @@ void ilitek_tddi_report_handler(struct ilitek_tddi_dev *idev)
 
 	switch (pid) {
 		case P5_X_DEMO_PACKET_ID:
-			ilitek_tddi_report_ap_mode(idev, buf);
+			ilitek_tddi_report_ap_mode(buf);
 			break;
 		case P5_X_DEBUG_PACKET_ID:
-			ilitek_tddi_report_debug_mode(idev);
+			ilitek_tddi_report_debug_mode();
 			break;
 		case P5_X_I2CUART_PACKET_ID:
 			break;
 		case P5_X_GESTURE_PACKET_ID:
-			ilitek_tddi_report_gesture_mode(idev);
+			ilitek_tddi_report_gesture_mode();
 			break;
 		default:
 			ipio_err("Unknown packet id, %x\n", pid);
@@ -343,7 +342,7 @@ out:
 	ipio_kfree((void **)&buf);
 }
 
-int ilitek_tddi_reset_ctrl(struct ilitek_tddi_dev *idev, int mode)
+int ilitek_tddi_reset_ctrl(int mode)
 {
 	int ret = 0;
 	bool esd = idev->wq_esd_ctrl;
@@ -357,19 +356,19 @@ int ilitek_tddi_reset_ctrl(struct ilitek_tddi_dev *idev, int mode)
 	switch (mode) {
 		case TP_IC_CODE_RST:
 			ipio_info("Doing TP IC Code RST \n");
-			ret = ilitek_tddi_ic_code_reset(idev);
+			ret = ilitek_tddi_ic_code_reset();
 			break;
 		case TP_IC_WHOLE_RST:
 			ipio_info("Doing TP IC whole RST\n");
-			ret = ilitek_tddi_ic_whole_reset(idev);
+			ret = ilitek_tddi_ic_whole_reset();
 			break;
 		case TP_RST_HW_ONLY:
 			ipio_info("Doing TP RST only\n");
-			ilitek_plat_tp_reset(idev);
+			ilitek_plat_tp_reset();
 			break;
 		case TP_RST_HOST_DOWNLOAD:
 			ipio_info("Doing TP RST with host download\n");
-			ilitek_plat_tp_reset(idev);
+			ilitek_plat_tp_reset();
 			break;
 		default:
 			ipio_err("Unknown reset mode, %d\n", mode);
@@ -386,7 +385,7 @@ int ilitek_tddi_reset_ctrl(struct ilitek_tddi_dev *idev, int mode)
 	return ret;
 }
 
-int ilitek_tddi_init(struct ilitek_tddi_dev *idev)
+int ilitek_tddi_init(void)
 {
 	struct task_struct *fw_boot_th;
 
@@ -405,26 +404,26 @@ int ilitek_tddi_init(struct ilitek_tddi_dev *idev)
 	atomic_set(&idev->tp_resume, END);
 	atomic_set(&idev->mp_int_check, DISABLE);
 
-	ilitek_tddi_ic_init(idev);
-	ilitek_tddi_wq_init(idev);
+	ilitek_tddi_ic_init();
+	ilitek_tddi_wq_init();
 
 	/* Must do hw reset once in first time in order to get chip id */
-	ilitek_tddi_reset_ctrl(idev, TP_RST_HW_ONLY);
-	if (ilitek_tddi_ic_get_info(idev) < 0) {
+	ilitek_tddi_reset_ctrl(TP_RST_HW_ONLY);
+	if (ilitek_tddi_ic_get_info() < 0) {
 		ipio_err("Not found ilitek chipes\n");
 		return -ENODEV;
 	}
 
-	ilitek_tddi_fw_read_flash_info(idev, idev->fw_upgrade_mode);
+	ilitek_tddi_fw_read_flash_info(idev->fw_upgrade_mode);
 
-	fw_boot_th = kthread_run(ilitek_tddi_fw_upgrade_handler, (void *)idev, "ili_fw_boot");
+	fw_boot_th = kthread_run(ilitek_tddi_fw_upgrade_handler, NULL, "ili_fw_boot");
 	if (fw_boot_th == (struct task_struct *)ERR_PTR) {
 		fw_boot_th = NULL;
 		WARN_ON(!fw_boot_th);
 		ipio_err("Failed to create fw upgrade thread\n");
 	}
 
-	ilitek_tddi_node_init(idev);
+	ilitek_tddi_node_init();
 	return 0;
 }
 

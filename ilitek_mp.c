@@ -1333,7 +1333,7 @@ static int allnode_key_cdc_data(int index)
 	cmd[1] = tItems[index].cmd;
 	cmd[2] = 0;
 
-	ret = idev->write(idev, cmd, 3);
+	ret = idev->write(cmd, 3);
 	if (ret < 0) {
 		ipio_err("Write CDC command failed\n");
 		goto out;
@@ -1342,7 +1342,7 @@ static int allnode_key_cdc_data(int index)
 	/* Check busy */
 	ipio_info("Check busy method = %d\n", core_mp.busy_cdc);
 	if (core_mp.busy_cdc == POLL_CHECK) {
-		ret = ilitek_tddi_ic_check_busy(idev, 50, 50);
+		ret = ilitek_tddi_ic_check_busy(50, 50);
 	} else if (core_mp.busy_cdc == INT_CHECK) {
 		ret = ilitek_tddi_ic_check_int_stat(true);
 	} else if (core_mp.busy_cdc == DELAY_CHECK) {
@@ -1356,13 +1356,13 @@ static int allnode_key_cdc_data(int index)
 	cmd[0] = P5_X_READ_DATA_CTRL;
 	cmd[1] = P5_X_GET_CDC_DATA;
 
-	ret = idev->write(idev, cmd, 2);
+	ret = idev->write(cmd, 2);
 	if (ret < 0) {
 		ipio_err("Write (0x%x, 0x%x) error\n", cmd[0], cmd[1]);
 		goto out;
 	}
 
-	ret = idev->write(idev, &cmd[1], 1);
+	ret = idev->write(&cmd[1], 1);
 	if (ret < 0) {
 		ipio_err("Write (0x%x) error\n", cmd[1]);
 		goto out;
@@ -1376,7 +1376,7 @@ static int allnode_key_cdc_data(int index)
 	}
 
 	/* Get original frame(cdc) data */
-	ret = idev->read(idev, ori, len);
+	ret = idev->read(ori, len);
 	if (ret < 0) {
 		ipio_err("Read cdc data error, len = %d\n", len);
 		goto out;
@@ -1514,7 +1514,7 @@ static int allnode_open_cdc_data(int mode, int *buf)
 
 	ilitek_dump_data(cmd, 8, sizeof(cmd), 0, "Open SP command");
 
-	ret = idev->write(idev, cmd, core_mp.cdc_len);
+	ret = idev->write(cmd, core_mp.cdc_len);
 	if (ret < 0) {
 		ipio_err("Write CDC command failed\n");
 		goto out;
@@ -1523,7 +1523,7 @@ static int allnode_open_cdc_data(int mode, int *buf)
 	/* Check busy */
 	ipio_info("Check busy method = %d\n", core_mp.busy_cdc);
 	if (core_mp.busy_cdc == POLL_CHECK) {
-		ret = ilitek_tddi_ic_check_busy(idev, 50, 50);
+		ret = ilitek_tddi_ic_check_busy(50, 50);
 	} else if (core_mp.busy_cdc == INT_CHECK) {
 		ret = ilitek_tddi_ic_check_int_stat(true);
 	} else if (core_mp.busy_cdc == DELAY_CHECK) {
@@ -1537,13 +1537,13 @@ static int allnode_open_cdc_data(int mode, int *buf)
 	cmd[0] = P5_X_READ_DATA_CTRL;
 	cmd[1] = P5_X_GET_CDC_DATA;
 
-	ret = idev->write(idev, cmd, 2);
+	ret = idev->write(cmd, 2);
 	if (ret < 0) {
 		ipio_err("Write (0x%x, 0x%x) error\n", cmd[0], cmd[1]);
 		goto out;
 	}
 
-	ret = idev->write(idev, &cmd[1], 1);
+	ret = idev->write(&cmd[1], 1);
 	if (ret < 0) {
 		ipio_err("Write (0x%x) error\n", cmd[1]);
 		goto out;
@@ -1557,7 +1557,7 @@ static int allnode_open_cdc_data(int mode, int *buf)
 	}
 
 	/* Get original frame(cdc) data */
-	ret = idev->read(idev, ori, len);
+	ret = idev->read(ori, len);
 	if (ret < 0) {
 		ipio_err("Read cdc data error, len = %d\n", len);
 		goto out;
@@ -1634,7 +1634,7 @@ static int allnode_mutual_cdc_data(int index)
 
 	ilitek_dump_data(cmd, 8, core_mp.cdc_len, 0, "Mutual CDC command");
 
-	ret = idev->write(idev, cmd, core_mp.cdc_len);
+	ret = idev->write(cmd, core_mp.cdc_len);
 	if (ret < 0) {
 		ipio_err("Write CDC command failed\n");
 		goto out;
@@ -1643,7 +1643,7 @@ static int allnode_mutual_cdc_data(int index)
 	/* Check busy */
 	ipio_info("Check busy method = %d\n", core_mp.busy_cdc);
 	if (core_mp.busy_cdc == POLL_CHECK) {
-		ret = ilitek_tddi_ic_check_busy(idev, 50, 50);
+		ret = ilitek_tddi_ic_check_busy(50, 50);
 	} else if (core_mp.busy_cdc == INT_CHECK) {
 		ret = ilitek_tddi_ic_check_int_stat(true);
 	} else if (core_mp.busy_cdc == DELAY_CHECK) {
@@ -1657,13 +1657,13 @@ static int allnode_mutual_cdc_data(int index)
 	cmd[0] = P5_X_READ_DATA_CTRL;
 	cmd[1] = P5_X_GET_CDC_DATA;
 
-	ret = idev->write(idev, cmd, 2);
+	ret = idev->write(cmd, 2);
 	if (ret < 0) {
 		ipio_err("Write (0x%x, 0x%x) error\n", cmd[0], cmd[1]);
 		goto out;
 	}
 
-	ret = idev->write(idev, &cmd[1], 1);
+	ret = idev->write(&cmd[1], 1);
 	if (ret < 0) {
 		ipio_err("Write (0x%x) error\n", cmd[1]);
 		goto out;
@@ -1677,7 +1677,7 @@ static int allnode_mutual_cdc_data(int index)
 	}
 
 	/* Get original frame(cdc) data */
-	ret = idev->read(idev, ori, len);
+	ret = idev->read(ori, len);
 	if (ret < 0) {
 		ipio_err("Read cdc data error, len = %d\n", len);
 		goto out;
@@ -2849,7 +2849,7 @@ fail_open:
 	ipio_kfree((void **)&min_threshold);
 }
 
-static void ilitek_tddi_mp_init_item(struct ilitek_tddi_dev *idev)
+static void ilitek_tddi_mp_init_item(void)
 {
     int i = 0;
 
@@ -3129,13 +3129,13 @@ static void mp_copy_ret_to_apk(char *buf)
 	}
 }
 
-int ilitek_tddi_mp_test_main(struct ilitek_tddi_dev *idev, char *apk, bool lcm_on)
+int ilitek_tddi_mp_test_main(char *apk, bool lcm_on)
 {
     int ret = 0;
 	u8 tp_mode;
 	const char *csv_path = NULL;
 
-	ilitek_tddi_mp_init_item(idev);
+	ilitek_tddi_mp_init_item();
 
 	ret = ilitek_tddi_mp_ini_parser(INI_NAME_PATH);
 	if (ret < 0) {
@@ -3145,7 +3145,7 @@ int ilitek_tddi_mp_test_main(struct ilitek_tddi_dev *idev, char *apk, bool lcm_o
 
 	/* Switch to Test mode nad move mp code into iram */
 	tp_mode = P5_X_FW_TEST_MODE;
-	ret = ilitek_tddi_touch_switch_mode(idev, &tp_mode);
+	ret = ilitek_tddi_touch_switch_mode(&tp_mode);
 	if (ret < 0) {
 		ipio_err("Switch to test mode failed\n");
 		goto out;
@@ -3199,7 +3199,7 @@ int ilitek_tddi_mp_test_main(struct ilitek_tddi_dev *idev, char *apk, bool lcm_o
 out:
 	/* Switch to Demo mode */
 	tp_mode = P5_X_FW_DEMO_MODE;
-	ret = ilitek_tddi_touch_switch_mode(idev, &tp_mode);
+	ret = ilitek_tddi_touch_switch_mode(&tp_mode);
 	if (ret < 0) {
 		ipio_err("Switch to test mode failed\n");
 		goto out;

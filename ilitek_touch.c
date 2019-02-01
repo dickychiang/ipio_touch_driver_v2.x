@@ -62,87 +62,87 @@ void ilitek_dump_data(void *data, int type, int len, int row_len, const char *na
 	}
 }
 
-static void dma_clear_reg_setting(struct ilitek_tddi_dev *idev)
+static void dma_clear_reg_setting(void)
 {
 	ipio_info("[Clear register setting]\n");
 
 	ipio_info("interrupt t0/t1 enable flag\n");
-	ilitek_ice_mode_bit_mask_write(idev, INTR32_ADDR, INTR32_reg_t0_int_en, (0 << 24));
-	ilitek_ice_mode_bit_mask_write(idev, INTR32_ADDR, INTR32_reg_t1_int_en, (0 << 25));
+	ilitek_ice_mode_bit_mask_write(INTR32_ADDR, INTR32_reg_t0_int_en, (0 << 24));
+	ilitek_ice_mode_bit_mask_write(INTR32_ADDR, INTR32_reg_t1_int_en, (0 << 25));
 
 	ipio_info("clear tdi_err_int_flag\n");
-	ilitek_ice_mode_bit_mask_write(idev, INTR2_ADDR, INTR2_tdi_err_int_flag_clear, (1 << 18));
+	ilitek_ice_mode_bit_mask_write(INTR2_ADDR, INTR2_tdi_err_int_flag_clear, (1 << 18));
 
 	ipio_info("clear dma channel 0 src1 info\n");
-	ilitek_ice_mode_write(idev, DMA49_reg_dma_ch0_src1_addr, 0x00000000, 4);
-	ilitek_ice_mode_write(idev, DMA50_reg_dma_ch0_src1_step_inc, 0x00, 1);
-	ilitek_ice_mode_bit_mask_write(idev, DMA50_ADDR, DMA50_reg_dma_ch0_src1_format, (0 << 24));
-	ilitek_ice_mode_bit_mask_write(idev, DMA50_ADDR, DMA50_reg_dma_ch0_src1_en, (1 << 31));
+	ilitek_ice_mode_write(DMA49_reg_dma_ch0_src1_addr, 0x00000000, 4);
+	ilitek_ice_mode_write(DMA50_reg_dma_ch0_src1_step_inc, 0x00, 1);
+	ilitek_ice_mode_bit_mask_write(DMA50_ADDR, DMA50_reg_dma_ch0_src1_format, (0 << 24));
+	ilitek_ice_mode_bit_mask_write(DMA50_ADDR, DMA50_reg_dma_ch0_src1_en, (1 << 31));
 
 	ipio_info("clear dma channel 0 src2 info\n");
-	ilitek_ice_mode_bit_mask_write(idev, DMA52_ADDR, DMA52_reg_dma_ch0_src2_en, (0 << 31));
+	ilitek_ice_mode_bit_mask_write(DMA52_ADDR, DMA52_reg_dma_ch0_src2_en, (0 << 31));
 
 	ipio_info("clear dma channel 0 trafer info\n");
-	ilitek_ice_mode_write(idev, DMA55_reg_dma_ch0_trafer_counts, 0x00000000, 4);
-	ilitek_ice_mode_bit_mask_write(idev, DMA55_ADDR, DMA55_reg_dma_ch0_trafer_mode, (0 << 24));
+	ilitek_ice_mode_write(DMA55_reg_dma_ch0_trafer_counts, 0x00000000, 4);
+	ilitek_ice_mode_bit_mask_write(DMA55_ADDR, DMA55_reg_dma_ch0_trafer_mode, (0 << 24));
 
 	ipio_info("clear dma channel 0 trigger select\n");
-	ilitek_ice_mode_bit_mask_write(idev, DMA48_ADDR, DMA48_reg_dma_ch0_trigger_sel, (0 << 16));
+	ilitek_ice_mode_bit_mask_write(DMA48_ADDR, DMA48_reg_dma_ch0_trigger_sel, (0 << 16));
 
-	ilitek_ice_mode_bit_mask_write(idev, INTR1_ADDR, INTR1_reg_flash_int_flag, (1 << 25));
+	ilitek_ice_mode_bit_mask_write(INTR1_ADDR, INTR1_reg_flash_int_flag, (1 << 25));
 
 	ipio_info("clear dma flash setting\n");
-	ilitek_tddi_flash_clear_dma(idev);
+	ilitek_tddi_flash_clear_dma();
 }
 
 static void dma_trigger_reg_setting(uint32_t reg_dest_addr, uint32_t flash_start_addr, uint32_t copy_size)
 {
 	ipio_info("set dma channel 0 clear\n");
-	ilitek_ice_mode_bit_mask_write(idev, DMA48_ADDR, DMA48_reg_dma_ch0_start_clear, (1 << 25));
+	ilitek_ice_mode_bit_mask_write(DMA48_ADDR, DMA48_reg_dma_ch0_start_clear, (1 << 25));
 
 	ipio_info("set dma channel 0 src1 info\n");
-	ilitek_ice_mode_write(idev, DMA49_reg_dma_ch0_src1_addr, 0x00041010, 4);
-	ilitek_ice_mode_write(idev, DMA50_reg_dma_ch0_src1_step_inc, 0x00, 1);
-	ilitek_ice_mode_bit_mask_write(idev, DMA50_ADDR, DMA50_reg_dma_ch0_src1_format, (0 << 24));
-	ilitek_ice_mode_bit_mask_write(idev, DMA50_ADDR, DMA50_reg_dma_ch0_src1_en, (1 << 31));
+	ilitek_ice_mode_write(DMA49_reg_dma_ch0_src1_addr, 0x00041010, 4);
+	ilitek_ice_mode_write(DMA50_reg_dma_ch0_src1_step_inc, 0x00, 1);
+	ilitek_ice_mode_bit_mask_write(DMA50_ADDR, DMA50_reg_dma_ch0_src1_format, (0 << 24));
+	ilitek_ice_mode_bit_mask_write(DMA50_ADDR, DMA50_reg_dma_ch0_src1_en, (1 << 31));
 
 	ipio_info("set dma channel 0 src2 info\n");
-	ilitek_ice_mode_bit_mask_write(idev, DMA52_ADDR, DMA52_reg_dma_ch0_src2_en, (0 << 31));
+	ilitek_ice_mode_bit_mask_write(DMA52_ADDR, DMA52_reg_dma_ch0_src2_en, (0 << 31));
 
 	ipio_info("set dma channel 0 dest info\n");
-	ilitek_ice_mode_write(idev, DMA53_reg_dma_ch0_dest_addr, reg_dest_addr, 3);
-	ilitek_ice_mode_write(idev, DMA54_reg_dma_ch0_dest_step_inc, 0x01, 1);
-	ilitek_ice_mode_bit_mask_write(idev, DMA54_ADDR, DMA54_reg_dma_ch0_dest_format, (0 << 24));
-	ilitek_ice_mode_bit_mask_write(idev, DMA54_ADDR, DMA54_reg_dma_ch0_dest_en, (1 << 31));
+	ilitek_ice_mode_write(DMA53_reg_dma_ch0_dest_addr, reg_dest_addr, 3);
+	ilitek_ice_mode_write(DMA54_reg_dma_ch0_dest_step_inc, 0x01, 1);
+	ilitek_ice_mode_bit_mask_write(DMA54_ADDR, DMA54_reg_dma_ch0_dest_format, (0 << 24));
+	ilitek_ice_mode_bit_mask_write(DMA54_ADDR, DMA54_reg_dma_ch0_dest_en, (1 << 31));
 
 	ipio_info("set dma channel 0 trafer info\n");
-	ilitek_ice_mode_write(idev, DMA55_reg_dma_ch0_trafer_counts, copy_size, 4);
-	ilitek_ice_mode_bit_mask_write(idev, DMA55_ADDR, DMA55_reg_dma_ch0_trafer_mode, (0 << 24));
+	ilitek_ice_mode_write(DMA55_reg_dma_ch0_trafer_counts, copy_size, 4);
+	ilitek_ice_mode_bit_mask_write(DMA55_ADDR, DMA55_reg_dma_ch0_trafer_mode, (0 << 24));
 
 	ipio_info("set dma channel 0 int info\n");
-	ilitek_ice_mode_bit_mask_write(idev, INTR33_ADDR, INTR33_reg_dma_ch0_int_en, (1 << 17));
+	ilitek_ice_mode_bit_mask_write(INTR33_ADDR, INTR33_reg_dma_ch0_int_en, (1 << 17));
 
 	ipio_info("set dma channel 0 trigger select\n");
-	ilitek_ice_mode_bit_mask_write(idev, DMA48_ADDR, DMA48_reg_dma_ch0_trigger_sel, (1 << 16));
+	ilitek_ice_mode_bit_mask_write(DMA48_ADDR, DMA48_reg_dma_ch0_trigger_sel, (1 << 16));
 
 	ipio_info("set dma flash setting, FlashAddr = 0x%x\n",flash_start_addr);
-	ilitek_tddi_flash_dma_write(idev, flash_start_addr,(flash_start_addr+copy_size), copy_size);
+	ilitek_tddi_flash_dma_write(flash_start_addr,(flash_start_addr+copy_size), copy_size);
 
 	ipio_info("clear flash and dma ch0 int flag\n");
-	ilitek_ice_mode_bit_mask_write(idev, INTR1_ADDR, INTR1_reg_flash_int_flag, (1 << 25));
-	ilitek_ice_mode_bit_mask_write(idev, INTR1_ADDR, INTR1_reg_dma_ch0_int_flag, (1 << 17));
-	ilitek_ice_mode_bit_mask_write(idev, 0x041013, BIT(0), 1); //patch
+	ilitek_ice_mode_bit_mask_write(INTR1_ADDR, INTR1_reg_flash_int_flag, (1 << 25));
+	ilitek_ice_mode_bit_mask_write(INTR1_ADDR, INTR1_reg_dma_ch0_int_flag, (1 << 17));
+	ilitek_ice_mode_bit_mask_write(0x041013, BIT(0), 1); //patch
 
 	/* DMA Trigger */
-	ilitek_ice_mode_write(idev, FLASH4_reg_rcv_data, 0xFF, 1);
+	ilitek_ice_mode_write(FLASH4_reg_rcv_data, 0xFF, 1);
 	mdelay(30);
 
 	/* CS High */
-	ilitek_ice_mode_write(idev, FLASH0_reg_flash_csb, 0x1, 1);
+	ilitek_ice_mode_write(FLASH0_reg_flash_csb, 0x1, 1);
 	mdelay(60);
 }
 
-int ilitek_tddi_move_mp_code_flash(struct ilitek_tddi_dev *idev)
+int ilitek_tddi_move_mp_code_flash(void)
 {
 	int ret = 0;
 	u32 mp_text_size = 0, mp_andes_init_size = 0;
@@ -152,19 +152,19 @@ int ilitek_tddi_move_mp_code_flash(struct ilitek_tddi_dev *idev)
 
 	cmd[0] = P5_X_MODE_CONTROL;
 	cmd[1] = P5_X_FW_TEST_MODE;
-	ret = idev->write(idev, cmd, 2);
+	ret = idev->write(cmd, 2);
 	if (ret < 0)
 		goto out;
 
 	cmd[0] = P5_X_MP_TEST_MODE_INFO;
-	ret = idev->write(idev, cmd, 1);
+	ret = idev->write(cmd, 1);
 	if (ret < 0)
 		goto out;
 
 	memset(cmd, 0, sizeof(cmd));
 
 	ipio_info("read mp info length = %d\n", idev->protocol->mp_info_len);
-	ret = idev->read(idev, cmd, idev->protocol->mp_info_len);
+	ret = idev->read(cmd, idev->protocol->mp_info_len);
 	if (ret < 0)
 		goto out;
 
@@ -187,11 +187,11 @@ int ilitek_tddi_move_mp_code_flash(struct ilitek_tddi_dev *idev)
 
 	/* Check if ic is ready switching test mode from demo mode */
 	idev->actual_fw_mode = P5_X_FW_DEMO_MODE;
-	ret = ilitek_tddi_ic_check_busy(idev, 50, 50); /* Set busy as 0x41 */
+	ret = ilitek_tddi_ic_check_busy(50, 50); /* Set busy as 0x41 */
 	if (ret < 0)
 		goto out;
 
-	ret = ilitek_ice_mode_ctrl(idev, ENABLE, OFF);
+	ret = ilitek_ice_mode_ctrl(ENABLE, OFF);
 	if (ret < 0)
 		goto out;
 
@@ -200,40 +200,40 @@ int ilitek_tddi_move_mp_code_flash(struct ilitek_tddi_dev *idev)
 		mp_text_size = (mp_size - overlay_end_addr) + 1;
 		ipio_info("MP andes init size = %d , MP text size = %d\n",mp_andes_init_size, mp_text_size);
 
-		dma_clear_reg_setting(idev);
+		dma_clear_reg_setting();
 
 		ipio_info("[Move ANDES.INIT to DRAM]\n");
 		dma_trigger_reg_setting(0, mp_flash_addr, mp_andes_init_size);   /* DMA ANDES.INIT */
 
-		dma_clear_reg_setting(idev);
+		dma_clear_reg_setting();
 
 		ipio_info("[Move MP.TEXT to DRAM]\n");
 		dma_trigger_reg_setting(overlay_end_addr, (mp_flash_addr + overlay_start_addr), mp_text_size);
 	} else {
 		/* DMA Trigger */
-		ilitek_ice_mode_write(idev, FLASH4_reg_rcv_data, 0xFF, 1);
+		ilitek_ice_mode_write(FLASH4_reg_rcv_data, 0xFF, 1);
 		mdelay(30);
 
 		/* CS High */
-		ilitek_ice_mode_write(idev, FLASH0_reg_flash_csb, 0x1, 1);
+		ilitek_ice_mode_write(FLASH0_reg_flash_csb, 0x1, 1);
 		mdelay(60);
 	}
 
-	ilitek_tddi_reset_ctrl(idev, TP_IC_CODE_RST);
+	ilitek_tddi_reset_ctrl(TP_IC_CODE_RST);
 
-	ret = ilitek_ice_mode_ctrl(idev, DISABLE, OFF);
+	ret = ilitek_ice_mode_ctrl(DISABLE, OFF);
 	if (ret < 0)
 		goto out;
 
 	/* Check if ic is already in test mode */
 	idev->actual_fw_mode = P5_X_FW_TEST_MODE; /* set busy as 0x51 */
-	ret = ilitek_tddi_ic_check_busy(idev, 300, 50);
+	ret = ilitek_tddi_ic_check_busy(300, 50);
 
 out:
     return ret;
 }
 
-int ilitek_tddi_move_mp_code_iram(struct ilitek_tddi_dev *idev)
+int ilitek_tddi_move_mp_code_iram(void)
 {
     ipio_info();
     return 0;
@@ -250,7 +250,7 @@ u8 ilitek_calc_packet_checksum(u8 *packet, size_t len)
 	return (u8) ((-sum) & 0xFF);
 }
 
-int ilitek_tddi_touch_switch_mode(struct ilitek_tddi_dev *idev, u8 *data)
+int ilitek_tddi_touch_switch_mode(u8 *data)
 {
 	int ret = 0, mode, prev_mode;
 	u8 cmd[4] = {0};
@@ -276,23 +276,23 @@ int ilitek_tddi_touch_switch_mode(struct ilitek_tddi_dev *idev, u8 *data)
 			break;
 		case P5_X_FW_DEMO_MODE:
 			ipio_info("Switch to Demo mode");
-			ilitek_tddi_reset_ctrl(idev, idev->reset_mode);
+			ilitek_tddi_reset_ctrl(idev->reset_mode);
 			break;
 		case P5_X_FW_DEBUG_MODE:
 			cmd[0] = P5_X_MODE_CONTROL;
 			cmd[1] = mode;
 
 			ipio_info("Switch to Debug mode\n");
-			ret = idev->write(idev, cmd, 2);
+			ret = idev->write(cmd, 2);
 			if (ret < 0)
 				ipio_err("Failed to switch Debug mode\n");
 			break;
 		case P5_X_FW_GESTURE_MODE:
-			ret = ilitek_tddi_ic_func_ctrl(idev, "lpwg", ON);
+			ret = ilitek_tddi_ic_func_ctrl("lpwg", ON);
 			break;
 		case P5_X_FW_TEST_MODE:
 			ipio_info("Switch to Test mode\n");
-			ret = idev->mp_move_code(idev);
+			ret = idev->mp_move_code();
 			break;
 		default:
 			ipio_err("Unknown firmware mode: %x\n", mode);
@@ -311,40 +311,40 @@ out:
 	return ret;
 }
 
-void ilitek_tddi_touch_suspend(struct ilitek_tddi_dev *idev)
+void ilitek_tddi_touch_suspend(void)
 {
 	ipio_info("TP suspend start\n");
 	atomic_set(&idev->tp_suspend, START);
-	ilitek_plat_irq_disable(idev);
+	ilitek_plat_irq_disable();
 
-	ilitek_tddi_ic_func_ctrl(idev, "sense", DISABLE);
+	ilitek_tddi_ic_func_ctrl("sense", DISABLE);
 
-	ilitek_tddi_ic_check_busy(idev, 50, 50);
+	ilitek_tddi_ic_check_busy(50, 50);
 
-	ilitek_tddi_ic_func_ctrl(idev, "sleep", DISABLE);
+	ilitek_tddi_ic_func_ctrl("sleep", DISABLE);
 
 	atomic_set(&idev->tp_suspend, END);
 	ipio_info("TP suspend end\n");
 }
 
-void ilitek_tddi_touch_resume(struct ilitek_tddi_dev *idev)
+void ilitek_tddi_touch_resume(void)
 {
 	ipio_info("TP resume start\n");
 	atomic_set(&idev->tp_resume, START);
-	ilitek_plat_irq_disable(idev);
+	ilitek_plat_irq_disable();
 
-	ilitek_tddi_ic_func_ctrl(idev, "sleep", ENABLE);
+	ilitek_tddi_ic_func_ctrl("sleep", ENABLE);
 
-	ilitek_tddi_ic_check_busy(idev, 50, 50);
+	ilitek_tddi_ic_check_busy(50, 50);
 
-	ilitek_tddi_ic_func_ctrl(idev, "sense", ENABLE);
+	ilitek_tddi_ic_func_ctrl("sense", ENABLE);
 
-	ilitek_plat_irq_enable(idev);
+	ilitek_plat_irq_enable();
 	atomic_set(&idev->tp_resume, END);
 	ipio_info("TP resume end\n");
 }
 
-void ilitek_tddi_touch_press(struct ilitek_tddi_dev *idev, u16 x, u16 y, u16 pressure, u16 id)
+void ilitek_tddi_touch_press(u16 x, u16 y, u16 pressure, u16 id)
 {
 	ipio_info("Touch Press: id = %d, x = %d, y = %d, p = %d\n", id, x, y, pressure);
 
@@ -359,7 +359,7 @@ void ilitek_tddi_touch_press(struct ilitek_tddi_dev *idev, u16 x, u16 y, u16 pre
 #endif /* MT_B_TYPE */
 }
 
-void litek_tddi_touch_release(struct ilitek_tddi_dev *idev, u16 x, u16 y, u16 id)
+void litek_tddi_touch_release(u16 x, u16 y, u16 id)
 {
 	ipio_info("Touch Release: id = %d, x = %d, y = %d\n", id, x, y);
 
@@ -374,7 +374,7 @@ void litek_tddi_touch_release(struct ilitek_tddi_dev *idev, u16 x, u16 y, u16 id
 
 static struct ilitek_touch_info touch_info[MAX_TOUCH_NUM];
 
-void ilitek_tddi_report_ap_mode(struct ilitek_tddi_dev *idev, u8 *buf)
+void ilitek_tddi_report_ap_mode(u8 *buf)
 {
 	int i = 0;
 	u32 xop = 0, yop = 0;
@@ -415,7 +415,7 @@ void ilitek_tddi_report_ap_mode(struct ilitek_tddi_dev *idev, u8 *buf)
 #ifdef MT_B_TYPE
 		for (i = 0; i < idev->finger; i++) {
 			input_report_key(idev->input, BTN_TOUCH, 1);
-			ilitek_tddi_touch_press(idev, touch_info[i].x, touch_info[i].y,
+			ilitek_tddi_touch_press(touch_info[i].x, touch_info[i].y,
 						touch_info[i].pressure, touch_info[i].id);
 
 			input_report_key(idev->input, BTN_TOOL_FINGER, 1);
@@ -423,7 +423,7 @@ void ilitek_tddi_report_ap_mode(struct ilitek_tddi_dev *idev, u8 *buf)
 
 		for (i = 0; i < MAX_TOUCH_NUM; i++) {
 			if (idev->curt_touch[i] == 0 && idev->prev_touch[i] == 1)
-				litek_tddi_touch_release(idev, 0, 0, i);
+				litek_tddi_touch_release(0, 0, i);
 
 			idev->prev_touch[i] = idev->curt_touch[i];
 		}
@@ -436,7 +436,7 @@ void ilitek_tddi_report_ap_mode(struct ilitek_tddi_dev *idev, u8 *buf)
 #ifdef MT_B_TYPE
 			for (i = 0; i < MAX_TOUCH_NUM; i++) {
 				if (idev->curt_touch[i] == 0 && idev->prev_touch[i] == 1)
-					litek_tddi_touch_release(idev, 0, 0, i);
+					litek_tddi_touch_release(0, 0, i);
 
 				idev->prev_touch[i] = idev->curt_touch[i];
 			}
@@ -452,12 +452,12 @@ void ilitek_tddi_report_ap_mode(struct ilitek_tddi_dev *idev, u8 *buf)
 	}
 }
 
-void ilitek_tddi_report_debug_mode(struct ilitek_tddi_dev *idev)
+void ilitek_tddi_report_debug_mode(void)
 {
 	ipio_info();
 }
 
-void ilitek_tddi_report_gesture_mode(struct ilitek_tddi_dev *idev)
+void ilitek_tddi_report_gesture_mode(void)
 {
 	ipio_info();
 }

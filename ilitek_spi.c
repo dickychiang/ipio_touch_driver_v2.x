@@ -154,7 +154,7 @@ out:
 }
 #endif /* CONFIG_MTK_SPI */
 
-static int core_rx_lock_check(struct ilitek_tddi_dev *idev, int *ret_size)
+static int core_rx_lock_check(int *ret_size)
 {
 	int i, count = 10;
 	u8 txbuf[5] = {SPI_WRITE, 0x25, 0x94, 0x0, 0x2};
@@ -192,7 +192,7 @@ out:
 	return -EIO;
 }
 
-static int core_tx_unlock_check(struct ilitek_tddi_dev *idev)
+static int core_tx_unlock_check(void)
 {
 	int i, count = 10;
 	u8 txbuf[5] = {SPI_WRITE, 0x25, 0x0, 0x0, 0x2};
@@ -229,7 +229,7 @@ out:
 	return -EIO;
 }
 
-static int core_spi_ice_mode_unlock_read(struct ilitek_tddi_dev *idev, u8 *data, size_t size)
+static int core_spi_ice_mode_unlock_read(u8 *data, size_t size)
 {
 	int ret = 0;
 	uint8_t txbuf[64] = { 0 };
@@ -270,7 +270,7 @@ static int core_spi_ice_mode_unlock_read(struct ilitek_tddi_dev *idev, u8 *data,
 	return ret;
 }
 
-static int core_spi_ice_mode_lock_write(struct ilitek_tddi_dev *idev, u8 *data, size_t size)
+static int core_spi_ice_mode_lock_write(u8 *data, size_t size)
 {
 	int ret = 0;
 	int safe_size = size;
@@ -326,7 +326,7 @@ out:
 	return ret;
 }
 
-static int core_spi_ice_mode_disable(struct ilitek_tddi_dev *idev)
+static int core_spi_ice_mode_disable(void)
 {
 	u8 txbuf[5] = {0x82, 0x1B, 0x62, 0x10, 0x18};
 
@@ -338,7 +338,7 @@ static int core_spi_ice_mode_disable(struct ilitek_tddi_dev *idev)
 	return 0;
 }
 
-static int core_spi_ice_mode_enable(struct ilitek_tddi_dev *idev)
+static int core_spi_ice_mode_enable(void)
 {
 	u8 txbuf[5] = {0x82, 0x1F, 0x62, 0x10, 0x18};
 	u8 rxbuf[2]= {0};
@@ -362,30 +362,30 @@ static int core_spi_ice_mode_enable(struct ilitek_tddi_dev *idev)
 	return 0;
 }
 
-static int core_spi_ice_mode_write(struct ilitek_tddi_dev *idev, u8 *data, size_t len)
+static int core_spi_ice_mode_write(u8 *data, size_t len)
 {
 	int ret = 0;
 
-	ret = core_spi_ice_mode_enable(idev);
+	ret = core_spi_ice_mode_enable();
 	if (ret < 0) {
 		ipio_err("spi ice mode enable failed\n");
 		return ret;
 	}
 
-	ret = core_spi_ice_mode_lock_write(idev, data, len);
+	ret = core_spi_ice_mode_lock_write(data, len);
 	if (ret < 0) {
 		ipio_err("spi ice mode lock write failed\n");
 		goto out;
 	}
 
-	ret = core_tx_unlock_check(idev);
+	ret = core_tx_unlock_check();
 	if (ret < 0) {
 		ipio_err("tx unlock check error\n");
 		goto out;
 	}
 
 out:
-	if (core_spi_ice_mode_disable(idev) < 0) {
+	if (core_spi_ice_mode_disable() < 0) {
 		ret = -EIO;
 		ipio_err("spi ice mode disable failed\n");
 	}
@@ -393,30 +393,30 @@ out:
 	return ret;
 }
 
-static int core_spi_ice_mode_read(struct ilitek_tddi_dev *idev, u8 *data)
+static int core_spi_ice_mode_read(u8 *data)
 {
 	int ret = 0, size = 0;
 
-	ret = core_spi_ice_mode_enable(idev);
+	ret = core_spi_ice_mode_enable();
 	if (ret < 0) {
 		ipio_err("spi ice mode enable failed\n");
 		return ret;
 	}
 
-	ret = core_rx_lock_check(idev, &size);
+	ret = core_rx_lock_check(&size);
 	if (ret < 0) {
 		ipio_err("Rx lock check error\n");
 		goto out;
 	}
 
-	ret = core_spi_ice_mode_unlock_read(idev, data, size);
+	ret = core_spi_ice_mode_unlock_read(data, size);
 	if ( ret < 0) {
 		ipio_err("spi ice mode unlock write failed\n");
 		goto out;
 	}
 
 out:
-	if (core_spi_ice_mode_disable(idev) < 0) {
+	if (core_spi_ice_mode_disable() < 0) {
 		ret = -EIO;
 		ipio_err("spi ice mode disable failed\n");
 	}
@@ -424,7 +424,7 @@ out:
 	return ret;
 }
 
-static int core_spi_write(struct ilitek_tddi_dev *idev, u8 *data, size_t len)
+static int core_spi_write(u8 *data, size_t len)
 {
 	int ret = 0, count = 5;
 	u8 *txbuf = NULL;
@@ -432,7 +432,7 @@ static int core_spi_write(struct ilitek_tddi_dev *idev, u8 *data, size_t len)
 
 	if (atomic_read(&idev->ice_stat) == DISABLE) {
 		do {
-			ret = core_spi_ice_mode_write(idev, data, len);
+			ret = core_spi_ice_mode_write(data, len);
 			if (ret >= 0)
 				break;
 
@@ -460,7 +460,7 @@ out:
 	return ret;
 }
 
-static int core_spi_read(struct ilitek_tddi_dev *idev, u8 *rxbuf, size_t len)
+static int core_spi_read(u8 *rxbuf, size_t len)
 {
 	int ret = 0, count = 5;
 	u8 txbuf[1] = {0};
@@ -469,7 +469,7 @@ static int core_spi_read(struct ilitek_tddi_dev *idev, u8 *rxbuf, size_t len)
 
 	if (atomic_read(&idev->ice_stat) == DISABLE) {
 		do {
-			ret = core_spi_ice_mode_read(idev, rxbuf);
+			ret = core_spi_ice_mode_read(rxbuf);
 			if (ret >= 0)
 				break;
 
@@ -487,7 +487,7 @@ out:
 	return ret;
 }
 
-static int core_spi_setup(struct ilitek_tddi_dev *idev, u32 freq)
+static int core_spi_setup(u32 freq)
 {
 #ifdef CONFIG_MTK_SPI
 	struct mt_chip_conf *chip_config;
@@ -538,13 +538,13 @@ static int core_spi_setup(struct ilitek_tddi_dev *idev, u32 freq)
 	return 0;
 }
 
-static int ilitek_spi_write(struct ilitek_tddi_dev *idev, void *buf, size_t len)
+static int ilitek_spi_write(void *buf, size_t len)
 {
     int ret = 0;
 
     mutex_lock(&idev->io_mutex);
 
-    ret = core_spi_write(idev, buf, len);
+    ret = core_spi_write(buf, len);
     if (ret < 0) {
 		if (atomic_read(&idev->tp_reset) == START) {
 			ret = 0;
@@ -559,13 +559,13 @@ out:
     return ret;
 }
 
-static int ilitek_spi_read(struct ilitek_tddi_dev *idev, void *buf, size_t len)
+static int ilitek_spi_read(void *buf, size_t len)
 {
     int ret = 0;
 
     mutex_lock(&idev->io_mutex);
 
-    ret = core_spi_read(idev, buf, len);
+    ret = core_spi_read(buf, len);
     if (ret < 0) {
 		if (atomic_read(&idev->tp_reset) == START) {
 			ret = 0;
@@ -604,6 +604,14 @@ static int ilitek_spi_probe(struct spi_device *spi)
 
 	idev->write = ilitek_spi_write;
 	idev->read = ilitek_spi_read;
+
+#ifdef CONFIG_MTK_SPI
+    ilitek_spi_write_then_read = core_mtk_spi_write_then_read;
+#else
+    ilitek_spi_write_then_read = spi_write_then_read;
+#endif
+	core_spi_setup(idev, 1000000);
+
 	idev->actual_fw_mode = P5_X_FW_DEMO_MODE;
     idev->suspend = ilitek_tddi_touch_suspend;
     idev->resume = ilitek_tddi_touch_resume;
@@ -614,14 +622,7 @@ static int ilitek_spi_probe(struct spi_device *spi)
     idev->reset_mode = TP_RST_HOST_DOWNLOAD;
     idev->fw_upgrade_mode = UPGRADE_IRAM;
 	idev->mp_move_code = ilitek_tddi_mp_move_code_iram;
-
-#ifdef CONFIG_MTK_SPI
-    ilitek_spi_write_then_read = core_mtk_spi_write_then_read;
-#else
-    ilitek_spi_write_then_read = spi_write_then_read;
-#endif
-	core_spi_setup(idev, 1000000);
-    return info->hwif->plat_probe(idev);
+    return info->hwif->plat_probe();
 }
 
 static int ilitek_spi_remove(struct spi_device *spi)
@@ -631,8 +632,7 @@ static int ilitek_spi_remove(struct spi_device *spi)
 		struct touch_bus_info, bus_driver);
 
     ipio_info();
-
-    return info->hwif->plat_remove(idev);
+    return info->hwif->plat_remove();
 }
 
 static struct spi_device_id tp_spi_id[] = {
@@ -666,6 +666,5 @@ int ilitek_tddi_interface_dev_init(struct ilitek_hwif_info *hwif)
 	info->bus_driver.id_table = tp_spi_id;
 
     info->hwif = hwif;
-
     return spi_register_driver(&info->bus_driver);
 }

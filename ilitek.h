@@ -503,12 +503,12 @@ struct ilitek_tddi_dev
 	atomic_t tp_sw_mode;
 	atomic_t mp_int_check;
 
-	int (*spi_setup)(struct ilitek_tddi_dev *, u32 freq);
-    int (*write)(struct ilitek_tddi_dev *, void *, size_t);
-    int (*read)(struct ilitek_tddi_dev *, void *, size_t);
-	void (*suspend)(struct ilitek_tddi_dev *);
-	void (*resume)(struct ilitek_tddi_dev *);
-	int (*mp_move_code)(struct ilitek_tddi_dev *);
+	int (*spi_setup)(u32);
+    int (*write)(void *, size_t);
+    int (*read)(void *, size_t);
+	void (*suspend)(void);
+	void (*resume)(void);
+	int (*mp_move_code)(void);
 	void (*esd_callabck)(void);
 };
 extern struct ilitek_tddi_dev *idev;
@@ -573,8 +573,8 @@ struct ilitek_hwif_info
 	const char *name;
 	struct module *owner;
 	const struct of_device_id *of_match_table;
-	int (*plat_probe)(struct ilitek_tddi_dev *);
-	int (*plat_remove)(struct ilitek_tddi_dev *);
+	int (*plat_probe)(void);
+	int (*plat_remove)(void);
 	void *info;
 };
 
@@ -616,66 +616,66 @@ static inline s32 open_c_formula(int dac, int raw, int tvch, int gain)
 }
 
 /* Prototypes for tddi firmware/flash functions */
-extern void ilitek_tddi_flash_dma_write(struct ilitek_tddi_dev *, u32, u32, u32);
-extern void ilitek_tddi_flash_clear_dma(struct ilitek_tddi_dev *);
-extern void ilitek_tddi_fw_read_flash_info(struct ilitek_tddi_dev *, bool);
-extern u32 ilitek_tddi_fw_read_hw_crc(struct ilitek_tddi_dev *, u32, u32);
-extern int ilitek_tddi_fw_read_flash(struct ilitek_tddi_dev *, u32, u32, u8 *, size_t);
-extern int ilitek_tddi_fw_upgrade(struct ilitek_tddi_dev *, int, int, int);
+extern void ilitek_tddi_flash_dma_write(u32, u32, u32);
+extern void ilitek_tddi_flash_clear_dma(void);
+extern void ilitek_tddi_fw_read_flash_info(bool);
+extern u32 ilitek_tddi_fw_read_hw_crc(u32, u32);
+extern int ilitek_tddi_fw_read_flash(u32, u32, u8 *, size_t);
+extern int ilitek_tddi_fw_upgrade(int, int, int);
 
 /* Prototypes for tddi mp test */
-extern int ilitek_tddi_mp_test_main(struct ilitek_tddi_dev *, char *, bool);
+extern int ilitek_tddi_mp_test_main(char *, bool);
 
 /* Prototypes for tddi core functions */
-extern int ilitek_tddi_move_mp_code_flash(struct ilitek_tddi_dev *);
-extern int ilitek_tddi_move_mp_code_iram(struct ilitek_tddi_dev *);
-extern int ilitek_tddi_touch_switch_mode(struct ilitek_tddi_dev *, u8 *);
-extern void ilitek_tddi_report_ap_mode(struct ilitek_tddi_dev *, u8 *);
-extern void ilitek_tddi_report_debug_mode(struct ilitek_tddi_dev *);
-extern void ilitek_tddi_report_gesture_mode(struct ilitek_tddi_dev *);
-extern int ilitek_tddi_ic_whole_reset(struct ilitek_tddi_dev *);
-extern int ilitek_tddi_ic_code_reset(struct ilitek_tddi_dev *);
-extern int ilitek_tddi_ic_func_ctrl(struct ilitek_tddi_dev *, const char *, int);
-extern u32 ilitek_tddi_ic_get_pc_counter(struct ilitek_tddi_dev *);
+extern int ilitek_tddi_move_mp_code_flash(void);
+extern int ilitek_tddi_move_mp_code_iram(void);
+extern int ilitek_tddi_touch_switch_mode(u8 *);
+extern void ilitek_tddi_report_ap_mode(u8 *);
+extern void ilitek_tddi_report_debug_mode(void);
+extern void ilitek_tddi_report_gesture_mode(void);
+extern int ilitek_tddi_ic_whole_reset(void);
+extern int ilitek_tddi_ic_code_reset(void);
+extern int ilitek_tddi_ic_func_ctrl(const char *, int);
+extern u32 ilitek_tddi_ic_get_pc_counter(void);
 extern int ilitek_tddi_ic_check_int_stat(bool high);
-extern int ilitek_tddi_ic_check_busy(struct ilitek_tddi_dev *, int, int);
-extern int ilitek_tddi_ic_get_panel_info(struct ilitek_tddi_dev *);
-extern int ilitek_tddi_ic_get_tp_info(struct ilitek_tddi_dev *);
-extern int ilitek_tddi_ic_get_protocl_ver(struct ilitek_tddi_dev *);
-extern int ilitek_tddi_ic_get_fw_ver(struct ilitek_tddi_dev *);
-extern int ilitek_tddi_ic_get_info(struct ilitek_tddi_dev *);
-extern int ilitek_ice_mode_bit_mask_write(struct ilitek_tddi_dev *, u32, u32, u32);
-extern int ilitek_ice_mode_write(struct ilitek_tddi_dev *, u32 , u32 , size_t);
-extern u32 ilitek_ice_mode_read(struct ilitek_tddi_dev *, u32, size_t);
-extern int ilitek_ice_mode_ctrl(struct ilitek_tddi_dev *, bool, bool);
-extern int ilitek_set_watch_dog(struct ilitek_tddi_dev * idev, bool enable);
-extern void ilitek_tddi_ic_init(struct ilitek_tddi_dev *);
+extern int ilitek_tddi_ic_check_busy(int, int);
+extern int ilitek_tddi_ic_get_panel_info(void);
+extern int ilitek_tddi_ic_get_tp_info(void);
+extern int ilitek_tddi_ic_get_protocl_ver(void);
+extern int ilitek_tddi_ic_get_fw_ver(void);
+extern int ilitek_tddi_ic_get_info(void);
+extern int ilitek_ice_mode_bit_mask_write(u32, u32, u32);
+extern int ilitek_ice_mode_write(u32 , u32 , size_t);
+extern u32 ilitek_ice_mode_read(u32, size_t);
+extern int ilitek_ice_mode_ctrl(bool, bool);
+extern int ilitek_set_watch_dog(bool);
+extern void ilitek_tddi_ic_init(void);
 
 /* Prototypes for tddi events */
 extern int ilitek_tddi_fw_upgrade_handler(void *);
 extern void ilitek_tddi_wq_esd_i2c_check(void);
 extern void ilitek_tddi_wq_esd_spi_check(void);
 extern void ilitek_tddi_wq_ctrl(int, int);
-extern int ilitek_tddi_mp_test_handler(struct ilitek_tddi_dev *, char *, bool);
-extern void ilitek_tddi_report_handler(struct ilitek_tddi_dev *);
-extern void ilitek_tddi_touch_suspend(struct ilitek_tddi_dev *);
-extern void ilitek_tddi_touch_resume(struct ilitek_tddi_dev *);
-extern int ilitek_tddi_reset_ctrl(struct ilitek_tddi_dev *, int);
-extern int ilitek_tddi_init(struct ilitek_tddi_dev *);
+extern int ilitek_tddi_mp_test_handler(char *, bool);
+extern void ilitek_tddi_report_handler(void);
+extern void ilitek_tddi_touch_suspend(void);
+extern void ilitek_tddi_touch_resume(void);
+extern int ilitek_tddi_reset_ctrl(int);
+extern int ilitek_tddi_init(void);
 extern int ilitek_tddi_dev_init(struct ilitek_hwif_info *);
 extern void ilitek_tddi_dev_remove(void);
 
 /* Prototypes for i2c/spi interface */
-extern int ilitek_tddi_interface_dev_init(struct ilitek_hwif_info *hwif);
+extern int ilitek_tddi_interface_dev_init(struct ilitek_hwif_info *);
 
 /* Prototypes for platform level */
-extern void ilitek_plat_input_register(struct ilitek_tddi_dev *);
-extern void ilitek_plat_irq_disable(struct ilitek_tddi_dev *);
-extern void ilitek_plat_irq_enable(struct ilitek_tddi_dev *);
-extern void ilitek_plat_tp_reset(struct ilitek_tddi_dev *);
+extern void ilitek_plat_input_register(void);
+extern void ilitek_plat_irq_disable(void);
+extern void ilitek_plat_irq_enable(void);
+extern void ilitek_plat_tp_reset(void);
 
 /* Prototypes for miscs */
-extern void ilitek_tddi_node_init(struct ilitek_tddi_dev *);
+extern void ilitek_tddi_node_init(void);
 extern void ilitek_dump_data(void *, int, int, int, const char *);
 extern u8 ilitek_calc_packet_checksum(u8 *, size_t);
 extern int katoi(char *);
