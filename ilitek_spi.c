@@ -582,7 +582,11 @@ out:
 
 static int ilitek_spi_probe(struct spi_device *spi)
 {
-    ipio_info();
+	struct touch_bus_info *info =
+	container_of(to_spi_driver(spi->dev.driver),
+		struct touch_bus_info, bus_driver);
+
+	ipio_info();
 
 	if (spi == NULL) {
 		ipio_err("spi device is NULL\n");
@@ -598,8 +602,12 @@ static int ilitek_spi_probe(struct spi_device *spi)
 	idev->spi = spi;
 	idev->dev = &spi->dev;
 
-    idev->write = ilitek_spi_write;
-    idev->read = ilitek_spi_read;
+	idev->write = ilitek_spi_write;
+	idev->read = ilitek_spi_read;
+
+	idev->spi_setup = core_spi_setup;
+
+	idev->wtd_ctrl = ON;
 
 #ifdef CONFIG_MTK_SPI
     ilitek_spi_write_then_read = core_mtk_spi_write_then_read;
@@ -609,15 +617,16 @@ static int ilitek_spi_probe(struct spi_device *spi)
 
     idev->reset_mode = TP_RST_HOST_DOWNLOAD;
     idev->fw_upgrade_mode = UPGRADE_IRAM;
-	idev->mp_move_code = ilitek_tddi_move_mp_code_iram;
+	idev->mp_move_code = ilitek_tddi_mp_move_code_iram;
+	core_spi_setup(idev, 1000000);
     return info->hwif->plat_probe(idev);
 }
 
 static int ilitek_spi_remove(struct spi_device *spi)
 {
 	struct touch_bus_info *info =
-		container_of(to_i2c_driver(client->dev.driver),
-			struct touch_bus_info, bus_driver);
+	container_of(to_spi_driver(spi->dev.driver),
+		struct touch_bus_info, bus_driver);
 
     ipio_info();
 
@@ -625,7 +634,7 @@ static int ilitek_spi_remove(struct spi_device *spi)
 }
 
 static struct spi_device_id tp_spi_id[] = {
-	{DEVICE_ID, 0},
+	{TDDI_DEV_ID, 0},
 };
 
 int ilitek_spi_dev_init(struct ilitek_hwif_info *hwif)
