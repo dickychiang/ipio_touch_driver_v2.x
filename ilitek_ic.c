@@ -703,24 +703,18 @@ int ilitek_tddi_ic_get_info(struct ilitek_tddi_dev *idev)
     return ret;
 }
 
+static struct ilitek_ic_info chip;
+
 int ilitek_tddi_ic_init(struct ilitek_tddi_dev *idev)
 {
-    struct ilitek_ic_info *chip;
-
-    chip = devm_kzalloc(idev->dev, sizeof(struct ilitek_ic_info), GFP_KERNEL);
-    if (ERR_ALLOC_MEM(chip)) {
-        ipio_err("Failed to allocate idev memory, %ld\n", PTR_ERR(chip));
-        return -ENOMEM;
-    }
-
-    chip->pid_addr =        TDDI_PID_ADDR;
-    chip->wdt_addr =        TDDI_WDT_ADDR;
-    chip->pc_counter_addr = TDDI_PC_COUNTER_ADDR;
-    chip->otp_addr =        TDDI_OTP_ID_ADDR;
-    chip->ana_addr =        TDDI_ANA_ID_ADDR;
-    chip->reset_addr =      TDDI_CHIP_RESET_ADDR;
+    chip.pid_addr =        TDDI_PID_ADDR;
+    chip.wdt_addr =        TDDI_WDT_ADDR;
+    chip.pc_counter_addr = TDDI_PC_COUNTER_ADDR;
+    chip.otp_addr =        TDDI_OTP_ID_ADDR;
+    chip.ana_addr =        TDDI_ANA_ID_ADDR;
+    chip.reset_addr =      TDDI_CHIP_RESET_ADDR;
 
     idev->protocol = &protocol_info[PROTOCL_VER_NUM - 1];
-    idev->chip = chip;
+    idev->chip = &chip;
     return 0;
 }
