@@ -141,32 +141,18 @@ extern u32 ipio_debug_level;
 #define ERR_ALLOC_MEM(X)	((IS_ERR(X) || X == NULL) ? 1 : 0)
 #define K (1024)
 #define M (K * K)
-
-enum IRQ_STATUS {
-	IRQ_DISABLE = 0,
-	IRQ_ENABLE
-};
-
-enum ICE_MODE_STATUS {
-	ICE_DISABLE = 0,
-	ICE_ENABLE
-};
-
-enum MCU_STATUS {
-	MCU_STOP = 0,
-	MCU_ON
-};
+#define ENABLE	1
+#define START	1
+#define ON		1
+#define DISABLE 0
+#define END		0
+#define OFF		0
 
 enum TP_RST_METHOD{
 	TP_IC_WHOLE_RST = 0,
 	TP_IC_CODE_RST,
 	TP_RST_HW_ONLY,
 	TP_RST_HOST_DOWNLOAD
-};
-
-enum TP_RST_STATUS {
-	TP_RST_END = 0,
-	TP_RST_START
 };
 
 enum TP_BUS_TYPE {
@@ -194,11 +180,6 @@ enum TP_FW_OPEN_METHOD {
 	FILP_OPEN
 };
 
-enum TP_FW_UPGRADE_STATUS {
-	FW_IDLE = 0,
-	FW_RUNNING
-};
-
 enum TP_FW_BLOCK_NUM {
 	AP = 1,
 	DATA = 2,
@@ -215,16 +196,10 @@ enum TP_FW_BLOCK_TAG {
 	BLOCK_TAG_B0 = 0xB0
 };
 
-enum TP_SUSP_STATUS {
-	DONE = 0,
-	START,
-};
-
-enum TP_FUNC_CTRL_STATUS {
-	DISABLE = 0,
-	ENABLE = 1,
-	OFF = 0,
-	ON = 1
+enum TP_WQ_TYPE {
+	ESD = 0,
+	BAT,
+	SUSPEND
 };
 
 #define TDDI_I2C_ADDR	0x41
@@ -377,7 +352,7 @@ enum TP_FUNC_CTRL_STATUS {
 #define INTR33_reg_dma_tdi_done_int_en        BIT(19)
 #define INTR33_reserved_2                     BIT(20)|BIT(21)|BIT(22)|BIT(23)
 #define INTR33_reg_flash_error_en             BIT(24)
-#define INTR33_reg_flash_int_en               BIT(25) 
+#define INTR33_reg_flash_int_en               BIT(25)
 #define INTR33_reserved_3                     BIT(26)|BIT(27)|BIT(28)|BIT(29)|BIT(30)|BIT(31)
 
 /* Flash */
@@ -459,11 +434,13 @@ enum TP_FUNC_CTRL_STATUS {
 #define CSV_LCM_OFF_PATH	"/sdcard/ilitek_mp_lcm_off_log"
 #define INI_NAME_PATH		"/sdcard/mp.ini"
 #define UPDATE_FW_PATH		"/sdcard/ILITEK_FW"
+#define POWER_STATUS_PATH 	"/sys/class/power_supply/battery/status"
 
-/* Linux multiple touch protocol, either B type or A type. */
+/* Options */
 #define MT_B_TYPE
-/* Report points with pressule value */
 #define MT_PRESSURE
+// #define WQ_ESD_BOOT
+// #define WQ_BAT_BOOT
 
 struct ilitek_tddi_dev
 {
@@ -505,6 +482,8 @@ struct ilitek_tddi_dev
 	int fw_update_stat;
 	int fw_boot;
 	int fw_open;
+	bool wq_esd_ctrl;
+	bool wq_bat_ctrl;
 
 	u16 flash_mid;
 	u16 flash_devid;
@@ -532,6 +511,7 @@ struct ilitek_tddi_dev
 	void (*suspend)(struct ilitek_tddi_dev *);
 	void (*resume)(struct ilitek_tddi_dev *);
 	int (*mp_move_code)(struct ilitek_tddi_dev *);
+	void (*esd_callabck)(void);
 };
 extern struct ilitek_tddi_dev *idev;
 
@@ -675,7 +655,9 @@ extern int ilitek_tddi_ic_init(struct ilitek_tddi_dev *);
 
 /* Prototypes for tddi events */
 extern int ilitek_tddi_fw_upgrade_handler(void *);
-extern int ilitek_tddi_esd_handler(struct ilitek_tddi_dev *);
+extern void ilitek_tddi_wq_esd_i2c_check(void);
+extern void ilitek_tddi_wq_esd_spi_check(void);
+extern void ilitek_tddi_wq_ctrl(int, int);
 extern int ilitek_tddi_mp_test_handler(struct ilitek_tddi_dev *, char *, bool);
 extern void ilitek_tddi_report_handler(struct ilitek_tddi_dev *);
 extern void ilitek_tddi_touch_suspend(struct ilitek_tddi_dev *);

@@ -41,7 +41,7 @@ static struct ilitek_protocol_info protocol_info[PROTOCL_VER_NUM] = {
     [6] = {PROTOCOL_VER_560, 9, 4, 14, 30, 5, 5, 3, 8, 15, 14},
 };
 
-#define FUNC_CTRL_NUM   14
+#define FUNC_CTRL_NUM   15
 static struct ilitek_ic_func_ctrl func_ctrl[FUNC_CTRL_NUM] = {
     /* cmd[3] = cmd, func, ctrl */
     [0] = {"sense", {0x1,0x1,0x0}, 3},
@@ -55,9 +55,10 @@ static struct ilitek_ic_func_ctrl func_ctrl[FUNC_CTRL_NUM] = {
     [8] = {"finger_sense", {0x1,0xF,0x0}, 3},
     [9] = {"phone_cover_window", {0xE,0x0,0x0}, 3},
     [10] = {"proximity", {0x1,0x10,0x0}, 3},
-    [11] = {"edge_palm", {0x1,0x12,0x0}, 3},
-    [12] = {"lock_point", {0x1,0x13,0x0}, 3},
-    [13] = {"active", {0x1,0x14,0x0}, 3},
+    [11] = {"plug", {0x1,0x11,0x0}, 3},
+    [12] = {"edge_palm", {0x1,0x12,0x0}, 3},
+    [13] = {"lock_point", {0x1,0x13,0x0}, 3},
+    [14] = {"active", {0x1,0x14,0x0}, 3},
 };
 
 #define CHIP_SUP_NUM        4
@@ -110,7 +111,7 @@ int ilitek_ice_mode_write(struct ilitek_tddi_dev *idev, u32 addr, u32 data, size
     int ret = 0, i;
     u8 txbuf[64] = {0};
 
-    if (atomic_read(&idev->ice_stat) == IRQ_DISABLE) {
+    if (atomic_read(&idev->ice_stat) == DISABLE) {
         ipio_err("ICE Mode isn't enabled\n");
         return -1;
     }
@@ -136,7 +137,7 @@ u32 ilitek_ice_mode_read(struct ilitek_tddi_dev *idev, u32 addr, size_t len)
     u8 *rxbuf = NULL;
     u8 txbuf[4] = {0};
 
-    if (atomic_read(&idev->ice_stat) == IRQ_DISABLE) {
+    if (atomic_read(&idev->ice_stat) == DISABLE) {
         ipio_err("ICE Mode isn't enabled\n");
         return -1;
     }
@@ -206,13 +207,13 @@ int ilitek_ice_mode_ctrl(struct ilitek_tddi_dev *idev, bool enable, bool mcu)
     ipio_info("%s ICE mode, mcu on = %d\n", (enable ? "Enable" : "Disable"), mcu);
 
     if (enable) {
-        if (mcu == MCU_ON)
+        if (mcu == ON)
             cmd_open[0] = 0x1F;
 
-        if (atomic_read(&idev->ice_stat) == ICE_ENABLE)
+        if (atomic_read(&idev->ice_stat) == ENABLE)
             return ret;
 
-        atomic_set(&idev->ice_stat, ICE_ENABLE);
+        atomic_set(&idev->ice_stat, ENABLE);
 
         ret = idev->write(idev, cmd_open, sizeof(cmd_open));
         if (ret < 0)
@@ -226,17 +227,17 @@ int ilitek_ice_mode_ctrl(struct ilitek_tddi_dev *idev, bool enable, bool mcu)
         ret = ilitek_ice_mode_enter_check(idev);
         if (ret < 0) {
             ipio_err("Enter to ICE Mode failed after retry 3 times\n");
-            atomic_set(&idev->ice_stat, ICE_DISABLE);
+            atomic_set(&idev->ice_stat, DISABLE);
         }
     } else {
-        if (atomic_read(&idev->ice_stat) == ICE_DISABLE)
+        if (atomic_read(&idev->ice_stat) == DISABLE)
             return ret;
 
         ret = idev->write(idev, cmd_close, sizeof(cmd_close));
         if (ret < 0)
             ipio_err("Exit to ICE Mode failed\n");
 
-        atomic_set(&idev->ice_stat, ICE_DISABLE);
+        atomic_set(&idev->ice_stat, DISABLE);
     }
     return ret;
 }
@@ -366,20 +367,20 @@ int ilitek_tddi_ic_whole_reset(struct ilitek_tddi_dev *idev)
 
 u32 ilitek_tddi_ic_get_pc_counter(struct ilitek_tddi_dev *idev)
 {
-    bool ice = ICE_DISABLE;
+    bool ice = DISABLE;
     u32 pc = 0;
 
     ice = atomic_read(&idev->ice_stat);
 
-    if (ice == ICE_DISABLE)
-        ilitek_ice_mode_ctrl(idev, ICE_ENABLE, MCU_STOP);
+    if (ice == DISABLE)
+        ilitek_ice_mode_ctrl(idev, ENABLE, OFF);
 
     pc = ilitek_ice_mode_read(idev, idev->chip->pc_counter_addr, sizeof(u32));
 
     ipio_info("pc counter = 0x%x\n", pc);
 
-    if (ice == ICE_DISABLE)
-        ilitek_ice_mode_ctrl(idev, ICE_DISABLE, MCU_STOP);
+    if (ice == DISABLE)
+        ilitek_ice_mode_ctrl(idev, DISABLE, OFF);
 
     return pc;
 }
@@ -671,8 +672,8 @@ int ilitek_tddi_ic_get_info(struct ilitek_tddi_dev *idev)
 
     ice = atomic_read(&idev->ice_stat);
 
-    if (ice == ICE_DISABLE)
-        ilitek_ice_mode_ctrl(idev, ICE_ENABLE, MCU_STOP);
+    if (ice == DISABLE)
+        ilitek_ice_mode_ctrl(idev, ENABLE, OFF);
 
     idev->chip->pid = ilitek_ice_mode_read(idev, idev->chip->pid_addr, sizeof(u32));
     idev->chip->id = idev->chip->pid >> 16;
@@ -696,8 +697,8 @@ int ilitek_tddi_ic_get_info(struct ilitek_tddi_dev *idev)
     if (ret == 0)
         ilitek_tddi_ic_init_vars(idev);
 
-    if (ice == ICE_DISABLE)
-	    ilitek_ice_mode_ctrl(idev, ICE_DISABLE, MCU_STOP);
+    if (ice == DISABLE)
+	    ilitek_ice_mode_ctrl(idev, DISABLE, OFF);
 
     return ret;
 }

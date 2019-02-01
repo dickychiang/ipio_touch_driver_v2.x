@@ -130,7 +130,7 @@ int ilitek_tddi_touch_switch_mode(struct ilitek_tddi_dev *idev, u8 *data)
 
 out:
 	ipio_info("Actual TP mode = %d\n", idev->actual_fw_mode);
-	atomic_set(&idev->tp_sw_mode, DONE);
+	atomic_set(&idev->tp_sw_mode, END);
 	return ret;
 }
 
@@ -146,8 +146,8 @@ void ilitek_tddi_touch_suspend(struct ilitek_tddi_dev *idev)
 
 	ilitek_tddi_ic_func_ctrl(idev, "sleep", DISABLE);
 
-	atomic_set(&idev->tp_suspend, DONE);
-	ipio_info("TP suspend done\n");
+	atomic_set(&idev->tp_suspend, END);
+	ipio_info("TP suspend end\n");
 }
 
 void ilitek_tddi_touch_resume(struct ilitek_tddi_dev *idev)
@@ -163,8 +163,8 @@ void ilitek_tddi_touch_resume(struct ilitek_tddi_dev *idev)
 	ilitek_tddi_ic_func_ctrl(idev, "sense", ENABLE);
 
 	ilitek_plat_irq_enable(idev);
-	atomic_set(&idev->tp_resume, DONE);
-	ipio_info("TP resume done\n");
+	atomic_set(&idev->tp_resume, END);
+	ipio_info("TP resume end\n");
 }
 
 void ilitek_tddi_touch_press(struct ilitek_tddi_dev *idev, u16 x, u16 y, u16 pressure, u16 id)

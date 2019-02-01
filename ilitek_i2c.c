@@ -101,7 +101,7 @@ static int ilitek_i2c_write(struct ilitek_tddi_dev *idev, void *buf, size_t len)
 
     ret = core_i2c_write(idev, buf, len);
     if (ret < 0) {
-		if (atomic_read(&idev->tp_reset) == TP_RST_START) {
+		if (atomic_read(&idev->tp_reset) == START) {
 			ret = 0;
 			goto out;
 		}
@@ -126,7 +126,7 @@ static int ilitek_i2c_read(struct ilitek_tddi_dev *idev, void *buf, size_t len)
 
     ret = core_i2c_read(idev, buf, len);
     if (ret < 0) {
-		if (atomic_read(&idev->tp_reset) == TP_RST_START) {
+		if (atomic_read(&idev->tp_reset) == START) {
 			ret = 0;
 			goto out;
 		}
@@ -183,6 +183,7 @@ static int ilitek_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id *
     idev->reset_mode = TP_RST_HW_ONLY;
     idev->fw_upgrade_mode = UPGRADE_FLASH;
 	idev->mp_move_code = ilitek_tddi_mp_move_code_flash;
+	idev->esd_callabck = ilitek_tddi_wq_esd_i2c_check;
     return info->hwif->plat_probe(idev);
 }
 

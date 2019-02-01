@@ -26,6 +26,11 @@
 u32 ipio_debug_level = DEBUG_ALL;
 EXPORT_SYMBOL(ipio_debug_level);
 
+static struct workqueue_struct *esd_wq;
+static struct workqueue_struct *bat_wq;
+static struct delayed_work esd_work;
+static struct delayed_work bat_work;
+
 int katoi(char *str)
 {
 	int result = 0;
@@ -58,10 +63,15 @@ int katoi(char *str)
 int ilitek_tddi_mp_test_handler(struct ilitek_tddi_dev *idev, char *apk, bool lcm_on)
 {
 	int ret = 0;
+	bool esd = idev->wq_esd_ctrl;
+	bool bat = idev->wq_bat_ctrl;
 
     ipio_info();
 
-	if (atomic_read(&idev->fw_stat) == FW_RUNNING)
+	ilitek_tddi_wq_ctrl(ESD, DISABLE);
+	ilitek_tddi_wq_ctrl(BAT, DISABLE);
+
+	if (atomic_read(&idev->fw_stat) == START)
 		return -1;
 
 	mutex_lock(&idev->touch_mutex);
@@ -71,19 +81,158 @@ int ilitek_tddi_mp_test_handler(struct ilitek_tddi_dev *idev, char *apk, bool lc
 
 	mutex_unlock(&idev->touch_mutex);
 	atomic_set(&idev->mp_stat, DISABLE);
+
+	if (esd)
+		ilitek_tddi_wq_ctrl(ESD, ENABLE);
+	if (bat)
+		ilitek_tddi_wq_ctrl(BAT, ENABLE);
     return ret;
 }
 
-int ilitek_tddi_esd_handler(struct ilitek_tddi_dev *idev)
+void ilitek_tddi_wq_esd_spi_check(void)
 {
 	ipio_info();
+}
+
+void ilitek_tddi_wq_esd_i2c_check(void)
+{
+	ipio_info();
+}
+
+static int read_power_status(u8 *buf)
+{
+	struct file *f = NULL;
+	mm_segment_t old_fs;
+	ssize_t byte = 0;
+
+	old_fs = get_fs();
+	set_fs(get_ds());
+
+	f = filp_open(POWER_STATUS_PATH, O_RDONLY, 0);
+	if (ERR_ALLOC_MEM(f)) {
+		ipio_err("Failed to open %s\n", POWER_STATUS_PATH);
+		return -1;
+	}
+
+	f->f_op->llseek(f, 0, SEEK_SET);
+	byte = f->f_op->read(f, buf, 20, &f->f_pos);
+
+	ipio_debug(DEBUG_BATTERY, "Read %d bytes\n", (int)byte);
+
+	set_fs(old_fs);
+	filp_close(f, NULL);
 	return 0;
+}
+
+static void ilitek_tddi_wq_esd_check(struct work_struct *work)
+{
+	ipio_info();
+	idev->esd_callabck();
+	ilitek_tddi_wq_ctrl(ESD, ENABLE);
+}
+
+static void ilitek_tddi_wq_bat_check(struct work_struct *work)
+{
+	u8 str[20] = {0};
+	static int charge_mode = 0;
+
+	if (read_power_status(str) < 0)
+		return;
+
+	ipio_debug(DEBUG_BATTERY, "Batter Status: %s\n", str);
+
+	if (strstr(str, "Charging") != NULL || strstr(str, "Full") != NULL
+	    || strstr(str, "Fully charged") != NULL) {
+		if (charge_mode != 1) {
+			ipio_debug(DEBUG_BATTERY, "Charging mode\n");
+			ilitek_tddi_ic_func_ctrl(idev, "plug", DISABLE);// plug in
+			charge_mode = 1;
+		}
+	} else {
+		if (charge_mode != 2) {
+			ipio_debug(DEBUG_BATTERY, "Not charging mode\n");
+			ilitek_tddi_ic_func_ctrl(idev, "plug", ENABLE);// plug out
+			charge_mode = 2;
+		}
+	}
+	ilitek_tddi_wq_ctrl(BAT, ENABLE);
+}
+
+void ilitek_tddi_wq_ctrl(int type, int ctrl)
+{
+	unsigned long delay = 0;
+
+	ipio_info("wq type = %d, ctrl = %d\n", type, ctrl);
+
+	if (!esd_wq || !bat_wq)
+		return;
+
+	switch (type) {
+		case ESD:
+			idev->wq_esd_ctrl = ctrl;
+			if (ctrl == ENABLE) {
+				delay = msecs_to_jiffies(2000);
+				if (!queue_delayed_work(esd_wq, &esd_work, delay))
+					ipio_info("execute WQ ESD error\n");
+			} else {
+				cancel_delayed_work_sync(&esd_work);
+				flush_workqueue(esd_wq);
+				ipio_info("Cancel WQ ESD\n");
+			}
+			break;
+		case BAT:
+			idev->wq_bat_ctrl = ctrl;
+			if (ctrl == ENABLE) {
+				delay = msecs_to_jiffies(4000);
+				if (!queue_delayed_work(bat_wq, &bat_work, delay))
+					ipio_info("execute WQ BAT error\n");
+			} else {
+				cancel_delayed_work_sync(&bat_work);
+				flush_workqueue(bat_wq);
+				ipio_info("Cancel WQ BAT\n");
+			}
+			break;
+		case SUSPEND:
+			ipio_err("Not implement yet\n");
+			break;
+		default:
+			ipio_err("Unknown WQ type, %d\n", type);
+			break;
+	}
+}
+
+static void ilitek_tddi_wq_init(struct ilitek_tddi_dev *idev)
+{
+	ipio_info();
+
+	esd_wq = alloc_workqueue("esd_check", WQ_MEM_RECLAIM, 0);
+	bat_wq = alloc_workqueue("bat_check", WQ_MEM_RECLAIM, 0);
+
+	WARN_ON(!esd_wq);
+	WARN_ON(!bat_wq);
+
+	INIT_DELAYED_WORK(&esd_work, ilitek_tddi_wq_esd_check);
+	INIT_DELAYED_WORK(&bat_work, ilitek_tddi_wq_bat_check);
+
+#ifdef WQ_ESD_BOOT
+	idev->wq_esd_ctrl = ENABLE;
+	ilitek_tddi_wq_ctrl(ESD, ENABLE);
+#endif
+#ifdef WQ_BAT_BOOT
+	idev->wq_bat_ctrl = ENABLE;
+	ilitek_tddi_wq_ctrl(BAT, ENABLE);
+#endif
 }
 
 int ilitek_tddi_fw_upgrade_handler(void *data)
 {
 	int ret = 0, fw_file = 0;
 	struct ilitek_tddi_dev *idev = data;
+	bool esd = idev->wq_esd_ctrl;
+	bool bat = idev->wq_bat_ctrl;
+
+	ilitek_tddi_wq_ctrl(ESD, DISABLE);
+	ilitek_tddi_wq_ctrl(BAT, DISABLE);
 
 	if (atomic_read(&idev->tp_suspend)) {
 		ipio_info("TP is suspending, upgrade failed\n");
@@ -91,7 +240,7 @@ int ilitek_tddi_fw_upgrade_handler(void *data)
 	}
 
 	mutex_lock(&idev->touch_mutex);
-	atomic_set(&idev->fw_stat, FW_RUNNING);
+	atomic_set(&idev->fw_stat, START);
 
 	if (idev->fw_boot)
 		fw_file = ILI_FILE;
@@ -101,7 +250,12 @@ int ilitek_tddi_fw_upgrade_handler(void *data)
 	ret = ilitek_tddi_fw_upgrade(idev, idev->fw_upgrade_mode, fw_file, idev->fw_open);
 
 	mutex_unlock(&idev->touch_mutex);
-	atomic_set(&idev->fw_stat, FW_IDLE);
+	atomic_set(&idev->fw_stat, END);
+
+	if (esd)
+		ilitek_tddi_wq_ctrl(ESD, ENABLE);
+	if (bat)
+		ilitek_tddi_wq_ctrl(BAT, ENABLE);
 	return ret;
 }
 
@@ -110,6 +264,11 @@ void ilitek_tddi_report_handler(struct ilitek_tddi_dev *idev)
 	int ret = 0, pid = 0;
 	u8 *buf = NULL, checksum = 0;
 	size_t rlen = 0;
+	bool esd = idev->wq_esd_ctrl;
+	bool bat = idev->wq_bat_ctrl;
+
+	ilitek_tddi_wq_ctrl(ESD, DISABLE);
+	ilitek_tddi_wq_ctrl(BAT, DISABLE);
 
 	if (atomic_read(&idev->tp_reset) || atomic_read(&idev->fw_stat))
 		return;
@@ -176,14 +335,23 @@ void ilitek_tddi_report_handler(struct ilitek_tddi_dev *idev)
 	}
 
 out:
+	if (esd)
+		ilitek_tddi_wq_ctrl(ESD, ENABLE);
+	if (bat)
+		ilitek_tddi_wq_ctrl(BAT, ENABLE);
 	ipio_kfree((void **)&buf);
 }
 
 int ilitek_tddi_reset_ctrl(struct ilitek_tddi_dev *idev, int mode)
 {
 	int ret = 0;
+	bool esd = idev->wq_esd_ctrl;
+	bool bat = idev->wq_bat_ctrl;
 
-	atomic_set(&idev->tp_reset, TP_RST_START);
+	ilitek_tddi_wq_ctrl(ESD, DISABLE);
+	ilitek_tddi_wq_ctrl(BAT, DISABLE);
+
+	atomic_set(&idev->tp_reset, START);
 
 	switch (mode) {
 		case TP_IC_CODE_RST:
@@ -208,7 +376,12 @@ int ilitek_tddi_reset_ctrl(struct ilitek_tddi_dev *idev, int mode)
 			break;
 	}
 
-	atomic_set(&idev->tp_reset, TP_RST_END);
+	atomic_set(&idev->tp_reset, END);
+
+	if (esd)
+		ilitek_tddi_wq_ctrl(ESD, ENABLE);
+	if (bat)
+		ilitek_tddi_wq_ctrl(BAT, ENABLE);
 	return ret;
 }
 
@@ -220,13 +393,13 @@ int ilitek_tddi_init(struct ilitek_tddi_dev *idev)
 	mutex_init(&idev->touch_mutex);
 	spin_lock_init(&idev->irq_spin);
 
-	atomic_set(&idev->irq_stat, IRQ_DISABLE);
-	atomic_set(&idev->ice_stat, ICE_DISABLE);
-	atomic_set(&idev->tp_reset, TP_RST_END);
-	atomic_set(&idev->fw_stat, FW_IDLE);
+	atomic_set(&idev->irq_stat, DISABLE);
+	atomic_set(&idev->ice_stat, DISABLE);
+	atomic_set(&idev->tp_reset, END);
+	atomic_set(&idev->fw_stat, END);
 	atomic_set(&idev->mp_stat, DISABLE);
-	atomic_set(&idev->tp_suspend, DONE);
-	atomic_set(&idev->tp_resume, DONE);
+	atomic_set(&idev->tp_suspend, END);
+	atomic_set(&idev->tp_resume, END);
 	atomic_set(&idev->mp_int_check, DISABLE);
 
 	idev->actual_fw_mode = P5_X_FW_DEMO_MODE;
@@ -234,6 +407,8 @@ int ilitek_tddi_init(struct ilitek_tddi_dev *idev)
     idev->resume = ilitek_tddi_touch_resume;
 	idev->fw_boot = DISABLE;
 	idev->fw_open = FILP_OPEN;
+
+	ilitek_tddi_wq_init(idev);
 
 	if (ilitek_tddi_ic_init(idev) < 0) {
 		ipio_err("Init tddi ic info failed\n");

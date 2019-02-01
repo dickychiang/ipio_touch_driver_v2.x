@@ -131,7 +131,7 @@ void ilitek_plat_irq_disable(struct ilitek_tddi_dev *idev)
 
 	spin_lock_irqsave(&idev->irq_spin, flag);
 
-	if (atomic_read(&idev->irq_stat) == IRQ_DISABLE)
+	if (atomic_read(&idev->irq_stat) == DISABLE)
 		goto out;
 
 	if (!idev->irq_num) {
@@ -140,7 +140,7 @@ void ilitek_plat_irq_disable(struct ilitek_tddi_dev *idev)
 	}
 
 	disable_irq_nosync(idev->irq_num);
-	atomic_set(&idev->irq_stat, IRQ_DISABLE);
+	atomic_set(&idev->irq_stat, DISABLE);
 	ipio_debug(DEBUG_IRQ, "Disable irq success\n");
 
 out:
@@ -153,7 +153,7 @@ void ilitek_plat_irq_enable(struct ilitek_tddi_dev *idev)
 
 	spin_lock_irqsave(&idev->irq_spin, flag);
 
-	if (atomic_read(&idev->irq_stat) == IRQ_ENABLE)
+	if (atomic_read(&idev->irq_stat) == ENABLE)
 		goto out;
 
 	if (!idev->irq_num) {
@@ -162,7 +162,7 @@ void ilitek_plat_irq_enable(struct ilitek_tddi_dev *idev)
 	}
 
 	enable_irq(idev->irq_num);
-	atomic_set(&idev->irq_stat, IRQ_ENABLE);
+	atomic_set(&idev->irq_stat, ENABLE);
 	ipio_debug(DEBUG_IRQ, "Enable irq success\n");
 
 out:
@@ -181,8 +181,8 @@ static irqreturn_t ilitek_plat_isr_top_half(int irq, void *dev_id)
 		return IRQ_HANDLED;
 	}
 
-	if (atomic_read(&idev->tp_reset) == TP_RST_START ||
-		atomic_read(&idev->fw_stat) == FW_RUNNING ||
+	if (atomic_read(&idev->tp_reset) == START ||
+		atomic_read(&idev->fw_stat) == START ||
 		atomic_read(&idev->tp_sw_mode) == START ||
 		atomic_read(&idev->mp_stat) == ENABLE)
 		return IRQ_HANDLED;
@@ -224,7 +224,7 @@ static int ilitek_plat_irq_register(struct ilitek_tddi_dev *idev)
 	if (ret != 0)
 		ipio_err("Failed to register irq handler, irq = %d, ret = %d\n", idev->irq_num, ret);
 
-	atomic_set(&idev->irq_stat, IRQ_ENABLE);
+	atomic_set(&idev->irq_stat, ENABLE);
 
 	return ret;
 }
@@ -233,7 +233,7 @@ static void tpd_resume(struct device *h)
 {
 	ipio_info("TP Resume\n");
 
-	if (atomic_read(&idev->fw_stat) == FW_IDLE)
+	if (atomic_read(&idev->fw_stat) == END)
 		idev->resume(idev);
 }
 
@@ -241,7 +241,7 @@ static void tpd_suspend(struct device *h)
 {
 	ipio_info("TP Suspend\n");
 
-	if (atomic_read(&idev->fw_stat) == FW_IDLE)
+	if (atomic_read(&idev->fw_stat) == END)
 		idev->suspend(idev);
 }
 
