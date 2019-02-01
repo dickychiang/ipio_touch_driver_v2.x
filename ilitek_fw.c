@@ -372,7 +372,7 @@ static int ilitek_tddi_fw_iram_upgrade(struct ilitek_tddi_dev * idev, u8 *pfw)
 	// if (!core_gesture->entry) summer
 	// 	ilitek_platform_tp_hw_reset(true);
 
-       	ret = ilitek_ice_mode_ctrl(idev, ICE_ENABLE, MCU_STOP);
+    ret = ilitek_ice_mode_ctrl(idev, ENABLE, OFF);
 	if (ret < 0)
 		return ret;
 
@@ -415,7 +415,7 @@ out:
 	// 	ilitek_ice_mode_write(0x40040, 0xAE, 1);
 	// }
 
-	ilitek_ice_mode_ctrl(idev, ICE_DISABLE, MCU_STOP);
+	ilitek_ice_mode_ctrl(idev, DISABLE, OFF);
 	mdelay(10);
 	return ret;
 }

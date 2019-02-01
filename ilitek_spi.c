@@ -637,17 +637,20 @@ static struct spi_device_id tp_spi_id[] = {
 	{TDDI_DEV_ID, 0},
 };
 
-int ilitek_spi_dev_init(struct ilitek_hwif_info *hwif)
+int ilitek_tddi_interface_dev_init(struct ilitek_hwif_info *hwif)
 {
     struct touch_bus_info *info;
 
     info = kzalloc(sizeof(*info), GFP_KERNEL);
 
-    ipio_info();
-
 	if (!info) {
 		ipio_err("faied to allocate i2c_driver\n");
 		return -ENOMEM;
+	}
+
+	if (hwif->bus_type != TP_BUS_SPI) {
+		ipio_err("incorrect interface\n");
+		return -EINVAL;
 	}
 
     hwif->info = info;

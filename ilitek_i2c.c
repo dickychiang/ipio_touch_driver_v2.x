@@ -204,7 +204,7 @@ static const struct i2c_device_id tp_i2c_id[] = {
 	{TDDI_DEV_ID, 0},
 };
 
-int ilitek_i2c_dev_init(struct ilitek_hwif_info *hwif)
+int ilitek_tddi_interface_dev_init(struct ilitek_hwif_info *hwif)
 {
     struct touch_bus_info *info;
 
@@ -215,6 +215,11 @@ int ilitek_i2c_dev_init(struct ilitek_hwif_info *hwif)
 	if (!info) {
 		ipio_err("faied to allocate i2c_driver\n");
 		return -ENOMEM;
+	}
+
+	if (hwif->bus_type != TP_BUS_I2C) {
+		ipio_err("incorrect interface\n");
+		return -EINVAL;
 	}
 
     hwif->info = info;

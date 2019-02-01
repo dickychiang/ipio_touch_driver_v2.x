@@ -666,11 +666,8 @@ extern int ilitek_tddi_reset_ctrl(struct ilitek_tddi_dev *, int);
 extern int ilitek_tddi_init(struct ilitek_tddi_dev *);
 extern int ilitek_tddi_dev_init(struct ilitek_hwif_info *);
 
-/* Prototypes for i2c interface */
-extern int ilitek_i2c_dev_init(struct ilitek_hwif_info *);
-
-/* Prototypes for spi interface */
-extern int ilitek_spi_dev_init(struct ilitek_hwif_info *);
+/* Prototypes for i2c/spi interface */
+extern int ilitek_tddi_interface_dev_init(struct ilitek_hwif_info *hwif);
 
 /* Prototypes for platform level */
 extern void ilitek_plat_input_register(struct ilitek_tddi_dev *);
