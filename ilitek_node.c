@@ -158,7 +158,7 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 	char cmd[512] = { 0 };
 	char *token = NULL, *cur = NULL;
 	//u8 temp[256] = { 0 };
-	u8 *data = NULL;
+	u8 *data = NULL, tp_mode;
 
 	if (buff != NULL) {
 		ret = copy_from_user(cmd, buff, size - 1);
@@ -202,6 +202,15 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 		ilitek_tddi_wq_ctrl(ESD, DISABLE);
 	} else if (strcmp(cmd, "disablewqbat") == 0) {
 		ilitek_tddi_wq_ctrl(BAT, DISABLE);
+	} else if (strcmp(cmd, "switchtestmode") == 0) {
+		tp_mode = P5_X_FW_TEST_MODE;
+		ilitek_tddi_touch_switch_mode(idev, &tp_mode);
+	} else if (strcmp(cmd, "switchdebugmode") == 0) {
+		tp_mode = P5_X_FW_DEBUG_MODE;
+		ilitek_tddi_touch_switch_mode(idev, &tp_mode);
+	} else if (strcmp(cmd, "switchdemomode") == 0) {
+		tp_mode = P5_X_FW_DEMO_MODE;
+		ilitek_tddi_touch_switch_mode(idev, &tp_mode);
 	} else {
 		ipio_err("Unknown command\n");
 	}

@@ -941,6 +941,7 @@ void ilitek_tddi_fw_read_flash_info(struct ilitek_tddi_dev *idev, bool mode)
 	}
 
 	if (i >= ARRAY_SIZE(flashtab)) {
+		ipio_info("Not found flash id in tab, use default\n");
 		idev->flash_mid = flashtab[0].mid;
 		idev->flash_devid = flashtab[0].dev_id;
 		idev->program_page = flashtab[0].program_page;

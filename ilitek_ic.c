@@ -112,7 +112,7 @@ int ilitek_ice_mode_write(struct ilitek_tddi_dev *idev, u32 addr, u32 data, size
     u8 txbuf[64] = {0};
 
     if (atomic_read(&idev->ice_stat) == DISABLE) {
-        ipio_err("ICE Mode isn't enabled\n");
+        ipio_err("ice mode not enabled\n");
         return -1;
     }
 
@@ -138,7 +138,7 @@ u32 ilitek_ice_mode_read(struct ilitek_tddi_dev *idev, u32 addr, size_t len)
     u8 txbuf[4] = {0};
 
     if (atomic_read(&idev->ice_stat) == DISABLE) {
-        ipio_err("ICE Mode isn't enabled\n");
+        ipio_err("ice mode not enabled\n");
         return -1;
     }
 

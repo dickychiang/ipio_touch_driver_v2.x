@@ -624,10 +624,10 @@ extern int ilitek_tddi_fw_upgrade(struct ilitek_tddi_dev *, int, int, int);
 
 /* Prototypes for tddi mp test */
 extern int ilitek_tddi_mp_test_main(struct ilitek_tddi_dev *, char *, bool);
-extern int ilitek_tddi_mp_move_code_flash(struct ilitek_tddi_dev *);
-extern int ilitek_tddi_mp_move_code_iram(struct ilitek_tddi_dev *);
 
 /* Prototypes for tddi core functions */
+extern int ilitek_tddi_move_mp_code_flash(struct ilitek_tddi_dev *);
+extern int ilitek_tddi_move_mp_code_iram(struct ilitek_tddi_dev *);
 extern int ilitek_tddi_touch_switch_mode(struct ilitek_tddi_dev *, u8 *);
 extern void ilitek_tddi_report_ap_mode(struct ilitek_tddi_dev *, u8 *);
 extern void ilitek_tddi_report_debug_mode(struct ilitek_tddi_dev *);
