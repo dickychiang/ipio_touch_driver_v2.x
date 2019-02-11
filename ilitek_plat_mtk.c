@@ -181,7 +181,8 @@ static irqreturn_t ilitek_plat_isr_top_half(int irq, void *dev_id)
 		return IRQ_HANDLED;
 	}
 
-	if (atomic_read(&idev->tp_reset) == START ||
+	if (idev->report == DISABLE ||
+		atomic_read(&idev->tp_reset) == START ||
 		atomic_read(&idev->fw_stat) == START ||
 		atomic_read(&idev->tp_sw_mode) == START ||
 		atomic_read(&idev->mp_stat) == ENABLE)

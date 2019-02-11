@@ -234,13 +234,13 @@ int ilitek_tddi_fw_upgrade_handler(void *data)
 	bool esd = idev->wq_esd_ctrl;
 	bool bat = idev->wq_bat_ctrl;
 
-	ilitek_tddi_wq_ctrl(ESD, DISABLE);
-	ilitek_tddi_wq_ctrl(BAT, DISABLE);
-
 	if (atomic_read(&idev->tp_suspend)) {
 		ipio_info("TP is suspending, upgrade failed\n");
 		return -1;
 	}
+
+	ilitek_tddi_wq_ctrl(ESD, DISABLE);
+	ilitek_tddi_wq_ctrl(BAT, DISABLE);
 
 	mutex_lock(&idev->touch_mutex);
 	atomic_set(&idev->fw_stat, START);
@@ -267,20 +267,20 @@ void ilitek_tddi_report_handler(void)
 	int ret = 0, pid = 0;
 	u8 *buf = NULL, checksum = 0;
 	size_t rlen = 0;
+	u16 self_key = 2;
 	bool esd = idev->wq_esd_ctrl;
 	bool bat = idev->wq_bat_ctrl;
 
 	ilitek_tddi_wq_ctrl(ESD, DISABLE);
 	ilitek_tddi_wq_ctrl(BAT, DISABLE);
 
-	if (atomic_read(&idev->tp_reset) || atomic_read(&idev->fw_stat))
-		return;
-
 	switch (idev->actual_fw_mode) {
 		case P5_X_FW_DEMO_MODE:
 			rlen = P5_X_DEMO_MODE_PACKET_LENGTH;
 			break;
 		case P5_X_FW_DEBUG_MODE:
+			rlen = (2 * idev->xch_num * idev->ych_num) + (idev->stx * 2) + (idev->srx * 2);
+			rlen += 2 * self_key + (8 * 2) + 1 + 35;
 			break;
 		case P5_X_FW_I2CUART_MODE:
 			break;
@@ -291,6 +291,8 @@ void ilitek_tddi_report_handler(void)
 			rlen = 0;
 			break;
 	}
+
+	ipio_info("Packget length = %ld\n", rlen);
 
 	if (!rlen) {
 		ipio_err("Length of packet is invaild\n");
@@ -325,7 +327,7 @@ void ilitek_tddi_report_handler(void)
 			ilitek_tddi_report_ap_mode(buf);
 			break;
 		case P5_X_DEBUG_PACKET_ID:
-			ilitek_tddi_report_debug_mode();
+			ilitek_tddi_report_debug_mode(buf, rlen);
 			break;
 		case P5_X_I2CUART_PACKET_ID:
 			break;
@@ -407,6 +409,9 @@ int ilitek_tddi_init(void)
 	atomic_set(&idev->tp_suspend, END);
 	atomic_set(&idev->tp_resume, END);
 	atomic_set(&idev->mp_int_check, DISABLE);
+	idev->actual_fw_mode = P5_X_FW_DEMO_MODE;
+	idev->netlink = ENABLE;
+	idev->report = ENABLE;
 
 	ilitek_tddi_ic_init();
 	ilitek_tddi_wq_init();

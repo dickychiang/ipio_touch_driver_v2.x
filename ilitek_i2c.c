@@ -182,7 +182,7 @@ static int ilitek_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id *
     idev->resume = ilitek_tddi_touch_resume;
 	idev->wtd_ctrl = OFF;
 	idev->fw_boot = ENABLE;
-    idev->reset_mode = TP_RST_HW_ONLY;
+    idev->reset_mode = TP_IC_WHOLE_RST;
     idev->fw_upgrade_mode = UPGRADE_FLASH;
 	idev->fw_open = FILP_OPEN;
 	idev->mp_move_code = ilitek_tddi_move_mp_code_flash;

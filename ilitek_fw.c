@@ -885,6 +885,7 @@ static void ilitek_tddi_fw_update_tp_info(int ret)
 	}
 	ilitek_tddi_ic_get_protocl_ver();
 	ilitek_tddi_ic_get_fw_ver();
+	ilitek_tddi_ic_get_core_ver();
 	ilitek_tddi_ic_get_tp_info();
 	ilitek_tddi_ic_get_panel_info();
 	ilitek_plat_input_register();

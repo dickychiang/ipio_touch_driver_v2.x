@@ -438,9 +438,9 @@ enum TP_WQ_TYPE {
 
 /* Options */
 #define MT_B_TYPE
-#define MT_PRESSURE
-#define WQ_ESD_BOOT
-#define WQ_BAT_BOOT
+//#define MT_PRESSURE
+// #define WQ_ESD_BOOT
+// #define WQ_BAT_BOOT
 
 struct ilitek_tddi_dev
 {
@@ -465,6 +465,8 @@ struct ilitek_tddi_dev
 	u16 panel_hei;
 	u8 xch_num;
 	u8 ych_num;
+	u8 stx;
+	u8 srx;
 
 	int actual_fw_mode;
 
@@ -483,6 +485,9 @@ struct ilitek_tddi_dev
 	int fw_open;
 	bool wq_esd_ctrl;
 	bool wq_bat_ctrl;
+
+	bool netlink;
+	bool report;
 
 	u16 flash_mid;
 	u16 flash_devid;
@@ -559,6 +564,7 @@ struct ilitek_ic_info
 	u32 otp_id;
 	u32 ana_id;
     u32 fw_ver;
+	u32 core_ver;
 	u32 max_count;
 	u32 reset_key;
 	u16 wtd_key;
@@ -632,7 +638,7 @@ extern int ilitek_tddi_move_mp_code_flash(void);
 extern int ilitek_tddi_move_mp_code_iram(void);
 extern int ilitek_tddi_touch_switch_mode(u8 *);
 extern void ilitek_tddi_report_ap_mode(u8 *);
-extern void ilitek_tddi_report_debug_mode(void);
+extern void ilitek_tddi_report_debug_mode(u8 *, size_t);
 extern void ilitek_tddi_report_gesture_mode(void);
 extern int ilitek_tddi_ic_whole_reset(void);
 extern int ilitek_tddi_ic_code_reset(void);
@@ -642,6 +648,7 @@ extern int ilitek_tddi_ic_check_int_stat(bool high);
 extern int ilitek_tddi_ic_check_busy(int, int);
 extern int ilitek_tddi_ic_get_panel_info(void);
 extern int ilitek_tddi_ic_get_tp_info(void);
+extern int ilitek_tddi_ic_get_core_ver(void);
 extern int ilitek_tddi_ic_get_protocl_ver(void);
 extern int ilitek_tddi_ic_get_fw_ver(void);
 extern int ilitek_tddi_ic_get_info(void);
@@ -679,5 +686,6 @@ extern void ilitek_plat_tp_reset(void);
 extern void ilitek_tddi_node_init(void);
 extern void ilitek_dump_data(void *, int, int, int, const char *);
 extern u8 ilitek_calc_packet_checksum(u8 *, size_t);
+extern void netlink_reply_msg(void *, int);
 extern int katoi(char *);
 #endif /* __ILITEK_H */

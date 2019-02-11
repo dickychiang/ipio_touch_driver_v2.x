@@ -24,6 +24,34 @@
 
 #define USER_STR_BUFF	PAGE_SIZE
 #define IOCTL_I2C_BUFF	PAGE_SIZE
+#define ILITEK_IOCTL_MAGIC	100
+#define ILITEK_IOCTL_MAXNR	19
+
+#define ILITEK_IOCTL_I2C_WRITE_DATA			_IOWR(ILITEK_IOCTL_MAGIC, 0, u8*)
+#define ILITEK_IOCTL_I2C_SET_WRITE_LENGTH	_IOWR(ILITEK_IOCTL_MAGIC, 1, int)
+#define ILITEK_IOCTL_I2C_READ_DATA			_IOWR(ILITEK_IOCTL_MAGIC, 2, u8*)
+#define ILITEK_IOCTL_I2C_SET_READ_LENGTH	_IOWR(ILITEK_IOCTL_MAGIC, 3, int)
+
+#define ILITEK_IOCTL_TP_HW_RESET			_IOWR(ILITEK_IOCTL_MAGIC, 4, int)
+#define ILITEK_IOCTL_TP_POWER_SWITCH		_IOWR(ILITEK_IOCTL_MAGIC, 5, int)
+#define ILITEK_IOCTL_TP_REPORT_SWITCH		_IOWR(ILITEK_IOCTL_MAGIC, 6, int)
+#define ILITEK_IOCTL_TP_IRQ_SWITCH			_IOWR(ILITEK_IOCTL_MAGIC, 7, int)
+
+#define ILITEK_IOCTL_TP_DEBUG_LEVEL			_IOWR(ILITEK_IOCTL_MAGIC, 8, int)
+#define ILITEK_IOCTL_TP_FUNC_MODE			_IOWR(ILITEK_IOCTL_MAGIC, 9, int)
+
+#define ILITEK_IOCTL_TP_FW_VER				_IOWR(ILITEK_IOCTL_MAGIC, 10, u8*)
+#define ILITEK_IOCTL_TP_PL_VER				_IOWR(ILITEK_IOCTL_MAGIC, 11, u8*)
+#define ILITEK_IOCTL_TP_CORE_VER			_IOWR(ILITEK_IOCTL_MAGIC, 12, u8*)
+#define ILITEK_IOCTL_TP_DRV_VER				_IOWR(ILITEK_IOCTL_MAGIC, 13, u8*)
+#define ILITEK_IOCTL_TP_CHIP_ID				_IOWR(ILITEK_IOCTL_MAGIC, 14, uint32_t*)
+
+#define ILITEK_IOCTL_TP_NETLINK_CTRL		_IOWR(ILITEK_IOCTL_MAGIC, 15, int*)
+#define ILITEK_IOCTL_TP_NETLINK_STATUS		_IOWR(ILITEK_IOCTL_MAGIC, 16, int*)
+
+#define ILITEK_IOCTL_TP_MODE_CTRL			_IOWR(ILITEK_IOCTL_MAGIC, 17, u8*)
+#define ILITEK_IOCTL_TP_MODE_STATUS			_IOWR(ILITEK_IOCTL_MAGIC, 18, int*)
+#define ILITEK_IOCTL_ICE_MODE_SWITCH		_IOWR(ILITEK_IOCTL_MAGIC, 19, int)
 
 unsigned char g_user_buf[USER_STR_BUFF] = {0};
 
@@ -194,6 +222,13 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 		ilitek_ice_mode_ctrl(DISABLE, OFF);
 	} else if (strcmp(cmd, "hostdownloadreset") == 0) {
 		ilitek_tddi_reset_ctrl(TP_RST_HOST_DOWNLOAD);
+	} else if (strcmp(cmd, "getinfo") == 0) {
+		ilitek_tddi_ic_get_info();
+		ilitek_tddi_ic_get_protocl_ver();
+		ilitek_tddi_ic_get_fw_ver();
+		ilitek_tddi_ic_get_core_ver();
+		ilitek_tddi_ic_get_tp_info();
+		ilitek_tddi_ic_get_panel_info();
 	} else if (strcmp(cmd, "enablewqesd") == 0) {
 		ilitek_tddi_wq_ctrl(ESD, ENABLE);
 	} else if (strcmp(cmd, "enablewqbat") == 0) {
@@ -202,6 +237,10 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 		ilitek_tddi_wq_ctrl(ESD, DISABLE);
 	} else if (strcmp(cmd, "disablewqbat") == 0) {
 		ilitek_tddi_wq_ctrl(BAT, DISABLE);
+	} else if (strcmp(cmd, "enablenetlink") == 0) {
+		idev->netlink = ENABLE;
+	} else if (strcmp(cmd, "disablenetlink") == 0) {
+		idev->netlink = DISABLE;
 	} else if (strcmp(cmd, "switchtestmode") == 0) {
 		tp_mode = P5_X_FW_TEST_MODE;
 		ilitek_tddi_touch_switch_mode(&tp_mode);
@@ -221,7 +260,230 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 
 static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
-	return 0;
+	int ret = 0, length = 0;
+	u8 *szBuf = NULL;
+	static u16 i2c_rw_length = 0;
+	u32 id_to_user[3] = {0};
+	char dbg[10] = { 0 };
+
+	if (_IOC_TYPE(cmd) != ILITEK_IOCTL_MAGIC) {
+		ipio_err("The Magic number doesn't match\n");
+		return -ENOTTY;
+	}
+
+	if (_IOC_NR(cmd) > ILITEK_IOCTL_MAXNR) {
+		ipio_err("The number of ioctl doesn't match\n");
+		return -ENOTTY;
+	}
+
+	szBuf = kcalloc(IOCTL_I2C_BUFF, sizeof(u8), GFP_KERNEL);
+	if (ERR_ALLOC_MEM(szBuf)) {
+		ipio_err("Failed to allocate mem\n");
+		return -ENOMEM;
+	}
+
+	switch (cmd) {
+	case ILITEK_IOCTL_I2C_WRITE_DATA:
+		ipio_info("ioctl: write len = %d\n", i2c_rw_length);
+		ret = copy_from_user(szBuf, (u8 *) arg, i2c_rw_length);
+		if (ret < 0) {
+			ipio_err("Failed to copy data from user space\n");
+			break;
+		}
+		ret = idev->write(&szBuf[0], i2c_rw_length);
+		if (ret < 0)
+			ipio_err("Failed to write data\n");
+		break;
+	case ILITEK_IOCTL_I2C_READ_DATA:
+		ipio_info("ioctl: read len = %d\n", i2c_rw_length);
+		ret = idev->read(szBuf, i2c_rw_length);
+		if (ret < 0) {
+			ipio_err("Failed to read data\n");
+			break;
+		}
+		ret = copy_to_user((u8 *) arg, szBuf, i2c_rw_length);
+		if (ret < 0)
+			ipio_err("Failed to copy data to user space\n");
+		break;
+	case ILITEK_IOCTL_I2C_SET_WRITE_LENGTH:
+	case ILITEK_IOCTL_I2C_SET_READ_LENGTH:
+		i2c_rw_length = arg;
+		break;
+	case ILITEK_IOCTL_TP_HW_RESET:
+		ipio_info("ioctl: hw reset\n");
+		ilitek_tddi_reset_ctrl(idev->reset_mode);
+		break;
+	case ILITEK_IOCTL_TP_POWER_SWITCH:
+		ipio_info("Not implemented yet\n");
+		break;
+	case ILITEK_IOCTL_TP_REPORT_SWITCH:
+		ret = copy_from_user(szBuf, (u8 *) arg, 1);
+		if (ret < 0) {
+			ipio_err("Failed to copy data from user space\n");
+			break;
+		}
+		ipio_info("ioctl: report switch = %d\n", szBuf[0]);
+		if (szBuf[0]) {
+			idev->report = ENABLE;
+			ipio_info("report is enabled\n");
+		} else {
+			idev->report = DISABLE;
+			ipio_info("report is disabled\n");
+		}
+		break;
+	case ILITEK_IOCTL_TP_IRQ_SWITCH:
+		ret = copy_from_user(szBuf, (u8 *) arg, 1);
+		if (ret < 0) {
+			ipio_err("Failed to copy data from user space\n");
+			break;
+		}
+		ipio_info("ioctl: irq switch = %d\n", szBuf[0]);
+		if (szBuf[0])
+			ilitek_plat_irq_enable();
+		else
+			ilitek_plat_irq_disable();
+		break;
+	case ILITEK_IOCTL_TP_DEBUG_LEVEL:
+		ret = copy_from_user(dbg, (uint32_t *) arg, sizeof(uint32_t));
+		if (ret < 0) {
+			ipio_err("Failed to copy data from user space\n");
+			break;
+		}
+		ipio_debug_level = katoi(dbg);
+		ipio_info("ipio_debug_level = %d", ipio_debug_level);
+		break;
+	case ILITEK_IOCTL_TP_FUNC_MODE:
+		ret = copy_from_user(szBuf, (u8 *) arg, 3);
+		if (ret < 0) {
+			ipio_err("Failed to copy data from user space\n");
+			break;
+		}
+		ipio_info("ioctl: set func mode = %x,%x,%x\n", szBuf[0],szBuf[1],szBuf[2]);
+		idev->write(&szBuf[0], 3);
+		break;
+	case ILITEK_IOCTL_TP_FW_VER:
+		ipio_info("ioctl: get fw version\n");
+		ret = ilitek_tddi_ic_get_fw_ver();
+		if (ret < 0) {
+			ipio_err("Failed to get firmware version\n");
+			break;
+		}
+		szBuf[3] = idev->chip->fw_ver & 0xFF;
+		szBuf[2] = (idev->chip->fw_ver >> 8) & 0xFF;
+		szBuf[1] = (idev->chip->fw_ver >> 16) & 0xFF;
+		szBuf[0] = idev->chip->fw_ver >> 24;
+		ipio_info("Firmware version = %d.%d.%d.%d\n", szBuf[0], szBuf[1], szBuf[2], szBuf[3]);
+		ret = copy_to_user((u8 *) arg, szBuf, 4);
+		if (ret < 0)
+			ipio_err("Failed to copy firmware version to user space\n");
+		break;
+	case ILITEK_IOCTL_TP_PL_VER:
+		ipio_info("ioctl: get protocl version\n");
+		ret = ilitek_tddi_ic_get_protocl_ver();
+		if (ret < 0) {
+			ipio_err("Failed to get protocol version\n");
+			break;
+		}
+		szBuf[2] = idev->protocol->ver & 0xFF;
+		szBuf[1] = (idev->protocol->ver >> 8) & 0xFF;
+		szBuf[0] = idev->protocol->ver >> 16;
+		ipio_info("Protocol version = %d.%d.%d\n", szBuf[0], szBuf[1], szBuf[2]);
+		ret = copy_to_user((u8 *) arg, szBuf, 3);
+		if (ret < 0)
+			ipio_err("Failed to copy protocol version to user space\n");
+		break;
+	case ILITEK_IOCTL_TP_CORE_VER:
+		ipio_info("ioctl: get core version\n");
+		ret = ilitek_tddi_ic_get_core_ver();
+		if (ret < 0) {
+			ipio_err("Failed to get core version\n");
+			break;
+		}
+		szBuf[3] = idev->chip->core_ver & 0xFF;
+		szBuf[2] = (idev->chip->core_ver >> 8) & 0xFF;
+		szBuf[1] = (idev->chip->core_ver >> 16) & 0xFF;
+		szBuf[0] = idev->chip->core_ver >> 24;
+		ipio_info("Core version = %d.%d.%d.%d\n", szBuf[0], szBuf[1], szBuf[2], szBuf[3]);
+		ret = copy_to_user((u8 *) arg, szBuf, 4);
+		if (ret < 0)
+			ipio_err("Failed to copy core version to user space\n");
+		break;
+	case ILITEK_IOCTL_TP_DRV_VER:
+		ipio_info("ioctl: get driver version\n");
+		length = sprintf(szBuf, "%s", DRIVER_VERSION);
+	ret = copy_to_user((u8 *) arg, szBuf, length);
+		if (ret < 0) {
+			ipio_err("Failed to copy driver ver to user space\n");
+		}
+		break;
+	case ILITEK_IOCTL_TP_CHIP_ID:
+		ipio_info("ioctl: get chip id\n");
+		ret = ilitek_tddi_ic_get_info();
+		if (ret < 0) {
+			ipio_err("Failed to get chip id\n");
+			break;
+		}
+		id_to_user[0] = idev->chip->pid;
+		id_to_user[1] = idev->chip->otp_id;
+		id_to_user[2] = idev->chip->ana_id;
+		ret = copy_to_user((uint32_t *) arg, id_to_user, sizeof(id_to_user));
+		if (ret < 0)
+			ipio_err("Failed to copy chip id to user space\n");
+		break;
+	case ILITEK_IOCTL_TP_NETLINK_CTRL:
+		ret = copy_from_user(szBuf, (u8 *) arg, 1);
+		if (ret < 0) {
+			ipio_err("Failed to copy data from user space\n");
+			break;
+		}
+		ipio_info("ioctl: netlink ctrl = %d\n", szBuf[0]);
+		if (szBuf[0])
+			idev->netlink = ENABLE;
+		else
+			idev->netlink = DISABLE;
+		break;
+	case ILITEK_IOCTL_TP_NETLINK_STATUS:
+		ipio_info("ioctl: get netlink stat = %d\n", idev->netlink);
+		ret = copy_to_user((int *)arg, &idev->netlink, sizeof(int));
+		if (ret < 0)
+			ipio_err("Failed to copy chip id to user space\n");
+		break;
+	case ILITEK_IOCTL_TP_MODE_CTRL:
+		ret = copy_from_user(szBuf, (u8 *) arg, 4);
+		if (ret < 0) {
+			ipio_err("Failed to copy data from user space\n");
+			break;
+		}
+		ipio_info("ioctl: switch fw mode = %d\n", szBuf[0]);
+		ilitek_tddi_touch_switch_mode(szBuf);
+		break;
+	case ILITEK_IOCTL_TP_MODE_STATUS:
+		ipio_info("ioctl: current firmware mode = %d", idev->actual_fw_mode);
+		ret = copy_to_user((int *)arg, &idev->actual_fw_mode, sizeof(int));
+		if (ret < 0)
+			ipio_err("Failed to copy chip id to user space\n");
+		break;
+	/* It works for host downloado only */
+	case ILITEK_IOCTL_ICE_MODE_SWITCH:
+		ret = copy_from_user(szBuf, (u8 *) arg, 1);
+		if (ret < 0) {
+			ipio_err("Failed to copy data from user space\n");
+			break;
+		}
+		ipio_info("ioctl: switch ice mode = %d", szBuf[0]);
+		if (szBuf[0])
+			atomic_set(&idev->ice_stat, ENABLE);
+		else
+			atomic_set(&idev->ice_stat, DISABLE);
+		break;
+
+	default:
+		ret = -ENOTTY;
+		break;
+	}
+
+	ipio_kfree((void **)&szBuf);
+	return ret;
 }
 
 struct proc_dir_entry *proc_dir_ilitek;
@@ -269,6 +531,91 @@ proc_node_t proc_table[] = {
 	// {"read_write_register", NULL, &proc_read_write_register_fops, false},
 };
 
+#define NETLINK_USER 21
+struct sock *netlink_skb;
+struct nlmsghdr *netlink_head;
+struct sk_buff *skb_out;
+int netlink_pid;
+
+void netlink_reply_msg(void *raw, int size)
+{
+	int ret;
+	int msg_size = size;
+	u8 *data = (u8 *) raw;
+
+	ipio_debug(DEBUG_NETLINK, "The size of data being sent to user = %d\n", msg_size);
+	ipio_debug(DEBUG_NETLINK, "pid = %d\n", netlink_pid);
+	ipio_debug(DEBUG_NETLINK, "Netlink is enable = %d\n", idev->netlink);
+
+	if (idev->netlink) {
+		skb_out = nlmsg_new(msg_size, 0);
+
+		if (!skb_out) {
+			ipio_err("Failed to allocate new skb\n");
+			return;
+		}
+
+		netlink_head = nlmsg_put(skb_out, 0, 0, NLMSG_DONE, msg_size, 0);
+		NETLINK_CB(skb_out).dst_group = 0;	/* not in mcast group */
+
+		/* strncpy(NLMSG_DATA(netlink_head), data, msg_size); */
+		ipio_memcpy(nlmsg_data(netlink_head), data, msg_size, size);
+
+		ret = nlmsg_unicast(netlink_skb, skb_out, netlink_pid);
+		if (ret < 0)
+			ipio_err("Failed to send data back to user\n");
+	}
+}
+
+static void netlink_recv_msg(struct sk_buff *skb)
+{
+	netlink_pid = 0;
+
+	ipio_debug(DEBUG_NETLINK, "Netlink = %d\n", idev->netlink);
+
+	netlink_head = (struct nlmsghdr *)skb->data;
+
+	ipio_debug(DEBUG_NETLINK, "Received a request from client: %s, %d\n",
+	    (char *)NLMSG_DATA(netlink_head), (int)strlen((char *)NLMSG_DATA(netlink_head)));
+
+	/* pid of sending process */
+	netlink_pid = netlink_head->nlmsg_pid;
+
+	ipio_debug(DEBUG_NETLINK, "the pid of sending process = %d\n", netlink_pid);
+
+	/* TODO: may do something if there's not receiving msg from user. */
+	if (netlink_pid != 0) {
+		ipio_err("The channel of Netlink has been established successfully !\n");
+		idev->netlink = ENABLE;
+	} else {
+		ipio_err("Failed to establish the channel between kernel and user space\n");
+		idev->netlink = DISABLE;
+	}
+}
+
+static int netlink_init(void)
+{
+	int ret = 0;
+
+#if KERNEL_VERSION(3, 4, 0) > LINUX_VERSION_CODE
+	netlink_skb = netlink_kernel_create(&init_net, NETLINK_USER, netlink_recv_msg, NULL, THIS_MODULE);
+#else
+	struct netlink_kernel_cfg cfg = {
+		.input = netlink_recv_msg,
+	};
+
+	netlink_skb = netlink_kernel_create(&init_net, NETLINK_USER, &cfg);
+#endif
+
+	ipio_info("Initialise Netlink and create its socket\n");
+
+	if (!netlink_skb) {
+		ipio_err("Failed to create nelink socket\n");
+		ret = -EFAULT;
+	}
+	return ret;
+}
+
 void ilitek_tddi_node_init(void)
 {
 	int i = 0, ret = 0;
@@ -287,6 +634,5 @@ void ilitek_tddi_node_init(void)
 			ipio_info("Succeed to create %s under /proc\n", proc_table[i].name);
 		}
 	}
-
-	//netlink_init();
+	netlink_init();
 }

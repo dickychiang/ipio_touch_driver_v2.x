@@ -346,20 +346,39 @@ int ilitek_tddi_ic_func_ctrl(const char *name, int ctrl)
 
 int ilitek_tddi_ic_code_reset(void)
 {
-    return ilitek_ice_mode_write(0x40040, 0xAE, 1);
+    int ret = 0;
+    bool ice = atomic_read(&idev->ice_stat);
+
+    if (ice == DISABLE)
+        ilitek_ice_mode_ctrl(ENABLE, OFF);
+
+   ret = ilitek_ice_mode_write(0x40040, 0xAE, 1);
+    if (ret < 0)
+        ipio_err("ic code reset failed, ret = %d\n", ret);
+
+    if (ice == DISABLE)
+        ilitek_ice_mode_ctrl(DISABLE, OFF);
+    return ret;
 }
 
 int ilitek_tddi_ic_whole_reset(void)
 {
 	int ret = 0;
+    bool ice = atomic_read(&idev->ice_stat);
 	u32 key = idev->chip->reset_key;
     u32 addr = idev->chip->reset_addr;
+
+    if (ice == DISABLE)
+        ilitek_ice_mode_ctrl(ENABLE, OFF);
 
 	ipio_info("ic whole reset key = 0x%x\n", key);
 
     ret = ilitek_ice_mode_write(addr, key, sizeof(u32));
     if (ret < 0)
         ipio_err("ic whole reset failed, ret = %d\n", ret);
+
+    if (ice == DISABLE)
+        ilitek_ice_mode_ctrl(DISABLE, OFF);
 
 	msleep(100);
 	return ret;
@@ -448,6 +467,49 @@ int ilitek_tddi_ic_check_busy(int count, int delay)
 
 out:
     return 0;
+}
+
+int ilitek_tddi_ic_get_core_ver(void)
+{
+    int ret = 0;
+    u8 cmd[2] = {0};
+    u8 buf[10] = {0};
+
+    cmd[0] = P5_X_READ_DATA_CTRL;
+    cmd[1] = P5_X_GET_CORE_VERSION;
+
+    ret = idev->write(cmd, sizeof(cmd));
+    if (ret < 0) {
+        ipio_err("write core ver err\n");
+        goto out;
+    }
+
+    ret = idev->write(&cmd[1], sizeof(u8));
+    if (ret < 0) {
+        ipio_err("write core ver err\n");
+        goto out;
+    }
+
+    ret = idev->read(buf, idev->protocol->core_ver_len);
+    if (ret < 0) {
+        ipio_err("i2c/spi read core ver err\n");
+        goto out;
+    }
+
+    ilitek_dump_data(buf, 8, idev->protocol->core_ver_len, 0, "Core ver");
+
+    if (buf[0] != P5_X_GET_CORE_VERSION) {
+        ipio_err("Invalid core ver\n");
+        ret = -EINVAL;
+        goto out;
+    }
+
+    ipio_info("Core version = %d.%d.%d.%d\n", buf[1], buf[2], buf[3], buf[4]);
+
+    idev->chip->core_ver = buf[1] << 24 | buf[2] << 16 | buf[3] << 8 | buf[4];
+
+out:
+    return ret;
 }
 
 int ilitek_tddi_ic_get_fw_ver(void)
@@ -567,9 +629,11 @@ int ilitek_tddi_ic_get_tp_info(void)
     idev->max_y = buf[6] << 8 | buf[5];
     idev->xch_num = buf[7];
     idev->ych_num = buf[8];
+    idev->stx = buf[11];
+    idev->srx = buf[12];
 
-    ipio_info("TP Info: min_x = %d, min_y = %d, max_x = %d, max_y = %d, xch = %d, ych = %d\n",
-        idev->min_x, idev->min_y, idev->max_x, idev->max_y, idev->xch_num, idev->ych_num);
+    ipio_info("TP Info: min_x = %d, min_y = %d, max_x = %d, max_y = %d\n", idev->min_x, idev->min_y, idev->max_x, idev->max_y);
+    ipio_info("TP Info: xch = %d, ych = %d, stx = %d, srx = %d\n", idev->xch_num, idev->ych_num, idev->stx, idev->srx);
 
 out:
     return ret;
@@ -685,7 +749,7 @@ int ilitek_tddi_ic_get_info(void)
 	ipio_info("CHIP Type = 0x%x\n", (idev->chip->type_hi << 8) | idev->chip->type_low);
 
 	idev->chip->otp_id = ilitek_ice_mode_read(idev->chip->otp_addr, sizeof(u32));
-	idev->chip->otp_id = ilitek_ice_mode_read(idev->chip->ana_addr, sizeof(u32));
+	idev->chip->ana_id = ilitek_ice_mode_read(idev->chip->ana_addr, sizeof(u32));
 
     idev->chip->otp_id &= 0xFF;
     idev->chip->ana_id &= 0xFF;
