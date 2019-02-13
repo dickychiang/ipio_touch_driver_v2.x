@@ -53,7 +53,7 @@
 #define ILITEK_IOCTL_TP_MODE_STATUS			_IOWR(ILITEK_IOCTL_MAGIC, 18, int*)
 #define ILITEK_IOCTL_ICE_MODE_SWITCH		_IOWR(ILITEK_IOCTL_MAGIC, 19, int)
 
-#define ILITEK_IOCTL_TP_INTERFACE_TYPE		_IOWR(ILITEK_IOCTL_MAGIC, 20, uint8_t*)
+#define ILITEK_IOCTL_TP_INTERFACE_TYPE		_IOWR(ILITEK_IOCTL_MAGIC, 20, u8*)
 #define ILITEK_IOCTL_TP_DUMP_FLASH			_IOWR(ILITEK_IOCTL_MAGIC, 21, int)
 
 unsigned char g_user_buf[USER_STR_BUFF] = {0};
@@ -111,6 +111,98 @@ static int dev_mkdir(char *name, umode_t mode)
     err = vfs_mkdir(path.dentry->d_inode, dentry, mode);
     done_path_create(&path, dentry);
     return err;
+}
+
+static ssize_t ilitek_proc_get_delta_data_read(struct file *pFile, char __user *buf, size_t size, loff_t *pos)
+{
+	s16 *delta = NULL;
+	int row = 0, col = 0,  index = 0;
+	int ret, i, x, y;
+	int read_length = 0;
+	u8 cmd[2] = {0};
+	u8 *data = NULL;
+
+	if (*pos != 0)
+		return 0;
+
+	memset(g_user_buf, 0, USER_STR_BUFF * sizeof(unsigned char));
+
+	ilitek_tddi_wq_ctrl(WQ_ESD, DISABLE);
+	ilitek_tddi_wq_ctrl(WQ_BAT, DISABLE);
+	mutex_lock(&idev->touch_mutex);
+
+	row = idev->ych_num;
+	col = idev->xch_num;
+	read_length = 4 + 2 * row * col + 1 ;
+
+	ipio_info("read length = %d\n", read_length);
+
+	data = kcalloc(read_length + 1, sizeof(u8), GFP_KERNEL);
+	if (ERR_ALLOC_MEM(data)) {
+		ipio_err("Failed to allocate data mem\n");
+		return 0;
+	}
+
+	delta = kcalloc(P5_X_DEBUG_MODE_PACKET_LENGTH, sizeof(s32), GFP_KERNEL);
+	if (ERR_ALLOC_MEM(delta)) {
+		ipio_err("Failed to allocate delta mem\n");
+		return 0;
+	}
+
+	cmd[0] = 0xB7;
+	cmd[1] = 0x1; //get delta
+
+	ret = idev->write(cmd, sizeof(cmd));
+	if (ret < 0) {
+		ipio_err("Failed to write 0xB7,0x1 command, %d\n", ret);
+		goto out;
+	}
+
+	msleep(20);
+
+	/* read debug packet header */
+	ret = idev->read(data, read_length);
+
+	cmd[1] = 0x03; //switch to normal mode
+	ret = idev->write(cmd, sizeof(cmd));
+	if (ret < 0) {
+		ipio_err("Failed to write 0xB7,0x3 command, %d\n", ret);
+		goto out;
+	}
+
+	for (i = 4, index = 0; index < row * col * 2; i += 2, index++)
+		delta[index] = (data[i] << 8) + data[i + 1];
+
+	size = snprintf(g_user_buf + size, PAGE_SIZE - size, "======== Deltadata ========\n");
+
+	size += snprintf(g_user_buf + size, PAGE_SIZE - size,
+		"Header 0x%x ,Type %d, Length %d\n",data[0], data[1], (data[2]<<8) | data[3]);
+
+	// print delta data
+	for (y = 0; y < row; y++) {
+		size += snprintf(g_user_buf + size, PAGE_SIZE - size, "[%2d] ", (y+1));
+
+		for (x = 0; x < col; x++) {
+			int shift = y * col + x;
+			size += snprintf(g_user_buf + size, PAGE_SIZE - size, "%5d", delta[shift]);
+		}
+		size += snprintf(g_user_buf + size, PAGE_SIZE - size, "\n");
+	}
+
+	ret = copy_to_user(buf, g_user_buf, size);
+	if (ret < 0) {
+		ipio_err("Failed to copy data to user space");
+	}
+
+	*pos += size;
+
+out:
+	mutex_unlock(&idev->touch_mutex);
+	ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
+	ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
+	ipio_kfree((void **)&data);
+	ipio_kfree((void **)&delta);
+	return size;
 }
 
 static ssize_t ilitek_proc_debug_switch_read(struct file *pFile, char __user *buff, size_t size, loff_t *pos)
@@ -641,7 +733,7 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 			if_to_user = TP_BUS_SPI;
 		else
 			if_to_user = TP_BUS_I2C;
-		ret = copy_to_user((uint8_t *) arg, &if_to_user, sizeof(if_to_user));
+		ret = copy_to_user((u8 *) arg, &if_to_user, sizeof(if_to_user));
 		if (ret < 0) {
 			ipio_err("Failed to copy interface type to user space\n");
 		}
@@ -696,6 +788,10 @@ struct file_operations proc_fw_upgrade_fops = {
 	.read = ilitek_node_fw_upgrade_read,
 };
 
+struct file_operations proc_get_delta_data_fops = {
+	.read = ilitek_proc_get_delta_data_read,
+};
+
 proc_node_t proc_table[] = {
 	{"ioctl", NULL, &proc_ioctl_fops, false},
 	// {"fw_process", NULL, &proc_fw_process_fops, false},
@@ -709,7 +805,7 @@ proc_node_t proc_table[] = {
 	{"debug_message", NULL, &proc_debug_message_fops, false},
 	{"debug_message_switch", NULL, &proc_debug_message_switch_fops, false},
 	// {"fw_pc_counter", NULL, &proc_fw_pc_counter_fops, false},
-	// {"show_delta_data", NULL, &proc_get_delta_data_fops, false},
+	{"show_delta_data", NULL, &proc_get_delta_data_fops, false},
 	// {"show_raw_data", NULL, &proc_get_raw_data_fops, false},
 	// {"get_debug_mode_data", NULL, &proc_get_debug_mode_data_fops, false},
 	// {"read_write_register", NULL, &proc_read_write_register_fops, false},
