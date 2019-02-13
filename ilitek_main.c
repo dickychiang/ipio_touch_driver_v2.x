@@ -255,9 +255,7 @@ int ilitek_tddi_sleep_handler(int mode)
 			ilitek_tddi_ic_check_busy(50, 50);
 
 			if (idev->gesture) {
-				ret = idev->gesture_move_code(idev->gesture_mode);
-				if (ret < 0)
-					ipio_err("Enter to gesture failed\n");
+				idev->gesture_move_code(idev->gesture_mode);
 				enable_irq_wake(idev->irq_num);
 				msleep(20); /* wait for isr queue completed. */
 				ilitek_plat_irq_enable();

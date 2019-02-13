@@ -428,6 +428,9 @@ enum TP_WQ_TYPE {
 #define GESTURE_CODE_TWO_LINE_2_BOTTOM			0x6F
 #define GESTURE_F               			    0x70
 #define GESTURE_AT              			    0x71
+#define ESD_GESTURE_PWD			0xF38A94EF
+#define ESD_GESTURE_RUN			0x5B92E7F4
+#define ESD_GESTURE_PWD_ADDR	0x25FF8
 
 /* Protocol */
 #define PROTOCOL_VER_500    			0x050000
@@ -695,8 +698,9 @@ extern int ilitek_tddi_fw_upgrade(int, int, int);
 extern int ilitek_tddi_mp_test_main(char *, bool);
 
 /* Prototypes for tddi core functions */
+extern void ilitek_tddi_touch_esd_gesture(void);
 extern int ilitek_tddi_move_gesture_code_flash(int);
-extern int ilitek_tddi_move_gesture_code_iram(int);
+extern void ilitek_tddi_move_gesture_code_iram(int);
 extern int ilitek_tddi_move_mp_code_flash(void);
 extern int ilitek_tddi_move_mp_code_iram(void);
 extern int ilitek_tddi_touch_switch_mode(u8 *);

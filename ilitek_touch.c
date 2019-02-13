@@ -246,7 +246,7 @@ int ilitek_tddi_move_gesture_code_flash(int mode)
 	return ilitek_tddi_touch_switch_mode(&tp_mode);
 }
 
-int ilitek_tddi_move_gesture_code_iram(int mode)
+void ilitek_tddi_move_gesture_code_iram(int mode)
 {
 	int i;
 	u8 tp_mode = P5_X_FW_GESTURE_MODE;
@@ -285,6 +285,9 @@ int ilitek_tddi_move_gesture_code_iram(int mode)
 		}
 	}
 
+	if (i >= 20)
+		ipio_err("Gesture is not ready, 0x%x\n", cmd[0]);
+
 	ilitek_tddi_fw_upgrade_handler(NULL);
 
 	/* FW star run gestrue code cmd */
@@ -293,8 +296,6 @@ int ilitek_tddi_move_gesture_code_iram(int mode)
 	cmd[2] = 0x6;
 	if ((idev->write(cmd, 3)) < 0)
 		ipio_err("write 0x1,0xA,0x6 error");
-
-	return 0;
 }
 
 u8 ilitek_calc_packet_checksum(u8 *packet, size_t len)
@@ -306,6 +307,44 @@ u8 ilitek_calc_packet_checksum(u8 *packet, size_t len)
 		sum += packet[i];
 
 	return (u8) ((-sum) & 0xFF);
+}
+
+void ilitek_tddi_touch_esd_gesture(void)
+{
+	int retry = 100;
+	u32 answer = 0;
+
+	/* start to download AP code with HW reset or host download */
+	ilitek_tddi_reset_ctrl(idev->reset_mode);
+
+	ilitek_ice_mode_ctrl(ENABLE, OFF);
+
+	/* write a special password to inform FW go back into gesture mode */
+	if (ilitek_ice_mode_write(ESD_GESTURE_PWD_ADDR, ESD_GESTURE_PWD, 4) < 0)
+		ipio_err("esd gesture: write password failed\n");
+
+	/* HW reset or host download again gives effect to FW receives password successed */
+	ilitek_tddi_reset_ctrl(idev->reset_mode);
+
+	/* waiting for FW reloading code */
+    msleep(100);
+
+	ilitek_ice_mode_ctrl(ENABLE, ON);
+
+	/* polling another specific register to see if gesutre is enabled properly */
+	do {
+		answer = ilitek_ice_mode_read(ESD_GESTURE_PWD_ADDR, sizeof(u32));
+		ipio_info("answer = 0x%x\n", answer);
+		msleep(10);
+		retry--;
+	} while (answer != ESD_GESTURE_RUN && retry > 0);
+
+	if (retry <= 0)
+		ipio_err("re-enter gesture failed\n");
+
+	ilitek_ice_mode_ctrl(DISABLE, ON);
+
+	idev->gesture_move_code(idev->gesture_mode);
 }
 
 static void ilitek_tddi_touch_send_debug_data(u8 *buf, size_t len)
@@ -609,6 +648,7 @@ void ilitek_tddi_report_gesture_mode(u8 *buf, size_t len)
 
 	switch (buf[1]) {
 	case GESTURE_DOUBLECLICK:
+		ipio_info("Double Click key event\n");
 		input_report_key(idev->input, KEY_GESTURE_POWER, 1);
 		input_sync(idev->input);
 		input_report_key(idev->input, KEY_GESTURE_POWER, 0);
