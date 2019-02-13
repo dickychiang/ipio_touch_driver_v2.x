@@ -25,7 +25,7 @@
 #define USER_STR_BUFF	PAGE_SIZE
 #define IOCTL_I2C_BUFF	PAGE_SIZE
 #define ILITEK_IOCTL_MAGIC	100
-#define ILITEK_IOCTL_MAXNR	19
+#define ILITEK_IOCTL_MAXNR	21
 
 #define ILITEK_IOCTL_I2C_WRITE_DATA			_IOWR(ILITEK_IOCTL_MAGIC, 0, u8*)
 #define ILITEK_IOCTL_I2C_SET_WRITE_LENGTH	_IOWR(ILITEK_IOCTL_MAGIC, 1, int)
@@ -52,6 +52,9 @@
 #define ILITEK_IOCTL_TP_MODE_CTRL			_IOWR(ILITEK_IOCTL_MAGIC, 17, u8*)
 #define ILITEK_IOCTL_TP_MODE_STATUS			_IOWR(ILITEK_IOCTL_MAGIC, 18, int*)
 #define ILITEK_IOCTL_ICE_MODE_SWITCH		_IOWR(ILITEK_IOCTL_MAGIC, 19, int)
+
+#define ILITEK_IOCTL_TP_INTERFACE_TYPE		_IOWR(ILITEK_IOCTL_MAGIC, 20, uint8_t*)
+#define ILITEK_IOCTL_TP_DUMP_FLASH			_IOWR(ILITEK_IOCTL_MAGIC, 21, int)
 
 unsigned char g_user_buf[USER_STR_BUFF] = {0};
 
@@ -110,14 +113,150 @@ static int dev_mkdir(char *name, umode_t mode)
     return err;
 }
 
-static ssize_t ilitek_node_mp_lcm_on_test_read(struct file *filp, char __user *buff, size_t size, loff_t *pPos)
+static ssize_t ilitek_proc_debug_switch_read(struct file *pFile, char __user *buff, size_t size, loff_t *pos)
+{
+	int ret = 0;
+
+	if (*pos != 0)
+		return 0;
+
+	memset(g_user_buf, 0, USER_STR_BUFF * sizeof(unsigned char));
+
+	idev->debug_node_open = !idev->debug_node_open;
+
+	ipio_info(" %s debug_flag message = %x\n", idev->debug_node_open ? "Enabled" : "Disabled", idev->debug_node_open);
+
+	size = sprintf(g_user_buf, "debug_node_open : %s\n", idev->debug_node_open ? "Enabled" : "Disabled");
+
+	*pos += size;
+
+	ret = copy_to_user(buff, g_user_buf, size);
+	if (ret < 0)
+		ipio_err("Failed to copy data to user space");
+
+	return size;
+}
+
+static ssize_t ilitek_proc_debug_message_read(struct file *filp, char __user *buff, size_t size, loff_t *pos)
+{
+	unsigned long p = *pos;
+	unsigned int count = size;
+	int i = 0;
+	int send_data_len = 0;
+	size_t ret = 0;
+	int data_count = 0;
+	int one_data_bytes = 0;
+	int need_read_data_len = 0;
+	int type = 0;
+	unsigned char *tmpbuf = NULL;
+	unsigned char tmpbufback[128] = {0};
+
+	mutex_lock(&idev->debug_read_mutex);
+
+	while (idev->debug_data_frame <= 0) {
+		if (filp->f_flags & O_NONBLOCK) {
+			return -EAGAIN;
+		}
+		wait_event_interruptible(idev->inq, idev->debug_data_frame > 0);
+	}
+
+	mutex_lock(&idev->debug_mutex);
+
+	tmpbuf = vmalloc(4096);	/* buf size if even */
+	if (ERR_ALLOC_MEM(tmpbuf)) {
+		ipio_err("buffer vmalloc error\n");
+		send_data_len += sprintf(tmpbufback + send_data_len, "buffer vmalloc error\n");
+		ret = copy_to_user(buff, tmpbufback, send_data_len); /*idev->debug_buf[0] */
+		goto out;
+	}
+
+	if (idev->debug_data_frame > 0) {
+		if (idev->debug_buf[0][0] == P5_X_DEMO_PACKET_ID) {
+			need_read_data_len = 43;
+		} else if (idev->debug_buf[0][0] == P5_X_I2CUART_PACKET_ID) {
+			type = idev->debug_buf[0][3] & 0x0F;
+
+			data_count = idev->debug_buf[0][1] * idev->debug_buf[0][2];
+
+			if (type == 0 || type == 1 || type == 6) {
+				one_data_bytes = 1;
+			} else if (type == 2 || type == 3) {
+				one_data_bytes = 2;
+			} else if (type == 4 || type == 5) {
+				one_data_bytes = 4;
+			}
+			need_read_data_len = data_count * one_data_bytes + 1 + 5;
+		} else if (idev->debug_buf[0][0] == P5_X_DEBUG_PACKET_ID) {
+			send_data_len = 0;	/* idev->debug_buf[0][1] - 2; */
+			need_read_data_len = 2040;
+			if (need_read_data_len <= 0) {
+				ipio_err("parse data err data len = %d\n", need_read_data_len);
+				send_data_len +=
+				    sprintf(tmpbuf + send_data_len, "parse data err data len = %d\n",
+					    need_read_data_len);
+			} else {
+				for (i = 0; i < need_read_data_len; i++) {
+					send_data_len += sprintf(tmpbuf + send_data_len, "%02X", idev->debug_buf[0][i]);
+					if (send_data_len >= 4096) {
+						ipio_err("send_data_len = %d set 4096 i = %d\n", send_data_len, i);
+						send_data_len = 4096;
+						break;
+					}
+				}
+			}
+			send_data_len += sprintf(tmpbuf + send_data_len, "\n\n");
+
+			if (p == 5 || size == 4096 || size == 2048) {
+				idev->debug_data_frame--;
+				if (idev->debug_data_frame < 0) {
+					idev->debug_data_frame = 0;
+				}
+
+				for (i = 1; i <= idev->debug_data_frame; i++)
+					memcpy(idev->debug_buf[i - 1], idev->debug_buf[i], 2048);
+			}
+		}
+	} else {
+		ipio_err("no data send\n");
+		send_data_len += sprintf(tmpbuf + send_data_len, "no data send\n");
+	}
+
+	/* Preparing to send debug data to user */
+	if (size == 4096)
+		ret = copy_to_user(buff, tmpbuf, send_data_len);
+	else
+		ret = copy_to_user(buff, tmpbuf + p, send_data_len - p);
+
+	if (ret) {
+		ipio_err("copy_to_user err\n");
+		ret = -EFAULT;
+	} else {
+		*pos += count;
+		ret = count;
+		ipio_debug(DEBUG_FINGER_REPORT, "Read %d bytes(s) from %ld\n", count, p);
+	}
+
+out:
+	/* ipio_err("send_data_len = %d\n", send_data_len); */
+	if (send_data_len <= 0 || send_data_len > 4096) {
+		ipio_err("send_data_len = %d set 2048\n", send_data_len);
+		send_data_len = 4096;
+	}
+
+	mutex_unlock(&idev->debug_mutex);
+	mutex_unlock(&idev->debug_read_mutex);
+	ipio_vfree((void **)&tmpbuf);
+	return send_data_len;
+}
+
+static ssize_t ilitek_node_mp_lcm_on_test_read(struct file *filp, char __user *buff, size_t size, loff_t *pos)
 {
 	int ret = 0;
 	char apk_ret[100] = {0};
 
 	ipio_info("Run MP test with LCM on\n");
 
-	if (*pPos != 0)
+	if (*pos != 0)
 		return 0;
 
 	/* Create the directory for mp_test result */
@@ -134,14 +273,14 @@ static ssize_t ilitek_node_mp_lcm_on_test_read(struct file *filp, char __user *b
 	return 0;
 }
 
-static ssize_t ilitek_node_mp_lcm_off_test_read(struct file *filp, char __user *buff, size_t size, loff_t *pPos)
+static ssize_t ilitek_node_mp_lcm_off_test_read(struct file *filp, char __user *buff, size_t size, loff_t *pos)
 {
 	int ret = 0;
 	char apk_ret[100] = {0};
 
 	ipio_info("Run MP test with LCM off\n");
 
-	if (*pPos != 0)
+	if (*pos != 0)
 		return 0;
 
 	/* Create the directory for mp_test result */
@@ -158,14 +297,14 @@ static ssize_t ilitek_node_mp_lcm_off_test_read(struct file *filp, char __user *
 	return 0;
 }
 
-static ssize_t ilitek_node_fw_upgrade_read(struct file *filp, char __user *buff, size_t size, loff_t *pPos)
+static ssize_t ilitek_node_fw_upgrade_read(struct file *filp, char __user *buff, size_t size, loff_t *pos)
 {
 	int ret = 0;
 	u32 len = 0;
 
 	ipio_info("Preparing to upgarde firmware\n");
 
-	if (*pPos != 0)
+	if (*pos != 0)
 		return 0;
 
     memset(g_user_buf, 0, USER_STR_BUFF * sizeof(unsigned char));
@@ -180,7 +319,7 @@ static ssize_t ilitek_node_fw_upgrade_read(struct file *filp, char __user *buff,
 	return 0;
 }
 
-static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size_t size, loff_t *pPos)
+static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size_t size, loff_t *pos)
 {
 	int ret = 0, count = 0;
 	char cmd[512] = { 0 };
@@ -230,17 +369,25 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 		ilitek_tddi_ic_get_tp_info();
 		ilitek_tddi_ic_get_panel_info();
 	} else if (strcmp(cmd, "enablewqesd") == 0) {
-		ilitek_tddi_wq_ctrl(ESD, ENABLE);
+		ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
 	} else if (strcmp(cmd, "enablewqbat") == 0) {
-		ilitek_tddi_wq_ctrl(BAT, ENABLE);
+		ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
 	} else if (strcmp(cmd, "disablewqesd") == 0) {
-		ilitek_tddi_wq_ctrl(ESD, DISABLE);
+		ilitek_tddi_wq_ctrl(WQ_ESD, DISABLE);
 	} else if (strcmp(cmd, "disablewqbat") == 0) {
-		ilitek_tddi_wq_ctrl(BAT, DISABLE);
-	} else if (strcmp(cmd, "enablenetlink") == 0) {
-		idev->netlink = ENABLE;
-	} else if (strcmp(cmd, "disablenetlink") == 0) {
-		idev->netlink = DISABLE;
+		ilitek_tddi_wq_ctrl(WQ_BAT, DISABLE);
+	} else if (strcmp(cmd, "gesture") == 0) {
+		idev->gesture = !idev->gesture;
+		ipio_info("gesture = %d\n", idev->gesture);
+	} else if (strcmp(cmd, "gesturenormal") == 0) {
+		idev->gesture_mode = P5_X_FW_GESTURE_NORMAL_MODE;
+		ipio_info("gesture mode = %d\n", idev->gesture_mode);
+	} else if (strcmp(cmd, "gesture") == 0) {
+		idev->gesture_mode = P5_X_FW_GESTURE_INFO_MODE;
+		ipio_info("gesture mode = %d\n", idev->gesture_mode);
+	} else if (strcmp(cmd, "netlink") == 0) {
+		idev->netlink = !idev->netlink;
+		ipio_info("netlink flag= %d\n", idev->netlink);
 	} else if (strcmp(cmd, "switchtestmode") == 0) {
 		tp_mode = P5_X_FW_TEST_MODE;
 		ilitek_tddi_touch_switch_mode(&tp_mode);
@@ -250,6 +397,9 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 	} else if (strcmp(cmd, "switchdemomode") == 0) {
 		tp_mode = P5_X_FW_DEMO_MODE;
 		ilitek_tddi_touch_switch_mode(&tp_mode);
+	} else if (strcmp(cmd, "dbgflag") == 0) {
+		idev->debug_node_open = !idev->debug_node_open;
+		ipio_info("debug flag message = %d\n", idev->debug_node_open);
 	} else {
 		ipio_err("Unknown command\n");
 	}
@@ -261,7 +411,7 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	int ret = 0, length = 0;
-	u8 *szBuf = NULL;
+	u8 *szBuf = NULL, if_to_user = 0;
 	static u16 i2c_rw_length = 0;
 	u32 id_to_user[3] = {0};
 	char dbg[10] = { 0 };
@@ -437,10 +587,13 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 			break;
 		}
 		ipio_info("ioctl: netlink ctrl = %d\n", szBuf[0]);
-		if (szBuf[0])
+		if (szBuf[0]) {
 			idev->netlink = ENABLE;
-		else
+			ipio_debug(DEBUG_IOCTL, "ioctl: Netlink is enabled\n");
+		} else {
 			idev->netlink = DISABLE;
+			ipio_debug(DEBUG_IOCTL, "ioctl: Netlink is disabled\n");
+		}
 		break;
 	case ILITEK_IOCTL_TP_NETLINK_STATUS:
 		ipio_info("ioctl: get netlink stat = %d\n", idev->netlink);
@@ -455,7 +608,10 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 			break;
 		}
 		ipio_info("ioctl: switch fw mode = %d\n", szBuf[0]);
-		ilitek_tddi_touch_switch_mode(szBuf);
+		ret = ilitek_tddi_touch_switch_mode(szBuf);
+		if (ret < 0) {
+			ipio_debug(DEBUG_IOCTL, "switch to fw mode (%d) failed\n", szBuf[0]);
+		}
 		break;
 	case ILITEK_IOCTL_TP_MODE_STATUS:
 		ipio_info("ioctl: current firmware mode = %d", idev->actual_fw_mode);
@@ -471,12 +627,32 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 			break;
 		}
 		ipio_info("ioctl: switch ice mode = %d", szBuf[0]);
-		if (szBuf[0])
+		if (szBuf[0]) {
 			atomic_set(&idev->ice_stat, ENABLE);
-		else
+			ipio_debug(DEBUG_IOCTL, "ioctl: set ice mode enabled\n");
+		}
+		else {
 			atomic_set(&idev->ice_stat, DISABLE);
+			ipio_debug(DEBUG_IOCTL, "ioctl: set ice mode disabled\n");
+		}
 		break;
-
+	case ILITEK_IOCTL_TP_INTERFACE_TYPE:
+		if (!idev->i2c)
+			if_to_user = TP_BUS_SPI;
+		else
+			if_to_user = TP_BUS_I2C;
+		ret = copy_to_user((uint8_t *) arg, &if_to_user, sizeof(if_to_user));
+		if (ret < 0) {
+			ipio_err("Failed to copy interface type to user space\n");
+		}
+		break;
+	case ILITEK_IOCTL_TP_DUMP_FLASH:
+		ipio_info("ioctl: dump flash data\n");
+		ret = ilitek_tddi_fw_dump_flash_data();
+		if (ret < 0) {
+			ipio_err("ioctl: Failed to dump flash data\n");
+		}
+		break;
 	default:
 		ret = -ENOTTY;
 		break;
@@ -503,6 +679,14 @@ struct file_operations proc_mp_lcm_off_test_fops = {
 	.read = ilitek_node_mp_lcm_off_test_read,
 };
 
+struct file_operations proc_debug_message_fops = {
+	.read = ilitek_proc_debug_message_read,
+};
+
+struct file_operations proc_debug_message_switch_fops = {
+	.read = ilitek_proc_debug_switch_read,
+};
+
 struct file_operations proc_ioctl_fops = {
 	.unlocked_ioctl = ilitek_node_ioctl,
 	.write = ilitek_node_ioctl_write,
@@ -522,8 +706,8 @@ proc_node_t proc_table[] = {
 	// {"debug_level", NULL, &proc_debug_level_fops, false},
 	{"mp_lcm_on_test", NULL, &proc_mp_lcm_on_test_fops, false},
 	{"mp_lcm_off_test", NULL, &proc_mp_lcm_off_test_fops, false},
-	// {"debug_message", NULL, &proc_debug_message_fops, false},
-	// {"debug_message_switch", NULL, &proc_debug_message_switch_fops, false},
+	{"debug_message", NULL, &proc_debug_message_fops, false},
+	{"debug_message_switch", NULL, &proc_debug_message_switch_fops, false},
 	// {"fw_pc_counter", NULL, &proc_fw_pc_counter_fops, false},
 	// {"show_delta_data", NULL, &proc_get_delta_data_fops, false},
 	// {"show_raw_data", NULL, &proc_get_raw_data_fops, false},

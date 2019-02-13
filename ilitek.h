@@ -180,6 +180,18 @@ enum TP_FW_OPEN_METHOD {
 	FILP_OPEN
 };
 
+enum TP_SLEEP_STATUS {
+	TP_SUSPEND = 0,
+	TP_DEEP_SLEEP = 1,
+	TP_RESUME = 2
+};
+
+enum TP_SLEEP_CTRL {
+	SLEEP_IN = 0x0,
+	SLEEP_OUT = 0x1,
+	DEEP_SLEEP_IN = 0x3
+};
+
 enum TP_FW_BLOCK_NUM {
 	AP = 1,
 	DATA = 2,
@@ -189,7 +201,6 @@ enum TP_FW_BLOCK_NUM {
 	DDI = 6
 };
 
-/* FW block info tag */
 enum TP_FW_BLOCK_TAG {
 	BLOCK_TAG_AE = 0xAE,
 	BLOCK_TAG_AF = 0xAF,
@@ -197,9 +208,9 @@ enum TP_FW_BLOCK_TAG {
 };
 
 enum TP_WQ_TYPE {
-	ESD = 0,
-	BAT,
-	SUSPEND
+	WQ_ESD = 0,
+	WQ_BAT,
+	WQ_SUSPEND
 };
 
 #define TDDI_I2C_ADDR	0x41
@@ -408,11 +419,15 @@ enum TP_WQ_TYPE {
 #define P5_X_FW_DEMO_MODE				0x00
 #define P5_X_FW_TEST_MODE				0x01
 #define P5_X_FW_DEBUG_MODE 				0x02
+#define P5_X_FW_GESTURE_NORMAL_MODE		0x01
+#define P5_X_FW_GESTURE_INFO_MODE		0x02
 #define P5_X_FW_I2CUART_MODE			0x03
 #define P5_X_FW_GESTURE_MODE			0x04
 #define P5_X_DEMO_MODE_PACKET_LENGTH	43
 #define P5_X_DEBUG_MODE_PACKET_LENGTH	1280
 #define P5_X_TEST_MODE_PACKET_LENGTH	1180
+#define P5_X_GESTURE_NORMAL_LENGTH		8
+#define P5_X_GESTURE_INFO_LENGTH		170
 #define P5_X_DEMO_PACKET_ID		        0x5A
 #define P5_X_DEBUG_PACKET_ID	        0xA7
 #define P5_X_TEST_PACKET_ID		        0xF2
@@ -435,12 +450,13 @@ enum TP_WQ_TYPE {
 #define INI_NAME_PATH		"/sdcard/mp.ini"
 #define UPDATE_FW_PATH		"/sdcard/ILITEK_FW"
 #define POWER_STATUS_PATH 	"/sys/class/power_supply/battery/status"
+#define DUMP_FLASH_PATH		"/sdcard/flash_dump"
 
 /* Options */
 #define MT_B_TYPE
 //#define MT_PRESSURE
-// #define WQ_ESD_BOOT
-// #define WQ_BAT_BOOT
+// #define ENABLE_WQ_ESD
+// #define ENABLE_WQ_BAT
 
 struct ilitek_tddi_dev
 {
@@ -455,6 +471,9 @@ struct ilitek_tddi_dev
 	struct mutex touch_mutex;
 	struct mutex io_mutex;
 	struct mutex wq_mutex;
+	struct mutex sleep_mutex;
+	struct mutex debug_mutex;
+	struct mutex debug_read_mutex;
 	spinlock_t irq_spin;
 
 	u16 max_x;
@@ -481,18 +500,25 @@ struct ilitek_tddi_dev
 
 	int fw_retry;
 	int fw_update_stat;
-	int fw_boot;
 	int fw_open;
 	bool wq_esd_ctrl;
 	bool wq_bat_ctrl;
 
 	bool netlink;
 	bool report;
+	bool gesture;
+	int gesture_mode;
 
 	u16 flash_mid;
 	u16 flash_devid;
 	int program_page;
 	int flash_sector;
+
+	/* Sending report data to users for the debug */
+	bool debug_node_open;
+	int debug_data_frame;
+	wait_queue_head_t inq;
+	unsigned char debug_buf[1024][2048];
 
 	/* host download */
 	int reset_mode;
@@ -504,18 +530,16 @@ struct ilitek_tddi_dev
 	atomic_t ice_stat;
 	atomic_t fw_stat;
 	atomic_t mp_stat;
-	atomic_t tp_suspend;
-	atomic_t tp_resume;
+	atomic_t tp_sleep;
 	atomic_t tp_sw_mode;
 	atomic_t mp_int_check;
 
-	int (*spi_setup)(u32);
     int (*write)(void *, size_t);
     int (*read)(void *, size_t);
-	void (*suspend)(void);
-	void (*resume)(void);
 	int (*mp_move_code)(void);
+	int (*gesture_move_code)(int);
 	void (*esd_callabck)(void);
+	int (*spi_setup)(u32);
 };
 extern struct ilitek_tddi_dev *idev;
 
@@ -628,15 +652,21 @@ extern void ilitek_tddi_flash_clear_dma(void);
 extern void ilitek_tddi_fw_read_flash_info(bool);
 extern u32 ilitek_tddi_fw_read_hw_crc(u32, u32);
 extern int ilitek_tddi_fw_read_flash(u32, u32, u8 *, size_t);
+extern int ilitek_tddi_fw_dump_flash_data(void);
 extern int ilitek_tddi_fw_upgrade(int, int, int);
 
 /* Prototypes for tddi mp test */
 extern int ilitek_tddi_mp_test_main(char *, bool);
 
 /* Prototypes for tddi core functions */
+extern int ilitek_tddi_move_gesture_code_flash(int);
+extern int ilitek_tddi_move_gesture_code_iram(int);
 extern int ilitek_tddi_move_mp_code_flash(void);
 extern int ilitek_tddi_move_mp_code_iram(void);
 extern int ilitek_tddi_touch_switch_mode(u8 *);
+extern void ilitek_tddi_touch_press(u16, u16, u16, u16);
+extern void ilitek_tddi_touch_release(u16, u16, u16);
+extern void ilitek_tddi_touch_release_all_point(void);
 extern void ilitek_tddi_report_ap_mode(u8 *);
 extern void ilitek_tddi_report_debug_mode(u8 *, size_t);
 extern void ilitek_tddi_report_gesture_mode(void);
@@ -666,8 +696,7 @@ extern void ilitek_tddi_wq_esd_spi_check(void);
 extern void ilitek_tddi_wq_ctrl(int, int);
 extern int ilitek_tddi_mp_test_handler(char *, bool);
 extern void ilitek_tddi_report_handler(void);
-extern void ilitek_tddi_touch_suspend(void);
-extern void ilitek_tddi_touch_resume(void);
+extern int ilitek_tddi_sleep_handler(int);
 extern int ilitek_tddi_reset_ctrl(int);
 extern int ilitek_tddi_init(void);
 extern int ilitek_tddi_dev_init(struct ilitek_hwif_info *);

@@ -228,6 +228,8 @@ int ilitek_ice_mode_ctrl(bool enable, bool mcu)
         if (ret < 0) {
             ipio_err("Enter to ICE Mode failed after retry 3 times\n");
             atomic_set(&idev->ice_stat, DISABLE);
+        } else {
+            ilitek_ice_mode_write(0x047002, 0x00, 1);
         }
     } else {
         if (atomic_read(&idev->ice_stat) == DISABLE)
@@ -333,10 +335,7 @@ int ilitek_tddi_ic_func_ctrl(const char *name, int ctrl)
         }
     }
 
-    if (ctrl == ENABLE || ctrl == ON)
-        func_ctrl[i].cmd[2] = 0x1;
-    else
-        func_ctrl[i].cmd[2] = 0x0;
+    func_ctrl[i].cmd[2] = ctrl;
 
     ipio_info("func = %s, len = %d, cmd = 0x%x, 0%x, 0x%x\n", func_ctrl[i].name, func_ctrl[i].len,
         func_ctrl[i].cmd[0], func_ctrl[i].cmd[1], func_ctrl[i].cmd[2]);

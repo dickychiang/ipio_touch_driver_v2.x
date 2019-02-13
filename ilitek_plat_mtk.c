@@ -185,7 +185,8 @@ static irqreturn_t ilitek_plat_isr_top_half(int irq, void *dev_id)
 		atomic_read(&idev->tp_reset) == START ||
 		atomic_read(&idev->fw_stat) == START ||
 		atomic_read(&idev->tp_sw_mode) == START ||
-		atomic_read(&idev->mp_stat) == ENABLE)
+		atomic_read(&idev->mp_stat) == ENABLE ||
+		atomic_read(&idev->tp_sleep) == START)
 		return IRQ_HANDLED;
 
 	return IRQ_WAKE_THREAD;
@@ -193,9 +194,9 @@ static irqreturn_t ilitek_plat_isr_top_half(int irq, void *dev_id)
 
 static irqreturn_t ilitek_plat_isr_bottom_half(int irq, void *dev_id)
 {
-	ipio_info();
-
 	mutex_lock(&idev->touch_mutex);
+
+	ipio_info();
 
 	ilitek_plat_irq_disable();
 	ilitek_tddi_report_handler();
@@ -231,18 +232,12 @@ static int ilitek_plat_irq_register(void)
 
 static void tpd_resume(struct device *h)
 {
-	ipio_info("TP Resume\n");
-
-	if (atomic_read(&idev->fw_stat) == END)
-		idev->resume();
+	ilitek_tddi_sleep_handler(TP_RESUME);
 }
 
 static void tpd_suspend(struct device *h)
 {
-	ipio_info("TP Suspend\n");
-
-	if (atomic_read(&idev->fw_stat) == END)
-		idev->suspend();
+	ilitek_tddi_sleep_handler(TP_SUSPEND);
 }
 
 static int ilitek_plat_probe(void)

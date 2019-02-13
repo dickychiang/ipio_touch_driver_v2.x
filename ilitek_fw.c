@@ -274,6 +274,53 @@ int ilitek_tddi_fw_read_flash_data(u32 start, u32 end,
 	return 0;
 }
 
+int ilitek_tddi_fw_dump_flash_data(void)
+{
+	struct file *f = NULL;
+	uint8_t *hex_buffer = NULL;
+	mm_segment_t old_fs;
+	loff_t pos = 0;
+	u32 start_addr = 0x0, end_addr = 0x1FFFF;
+	int ret, length;
+
+	ret = ilitek_ice_mode_ctrl(ENABLE, OFF);
+	if (ret < 0)
+		return ret;
+
+	f = filp_open(DUMP_FLASH_PATH, O_WRONLY | O_CREAT | O_TRUNC, 644);
+	if (ERR_ALLOC_MEM(f)) {
+		ipio_err("Failed to open the file at %ld.\n", PTR_ERR(f));
+		goto out;
+	}
+
+	length = end_addr - start_addr + 1;
+
+	hex_buffer = vmalloc(length * sizeof(uint8_t));
+	if (ERR_ALLOC_MEM(hex_buffer)) {
+		ipio_err("Failed to allocate hex_buffer memory, %ld\n", PTR_ERR(hex_buffer));
+		filp_close(f, NULL);
+		goto out;
+	}
+
+	ilitek_tddi_fw_read_flash_data(start_addr, end_addr, hex_buffer, length);
+
+	old_fs = get_fs();
+	set_fs(get_ds());
+	set_fs(KERNEL_DS);
+	pos = 0;
+	vfs_write(f, hex_buffer, length, &pos);
+	set_fs(old_fs);
+	filp_close(f, NULL);
+
+	ipio_info("dump flash success\n");
+
+	return 0;
+
+out:
+	ilitek_ice_mode_ctrl(DISABLE, OFF);
+	return -1;
+}
+
 static void ilitek_tddi_flash_protect(bool enable)
 {
 	ipio_info("%s flash protection\n", enable ? "Enable" : "Disable");

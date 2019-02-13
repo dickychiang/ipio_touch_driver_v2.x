@@ -613,15 +613,18 @@ static int ilitek_spi_probe(struct spi_device *spi)
 	core_spi_setup(1000000);
 
 	idev->actual_fw_mode = P5_X_FW_DEMO_MODE;
-    idev->suspend = ilitek_tddi_touch_suspend;
-    idev->resume = ilitek_tddi_touch_resume;
 	idev->spi_setup = core_spi_setup;
-	idev->fw_boot = ENABLE;
 	idev->fw_open = FILP_OPEN;
 	idev->wtd_ctrl = ON;
     idev->reset_mode = TP_RST_HOST_DOWNLOAD;
     idev->fw_upgrade_mode = UPGRADE_IRAM;
 	idev->mp_move_code = ilitek_tddi_move_mp_code_iram;
+	idev->gesture_move_code = ilitek_tddi_move_gesture_code_iram;
+	idev->actual_fw_mode = P5_X_FW_DEMO_MODE;
+	idev->gesture_mode = P5_X_FW_GESTURE_NORMAL_MODE;
+	idev->report = ENABLE;
+	idev->netlink = DISABLE;
+	idev->debug_node_open = DISABLE;
     return info->hwif->plat_probe();
 }
 

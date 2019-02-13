@@ -178,15 +178,18 @@ static int ilitek_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id *
 
 	idev->spi_setup = NULL;
 	idev->actual_fw_mode = P5_X_FW_DEMO_MODE;
-    idev->suspend = ilitek_tddi_touch_suspend;
-    idev->resume = ilitek_tddi_touch_resume;
 	idev->wtd_ctrl = OFF;
-	idev->fw_boot = ENABLE;
     idev->reset_mode = TP_IC_WHOLE_RST;
     idev->fw_upgrade_mode = UPGRADE_FLASH;
 	idev->fw_open = FILP_OPEN;
 	idev->mp_move_code = ilitek_tddi_move_mp_code_flash;
+	idev->gesture_move_code = ilitek_tddi_move_gesture_code_flash;
 	idev->esd_callabck = ilitek_tddi_wq_esd_i2c_check;
+	idev->actual_fw_mode = P5_X_FW_DEMO_MODE;
+	idev->gesture_mode = P5_X_FW_GESTURE_NORMAL_MODE;
+	idev->report = ENABLE;
+	idev->netlink = DISABLE;
+	idev->debug_node_open = DISABLE;
     return info->hwif->plat_probe();
 }
 
