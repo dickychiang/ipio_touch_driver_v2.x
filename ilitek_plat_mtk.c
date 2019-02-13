@@ -76,6 +76,37 @@ void ilitek_plat_input_register(void)
 #else
 	input_set_abs_params(idev->input, ABS_MT_TRACKING_ID, 0, MAX_TOUCH_NUM, 0, 0);
 #endif /* MT_B_TYPE */
+
+	/* Gesture keys register */
+	input_set_capability(idev->input, EV_KEY, KEY_POWER);
+	input_set_capability(idev->input, EV_KEY, KEY_GESTURE_UP);
+	input_set_capability(idev->input, EV_KEY, KEY_GESTURE_DOWN);
+	input_set_capability(idev->input, EV_KEY, KEY_GESTURE_LEFT);
+	input_set_capability(idev->input, EV_KEY, KEY_GESTURE_RIGHT);
+	input_set_capability(idev->input, EV_KEY, KEY_GESTURE_O);
+	input_set_capability(idev->input, EV_KEY, KEY_GESTURE_E);
+	input_set_capability(idev->input, EV_KEY, KEY_GESTURE_M);
+	input_set_capability(idev->input, EV_KEY, KEY_GESTURE_W);
+	input_set_capability(idev->input, EV_KEY, KEY_GESTURE_S);
+	input_set_capability(idev->input, EV_KEY, KEY_GESTURE_V);
+	input_set_capability(idev->input, EV_KEY, KEY_GESTURE_Z);
+	input_set_capability(idev->input, EV_KEY, KEY_GESTURE_C);
+	input_set_capability(idev->input, EV_KEY, KEY_GESTURE_F);
+
+	__set_bit(KEY_GESTURE_POWER, idev->input->keybit);
+	__set_bit(KEY_GESTURE_UP, idev->input->keybit);
+	__set_bit(KEY_GESTURE_DOWN, idev->input->keybit);
+	__set_bit(KEY_GESTURE_LEFT, idev->input->keybit);
+	__set_bit(KEY_GESTURE_RIGHT, idev->input->keybit);
+	__set_bit(KEY_GESTURE_O, idev->input->keybit);
+	__set_bit(KEY_GESTURE_E, idev->input->keybit);
+	__set_bit(KEY_GESTURE_M, idev->input->keybit);
+	__set_bit(KEY_GESTURE_W, idev->input->keybit);
+	__set_bit(KEY_GESTURE_S, idev->input->keybit);
+	__set_bit(KEY_GESTURE_V, idev->input->keybit);
+	__set_bit(KEY_GESTURE_Z, idev->input->keybit);
+	__set_bit(KEY_GESTURE_C, idev->input->keybit);
+	__set_bit(KEY_GESTURE_F, idev->input->keybit);
 }
 
 static int ilitek_plat_gpio_register(void)

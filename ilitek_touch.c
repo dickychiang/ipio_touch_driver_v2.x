@@ -441,7 +441,7 @@ void ilitek_tddi_touch_release_all_point(void)
 
 static struct ilitek_touch_info touch_info[MAX_TOUCH_NUM];
 
-void ilitek_tddi_report_ap_mode(u8 *buf)
+void ilitek_tddi_report_ap_mode(u8 *buf, size_t len)
 {
 	int i = 0;
 	u32 xop = 0, yop = 0;
@@ -603,7 +603,49 @@ void ilitek_tddi_report_debug_mode(u8 *buf, size_t rlen)
 	ilitek_tddi_touch_send_debug_data(buf, rlen);
 }
 
-void ilitek_tddi_report_gesture_mode(void)
+void ilitek_tddi_report_gesture_mode(u8 *buf, size_t len)
+{
+	ipio_info("gesture code = 0x%x\n", buf[1]);
+
+	switch (buf[1]) {
+	case GESTURE_DOUBLECLICK:
+		input_report_key(idev->input, KEY_GESTURE_POWER, 1);
+		input_sync(idev->input);
+		input_report_key(idev->input, KEY_GESTURE_POWER, 0);
+		input_sync(idev->input);
+		break;
+	case GESTURE_LEFT:
+		break;
+	case GESTURE_RIGHT:
+		break;
+	case GESTURE_UP:
+		break;
+	case GESTURE_DOWN:
+		break;
+	case GESTURE_O:
+		break;
+	case GESTURE_W:
+		break;
+	case GESTURE_M:
+		break;
+	case GESTURE_E:
+		break;
+	case GESTURE_S:
+		break;
+	case GESTURE_V:
+		break;
+	case GESTURE_Z:
+		break;
+	case GESTURE_C:
+		break;
+	case GESTURE_F:
+		break;
+	default:
+		break;
+	}
+}
+
+void ilitek_tddi_report_i2cuart_mode(u8 *buf, size_t len)
 {
 	ipio_info();
 }

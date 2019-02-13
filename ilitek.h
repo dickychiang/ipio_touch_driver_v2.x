@@ -394,6 +394,41 @@ enum TP_WQ_TYPE {
 #define FLASH4_reserved_2					BIT(18)|BIT(19)|BIT(20)|BIT(21)|BIT(22)|BIT(23)
 #define FLASH4_reg_flash_dma_trigger_en		BIT(24)|BIT(25)|BIT(26)|BIT(27)|BIT(28)|BIT(29)|BIT(30)|BIT(31)
 
+/* The example for the gesture virtual keys */
+#define GESTURE_DOUBLECLICK			    0x58
+#define GESTURE_UP						0x60
+#define GESTURE_DOWN					0x61
+#define GESTURE_LEFT					0x62
+#define GESTURE_RIGHT					0x63
+#define GESTURE_M						0x64
+#define GESTURE_W						0x65
+#define GESTURE_C						0x66
+#define GESTURE_E						0x67
+#define GESTURE_V						0x68
+#define GESTURE_O						0x69
+#define GESTURE_S						0x6A
+#define GESTURE_Z						0x6B
+#define KEY_GESTURE_POWER				KEY_POWER
+#define KEY_GESTURE_UP					KEY_UP
+#define KEY_GESTURE_DOWN				KEY_DOWN
+#define KEY_GESTURE_LEFT				KEY_LEFT
+#define KEY_GESTURE_RIGHT				KEY_RIGHT
+#define KEY_GESTURE_O					KEY_O
+#define KEY_GESTURE_E					KEY_E
+#define KEY_GESTURE_M					KEY_M
+#define KEY_GESTURE_W					KEY_W
+#define KEY_GESTURE_S					KEY_S
+#define KEY_GESTURE_V					KEY_V
+#define KEY_GESTURE_C					KEY_C
+#define KEY_GESTURE_Z					KEY_Z
+#define KEY_GESTURE_F					KEY_F
+#define GESTURE_CODE_V_DOWN						0x6C
+#define GESTURE_CODE_V_LEFT						0x6D
+#define GESTURE_CODE_V_RIGHT					0x6E
+#define GESTURE_CODE_TWO_LINE_2_BOTTOM			0x6F
+#define GESTURE_F               			    0x70
+#define GESTURE_AT              			    0x71
+
 /* Protocol */
 #define PROTOCOL_VER_500    			0x050000
 #define PROTOCOL_VER_510    			0x050100
@@ -454,9 +489,10 @@ enum TP_WQ_TYPE {
 
 /* Options */
 #define MT_B_TYPE
-//#define MT_PRESSURE
-// #define ENABLE_WQ_ESD
-// #define ENABLE_WQ_BAT
+// #define MT_PRESSURE
+#define ENABLE_WQ_ESD
+#define ENABLE_WQ_BAT
+#define ENABLE_GESTURE
 
 struct ilitek_tddi_dev
 {
@@ -667,9 +703,10 @@ extern int ilitek_tddi_touch_switch_mode(u8 *);
 extern void ilitek_tddi_touch_press(u16, u16, u16, u16);
 extern void ilitek_tddi_touch_release(u16, u16, u16);
 extern void ilitek_tddi_touch_release_all_point(void);
-extern void ilitek_tddi_report_ap_mode(u8 *);
+extern void ilitek_tddi_report_ap_mode(u8 *, size_t);
 extern void ilitek_tddi_report_debug_mode(u8 *, size_t);
-extern void ilitek_tddi_report_gesture_mode(void);
+extern void ilitek_tddi_report_gesture_mode(u8 *, size_t);
+extern void ilitek_tddi_report_i2cuart_mode(u8 *, size_t);
 extern int ilitek_tddi_ic_whole_reset(void);
 extern int ilitek_tddi_ic_code_reset(void);
 extern int ilitek_tddi_ic_func_ctrl(const char *, int);

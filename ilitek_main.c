@@ -344,6 +344,7 @@ void ilitek_tddi_report_handler(void)
 			rlen += 2 * self_key + (8 * 2) + 1 + 35;
 			break;
 		case P5_X_FW_I2CUART_MODE:
+			rlen = P5_X_DEMO_MODE_PACKET_LENGTH;
 			break;
 		case P5_X_FW_GESTURE_MODE:
 			if (idev->gesture_mode == P5_X_FW_GESTURE_INFO_MODE)
@@ -389,15 +390,16 @@ void ilitek_tddi_report_handler(void)
 
 	switch (pid) {
 		case P5_X_DEMO_PACKET_ID:
-			ilitek_tddi_report_ap_mode(buf);
+			ilitek_tddi_report_ap_mode(buf, rlen);
 			break;
 		case P5_X_DEBUG_PACKET_ID:
 			ilitek_tddi_report_debug_mode(buf, rlen);
 			break;
 		case P5_X_I2CUART_PACKET_ID:
+			ilitek_tddi_report_i2cuart_mode(buf, rlen);
 			break;
 		case P5_X_GESTURE_PACKET_ID:
-			ilitek_tddi_report_gesture_mode();
+			ilitek_tddi_report_gesture_mode(buf, rlen);
 			break;
 		default:
 			ipio_err("Unknown packet id, %x\n", pid);
