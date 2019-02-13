@@ -204,7 +204,7 @@ out:
 	return size;
 }
 
-static ssize_t ilitek_proc_fw_get_raw_data_read(struct file *pFile, char __user *buf, size_t nCount, loff_t *pos)
+static ssize_t ilitek_proc_fw_get_raw_data_read(struct file *pFile, char __user *buf, size_t size, loff_t *pos)
 {
 	s16 *rawdata = NULL;
 	int row = 0, col = 0,  index = 0;
@@ -263,28 +263,28 @@ static ssize_t ilitek_proc_fw_get_raw_data_read(struct file *pFile, char __user 
 	for (i = 4, index = 0; index < row * col * 2; i += 2, index++)
 		rawdata[index] = (data[i] << 8) + data[i + 1];
 
-	nCount = snprintf(g_user_buf, PAGE_SIZE, "======== RawData ========\n");
+	size = snprintf(g_user_buf, PAGE_SIZE, "======== RawData ========\n");
 
-	nCount += snprintf(g_user_buf + nCount, PAGE_SIZE - nCount,
+	size += snprintf(g_user_buf + size, PAGE_SIZE - size,
 			"Header 0x%x ,Type %d, Length %d\n",data[0], data[1], (data[2]<<8) | data[3]);
 
 	// print raw data
 	for (y = 0; y < row; y++) {
-		nCount += snprintf(g_user_buf + nCount, PAGE_SIZE - nCount, "[%2d] ", (y+1));
+		size += snprintf(g_user_buf + size, PAGE_SIZE - size, "[%2d] ", (y+1));
 
 		for (x = 0; x < col; x++) {
 			int shift = y * col + x;
-			nCount += snprintf(g_user_buf + nCount, PAGE_SIZE - nCount, "%5d", rawdata[shift]);
+			size += snprintf(g_user_buf + size, PAGE_SIZE - size, "%5d", rawdata[shift]);
 		}
-		nCount += snprintf(g_user_buf + nCount, PAGE_SIZE - nCount, "\n");
+		size += snprintf(g_user_buf + size, PAGE_SIZE - size, "\n");
 	}
 
-	ret = copy_to_user(buf, g_user_buf, nCount);
+	ret = copy_to_user(buf, g_user_buf, size);
 	if (ret < 0) {
 		ipio_err("Failed to copy data to user space");
 	}
 
-	*pos += nCount;
+	*pos += size;
 
 out:
 	mutex_unlock(&idev->touch_mutex);
@@ -292,7 +292,89 @@ out:
 	ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
 	ipio_kfree((void **)&data);
 	ipio_kfree((void **)&rawdata);
-	return nCount;
+	return size;
+}
+
+u32 rw_reg[5] = {0};
+static ssize_t ilitek_proc_rw_reg_read(struct file *pFile, char __user *buf, size_t size, loff_t *pos)
+{
+	int ret = 0;
+	bool mcu_on = 0, read = 0;
+	u32 type, addr, read_data, write_data, write_len, stop_mcu;
+
+	if (*pos != 0)
+		return 0;
+
+	stop_mcu = rw_reg[0];
+	type = rw_reg[1];
+	addr = rw_reg[2];
+	write_data = rw_reg[3];
+	write_len = rw_reg[4];
+
+	ipio_info("stop_mcu = %d\n", rw_reg[0]);
+
+	ilitek_tddi_wq_ctrl(WQ_ESD, DISABLE);
+	ilitek_tddi_wq_ctrl(WQ_BAT, DISABLE);
+	mutex_lock(&idev->touch_mutex);
+
+	if (stop_mcu == mcu_on) {
+		ret = ilitek_ice_mode_ctrl(ENABLE, ON);
+		if (ret < 0) {
+			ipio_err("Failed to enter ICE mode, ret = %d\n", ret);
+			return -1;
+		}
+	} else {
+		ret = ilitek_ice_mode_ctrl(ENABLE, OFF);
+		if (ret < 0) {
+			ipio_err("Failed to enter ICE mode, ret = %d\n", ret);
+			return -1;
+		}
+	}
+
+	if (type == read) {
+		read_data = ilitek_ice_mode_read(addr, sizeof(u32));
+		ipio_info("READ:addr = 0x%06x, read = 0x%08x\n", addr, read_data);
+		size = snprintf(g_user_buf, PAGE_SIZE, "READ:addr = 0x%06x, read = 0x%08x\n", addr, read_data);
+	} else {
+		ilitek_ice_mode_write(addr, write_data, write_len);
+		ipio_info("WRITE:addr = 0x%06x, write = 0x%08x, len =%d byte\n", addr, write_data, write_len);
+		size = snprintf(g_user_buf, PAGE_SIZE, "WRITE:addr = 0x%06x, write = 0x%08x, len =%d byte\n", addr, write_data, write_len);
+	}
+
+	ilitek_ice_mode_ctrl(DISABLE, OFF);
+
+	ret = copy_to_user(buf, g_user_buf, size);
+	if (ret < 0)
+		ipio_err("Failed to copy data to user space");
+
+	*pos += size;
+	mutex_unlock(&idev->touch_mutex);
+	ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
+	ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
+	return size;
+}
+
+static ssize_t ilitek_proc_rw_reg_write(struct file *filp, const char *buff, size_t size, loff_t *pos)
+{
+	int ret = 0;
+	char *token = NULL, *cur = NULL;
+	char cmd[256] = { 0 };
+	u32 count = 0;
+
+	if (buff != NULL) {
+		ret = copy_from_user(cmd, buff, size - 1);
+		if (ret < 0) {
+			ipio_info("copy data from user space, failed\n");
+			return -1;
+		}
+	}
+	token = cur = cmd;
+	while ((token = strsep(&cur, ",")) != NULL) {
+		rw_reg[count] = str2hex(token);
+		ipio_info("rw_reg[%d] = 0x%x\n", count, rw_reg[count]);
+		count++;
+	}
+	return size;
 }
 
 static ssize_t ilitek_proc_debug_switch_read(struct file *pFile, char __user *buff, size_t size, loff_t *pos)
@@ -582,6 +664,8 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 	} else if (strcmp(cmd, "dbgflag") == 0) {
 		idev->debug_node_open = !idev->debug_node_open;
 		ipio_info("debug flag message = %d\n", idev->debug_node_open);
+	} else if (strcmp(cmd, "pccounter") == 0) {
+		ilitek_tddi_ic_get_pc_counter();
 	} else {
 		ipio_err("Unknown command\n");
 	}
@@ -886,6 +970,11 @@ struct file_operations proc_get_raw_data_fops = {
 	.read = ilitek_proc_fw_get_raw_data_read,
 };
 
+struct file_operations proc_rw_reg_fops = {
+	.read = ilitek_proc_rw_reg_read,
+	.write = ilitek_proc_rw_reg_write,
+};
+
 proc_node_t proc_table[] = {
 	{"ioctl", NULL, &proc_ioctl_fops, false},
 	// {"fw_process", NULL, &proc_fw_process_fops, false},
@@ -902,7 +991,7 @@ proc_node_t proc_table[] = {
 	{"show_delta_data", NULL, &proc_get_delta_data_fops, false},
 	{"show_raw_data", NULL, &proc_get_raw_data_fops, false},
 	// {"get_debug_mode_data", NULL, &proc_get_debug_mode_data_fops, false},
-	// {"read_write_register", NULL, &proc_read_write_register_fops, false},
+	{"rw_reg", NULL, &proc_rw_reg_fops, false},
 };
 
 #define NETLINK_USER 21
