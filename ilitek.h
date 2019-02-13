@@ -148,7 +148,7 @@ extern u32 ipio_debug_level;
 #define END		0
 #define OFF		0
 
-enum TP_RST_METHOD{
+enum TP_RST_METHOD {
 	TP_IC_WHOLE_RST = 0,
 	TP_IC_CODE_RST,
 	TP_RST_HW_ONLY,

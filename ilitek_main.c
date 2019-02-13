@@ -63,20 +63,25 @@ int katoi(char *str)
 int ilitek_tddi_mp_test_handler(char *apk, bool lcm_on)
 {
 	int ret = 0;
+	u8 tp_mode = P5_X_FW_TEST_MODE;
 
     ipio_info();
+
+	if (atomic_read(&idev->fw_stat) == START)
+		return 0;
 
 	ilitek_tddi_wq_ctrl(WQ_ESD, DISABLE);
 	ilitek_tddi_wq_ctrl(WQ_BAT, DISABLE);
 
-	if (atomic_read(&idev->fw_stat) == START)
-		return -1;
-
 	mutex_lock(&idev->touch_mutex);
 	atomic_set(&idev->mp_stat, ENABLE);
 
+	if (ilitek_tddi_touch_switch_mode(&tp_mode) < 0)
+		goto out;
+
 	ret = ilitek_tddi_mp_test_main(apk, lcm_on);
 
+out:
 	mutex_unlock(&idev->touch_mutex);
 	atomic_set(&idev->mp_stat, DISABLE);
 
@@ -226,7 +231,7 @@ static void ilitek_tddi_wq_init(void)
 
 int ilitek_tddi_sleep_handler(int mode)
 {
-	u8 tp_mode;
+	u8 tp_mode = P5_X_FW_DEMO_MODE;
 	int ret = 0;
 
 	ipio_info("Sleep Mode = %d\n", mode);
@@ -273,7 +278,6 @@ int ilitek_tddi_sleep_handler(int mode)
 			if (idev->gesture)
 				disable_irq_wake(idev->irq_num);
 
-			tp_mode = P5_X_FW_DEMO_MODE;
 			ilitek_tddi_touch_switch_mode(&tp_mode);
 
 			ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);

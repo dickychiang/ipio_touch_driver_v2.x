@@ -3132,7 +3132,7 @@ static void mp_copy_ret_to_apk(char *buf)
 int ilitek_tddi_mp_test_main(char *apk, bool lcm_on)
 {
     int ret = 0;
-	u8 tp_mode;
+	u8 tp_mode = P5_X_FW_DEMO_MODE;
 	const char *csv_path = NULL;
 
 	ilitek_tddi_mp_init_item();
@@ -3140,14 +3140,6 @@ int ilitek_tddi_mp_test_main(char *apk, bool lcm_on)
 	ret = ilitek_tddi_mp_ini_parser(INI_NAME_PATH);
 	if (ret < 0) {
 		ipio_err("Failed to parsing INI file\n");
-		goto out;
-	}
-
-	/* Switch to Test mode nad move mp code into iram */
-	tp_mode = P5_X_FW_TEST_MODE;
-	ret = ilitek_tddi_touch_switch_mode(&tp_mode);
-	if (ret < 0) {
-		ipio_err("Switch to test mode failed\n");
 		goto out;
 	}
 
@@ -3198,7 +3190,6 @@ int ilitek_tddi_mp_test_main(char *apk, bool lcm_on)
 
 out:
 	/* Switch to Demo mode */
-	tp_mode = P5_X_FW_DEMO_MODE;
 	ret = ilitek_tddi_touch_switch_mode(&tp_mode);
 	if (ret < 0) {
 		ipio_err("Switch to test mode failed\n");

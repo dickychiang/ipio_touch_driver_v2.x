@@ -176,7 +176,6 @@ static int ilitek_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id *
     idev->write = ilitek_i2c_write;
     idev->read = ilitek_i2c_read;
 
-	idev->spi_setup = NULL;
 	idev->actual_fw_mode = P5_X_FW_DEMO_MODE;
 	idev->wtd_ctrl = OFF;
     idev->reset_mode = TP_IC_WHOLE_RST;

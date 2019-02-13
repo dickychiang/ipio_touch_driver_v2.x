@@ -249,7 +249,7 @@ int ilitek_tddi_move_gesture_code_flash(int mode)
 int ilitek_tddi_move_gesture_code_iram(int mode)
 {
 	int i;
-	u8 tp_mode;
+	u8 tp_mode = P5_X_FW_GESTURE_MODE;
 	u8 cmd[3] = {0};
 
 	ipio_info();
@@ -257,7 +257,6 @@ int ilitek_tddi_move_gesture_code_iram(int mode)
 	if (ilitek_tddi_ic_func_ctrl("lpwg", 0x3) < 0)
 		ipio_err("write gesture flag failed\n");
 
-	tp_mode = P5_X_FW_GESTURE_MODE;
 	ilitek_tddi_touch_switch_mode(&tp_mode);
 
 	for (i = 0; i < 20; i++) {
@@ -344,7 +343,7 @@ out:
 
 int ilitek_tddi_touch_switch_mode(u8 *data)
 {
-	int ret = 0, mode, prev_mode;
+	int ret = 0, mode;
 	u8 cmd[4] = {0};
 
 	if (!data) {
@@ -355,12 +354,6 @@ int ilitek_tddi_touch_switch_mode(u8 *data)
 	atomic_set(&idev->tp_sw_mode, START);
 
 	mode = data[0];
-	prev_mode = idev->actual_fw_mode;
-	if (CHECK_EQUAL(mode, prev_mode)) {
-		ipio_info("TP mode is the same, do nothing\n");
-		goto out;
-	}
-
 	idev->actual_fw_mode = mode;
 
 	switch(idev->actual_fw_mode) {
@@ -394,12 +387,9 @@ int ilitek_tddi_touch_switch_mode(u8 *data)
 			break;
 	}
 
-	if (ret < 0) {
-		idev->actual_fw_mode = prev_mode;
-		ipio_err("switch mode failed, return to previous mode (%d)\n", idev->actual_fw_mode);
-	}
+	if (ret < 0)
+		ipio_err("Switch mode failed\n");
 
-out:
 	ipio_info("Actual TP mode = %d\n", idev->actual_fw_mode);
 	atomic_set(&idev->tp_sw_mode, END);
 	return ret;
