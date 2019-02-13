@@ -243,13 +243,14 @@ int ilitek_tddi_sleep_handler(int mode)
 	ilitek_tddi_wq_ctrl(WQ_ESD, DISABLE);
 	ilitek_tddi_wq_ctrl(WQ_BAT, DISABLE);
 
-	mutex_lock(&idev->sleep_mutex);
-	mutex_lock(&idev->touch_mutex);
 	atomic_set(&idev->tp_sleep, START);
+	mutex_lock(&idev->sleep_mutex);
+
+	ilitek_plat_irq_disable();
 
 	switch (mode) {
 		case TP_SUSPEND:
-			ipio_info("TP suspend start\n");
+			ipio_info("TP normal suspend start\n");
 			ilitek_tddi_ic_func_ctrl("sense", DISABLE);
 			ilitek_tddi_ic_check_busy(50, 50);
 
@@ -259,8 +260,7 @@ int ilitek_tddi_sleep_handler(int mode)
 					ipio_err("Enter to gesture failed\n");
 				enable_irq_wake(idev->irq_num);
 				msleep(20); /* wait for isr queue completed. */
-				atomic_set(&idev->tp_sleep, END);
-				mutex_unlock(&idev->touch_mutex);
+				ilitek_plat_irq_enable();
 			} else {
 				ilitek_tddi_ic_func_ctrl("sleep", SLEEP_IN);
 			}
@@ -282,8 +282,7 @@ int ilitek_tddi_sleep_handler(int mode)
 
 			ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
 			ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
-			atomic_set(&idev->tp_sleep, END);
-			mutex_unlock(&idev->touch_mutex);
+			ilitek_plat_irq_enable();
 			ipio_info("TP resume end\n");
 			break;
 		default:
@@ -294,6 +293,7 @@ int ilitek_tddi_sleep_handler(int mode)
 
 	ilitek_tddi_touch_release_all_point();
 	mutex_unlock(&idev->sleep_mutex);
+	atomic_set(&idev->tp_sleep, END);
 	return ret;
 }
 
