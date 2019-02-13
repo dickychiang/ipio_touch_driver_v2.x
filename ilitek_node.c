@@ -561,6 +561,29 @@ static ssize_t ilitek_node_mp_lcm_off_test_read(struct file *filp, char __user *
 	return 0;
 }
 
+static ssize_t ilitek_proc_fw_process_read(struct file *filp, char __user *buff, size_t size, loff_t *pos)
+{
+	int ret = 0;
+	u32 len = 0;
+
+	if (*pos != 0)
+		return 0;
+
+	memset(g_user_buf, 0, USER_STR_BUFF * sizeof(unsigned char));
+
+	len = sprintf(g_user_buf, "%02d\n", idev->fw_update_stat);
+
+	ipio_info("update status = %d\n", idev->fw_update_stat);
+
+	ret = copy_to_user((char *) buff, &idev->fw_update_stat, len);
+	if (ret < 0) {
+		ipio_err("Failed to copy data to user space\n");
+	}
+
+	*pos = len;
+	return len;
+}
+
 static ssize_t ilitek_node_fw_upgrade_read(struct file *filp, char __user *buff, size_t size, loff_t *pos)
 {
 	int ret = 0;
@@ -962,6 +985,10 @@ struct file_operations proc_fw_upgrade_fops = {
 	.read = ilitek_node_fw_upgrade_read,
 };
 
+struct file_operations proc_fw_process_fops = {
+	.read = ilitek_proc_fw_process_read,
+};
+
 struct file_operations proc_get_delta_data_fops = {
 	.read = ilitek_proc_get_delta_data_read,
 };
@@ -977,11 +1004,8 @@ struct file_operations proc_rw_reg_fops = {
 
 proc_node_t proc_table[] = {
 	{"ioctl", NULL, &proc_ioctl_fops, false},
-	// {"fw_process", NULL, &proc_fw_process_fops, false},
+	{"fw_process", NULL, &proc_fw_process_fops, false},
 	{"fw_upgrade", NULL, &proc_fw_upgrade_fops, false},
-	// {"gesture", NULL, &proc_gesture_fops, false},
-	// {"check_battery", NULL, &proc_check_battery_fops, false},
-	// {"check_esd", NULL, &proc_check_esd_fops, false},
 	// {"debug_level", NULL, &proc_debug_level_fops, false},
 	{"mp_lcm_on_test", NULL, &proc_mp_lcm_on_test_fops, false},
 	{"mp_lcm_off_test", NULL, &proc_mp_lcm_off_test_fops, false},

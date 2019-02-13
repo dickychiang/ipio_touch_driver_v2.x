@@ -310,7 +310,12 @@ int ilitek_tddi_fw_upgrade_handler(void *data)
 	mutex_lock(&idev->touch_mutex);
 	atomic_set(&idev->fw_stat, START);
 
+	idev->fw_update_stat = 0;
 	ret = ilitek_tddi_fw_upgrade(idev->fw_upgrade_mode, HEX_FILE, idev->fw_open);
+	if (ret == 0)
+		idev->fw_update_stat = 100;
+	else
+		idev->fw_update_stat = -1;
 
 	mutex_unlock(&idev->touch_mutex);
 	atomic_set(&idev->fw_stat, END);
@@ -413,10 +418,6 @@ out:
 int ilitek_tddi_reset_ctrl(int mode)
 {
 	int ret = 0;
-
-	ilitek_tddi_wq_ctrl(WQ_ESD, DISABLE);
-	ilitek_tddi_wq_ctrl(WQ_BAT, DISABLE);
-
 	atomic_set(&idev->tp_reset, START);
 
 	switch (mode) {
@@ -443,9 +444,6 @@ int ilitek_tddi_reset_ctrl(int mode)
 	}
 
 	atomic_set(&idev->tp_reset, END);
-
-	ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
-	ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
 	return ret;
 }
 

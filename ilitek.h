@@ -493,9 +493,9 @@ enum TP_WQ_TYPE {
 /* Options */
 #define MT_B_TYPE
 // #define MT_PRESSURE
-#define ENABLE_WQ_ESD
-#define ENABLE_WQ_BAT
-#define ENABLE_GESTURE
+// #define ENABLE_WQ_ESD
+// #define ENABLE_WQ_BAT
+// #define ENABLE_GESTURE
 
 struct ilitek_tddi_dev
 {

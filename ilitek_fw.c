@@ -928,7 +928,7 @@ static void ilitek_tddi_fw_update_tp_info(int ret)
 		ilitek_ice_mode_ctrl(ENABLE, OFF);
 		ilitek_tddi_fw_do_erase();
 		ilitek_ice_mode_ctrl(DISABLE, OFF);
-		ilitek_tddi_reset_ctrl(TP_RST_HW_ONLY);
+		ilitek_tddi_reset_ctrl(TP_IC_WHOLE_RST);
 	}
 	ilitek_tddi_ic_get_protocl_ver();
 	ilitek_tddi_ic_get_fw_ver();
@@ -942,8 +942,6 @@ int ilitek_tddi_fw_upgrade(int upgrade_type, int file_type, int open_file_method
 {
     int ret = 0, retry = 3;
     u8 *pfw = NULL;
-
-	idev->fw_update_stat = 0;
 
 	pfw = vmalloc(MAX_HEX_FILE_SIZE * sizeof(u8));
 	if (ERR_ALLOC_MEM(pfw)) {
@@ -969,7 +967,6 @@ int ilitek_tddi_fw_upgrade(int upgrade_type, int file_type, int open_file_method
 
 		if (ret == 0)
 			break;
-		idev->fw_update_stat = 0;
 	} while(--retry >= 0);
 
 	if (retry <= 0) {
@@ -978,12 +975,7 @@ int ilitek_tddi_fw_upgrade(int upgrade_type, int file_type, int open_file_method
 	}
 
 	ilitek_tddi_fw_update_tp_info(ret);
-
 out:
-	if (ret == UPDATE_PASS)
-		idev->fw_update_stat = 100;
-	else
-		idev->fw_update_stat = UPDATE_FAIL;
 	ipio_vfree((void **)&pfw);
     return ret;
 }
