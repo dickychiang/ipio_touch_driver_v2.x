@@ -295,6 +295,25 @@ out:
 	return size;
 }
 
+static ssize_t ilitek_proc_fw_pc_counter_read(struct file *pFile, char __user *buf, size_t size, loff_t *pos)
+{
+	u32 pc;
+
+	if (*pos != 0)
+		return 0;
+
+	memset(g_user_buf, 0, USER_STR_BUFF * sizeof(unsigned char));
+
+	pc = ilitek_tddi_ic_get_pc_counter();
+	size = snprintf(g_user_buf, PAGE_SIZE, "pc counter = 0x%x\n", pc);
+	pc = copy_to_user(buf, g_user_buf, size);
+	if (pc < 0)
+		ipio_err("Failed to copy data to user space");
+
+	*pos += size;
+	return size;
+}
+
 u32 rw_reg[5] = {0};
 static ssize_t ilitek_proc_rw_reg_read(struct file *pFile, char __user *buf, size_t size, loff_t *pos)
 {
@@ -1002,6 +1021,10 @@ struct file_operations proc_rw_reg_fops = {
 	.write = ilitek_proc_rw_reg_write,
 };
 
+struct file_operations proc_fw_pc_counter_fops = {
+	.read = ilitek_proc_fw_pc_counter_read,
+};
+
 proc_node_t proc_table[] = {
 	{"ioctl", NULL, &proc_ioctl_fops, false},
 	{"fw_process", NULL, &proc_fw_process_fops, false},
@@ -1011,7 +1034,7 @@ proc_node_t proc_table[] = {
 	{"mp_lcm_off_test", NULL, &proc_mp_lcm_off_test_fops, false},
 	{"debug_message", NULL, &proc_debug_message_fops, false},
 	{"debug_message_switch", NULL, &proc_debug_message_switch_fops, false},
-	// {"fw_pc_counter", NULL, &proc_fw_pc_counter_fops, false},
+	{"fw_pc_counter", NULL, &proc_fw_pc_counter_fops, false},
 	{"show_delta_data", NULL, &proc_get_delta_data_fops, false},
 	{"show_raw_data", NULL, &proc_get_raw_data_fops, false},
 	// {"get_debug_mode_data", NULL, &proc_get_debug_mode_data_fops, false},
