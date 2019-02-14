@@ -315,7 +315,7 @@ static ssize_t ilitek_proc_fw_pc_counter_read(struct file *pFile, char __user *b
 }
 
 u32 rw_reg[5] = {0};
-static ssize_t ilitek_proc_rw_reg_read(struct file *pFile, char __user *buf, size_t size, loff_t *pos)
+static ssize_t ilitek_proc_rw_tp_reg_read(struct file *pFile, char __user *buf, size_t size, loff_t *pos)
 {
 	int ret = 0;
 	bool mcu_on = 0, read = 0;
@@ -373,7 +373,7 @@ static ssize_t ilitek_proc_rw_reg_read(struct file *pFile, char __user *buf, siz
 	return size;
 }
 
-static ssize_t ilitek_proc_rw_reg_write(struct file *filp, const char *buff, size_t size, loff_t *pos)
+static ssize_t ilitek_proc_rw_tp_reg_write(struct file *filp, const char *buff, size_t size, loff_t *pos)
 {
 	int ret = 0;
 	char *token = NULL, *cur = NULL;
@@ -627,10 +627,10 @@ static ssize_t ilitek_node_fw_upgrade_read(struct file *filp, char __user *buff,
 
 static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size_t size, loff_t *pos)
 {
-	int ret = 0, count = 0;
-	char cmd[512] = { 0 };
+	int i, ret = 0, count = 0;
+	char cmd[512] = {0};
 	char *token = NULL, *cur = NULL;
-	//u8 temp[256] = { 0 };
+	u8 temp[256] = {0};
 	u8 *data = NULL, tp_mode;
 
 	if (buff != NULL) {
@@ -674,6 +674,13 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 		ilitek_tddi_ic_get_core_ver();
 		ilitek_tddi_ic_get_tp_info();
 		ilitek_tddi_ic_get_panel_info();
+	} else if (strcmp(cmd, "enableicemode") == 0) {
+		if (data[1] == ON)
+			ilitek_ice_mode_ctrl(ENABLE, ON);
+		else
+			ilitek_ice_mode_ctrl(ENABLE, OFF);
+	} else if (strcmp(cmd, "disableicemode") == 0) {
+		ilitek_ice_mode_ctrl(DISABLE, OFF);
 	} else if (strcmp(cmd, "enablewqesd") == 0) {
 		ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
 	} else if (strcmp(cmd, "enablewqbat") == 0) {
@@ -706,8 +713,49 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 	} else if (strcmp(cmd, "dbgflag") == 0) {
 		idev->debug_node_open = !idev->debug_node_open;
 		ipio_info("debug flag message = %d\n", idev->debug_node_open);
-	} else if (strcmp(cmd, "pccounter") == 0) {
-		ilitek_tddi_ic_get_pc_counter();
+	} else if (strcmp(cmd, "i2c_w") == 0) {
+		int w_len = 0;
+		w_len = data[1];
+		ipio_info("w_len = %d\n", w_len);
+
+		for (i = 0; i < w_len; i++) {
+			temp[i] = data[2 + i];
+			ipio_info("write[%d] = %x\n", i, temp[i]);
+		}
+
+		idev->write(temp, w_len);
+	} else if (strcmp(cmd, "i2c_r") == 0) {
+		int r_len = 0;
+		r_len = data[1];
+		ipio_info("r_len = %d\n", r_len);
+		idev->read(temp, r_len);
+		for (i = 0; i < r_len; i++)
+			ipio_info("read[%d] = %x\n", i, temp[i]);
+	} else if (strcmp(cmd, "i2c_w_r") == 0) {
+		int delay = 0;
+		int w_len = 0, r_len = 0;
+		w_len = data[1];
+		r_len = data[2];
+		delay = data[3];
+		ipio_info("w_len = %d, r_len = %d, delay = %d\n", w_len, r_len, delay);
+
+		for (i = 0; i < w_len; i++) {
+			temp[i] = data[4 + i];
+			ipio_info("write[%d] = %x\n", i, temp[i]);
+		}
+		idev->write(temp, w_len);
+		memset(temp, 0, sizeof(temp));
+		mdelay(delay);
+		idev->read(temp, r_len);
+
+		for (i = 0; i < r_len; i++)
+			ipio_info("read[%d] = %x\n", i, temp[i]);
+	} else if (strcmp(cmd, "getoneddiregdata") == 0) {
+		ipio_info("Get ddi reg one page: page = %x, reg = %x\n", data[1], data[2]);
+		ilitek_tddi_ic_get_ddi_reg_onepage(data[1], data[2]);
+	} else if (strcmp(cmd, "setoneddiregdata") == 0) {
+		ipio_info("Set ddi reg one page: page = %x, reg = %x, data = %x\n", data[1], data[2], data[3]);
+		ilitek_tddi_ic_set_ddi_reg_onepage(data[1], data[2], data[3]);
 	} else {
 		ipio_err("Unknown command\n");
 	}
@@ -1016,9 +1064,9 @@ struct file_operations proc_get_raw_data_fops = {
 	.read = ilitek_proc_fw_get_raw_data_read,
 };
 
-struct file_operations proc_rw_reg_fops = {
-	.read = ilitek_proc_rw_reg_read,
-	.write = ilitek_proc_rw_reg_write,
+struct file_operations proc_rw_tp_reg_fops = {
+	.read = ilitek_proc_rw_tp_reg_read,
+	.write = ilitek_proc_rw_tp_reg_write,
 };
 
 struct file_operations proc_fw_pc_counter_fops = {
@@ -1038,7 +1086,7 @@ proc_node_t proc_table[] = {
 	{"show_delta_data", NULL, &proc_get_delta_data_fops, false},
 	{"show_raw_data", NULL, &proc_get_raw_data_fops, false},
 	// {"get_debug_mode_data", NULL, &proc_get_debug_mode_data_fops, false},
-	{"rw_reg", NULL, &proc_rw_reg_fops, false},
+	{"rw_tp_reg", NULL, &proc_rw_tp_reg_fops, false},
 };
 
 #define NETLINK_USER 21

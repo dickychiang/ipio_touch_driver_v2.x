@@ -231,7 +231,7 @@ int ilitek_ice_mode_ctrl(bool enable, bool mcu)
 int ilitek_set_watch_dog(bool enable)
 {
 	int timeout = 100, ret = 0;
-	uint8_t off_bit = 0x5A, on_bit = 0xA5;
+	u8 off_bit = 0x5A, on_bit = 0xA5;
 
 	if (idev->chip->wdt_addr <= 0 || idev->chip->id <= 0) {
 		ipio_err("WDT/CHIP ID is invalid\n");
@@ -362,6 +362,107 @@ int ilitek_tddi_ic_whole_reset(void)
 
 	msleep(100);
 	return ret;
+}
+
+static void ilitek_tddi_ic_wr_pack(int packet)
+{
+	int retry = 100;
+	u32 reg_data = 0;
+
+	while (retry--) {
+        reg_data = ilitek_ice_mode_read(0x73010, sizeof(u8));
+		if ((reg_data & 0x02) == 0) {
+			ipio_info("check ok 0x73010 read 0x%X retry = %d\n", reg_data, retry);
+			break;
+		}
+		mdelay(10);
+	}
+
+	if (retry <= 0)
+		ipio_info("check 0x73010 error read 0x%X\n", reg_data);
+
+    ilitek_ice_mode_write(0x73000, packet, 4);
+}
+
+static u32 ilitek_tddi_ic_rd_pack(int packet)
+{
+	int retry = 100;
+	u32 reg_data = 0;
+
+    ilitek_tddi_ic_wr_pack(packet);
+
+	while(retry--) {
+        reg_data = ilitek_ice_mode_read(0x4800A, sizeof(u8));
+		if ((reg_data & 0x02) == 0x02) {
+			ipio_info("check  ok 0x4800A read 0x%X retry = %d\n", reg_data, retry);
+			break;
+		}
+		mdelay(10);
+	}
+	if (retry <= 0)
+		ipio_info("check 0x4800A error read 0x%X\n", reg_data);
+
+    ilitek_ice_mode_write(0x4800A, 0x02, 1);
+    reg_data = ilitek_ice_mode_read(0x73016, sizeof(u32));
+	return reg_data;
+}
+
+void ilitek_tddi_ic_set_ddi_reg_onepage(u8 page, u8 reg, u8 data)
+{
+	u32 setpage = 0x1FFFFF00 | page;
+	u32 setreg = 0x1F000100 | (reg << 16) | data;
+    bool ice = atomic_read(&idev->ice_stat);
+
+	ipio_info("setpage =  0x%X setreg = 0x%X\n", setpage, setreg);
+
+    if (ice == DISABLE)
+        ilitek_ice_mode_ctrl(ENABLE, ON);
+
+	/*TDI_WR_KEY*/
+	ilitek_tddi_ic_wr_pack(0x1FFF9527);
+	/*Switch to Page*/
+	ilitek_tddi_ic_wr_pack(setpage);
+	/* Page*/
+	ilitek_tddi_ic_wr_pack(setreg);
+	/*TDI_WR_KEY OFF*/
+	ilitek_tddi_ic_wr_pack(0x1FFF9500);
+
+    if (ice == DISABLE)
+        ilitek_ice_mode_ctrl(DISABLE, ON);
+}
+
+void ilitek_tddi_ic_get_ddi_reg_onepage(u8 page, u8 reg)
+{
+	u32 reg_data = 0;
+	u32 setpage = 0x1FFFFF00 | page;
+	u32 setreg = 0x2F000100 | (reg << 16);
+    bool ice = atomic_read(&idev->ice_stat);
+
+	ipio_info("setpage =  0x%X setreg = 0x%X\n", setpage, setreg);
+
+    if (ice == DISABLE)
+        ilitek_ice_mode_ctrl(ENABLE, ON);
+
+	/*TDI_WR_KEY*/
+	ilitek_tddi_ic_wr_pack(0x1FFF9527);
+	/*Set Read Page reg*/
+	ilitek_tddi_ic_wr_pack(setpage);
+
+	/*TDI_RD_KEY*/
+	ilitek_tddi_ic_wr_pack(0x1FFF9487);
+	/*( *( __IO uint8 *)	(0x4800A) ) =0x2*/
+    ilitek_ice_mode_write(0x4800A, 0x02, 1);
+
+	reg_data = ilitek_tddi_ic_rd_pack(setreg);
+	ipio_info("check page = 0x%X reg = 0x%X read 0x%X\n", page, reg, reg_data);
+
+	/*TDI_RD_KEY OFF*/
+	ilitek_tddi_ic_wr_pack(0x1FFF9400);
+	/*TDI_WR_KEY OFF*/
+	ilitek_tddi_ic_wr_pack(0x1FFF9500);
+
+    if (ice == DISABLE)
+        ilitek_ice_mode_ctrl(DISABLE, ON);
 }
 
 u32 ilitek_tddi_ic_get_pc_counter(void)

@@ -711,6 +711,8 @@ extern void ilitek_tddi_report_ap_mode(u8 *, size_t);
 extern void ilitek_tddi_report_debug_mode(u8 *, size_t);
 extern void ilitek_tddi_report_gesture_mode(u8 *, size_t);
 extern void ilitek_tddi_report_i2cuart_mode(u8 *, size_t);
+extern void ilitek_tddi_ic_set_ddi_reg_onepage(u8, u8, u8);
+extern void ilitek_tddi_ic_get_ddi_reg_onepage(u8, u8);
 extern int ilitek_tddi_ic_whole_reset(void);
 extern int ilitek_tddi_ic_code_reset(void);
 extern int ilitek_tddi_ic_func_ctrl(const char *, int);
