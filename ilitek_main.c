@@ -418,6 +418,7 @@ out:
 int ilitek_tddi_reset_ctrl(int mode)
 {
 	int ret = 0;
+
 	atomic_set(&idev->tp_reset, START);
 
 	switch (mode) {
@@ -444,6 +445,8 @@ int ilitek_tddi_reset_ctrl(int mode)
 	}
 
 	atomic_set(&idev->tp_reset, END);
+	atomic_set(&idev->ice_stat, DISABLE);
+	idev->actual_fw_mode = P5_X_FW_DEMO_MODE;
 	return ret;
 }
 

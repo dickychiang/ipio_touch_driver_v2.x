@@ -177,32 +177,12 @@ out:
     return ret;
 }
 
-static int ilitek_ice_mode_enter_check(void)
-{
-    u8 cmd_open[4] = {0x25, 0x62, 0x10, 0x18};
-    u32 pid = 0;
-    int retry = 3;
-
-    do {
-        pid = ilitek_ice_mode_read(idev->chip->pid_addr, sizeof(u32));
-        if (ilitek_tddi_ic_check_support(pid, pid >> 16) == 0)
-            break;
-        idev->write(cmd_open, sizeof(cmd_open));
-        mdelay(25);
-    } while (--retry > 0);
-
-    if (retry <= 0) {
-        ipio_err("get chip id error, (0x%x)\n", pid);
-        return -1;
-    }
-    return 0;
-}
-
 int ilitek_ice_mode_ctrl(bool enable, bool mcu)
 {
-    int ret = 0;
+    int ret = 0, retry = 3;
     u8 cmd_open[4] = {0x25, 0x62, 0x10, 0x18};
     u8 cmd_close[4] = {0x1B, 0x62, 0x10, 0x18};
+    u32 pid;
 
     ipio_info("%s ICE mode, mcu on = %d\n", (enable ? "Enable" : "Disable"), mcu);
 
@@ -210,38 +190,42 @@ int ilitek_ice_mode_ctrl(bool enable, bool mcu)
         if (mcu == ON)
             cmd_open[0] = 0x1F;
 
-        if (atomic_read(&idev->ice_stat) == ENABLE)
-            return ret;
-
         atomic_set(&idev->ice_stat, ENABLE);
 
-        ret = idev->write(cmd_open, sizeof(cmd_open));
-        if (ret < 0)
-            ipio_err("Enter to ICE Mode failed\n");
+        do {
+            ret = idev->write(cmd_open, sizeof(cmd_open));
+            if (ret < 0) {
+                ipio_err("Enter to ICE Mode failed\n");
+                continue;
+            }
 
-        if (CHECK_EQUAL(idev->spi_setup, NULL) == 0)
-            idev->spi_setup(1000000);
+            if (CHECK_EQUAL(idev->spi_setup, NULL) == 0)
+                idev->spi_setup(1000000);
 
-        mdelay(25);
+            mdelay(25);
 
-        ret = ilitek_ice_mode_enter_check();
-        if (ret < 0) {
+            /* Read chip id to ensure that ice mode is enabled successfully */
+            pid = ilitek_ice_mode_read(idev->chip->pid_addr, sizeof(u32));
+            ret = ilitek_tddi_ic_check_support(pid, pid >> 16);
+            if (ret == 0)
+                break;
+        } while (--retry > 0);
+
+        if (ret != 0) {
             ipio_err("Enter to ICE Mode failed after retry 3 times\n");
             atomic_set(&idev->ice_stat, DISABLE);
-        } else {
-            ilitek_ice_mode_write(0x047002, 0x00, 1);
+            return -1;
         }
+        ilitek_ice_mode_write(0x047002, 0x00, 1);
     } else {
-        if (atomic_read(&idev->ice_stat) == DISABLE)
-            return ret;
-
         ret = idev->write(cmd_close, sizeof(cmd_close));
-        if (ret < 0)
+        if (ret < 0) {
             ipio_err("Exit to ICE Mode failed\n");
-
+            return ret;
+        }
         atomic_set(&idev->ice_stat, DISABLE);
     }
-    return ret;
+    return 0;
 }
 
 int ilitek_set_watch_dog(bool enable)
@@ -375,9 +359,6 @@ int ilitek_tddi_ic_whole_reset(void)
     ret = ilitek_ice_mode_write(addr, key, sizeof(u32));
     if (ret < 0)
         ipio_err("ic whole reset failed, ret = %d\n", ret);
-
-    if (ice == DISABLE)
-        ilitek_ice_mode_ctrl(DISABLE, OFF);
 
 	msleep(100);
 	return ret;

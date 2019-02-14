@@ -672,7 +672,7 @@ static void ilitek_tddi_fw_update_block_info(u8 *pfw, u8 type)
 
 		memset(gestrue_fw, 0xff, sizeof(gestrue_fw));
 
-#ifdef GESTURE_ENABLE
+#ifdef ENABLE_GESTURE
 		/* Parsing gesture info and code */
 		if (fbi[GESTURE].mem_start != 0xffffffff && ges_fw_start != 0xffffffff && fbi[GESTURE].mem_start != 0 && ges_fw_start != 0)
 			ipio_memcpy(gestrue_fw, (pfw + ges_fw_start), fbi[GESTURE].len, sizeof(gestrue_fw));
@@ -965,11 +965,11 @@ int ilitek_tddi_fw_upgrade(int upgrade_type, int file_type, int open_file_method
 		else
 			ret = ilitek_tddi_fw_iram_upgrade(pfw);
 
-		if (ret == 0)
+		if (ret == UPDATE_PASS)
 			break;
-	} while(--retry >= 0);
+	} while(--retry > 0);
 
-	if (retry <= 0) {
+	if (ret != UPDATE_PASS) {
 		ipio_err("Upgrade firmware failed after retry 3 times\n");
 		ret = UPDATE_FAIL;
 	}
