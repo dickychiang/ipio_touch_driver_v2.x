@@ -3160,6 +3160,7 @@ int ilitek_tddi_mp_test_main(char *apk, bool lcm_on)
 			mp_test_run("short test");
 			mp_test_run("open test(integration)_sp");
 			mp_test_run("raw data(no bk)");
+			mp_test_run("raw data(have bk)");
 			mp_test_run("calibration data(dac)");
 			mp_test_run("doze raw data");
 			mp_test_run("doze peak to peak");
