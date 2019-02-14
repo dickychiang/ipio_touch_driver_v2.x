@@ -450,6 +450,7 @@ int ilitek_tddi_reset_ctrl(int mode)
 	return ret;
 }
 
+#define TP_RST_BIND 1
 int ilitek_tddi_init(void)
 {
 	struct task_struct *fw_boot_th;
@@ -476,8 +477,12 @@ int ilitek_tddi_init(void)
 	ilitek_tddi_ic_init();
 	ilitek_tddi_wq_init();
 
-	/* Must do hw reset once in first time in order to get chip id */
-	ilitek_tddi_reset_ctrl(TP_RST_HW_ONLY);
+	/* Must do hw reset once in first time for work normally */
+	if (TP_RST_BIND)
+		ilitek_tddi_reset_ctrl(TP_IC_WHOLE_RST);
+	else
+		ilitek_tddi_reset_ctrl(TP_RST_HW_ONLY);
+
 	if (ilitek_tddi_ic_get_info() < 0) {
 		ipio_err("Not found ilitek chipes\n");
 		return -ENODEV;
