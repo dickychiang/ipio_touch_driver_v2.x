@@ -80,10 +80,10 @@ static int ilitek_tddi_ic_check_support(u32 pid, u16 id)
     }
 
     if (i >= CHIP_SUP_NUM) {
-        ipio_info("Error, ILITEK CHIP (%x, %x) isn't matched!\n", pid, id);
+        ipio_info("ERROR, ILITEK CHIP (%x, %x) Not found !!\n", pid, id);
         return -1;
     }
-    ipio_info("ILITEK CHIP (%x, %x) matched.\n", pid, id);
+    ipio_info("ILITEK CHIP (%x, %x) found.\n", pid, id);
     return 0;
 }
 
@@ -194,13 +194,11 @@ int ilitek_ice_mode_ctrl(bool enable, bool mcu)
 
         do {
             ret = idev->write(cmd_open, sizeof(cmd_open));
-            if (ret < 0) {
-                ipio_err("Enter to ICE Mode failed\n");
+            if (ret < 0)
                 continue;
-            }
 
-            if (CHECK_EQUAL(idev->spi_setup, NULL) == 0)
-                idev->spi_setup(1000000);
+            if (idev->spi_setup != NULL)
+                idev->spi_setup(SPI_CLK);
 
             mdelay(25);
 
@@ -212,7 +210,7 @@ int ilitek_ice_mode_ctrl(bool enable, bool mcu)
         } while (--retry > 0);
 
         if (ret != 0) {
-            ipio_err("Enter to ICE Mode failed after retry 3 times\n");
+            ipio_err("Enter to ICE Mode failed !!\n");
             atomic_set(&idev->ice_stat, DISABLE);
             return -1;
         }
@@ -220,7 +218,7 @@ int ilitek_ice_mode_ctrl(bool enable, bool mcu)
     } else {
         ret = idev->write(cmd_close, sizeof(cmd_close));
         if (ret < 0) {
-            ipio_err("Exit to ICE Mode failed\n");
+            ipio_err("Exit to ICE Mode failed !!\n");
             return ret;
         }
         atomic_set(&idev->ice_stat, DISABLE);
@@ -813,9 +811,8 @@ static void ilitek_tddi_ic_init_vars(void)
 
 int ilitek_tddi_ic_get_info(void)
 {
-    int ret = 0, ice = 0;
-
-    ice = atomic_read(&idev->ice_stat);
+    int ret = 0;
+    bool ice = atomic_read(&idev->ice_stat);;
 
     if (ice == DISABLE)
         ilitek_ice_mode_ctrl(ENABLE, OFF);
@@ -825,18 +822,17 @@ int ilitek_tddi_ic_get_info(void)
     idev->chip->type_hi = idev->chip->pid & 0x0000FF00;
     idev->chip->type_low = idev->chip->pid  & 0xFF;
 
-    ipio_info("CHIP PID = 0x%x\n", idev->chip->pid);
-	ipio_info("CHIP ID = 0x%x\n", idev->chip->id);
-	ipio_info("CHIP Type = 0x%x\n", (idev->chip->type_hi << 8) | idev->chip->type_low);
-
 	idev->chip->otp_id = ilitek_ice_mode_read(idev->chip->otp_addr, sizeof(u32));
 	idev->chip->ana_id = ilitek_ice_mode_read(idev->chip->ana_addr, sizeof(u32));
-
     idev->chip->otp_id &= 0xFF;
     idev->chip->ana_id &= 0xFF;
 
-	ipio_info("CHIP OTP ID = 0x%x\n", idev->chip->otp_id);
-	ipio_info("CHIP ANA ID = 0x%x\n", idev->chip->ana_id);
+    ipio_info("CHIP INFO: PID = %x, ID = %x, TYPE = %x, OTP = %x, ANA = %x\n",
+        idev->chip->pid,
+        idev->chip->id,
+        ((idev->chip->type_hi << 8) | idev->chip->type_low),
+        idev->chip->otp_id,
+        idev->chip->ana_id);
 
     ret = ilitek_tddi_ic_check_support(idev->chip->pid, idev->chip->id);
     if (ret == 0)

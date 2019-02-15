@@ -438,43 +438,53 @@ void ilitek_tddi_touch_press(u16 x, u16 y, u16 pressure, u16 id)
 {
 	ipio_info("Touch Press: id = %d, x = %d, y = %d, p = %d\n", id, x, y, pressure);
 
-#ifdef MT_B_TYPE
-	input_mt_slot(idev->input, id);
-	input_mt_report_slot_state(idev->input, MT_TOOL_FINGER, true);
-	input_report_abs(idev->input, ABS_MT_POSITION_X, x);
-	input_report_abs(idev->input, ABS_MT_POSITION_Y, y);
-#ifdef MT_PRESSURE
-	input_report_abs(idev->input, ABS_MT_PRESSURE, pressure);
-#endif /* MT_PRESSURE */
-#endif /* MT_B_TYPE */
+	if (MT_B_TYPE) {
+		input_mt_slot(idev->input, id);
+		input_mt_report_slot_state(idev->input, MT_TOOL_FINGER, true);
+		input_report_abs(idev->input, ABS_MT_POSITION_X, x);
+		input_report_abs(idev->input, ABS_MT_POSITION_Y, y);
+		if (MT_PRESSURE)
+			input_report_abs(idev->input, ABS_MT_PRESSURE, pressure);
+	} else {
+		input_report_key(idev->input, BTN_TOUCH, 1);
+		input_report_abs(idev->input, ABS_MT_TRACKING_ID, id);
+		input_report_abs(idev->input, ABS_MT_TOUCH_MAJOR, 1);
+		input_report_abs(idev->input, ABS_MT_WIDTH_MAJOR, 1);
+		input_report_abs(idev->input, ABS_MT_POSITION_X, x);
+		input_report_abs(idev->input, ABS_MT_POSITION_Y, y);
+		if (MT_PRESSURE)
+			input_report_abs(idev->input, ABS_MT_PRESSURE, pressure);
+
+		input_mt_sync(idev->input);
+	}
 }
 
 void ilitek_tddi_touch_release(u16 x, u16 y, u16 id)
 {
 	ipio_info("Touch Release: id = %d, x = %d, y = %d\n", id, x, y);
 
-#ifdef MT_B_TYPE
-	input_mt_slot(idev->input, id);
-	input_mt_report_slot_state(idev->input, MT_TOOL_FINGER, false);
-#else
-	input_report_key(idev->input, BTN_TOUCH, 0);
-	input_mt_sync(idev->input);
-#endif /* MT_B_TYPE */
+	if (MT_B_TYPE) {
+		input_mt_slot(idev->input, id);
+		input_mt_report_slot_state(idev->input, MT_TOOL_FINGER, false);
+	} else {
+		input_report_key(idev->input, BTN_TOUCH, 0);
+		input_mt_sync(idev->input);
+	}
 }
 
 void ilitek_tddi_touch_release_all_point(void)
 {
 	int i;
 
-#ifdef MT_B_TYPE
-	for (i = 0 ; i < MAX_TOUCH_NUM; i++)
-		ilitek_tddi_touch_release(0, 0, i);
+	if (MT_B_TYPE) {
+		for (i = 0 ; i < MAX_TOUCH_NUM; i++)
+			ilitek_tddi_touch_release(0, 0, i);
 
-	input_report_key(idev->input, BTN_TOUCH, 0);
-	input_report_key(idev->input, BTN_TOOL_FINGER, 0);
-#else
-	ilitek_tddi_touch_release(0, 0, 0);
-#endif
+		input_report_key(idev->input, BTN_TOUCH, 0);
+		input_report_key(idev->input, BTN_TOOL_FINGER, 0);
+	} else {
+		ilitek_tddi_touch_release(0, 0, 0);
+	}
 	input_sync(idev->input);
 }
 
@@ -492,9 +502,8 @@ void ilitek_tddi_report_ap_mode(u8 *buf, size_t len)
 	for (i = 0; i < MAX_TOUCH_NUM; i++) {
 		if ((buf[(4 * i) + 1] == 0xFF) && (buf[(4 * i) + 2] && 0xFF)
 			&& (buf[(4 * i) + 3] == 0xFF)) {
-#ifdef MT_B_TYPE
-			idev->curt_touch[i] = 0;
-#endif
+			if (MT_B_TYPE)
+				idev->curt_touch[i] = 0;
 			continue;
 		}
 
@@ -504,56 +513,51 @@ void ilitek_tddi_report_ap_mode(u8 *buf, size_t len)
 		touch_info[i].x = xop * idev->panel_wid / TPD_WIDTH;
 		touch_info[i].y = yop * idev->panel_hei / TPD_HEIGHT;
 		touch_info[i].id = i;
-#ifdef MT_PRESSURE
-		touch_info[i].pressure = buf[(4 * i) + 4];
-#else
-		touch_info[i].pressure = 1;
-#endif
+
+		if (MT_PRESSURE)
+			touch_info[i].pressure = buf[(4 * i) + 4];
+		else
+			touch_info[i].pressure = 1;
 
 		ipio_info("original x = %d, y = %d\n", xop, yop);
 		idev->finger++;
-#ifdef MT_B_TYPE
-		idev->curt_touch[i] = 1;
-#endif
+		if (MT_B_TYPE)
+			idev->curt_touch[i] = 1;
 	}
 
 	ipio_info("figner number = %d, LastTouch = %d\n", idev->finger, idev->last_touch);
 
 	if (idev->finger) {
-#ifdef MT_B_TYPE
-		for (i = 0; i < idev->finger; i++) {
-			input_report_key(idev->input, BTN_TOUCH, 1);
-			ilitek_tddi_touch_press(touch_info[i].x, touch_info[i].y,
-						touch_info[i].pressure, touch_info[i].id);
-
-			input_report_key(idev->input, BTN_TOOL_FINGER, 1);
+		if (MT_B_TYPE) {
+			for (i = 0; i < idev->finger; i++) {
+				input_report_key(idev->input, BTN_TOUCH, 1);
+				ilitek_tddi_touch_press(touch_info[i].x, touch_info[i].y, touch_info[i].pressure, touch_info[i].id);
+				input_report_key(idev->input, BTN_TOOL_FINGER, 1);
+			}
+			for (i = 0; i < MAX_TOUCH_NUM; i++) {
+				if (idev->curt_touch[i] == 0 && idev->prev_touch[i] == 1)
+					ilitek_tddi_touch_release(0, 0, i);
+				idev->prev_touch[i] = idev->curt_touch[i];
+			}
+		} else {
+			for (i = 0; i < idev->finger; i++)
+				ilitek_tddi_touch_press(touch_info[i].x, touch_info[i].y, touch_info[i].pressure, touch_info[i].id);
 		}
-
-		for (i = 0; i < MAX_TOUCH_NUM; i++) {
-			if (idev->curt_touch[i] == 0 && idev->prev_touch[i] == 1)
-				ilitek_tddi_touch_release(0, 0, i);
-
-			idev->prev_touch[i] = idev->curt_touch[i];
-		}
-#else
-#endif
 		input_sync(idev->input);
 		idev->last_touch = idev->finger;
 	} else {
 		if (idev->last_touch) {
-#ifdef MT_B_TYPE
-			for (i = 0; i < MAX_TOUCH_NUM; i++) {
-				if (idev->curt_touch[i] == 0 && idev->prev_touch[i] == 1)
-					ilitek_tddi_touch_release(0, 0, i);
-
-				idev->prev_touch[i] = idev->curt_touch[i];
+			if (MT_B_TYPE) {
+				for (i = 0; i < MAX_TOUCH_NUM; i++) {
+					if (idev->curt_touch[i] == 0 && idev->prev_touch[i] == 1)
+						ilitek_tddi_touch_release(0, 0, i);
+					idev->prev_touch[i] = idev->curt_touch[i];
+				}
+				input_report_key(idev->input, BTN_TOUCH, 0);
+				input_report_key(idev->input, BTN_TOOL_FINGER, 0);
+			} else {
+				ilitek_tddi_touch_release(0, 0, 0);
 			}
-
-			input_report_key(idev->input, BTN_TOUCH, 0);
-			input_report_key(idev->input, BTN_TOOL_FINGER, 0);
-#else
-			ilitek_tddi_touch_release(0, 0, 0);
-#endif
 			input_sync(idev->input);
 			idev->last_touch = 0;
 		}
@@ -572,9 +576,8 @@ void ilitek_tddi_report_debug_mode(u8 *buf, size_t rlen)
 	for (i = 0; i < MAX_TOUCH_NUM; i++) {
 		if ((buf[(3 * i) + 5] == 0xFF) && (buf[(3 * i) + 6] && 0xFF)
 			&& (buf[(3 * i) + 7] == 0xFF)) {
-#ifdef MT_B_TYPE
-			idev->curt_touch[i] = 0;
-#endif
+			if (MT_B_TYPE)
+				idev->curt_touch[i] = 0;
 			continue;
 		}
 
@@ -584,61 +587,56 @@ void ilitek_tddi_report_debug_mode(u8 *buf, size_t rlen)
 		touch_info[i].x = xop * idev->panel_wid / TPD_WIDTH;
 		touch_info[i].y = yop * idev->panel_hei / TPD_HEIGHT;
 		touch_info[i].id = i;
-#ifdef MT_PRESSURE
-		touch_info[i].pressure = buf[(4 * i) + 4];
-#else
-		touch_info[i].pressure = 1;
-#endif
+
+		if (MT_PRESSURE)
+			touch_info[i].pressure = buf[(4 * i) + 4];
+		else
+			touch_info[i].pressure = 1;
 
 		ipio_info("original x = %d, y = %d\n", xop, yop);
 		idev->finger++;
-#ifdef MT_B_TYPE
-		idev->curt_touch[i] = 1;
-#endif
+		if (MT_B_TYPE)
+			idev->curt_touch[i] = 1;
 	}
 
 	ipio_info("figner number = %d, LastTouch = %d\n", idev->finger, idev->last_touch);
 
 	if (idev->finger) {
-#ifdef MT_B_TYPE
-		for (i = 0; i < idev->finger; i++) {
-			input_report_key(idev->input, BTN_TOUCH, 1);
-			ilitek_tddi_touch_press(touch_info[i].x, touch_info[i].y,
-						touch_info[i].pressure, touch_info[i].id);
+		if (MT_B_TYPE) {
+			for (i = 0; i < idev->finger; i++) {
+				input_report_key(idev->input, BTN_TOUCH, 1);
+				ilitek_tddi_touch_press(touch_info[i].x, touch_info[i].y, touch_info[i].pressure, touch_info[i].id);
+				input_report_key(idev->input, BTN_TOOL_FINGER, 1);
+			}
 
-			input_report_key(idev->input, BTN_TOOL_FINGER, 1);
+			for (i = 0; i < MAX_TOUCH_NUM; i++) {
+				if (idev->curt_touch[i] == 0 && idev->prev_touch[i] == 1)
+					ilitek_tddi_touch_release(0, 0, i);
+				idev->prev_touch[i] = idev->curt_touch[i];
+			}
+		} else {
+			for (i = 0; i < idev->finger; i++)
+				ilitek_tddi_touch_press(touch_info[i].x, touch_info[i].y, touch_info[i].pressure, touch_info[i].id);
 		}
-
-		for (i = 0; i < MAX_TOUCH_NUM; i++) {
-			if (idev->curt_touch[i] == 0 && idev->prev_touch[i] == 1)
-				ilitek_tddi_touch_release(0, 0, i);
-
-			idev->prev_touch[i] = idev->curt_touch[i];
-		}
-#else
-#endif
 		input_sync(idev->input);
 		idev->last_touch = idev->finger;
 	} else {
 		if (idev->last_touch) {
-#ifdef MT_B_TYPE
-			for (i = 0; i < MAX_TOUCH_NUM; i++) {
-				if (idev->curt_touch[i] == 0 && idev->prev_touch[i] == 1)
-					ilitek_tddi_touch_release(0, 0, i);
-
-				idev->prev_touch[i] = idev->curt_touch[i];
+			if (MT_B_TYPE) {
+				for (i = 0; i < MAX_TOUCH_NUM; i++) {
+					if (idev->curt_touch[i] == 0 && idev->prev_touch[i] == 1)
+						ilitek_tddi_touch_release(0, 0, i);
+					idev->prev_touch[i] = idev->curt_touch[i];
+				}
+				input_report_key(idev->input, BTN_TOUCH, 0);
+				input_report_key(idev->input, BTN_TOOL_FINGER, 0);
+			} else {
+				ilitek_tddi_touch_release(0, 0, 0);
 			}
-
-			input_report_key(idev->input, BTN_TOUCH, 0);
-			input_report_key(idev->input, BTN_TOOL_FINGER, 0);
-#else
-			ilitek_tddi_touch_release(0, 0, 0);
-#endif
 			input_sync(idev->input);
 			idev->last_touch = 0;
 		}
 	}
-
 	ilitek_tddi_touch_send_debug_data(buf, rlen);
 }
 

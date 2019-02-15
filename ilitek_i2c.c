@@ -144,8 +144,6 @@ static int ilitek_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id *
 		container_of(to_i2c_driver(i2c->dev.driver),
 			struct touch_bus_info, bus_driver);
 
-    ipio_info();
-
 	if (!i2c) {
 		ipio_err("i2c client is NULL\n");
 		return -ENODEV;
@@ -185,13 +183,14 @@ static int ilitek_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id *
 	idev->gesture_move_code = ilitek_tddi_move_gesture_code_flash;
 	idev->esd_callabck = ilitek_tddi_wq_esd_i2c_check;
 	idev->gesture_mode = P5_X_FW_GESTURE_NORMAL_MODE;
-#ifdef ENABLE_GESTURE
-	idev->gesture = ENABLE;
-#endif
 	idev->wtd_ctrl = OFF;
 	idev->report = ENABLE;
 	idev->netlink = DISABLE;
 	idev->debug_node_open = DISABLE;
+
+	if (ENABLE_GESTURE)
+		idev->gesture = ENABLE;
+
     return info->hwif->plat_probe();
 }
 
@@ -215,9 +214,6 @@ int ilitek_tddi_interface_dev_init(struct ilitek_hwif_info *hwif)
     struct touch_bus_info *info;
 
     info = kzalloc(sizeof(*info), GFP_KERNEL);
-
-    ipio_info();
-
 	if (!info) {
 		ipio_err("faied to allocate i2c_driver\n");
 		return -ENOMEM;
@@ -239,6 +235,5 @@ int ilitek_tddi_interface_dev_init(struct ilitek_hwif_info *hwif)
 	info->bus_driver.id_table = tp_i2c_id;
 
     info->hwif = hwif;
-
     return i2c_add_driver(&info->bus_driver);
 }

@@ -63,19 +63,18 @@ void ilitek_plat_input_register(void)
 	set_bit(BTN_TOOL_FINGER, idev->input->keybit);
 	set_bit(INPUT_PROP_DIRECT, idev->input->propbit);
 
-#ifdef MT_PRESSURE
-	input_set_abs_params(idev->input, ABS_MT_PRESSURE, 0, 255, 0, 0);
-#endif
+	if (MT_PRESSURE)
+		input_set_abs_params(idev->input, ABS_MT_PRESSURE, 0, 255, 0, 0);
 
-#ifdef MT_B_TYPE
+	if (MT_B_TYPE) {
 #if KERNEL_VERSION(3, 7, 0) <= LINUX_VERSION_CODE
-	input_mt_init_slots(idev->input, MAX_TOUCH_NUM, INPUT_MT_DIRECT);
+		input_mt_init_slots(idev->input, MAX_TOUCH_NUM, INPUT_MT_DIRECT);
 #else
-	input_mt_init_slots(idev->input, MAX_TOUCH_NUM);
+		input_mt_init_slots(idev->input, MAX_TOUCH_NUM);
 #endif /* LINUX_VERSION_CODE */
-#else
-	input_set_abs_params(idev->input, ABS_MT_TRACKING_ID, 0, MAX_TOUCH_NUM, 0, 0);
-#endif /* MT_B_TYPE */
+	} else {
+		input_set_abs_params(idev->input, ABS_MT_TRACKING_ID, 0, MAX_TOUCH_NUM, 0, 0);
+	}
 
 	/* Gesture keys register */
 	input_set_capability(idev->input, EV_KEY, KEY_POWER);
@@ -273,8 +272,6 @@ static void tpd_suspend(struct device *h)
 
 static int ilitek_plat_probe(void)
 {
-    ipio_info();
-
     ilitek_plat_gpio_register();
 
     if (ilitek_tddi_init() < 0) {
@@ -351,7 +348,6 @@ static int __init ilitek_plat_dev_init(void)
 		tpd_driver_remove(&tpd_device_driver);
 		return -ENODEV;
 	}
-
 	return 0;
 }
 

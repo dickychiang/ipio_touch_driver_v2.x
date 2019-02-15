@@ -97,10 +97,6 @@
 
 #define DRIVER_VERSION "2.0.0.0"
 
-#define QCOM 1
-#define MTK  2
-#define PLATFORM MTK
-
 /*  Debug messages */
 #ifdef BIT
 #undef BIT
@@ -148,13 +144,6 @@ extern u32 ipio_debug_level;
 #define END		0
 #define OFF		0
 
-enum TP_RST_METHOD {
-	TP_IC_WHOLE_RST = 0,
-	TP_IC_CODE_RST,
-	TP_RST_HW_ONLY,
-	TP_RST_HOST_DOWNLOAD
-};
-
 enum TP_BUS_TYPE {
 	TP_BUS_I2C = 0,
 	TP_BUS_SPI
@@ -163,6 +152,13 @@ enum TP_BUS_TYPE {
 enum TP_PLAT_TYPE {
 	TP_PLAT_MTK = 0,
 	TP_PLAT_QCOM
+};
+
+enum TP_RST_METHOD {
+	TP_IC_WHOLE_RST = 0,
+	TP_IC_CODE_RST,
+	TP_RST_HW_ONLY,
+	TP_RST_HOST_DOWNLOAD
 };
 
 enum TP_FW_UPGRADE_TYPE {
@@ -217,15 +213,15 @@ enum TP_WQ_TYPE {
 #define TDDI_DEV_ID	"ILITEK_TDDI"
 
  /* define the width and heigth of a screen. */
-#define TOUCH_SCREEN_X_MIN 0
-#define TOUCH_SCREEN_Y_MIN 0
-#define TOUCH_SCREEN_X_MAX 720
-#define TOUCH_SCREEN_Y_MAX 1440
-#define MAX_TOUCH_NUM	10
+#define TOUCH_SCREEN_X_MIN 			0
+#define TOUCH_SCREEN_Y_MIN 			0
+#define TOUCH_SCREEN_X_MAX 			720
+#define TOUCH_SCREEN_Y_MAX 			1440
+#define MAX_TOUCH_NUM				10
 
 /* define the range on panel */
-#define TPD_HEIGHT 2048
-#define TPD_WIDTH 2048
+#define TPD_HEIGHT					2048
+#define TPD_WIDTH					2048
 
 /* Firmware upgrade */
 #define MAX_HEX_FILE_SIZE			(160*K)
@@ -422,15 +418,15 @@ enum TP_WQ_TYPE {
 #define KEY_GESTURE_C					KEY_C
 #define KEY_GESTURE_Z					KEY_Z
 #define KEY_GESTURE_F					KEY_F
-#define GESTURE_CODE_V_DOWN						0x6C
-#define GESTURE_CODE_V_LEFT						0x6D
-#define GESTURE_CODE_V_RIGHT					0x6E
-#define GESTURE_CODE_TWO_LINE_2_BOTTOM			0x6F
-#define GESTURE_F               			    0x70
-#define GESTURE_AT              			    0x71
-#define ESD_GESTURE_PWD			0xF38A94EF
-#define ESD_GESTURE_RUN			0x5B92E7F4
-#define ESD_GESTURE_PWD_ADDR	0x25FF8
+#define GESTURE_CODE_V_DOWN				0x6C
+#define GESTURE_CODE_V_LEFT				0x6D
+#define GESTURE_CODE_V_RIGHT			0x6E
+#define GESTURE_CODE_TWO_LINE_2_BOTTOM	0x6F
+#define GESTURE_F						0x70
+#define GESTURE_AT              		0x71
+#define ESD_GESTURE_PWD					0xF38A94EF
+#define ESD_GESTURE_RUN					0x5B92E7F4
+#define ESD_GESTURE_PWD_ADDR			0x25FF8
 
 /* Protocol */
 #define PROTOCOL_VER_500    			0x050000
@@ -495,11 +491,13 @@ enum TP_WQ_TYPE {
 #define DUMP_FLASH_PATH			"/sdcard/flash_dump"
 
 /* Options */
-#define MT_B_TYPE
-// #define MT_PRESSURE
-// #define ENABLE_WQ_ESD
-// #define ENABLE_WQ_BAT
-// #define ENABLE_GESTURE
+#define SPI_CLK					(1*M)
+#define TP_RST_BIND 			ENABLE
+#define MT_B_TYPE				ENABLE
+#define MT_PRESSURE				DISABLE
+#define ENABLE_WQ_ESD			DISABLE
+#define ENABLE_WQ_BAT			DISABLE
+#define ENABLE_GESTURE			DISABLE
 
 struct ilitek_tddi_dev
 {

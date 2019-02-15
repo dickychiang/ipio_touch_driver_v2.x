@@ -677,20 +677,20 @@ static void ilitek_tddi_fw_update_block_info(u8 *pfw, u8 type)
 
 		memset(gestrue_fw, 0xff, sizeof(gestrue_fw));
 
-#ifdef ENABLE_GESTURE
-		/* Parsing gesture info and code */
-		if (fbi[GESTURE].mem_start != 0xffffffff && ges_fw_start != 0xffffffff && fbi[GESTURE].mem_start != 0 && ges_fw_start != 0)
-			ipio_memcpy(gestrue_fw, (pfw + ges_fw_start), fbi[GESTURE].len, sizeof(gestrue_fw));
-		else
-			ipio_err("There is no gesture data inside fw\n");
+		if (ENABLE_GESTURE) {
+			/* Parsing gesture info and code */
+			// if (fbi[GESTURE].mem_start != 0xffffffff && ges_fw_start != 0xffffffff && fbi[GESTURE].mem_start != 0 && ges_fw_start != 0)
+			// 	ipio_memcpy(gestrue_fw, (pfw + ges_fw_start), fbi[GESTURE].len, sizeof(gestrue_fw));
+			// else
+			// 	ipio_err("There is no gesture data inside fw\n");
 
-		core_gesture->ap_length = MAX_GESTURE_FIRMWARE_SIZE;
+			// core_gesture->ap_length = MAX_GESTURE_FIRMWARE_SIZE;
 
-		ipio_info("GESTURE memory start = 0x%x, upgrade lenth = 0x%x",
-					fbi[GESTURE].mem_start, MAX_GESTURE_FIRMWARE_SIZE);
-		ipio_info("hex area = %d, ap_start_addr = 0x%x, ap_end_addr = 0x%x\n",
-					core_gesture->area_section, ges_fw_start, ges_fw_end);
-#endif
+			// ipio_info("GESTURE memory start = 0x%x, upgrade lenth = 0x%x",
+			// 			fbi[GESTURE].mem_start, MAX_GESTURE_FIRMWARE_SIZE);
+			// ipio_info("hex area = %d, ap_start_addr = 0x%x, ap_end_addr = 0x%x\n",
+			// 			core_gesture->area_section, ges_fw_start, ges_fw_end);
+		}
 		fbi[AP].name ="AP";
 		fbi[DATA].name ="DATA";
 		fbi[TUNING].name ="TUNING";
@@ -752,7 +752,6 @@ static void ilitek_tdd_fw_ili_convert(u8 *pfw)
 
 out:
 	tfd.block_number = CTPM_FW[33];
-
 	memcpy(pfw, CTPM_FW + ILI_FILE_HEADER, (sizeof(CTPM_FW) - ILI_FILE_HEADER));
 	tfd.end_addr = (sizeof(CTPM_FW) - ILI_FILE_HEADER);
 }

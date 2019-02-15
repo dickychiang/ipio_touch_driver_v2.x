@@ -586,12 +586,13 @@ static int ilitek_spi_probe(struct spi_device *spi)
 	container_of(to_spi_driver(spi->dev.driver),
 		struct touch_bus_info, bus_driver);
 
-	ipio_info();
-
-	if (spi == NULL) {
+	if (!spi) {
 		ipio_err("spi device is NULL\n");
 		return -ENODEV;
 	}
+
+    ipio_info("bus type = %d\n", info->hwif->bus_type);
+    ipio_info("platform type = %d\n", info->hwif->plat_type);
 
 	idev = devm_kzalloc(&spi->dev, sizeof(struct ilitek_tddi_dev), GFP_KERNEL);
 	if (ERR_ALLOC_MEM(idev)) {
@@ -610,7 +611,6 @@ static int ilitek_spi_probe(struct spi_device *spi)
 #else
     ilitek_spi_write_then_read = spi_write_then_read;
 #endif
-	core_spi_setup(1000000);
 
 	idev->spi_setup = core_spi_setup;
 	idev->actual_fw_mode = P5_X_FW_DEMO_MODE;
@@ -621,13 +621,14 @@ static int ilitek_spi_probe(struct spi_device *spi)
 	idev->gesture_move_code = ilitek_tddi_move_gesture_code_iram;
 	idev->esd_callabck = ilitek_tddi_wq_esd_spi_check;
 	idev->gesture_mode = P5_X_FW_GESTURE_NORMAL_MODE;
-#ifdef ENABLE_GESTURE
-	idev->gesture = ENABLE;
-#endif
 	idev->wtd_ctrl = ON;
 	idev->report = ENABLE;
 	idev->netlink = DISABLE;
 	idev->debug_node_open = DISABLE;
+
+	if (ENABLE_GESTURE)
+		idev->gesture = ENABLE;
+
     return info->hwif->plat_probe();
 }
 
@@ -650,7 +651,6 @@ int ilitek_tddi_interface_dev_init(struct ilitek_hwif_info *hwif)
     struct touch_bus_info *info;
 
     info = kzalloc(sizeof(*info), GFP_KERNEL);
-
 	if (!info) {
 		ipio_err("faied to allocate i2c_driver\n");
 		return -ENOMEM;

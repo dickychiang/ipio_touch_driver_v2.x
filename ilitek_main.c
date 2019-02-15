@@ -137,36 +137,36 @@ void ilitek_tddi_wq_ctrl(int type, int ctrl)
 
 	switch (type) {
 		case WQ_ESD:
-#ifdef ENABLE_WQ_ESD
-			if (!esd_wq)
-				break;
-			idev->wq_esd_ctrl = ctrl;
-			if (ctrl == ENABLE) {
-				ipio_info("Execute WQ ESD\n");
-				if (!queue_delayed_work(esd_wq, &esd_work, msecs_to_jiffies(2000)))
-					ipio_info("execute WQ ESD error\n");
-			} else {
-				cancel_delayed_work_sync(&esd_work);
-				flush_workqueue(esd_wq);
-				ipio_info("Cancel WQ ESD\n");
+			if (ENABLE_WQ_ESD) {
+				if (!esd_wq)
+					break;
+				idev->wq_esd_ctrl = ctrl;
+				if (ctrl == ENABLE) {
+					ipio_info("Execute WQ ESD\n");
+					if (!queue_delayed_work(esd_wq, &esd_work, msecs_to_jiffies(2000)))
+						ipio_info("execute WQ ESD error\n");
+				} else {
+					cancel_delayed_work_sync(&esd_work);
+					flush_workqueue(esd_wq);
+					ipio_info("Cancel WQ ESD\n");
+				}
 			}
-#endif
 			break;
 		case WQ_BAT:
-#ifdef ENABLE_WQ_BAT
-			if (!bat_wq)
-				break;
-			idev->wq_bat_ctrl = ctrl;
-			if (ctrl == ENABLE) {
-				ipio_info("Execute WQ BAT\n");
-				if (!queue_delayed_work(bat_wq, &bat_work, msecs_to_jiffies(4000)))
-					ipio_info("execute WQ BAT error\n");
-			} else {
-				cancel_delayed_work_sync(&bat_work);
-				flush_workqueue(bat_wq);
-				ipio_info("Cancel WQ BAT\n");
+			if (ENABLE_WQ_BAT) {
+				if (!bat_wq)
+					break;
+				idev->wq_bat_ctrl = ctrl;
+				if (ctrl == ENABLE) {
+					ipio_info("Execute WQ BAT\n");
+					if (!queue_delayed_work(bat_wq, &bat_work, msecs_to_jiffies(4000)))
+						ipio_info("execute WQ BAT error\n");
+				} else {
+					cancel_delayed_work_sync(&bat_work);
+					flush_workqueue(bat_wq);
+					ipio_info("Cancel WQ BAT\n");
+				}
 			}
-#endif
 			break;
 		case WQ_SUSPEND:
 			ipio_err("Not implement yet\n");
@@ -191,14 +191,14 @@ static void ilitek_tddi_wq_init(void)
 	INIT_DELAYED_WORK(&esd_work, ilitek_tddi_wq_esd_check);
 	INIT_DELAYED_WORK(&bat_work, ilitek_tddi_wq_bat_check);
 
-#ifdef ENABLE_WQ_ESD
-	idev->wq_esd_ctrl = ENABLE;
-	ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
-#endif
-#ifdef ENABLE_WQ_BAT
-	idev->wq_bat_ctrl = ENABLE;
-	ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
-#endif
+	if (ENABLE_WQ_ESD) {
+		idev->wq_esd_ctrl = ENABLE;
+		ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
+	}
+	if (ENABLE_WQ_BAT) {
+		idev->wq_bat_ctrl = ENABLE;
+		ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
+	}
 }
 
 int ilitek_tddi_sleep_handler(int mode)
@@ -422,12 +422,9 @@ int ilitek_tddi_reset_ctrl(int mode)
 	return ret;
 }
 
-#define TP_RST_BIND 1
 int ilitek_tddi_init(void)
 {
 	struct task_struct *fw_boot_th;
-
-	ipio_info();
 
 	mutex_init(&idev->io_mutex);
 	mutex_init(&idev->touch_mutex);
