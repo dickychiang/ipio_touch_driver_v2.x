@@ -360,7 +360,7 @@ static void ilitek_tddi_touch_send_debug_data(u8 *buf, size_t len)
 		goto out;
 	}
 
-	/* Send data to proc_debug_message_fops */
+	/* Sending data to apk via the node of debug_message node */
 	if (idev->debug_node_open) {
 		memset(idev->debug_buf[idev->debug_data_frame], 0x00, (u8)sizeof(u8) * 2048);
 		ipio_memcpy(idev->debug_buf[idev->debug_data_frame], buf, len, 2048);

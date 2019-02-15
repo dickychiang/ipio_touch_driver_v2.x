@@ -44,7 +44,7 @@
 #define ILITEK_IOCTL_TP_PL_VER				_IOWR(ILITEK_IOCTL_MAGIC, 11, u8*)
 #define ILITEK_IOCTL_TP_CORE_VER			_IOWR(ILITEK_IOCTL_MAGIC, 12, u8*)
 #define ILITEK_IOCTL_TP_DRV_VER				_IOWR(ILITEK_IOCTL_MAGIC, 13, u8*)
-#define ILITEK_IOCTL_TP_CHIP_ID				_IOWR(ILITEK_IOCTL_MAGIC, 14, uint32_t*)
+#define ILITEK_IOCTL_TP_CHIP_ID				_IOWR(ILITEK_IOCTL_MAGIC, 14, u32*)
 
 #define ILITEK_IOCTL_TP_NETLINK_CTRL		_IOWR(ILITEK_IOCTL_MAGIC, 15, int*)
 #define ILITEK_IOCTL_TP_NETLINK_STATUS		_IOWR(ILITEK_IOCTL_MAGIC, 16, int*)
@@ -94,6 +94,118 @@ static int str2hex(char *str)
 		s++;
 	}
 	return result;
+}
+
+struct file_buffer {
+	char *ptr;
+	char file_name[128];
+	int32_t file_len;
+	int32_t file_max_zise;
+};
+
+static int file_write(struct file_buffer *file, bool new_open)
+{
+	struct file *f = NULL;
+	mm_segment_t fs;
+	loff_t pos;
+
+	if (file->ptr == NULL) {
+		ipio_err("str is invaild\n");
+		return -1;
+	}
+
+	if (file->file_name == NULL) {
+		ipio_err("file name is invaild\n");
+		return -1;
+	}
+
+	if (file->file_len >= file->file_max_zise) {
+		ipio_err("The length saved to file is too long !\n");
+		return -1;
+	}
+
+	if (new_open)
+		f = filp_open(file->file_name, O_WRONLY | O_CREAT | O_TRUNC, 644);
+	else
+		f = filp_open(file->file_name, O_WRONLY | O_CREAT | O_APPEND, 644);
+
+	if (ERR_ALLOC_MEM(f)) {
+		ipio_err("Failed to open %s file\n", file->file_name);
+		return -1;
+	}
+
+	fs = get_fs();
+	set_fs(KERNEL_DS);
+	pos = 0;
+	vfs_write(f, file->ptr, file->file_len, &pos);
+	set_fs(fs);
+	filp_close(f, NULL);
+	return 0;
+}
+
+static int debug_mode_get_data(struct file_buffer *file, u8 type, u32 frame_count)
+{
+	int ret;
+	int timeout = 50;
+	u8 cmd[2] = { 0 }, row, col;
+	s16 temp;
+	unsigned char *ptr;
+	int j;
+	u16 write_index = 0;
+
+	idev->debug_node_open = false;
+	idev->debug_data_frame = 0;
+	row = idev->ych_num;
+	col = idev->xch_num;
+
+	mutex_lock(&idev->touch_mutex);
+	cmd[0] = 0xFA;
+	cmd[1] = type;
+	ret = idev->write(cmd, 2);
+	idev->debug_node_open = true;
+	mutex_unlock(&idev->touch_mutex);
+	if (ret < 0)
+		return ret;
+
+	while((write_index < frame_count) && (timeout > 0)) {
+		ipio_info("frame = %d,index = %d,count = %d\n",write_index, write_index % 1024, idev->debug_data_frmutex_lock(&idev->touch_mutex);ame);
+		if ((write_index % 1024) < idev->debug_data_frame) {
+			mutex_lock(&idev->touch_mutex);
+			file->file_len = 0;
+			memset(file->ptr, 0, file->file_max_zise);
+			file->file_len += sprintf(file->ptr + file->file_len, "\n\nFrame%d,",write_index);
+			for (j = 0; j < col; j ++)
+				file->file_len += sprintf(file->ptr + file->file_len, "[X%d] ,",j);
+			ptr = &idev->debug_buf[write_index%1024][35];
+			for (j = 0; j < row * col; j ++, ptr+=2) {
+				temp = (*ptr << 8) + *(ptr + 1);
+				if (j % col == 0)
+					file->file_len += sprintf(file->ptr + file->file_len, "\n[Y%d] ,",(j / col));
+				file->file_len += sprintf(file->ptr + file->file_len, "%d, ",temp);
+			}
+			file->file_len += sprintf(file->ptr + file->file_len, "\n[X] ,");
+			for (j = 0; j < row + col; j ++, ptr+=2) {
+				temp = (*ptr << 8) + *(ptr + 1);
+				if (j == col)
+					file->file_len += sprintf(file->ptr + file->file_len, "\n[Y] ,");
+				file->file_len += sprintf(file->ptr + file->file_len, "%d, ",temp);
+			}
+			file_write(file, false);
+			write_index++;
+			mutex_unlock(&idev->touch_mutex);
+			timeout = 50;
+		}
+
+		if (write_index % 1024 == 0 && idev->debug_data_frame == 1024)
+			idev->debug_data_frame = 0;
+
+		mdelay(100);/*get one frame data taken around 130ms*/
+		timeout--;
+		if (timeout == 0)
+			ipio_err("debug mode get data timeout!\n");
+	}
+	idev->debug_node_open = false;
+	return 0;
 }
 
 static int dev_mkdir(char *name, umode_t mode)
@@ -532,6 +644,98 @@ out:
 	return send_data_len;
 }
 
+static ssize_t ilitek_proc_get_debug_mode_data_read(struct file *filp, char __user *buff, size_t size, loff_t *pos)
+{
+	int ret;
+	u8 tp_mode;
+	struct file_buffer csv;
+
+	if (*pos != 0)
+		return 0;
+
+	/* initialize file */
+	memset(csv.file_name, 0, sizeof(csv.file_name));
+	sprintf(csv.file_name, "%s", DEBUG_DATA_FILE_PATH);
+	csv.file_len = 0;
+	csv.file_max_zise = DEBUG_DATA_FILE_SIZE;
+	csv.ptr = vmalloc(csv.file_max_zise);
+
+	if (ERR_ALLOC_MEM(csv.ptr)) {
+		ipio_err("Failed to allocate CSV mem\n");
+		goto out;
+	}
+
+	/* save data to csv */
+	ipio_info("Get Raw data %d frame\n", idev->raw_count);
+	ipio_info("Get Delta data %d frame\n", idev->delta_count);
+	csv.file_len += sprintf(csv.ptr + csv.file_len, "Get Raw data %d frame\n", idev->raw_count);
+	csv.file_len += sprintf(csv.ptr + csv.file_len, "Get Delta data %d frame\n", idev->delta_count);
+	file_write(&csv, true);
+
+	/* change to debug mode */
+	tp_mode = P5_X_FW_DEBUG_MODE;
+	ret = ilitek_tddi_touch_switch_mode(&tp_mode);
+	if (ret < 0)
+		goto out;
+
+	/* get raw data */
+	csv.file_len = 0;
+	memset(csv.ptr, 0, csv.file_max_zise);
+	csv.file_len += sprintf(csv.ptr + csv.file_len, "\n\n=======Raw data=======");
+	file_write(&csv, false);
+	ret = debug_mode_get_data(&csv, P5_X_FW_RAW_DATA_MODE, idev->raw_count);
+	if (ret < 0)
+		goto out;
+
+	/* get delta data */
+	csv.file_len = 0;
+	memset(csv.ptr, 0, csv.file_max_zise);
+	csv.file_len += sprintf(csv.ptr + csv.file_len, "\n\n=======Delta data=======");
+	file_write(&csv, false);
+	ret = debug_mode_get_data(&csv, P5_X_FW_DELTA_DATA_MODE, idev->delta_count);
+	if (ret < 0)
+		goto out;
+
+	/* change to demo mode */
+	tp_mode = P5_X_FW_DEMO_MODE;
+	ilitek_tddi_touch_switch_mode(&tp_mode);
+
+out:
+	ipio_vfree((void **)&csv.ptr);
+	return 0;
+}
+
+static ssize_t ilitek_proc_get_debug_mode_data_write(struct file *filp, const char *buff, size_t size, loff_t *pos)
+{
+	int ret = 0;
+	char *token = NULL, *cur = NULL;
+	char cmd[256] = {0};
+	u8 temp[256] = {0}, count = 0;
+
+	if (buff != NULL) {
+		ret = copy_from_user(cmd, buff, size - 1);
+		if (ret < 0) {
+			ipio_info("copy data from user space, failed\n");
+			return -1;
+		}
+	}
+
+	ipio_info("size = %d, cmd = %s\n", (int)size, cmd);
+	token = cur = cmd;
+	while ((token = strsep(&cur, ",")) != NULL) {
+		temp[count] = str2hex(token);
+		ipio_info("temp[%d] = %d\n", count, temp[count]);
+		count++;
+	}
+
+	idev->raw_count = ((temp[0] << 8) | temp[1]);
+	idev->delta_count = ((temp[2] << 8) | temp[3]);
+	idev->bg_count = ((temp[4] << 8) | temp[5]);
+
+	ipio_info("Raw_count = %d, Delta_count = %d, BG_count = %d\n", idev->raw_count, idev->delta_count, idev->bg_count);
+	return size;
+}
+
 static ssize_t ilitek_node_mp_lcm_on_test_read(struct file *filp, char __user *buff, size_t size, loff_t *pos)
 {
 	int ret = 0;
@@ -618,7 +822,7 @@ static ssize_t ilitek_node_fw_upgrade_read(struct file *filp, char __user *buff,
     ret = ilitek_tddi_fw_upgrade_handler(NULL);
 	len = sprintf(g_user_buf, "upgrade firwmare %s\n", (ret != 0) ? "failed" : "succeed");
 
-	ret = copy_to_user((uint32_t *) buff, g_user_buf, len);
+	ret = copy_to_user((u32 *) buff, g_user_buf, len);
 	if (ret < 0)
         ipio_err("Failed to copy data to user space\n");
 
@@ -850,7 +1054,7 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 			ilitek_plat_irq_disable();
 		break;
 	case ILITEK_IOCTL_TP_DEBUG_LEVEL:
-		ret = copy_from_user(dbg, (uint32_t *) arg, sizeof(uint32_t));
+		ret = copy_from_user(dbg, (u32 *) arg, sizeof(u32));
 		if (ret < 0) {
 			ipio_err("Failed to copy data from user space\n");
 			break;
@@ -932,7 +1136,7 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 		id_to_user[0] = idev->chip->pid;
 		id_to_user[1] = idev->chip->otp_id;
 		id_to_user[2] = idev->chip->ana_id;
-		ret = copy_to_user((uint32_t *) arg, id_to_user, sizeof(id_to_user));
+		ret = copy_to_user((u32 *) arg, id_to_user, sizeof(id_to_user));
 		if (ret < 0)
 			ipio_err("Failed to copy chip id to user space\n");
 		break;
@@ -1073,6 +1277,11 @@ struct file_operations proc_fw_pc_counter_fops = {
 	.read = ilitek_proc_fw_pc_counter_read,
 };
 
+struct file_operations proc_get_debug_mode_data_fops = {
+	.read = ilitek_proc_get_debug_mode_data_read,
+	.write = ilitek_proc_get_debug_mode_data_write,
+};
+
 proc_node_t proc_table[] = {
 	{"ioctl", NULL, &proc_ioctl_fops, false},
 	{"fw_process", NULL, &proc_fw_process_fops, false},
@@ -1085,7 +1294,7 @@ proc_node_t proc_table[] = {
 	{"fw_pc_counter", NULL, &proc_fw_pc_counter_fops, false},
 	{"show_delta_data", NULL, &proc_get_delta_data_fops, false},
 	{"show_raw_data", NULL, &proc_get_raw_data_fops, false},
-	// {"get_debug_mode_data", NULL, &proc_get_debug_mode_data_fops, false},
+	{"get_debug_mode_data", NULL, &proc_get_debug_mode_data_fops, false},
 	{"rw_tp_reg", NULL, &proc_rw_tp_reg_fops, false},
 };
 

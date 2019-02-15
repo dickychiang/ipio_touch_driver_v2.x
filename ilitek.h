@@ -228,16 +228,16 @@ enum TP_WQ_TYPE {
 #define TPD_WIDTH 2048
 
 /* Firmware upgrade */
-#define MAX_HEX_FILE_SIZE			(160*1024)
-#define MAX_FLASH_FIRMWARE_SIZE		(256*1024)
-#define MAX_IRAM_FIRMWARE_SIZE		(60*1024)
+#define MAX_HEX_FILE_SIZE			(160*K)
+#define MAX_FLASH_FIRMWARE_SIZE		(256*K)
+#define MAX_IRAM_FIRMWARE_SIZE		(60*K)
 #define ILI_FILE_HEADER				64
-#define MAX_AP_FIRMWARE_SIZE		(64*1024)
-#define MAX_DLM_FIRMWARE_SIZE		(8*1024)
-#define MAX_MP_FIRMWARE_SIZE		(64*1024)
-#define MAX_GESTURE_FIRMWARE_SIZE	(8*1024)
-#define MAX_TUNING_FIRMWARE_SIZE	(4*1024)
-#define MAX_DDI_FIRMWARE_SIZE		(4*1024)
+#define MAX_AP_FIRMWARE_SIZE		(64*K)
+#define MAX_DLM_FIRMWARE_SIZE		(8*K)
+#define MAX_MP_FIRMWARE_SIZE		(64*K)
+#define MAX_GESTURE_FIRMWARE_SIZE	(8*K)
+#define MAX_TUNING_FIRMWARE_SIZE	(4*K)
+#define MAX_DDI_FIRMWARE_SIZE		(4*K)
 #define DLM_START_ADDRESS           0x20610
 #define DLM_HEX_ADDRESS             0x10000
 #define MP_HEX_ADDRESS              0x13000
@@ -461,6 +461,8 @@ enum TP_WQ_TYPE {
 #define P5_X_FW_GESTURE_INFO_MODE		0x02
 #define P5_X_FW_I2CUART_MODE			0x03
 #define P5_X_FW_GESTURE_MODE			0x04
+#define P5_X_FW_DELTA_DATA_MODE			0x03
+#define P5_X_FW_RAW_DATA_MODE			0x08
 #define P5_X_DEMO_MODE_PACKET_LENGTH	43
 #define P5_X_DEBUG_MODE_PACKET_LENGTH	1280
 #define P5_X_TEST_MODE_PACKET_LENGTH	1180
@@ -483,12 +485,14 @@ enum TP_WQ_TYPE {
 #define RAWDATA_NO_BK_SHIFT_9881F 		4096
 
 /* Path */
-#define CSV_LCM_ON_PATH     "/sdcard/ilitek_mp_lcm_on_log"
-#define CSV_LCM_OFF_PATH	"/sdcard/ilitek_mp_lcm_off_log"
-#define INI_NAME_PATH		"/sdcard/mp.ini"
-#define UPDATE_FW_PATH		"/sdcard/ILITEK_FW"
-#define POWER_STATUS_PATH 	"/sys/class/power_supply/battery/status"
-#define DUMP_FLASH_PATH		"/sdcard/flash_dump"
+#define DEBUG_DATA_FILE_SIZE	(10 * K)
+#define DEBUG_DATA_FILE_PATH	"/sdcard/ILITEK_log.csv"
+#define CSV_LCM_ON_PATH     	"/sdcard/ilitek_mp_lcm_on_log"
+#define CSV_LCM_OFF_PATH		"/sdcard/ilitek_mp_lcm_off_log"
+#define INI_NAME_PATH			"/sdcard/mp.ini"
+#define UPDATE_FW_PATH			"/sdcard/ILITEK_FW"
+#define POWER_STATUS_PATH 		"/sys/class/power_supply/battery/status"
+#define DUMP_FLASH_PATH			"/sdcard/flash_dump"
 
 /* Options */
 #define MT_B_TYPE
@@ -558,6 +562,9 @@ struct ilitek_tddi_dev
 	int debug_data_frame;
 	wait_queue_head_t inq;
 	unsigned char debug_buf[1024][2048];
+	int raw_count;
+	int delta_count;
+	int bg_count;
 
 	/* host download */
 	int reset_mode;
