@@ -3132,7 +3132,6 @@ static void mp_copy_ret_to_apk(char *buf)
 int ilitek_tddi_mp_test_main(char *apk, bool lcm_on)
 {
     int ret = 0;
-	u8 tp_mode = P5_X_FW_DEMO_MODE;
 	const char *csv_path = NULL;
 
 	ilitek_tddi_mp_init_item();
@@ -3184,17 +3183,9 @@ int ilitek_tddi_mp_test_main(char *apk, bool lcm_on)
 	}
 
 	mp_show_result(csv_path);
-
 	mp_copy_ret_to_apk(apk);
-
 	mp_test_free();
 
 out:
-	/* Switch to Demo mode */
-	ret = ilitek_tddi_touch_switch_mode(&tp_mode);
-	if (ret < 0) {
-		ipio_err("Switch to test mode failed\n");
-		goto out;
-	}
     return ret;
 };

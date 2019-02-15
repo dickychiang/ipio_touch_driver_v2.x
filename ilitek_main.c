@@ -53,9 +53,10 @@ int ilitek_tddi_mp_test_handler(char *apk, bool lcm_on)
 	ret = ilitek_tddi_mp_test_main(apk, lcm_on);
 
 out:
+	tp_mode = P5_X_FW_DEMO_MODE;
+	ilitek_tddi_touch_switch_mode(&tp_mode);
 	mutex_unlock(&idev->touch_mutex);
 	atomic_set(&idev->mp_stat, DISABLE);
-
 	ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
 	ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
     return ret;
