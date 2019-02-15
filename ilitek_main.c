@@ -31,35 +31,6 @@ static struct workqueue_struct *bat_wq;
 static struct delayed_work esd_work;
 static struct delayed_work bat_work;
 
-int katoi(char *str)
-{
-	int result = 0;
-	unsigned int digit;
-	int sign;
-
-	if (*str == '-') {
-		sign = 1;
-		str += 1;
-	} else {
-		sign = 0;
-		if (*str == '+') {
-			str += 1;
-		}
-	}
-
-	for (;; str += 1) {
-		digit = *str - '0';
-		if (digit > 9)
-			break;
-		result = (10 * result) + digit;
-	}
-
-	if (sign) {
-		return -result;
-	}
-	return result;
-}
-
 int ilitek_tddi_mp_test_handler(char *apk, bool lcm_on)
 {
 	int ret = 0;

@@ -96,6 +96,35 @@ static int str2hex(char *str)
 	return result;
 }
 
+int katoi(char *str)
+{
+	int result = 0;
+	unsigned int digit;
+	int sign;
+
+	if (*str == '-') {
+		sign = 1;
+		str += 1;
+	} else {
+		sign = 0;
+		if (*str == '+') {
+			str += 1;
+		}
+	}
+
+	for (;; str += 1) {
+		digit = *str - '0';
+		if (digit > 9)
+			break;
+		result = (10 * result) + digit;
+	}
+
+	if (sign) {
+		return -result;
+	}
+	return result;
+}
+
 struct file_buffer {
 	char *ptr;
 	char file_name[128];
@@ -168,7 +197,7 @@ static int debug_mode_get_data(struct file_buffer *file, u8 type, u32 frame_coun
 		return ret;
 
 	while((write_index < frame_count) && (timeout > 0)) {
-		ipio_info("frame = %d,index = %d,count = %d\n",write_index, write_index % 1024, idev->debug_data_frmutex_lock(&idev->touch_mutex);ame);
+		ipio_info("frame = %d,index = %d,count = %d\n",write_index, write_index % 1024, idev->debug_data_frame);
 		if ((write_index % 1024) < idev->debug_data_frame) {
 			mutex_lock(&idev->touch_mutex);
 			file->file_len = 0;
@@ -835,7 +864,8 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 	char cmd[512] = {0};
 	char *token = NULL, *cur = NULL;
 	u8 temp[256] = {0};
-	u8 *data = NULL, tp_mode;
+	u32 *data = NULL;
+	u8 tp_mode;
 
 	if (buff != NULL) {
 		ret = copy_from_user(cmd, buff, size - 1);
@@ -845,11 +875,11 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 		}
 	}
 
-	ipio_info("size = %d, cmd = %s\n", (int)size, cmd);
+	ipio_info("size = %ld, cmd = %s\n", size, cmd);
 
 	token = cur = cmd;
 
-	data = kcalloc(512, sizeof(u8), GFP_KERNEL);
+	data = kcalloc(512, sizeof(u32), GFP_KERNEL);
 
 	while ((token = strsep(&cur, ",")) != NULL) {
 		data[count] = str2hex(token);
@@ -960,6 +990,9 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 	} else if (strcmp(cmd, "setoneddiregdata") == 0) {
 		ipio_info("Set ddi reg one page: page = %x, reg = %x, data = %x\n", data[1], data[2], data[3]);
 		ilitek_tddi_ic_set_ddi_reg_onepage(data[1], data[2], data[3]);
+	} else if (strcmp(cmd, "dumpflashdata") == 0) {
+		ipio_info("Start = 0x%x, End = 0x%x, Dump Hex path = %s\n", data[1], data[2], DUMP_FLASH_PATH);
+		ilitek_tddi_fw_dump_flash_data(data[1], data[2], false);
 	} else {
 		ipio_err("Unknown command\n");
 	}
@@ -1208,7 +1241,7 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 		break;
 	case ILITEK_IOCTL_TP_DUMP_FLASH:
 		ipio_info("ioctl: dump flash data\n");
-		ret = ilitek_tddi_fw_dump_flash_data();
+		ret = ilitek_tddi_fw_dump_flash_data(0, 0, true);
 		if (ret < 0) {
 			ipio_err("ioctl: Failed to dump flash data\n");
 		}

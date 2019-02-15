@@ -246,10 +246,9 @@ u32 ilitek_tddi_fw_read_hw_crc(u32 start, u32 end)
 	return iram_check;
 }
 
-int ilitek_tddi_fw_read_flash_data(u32 start, u32 end,
-								u8 *data, size_t len)
+int ilitek_tddi_fw_read_flash_data(u32 start, u32 end, u8 *data, size_t len)
 {
-	u32 i, index = 0;
+	u32 i, index = 0, precent;
 
 	if (end - start > len) {
 		ipio_err("the length (%d) reading crc is over than len(%d)\n", end - start, (int)len);
@@ -266,40 +265,50 @@ int ilitek_tddi_fw_read_flash_data(u32 start, u32 end,
 	for (i = start; i <= end; i++) {
 		ilitek_ice_mode_write(FLASH2_ADDR, 0xFF, 1); /* Dummy */
 		data[index] = ilitek_ice_mode_read(FLASH4_ADDR, sizeof(u8));
-		//ipio_info("flash_data[%d] = %x\n", index, data[index]);
 		index++;
+		precent = (i * 100) / end;
+		ipio_info("Reading flash data .... %d%c", precent, '%');
 	}
 
 	ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x1, 1); /* CS high */
 	return 0;
 }
 
-int ilitek_tddi_fw_dump_flash_data(void)
+int ilitek_tddi_fw_dump_flash_data(u32 start, u32 end, bool user)
 {
 	struct file *f = NULL;
-	uint8_t *hex_buffer = NULL;
+	u8 *hex_buffer = NULL;
 	mm_segment_t old_fs;
 	loff_t pos = 0;
-	u32 start_addr = 0x0, end_addr = 0x1FFFF;
+	u32 start_addr, end_addr;
 	int ret, length;
+
+	f = filp_open(DUMP_FLASH_PATH, O_WRONLY | O_CREAT | O_TRUNC, 644);
+	if (ERR_ALLOC_MEM(f)) {
+		ipio_err("Failed to open the file at %ld.\n", PTR_ERR(f));
+		return -1;
+	}
 
 	ret = ilitek_ice_mode_ctrl(ENABLE, OFF);
 	if (ret < 0)
 		return ret;
 
-	f = filp_open(DUMP_FLASH_PATH, O_WRONLY | O_CREAT | O_TRUNC, 644);
-	if (ERR_ALLOC_MEM(f)) {
-		ipio_err("Failed to open the file at %ld.\n", PTR_ERR(f));
-		goto out;
+	if (user) {
+		start_addr = 0x0;
+		end_addr = 0x1FFFF;
+	} else {
+		start_addr = start;
+		end_addr = end;
 	}
 
 	length = end_addr - start_addr + 1;
 
-	hex_buffer = vmalloc(length * sizeof(uint8_t));
+	hex_buffer = vmalloc(length * sizeof(u8));
 	if (ERR_ALLOC_MEM(hex_buffer)) {
 		ipio_err("Failed to allocate hex_buffer memory, %ld\n", PTR_ERR(hex_buffer));
 		filp_close(f, NULL);
-		goto out;
+		ilitek_ice_mode_ctrl(DISABLE, OFF);
+		return -1;
 	}
 
 	ilitek_tddi_fw_read_flash_data(start_addr, end_addr, hex_buffer, length);
@@ -311,14 +320,10 @@ int ilitek_tddi_fw_dump_flash_data(void)
 	vfs_write(f, hex_buffer, length, &pos);
 	set_fs(old_fs);
 	filp_close(f, NULL);
-
-	ipio_info("dump flash success\n");
-
-	return 0;
-
-out:
+	ipio_vfree((void **)&hex_buffer);
 	ilitek_ice_mode_ctrl(DISABLE, OFF);
-	return -1;
+	ipio_info("dump flash success\n");
+	return 0;
 }
 
 static void ilitek_tddi_flash_protect(bool enable)

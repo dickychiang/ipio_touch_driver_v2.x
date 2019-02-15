@@ -698,7 +698,7 @@ extern void ilitek_tddi_flash_clear_dma(void);
 extern void ilitek_tddi_fw_read_flash_info(bool);
 extern u32 ilitek_tddi_fw_read_hw_crc(u32, u32);
 extern int ilitek_tddi_fw_read_flash(u32, u32, u8 *, size_t);
-extern int ilitek_tddi_fw_dump_flash_data(void);
+extern int ilitek_tddi_fw_dump_flash_data(u32, u32, bool);
 extern int ilitek_tddi_fw_upgrade(int, int, int);
 
 /* Prototypes for tddi mp test */
