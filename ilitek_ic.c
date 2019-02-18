@@ -61,12 +61,14 @@ static struct ilitek_ic_func_ctrl func_ctrl[FUNC_CTRL_NUM] = {
     [14] = {"active", {0x1,0x14,0x0}, 3},
 };
 
-#define CHIP_SUP_NUM        4
+#define CHIP_SUP_NUM        6
 static u32 ic_sup_list[CHIP_SUP_NUM] = {
-    [0] = ILI9881H_CHIP,
-    [1] = ILI9881H_AE_CHIP,
-    [2] = ILI7807G_CHIP,
-    [3] = ILI7807G_AA_CHIP
+    [0] = ILI9881_CHIP,
+    [1] = ILI9881H_AD,
+    [2] = ILI9881H_AE,
+    [3] = ILI7807_CHIP,
+    [4] = ILI7807G_AA,
+    [5] = ILI7807G_AR
 };
 
 static int ilitek_tddi_ic_check_support(u32 pid, u16 id)
@@ -83,7 +85,26 @@ static int ilitek_tddi_ic_check_support(u32 pid, u16 id)
         ipio_info("ERROR, ILITEK CHIP (%x, %x) Not found !!\n", pid, id);
         return -1;
     }
+
     ipio_info("ILITEK CHIP (%x, %x) found.\n", pid, id);
+
+    if (CHECK_EQUAL(idev->chip->id, ILI9881_CHIP)) {
+        idev->chip->reset_key = 0x00019881;
+        idev->chip->wtd_key = 0x9881;
+        idev->chip->open_sp_formula = open_sp_formula_ili9881h;
+    } else {
+        idev->chip->reset_key = 0x00019878;
+        idev->chip->wtd_key = 0x9878;
+        idev->chip->open_sp_formula = open_sp_formula_ili7807g;
+    }
+
+    if (CHECK_EQUAL(idev->chip->id, ILI9881F_AA))
+        idev->chip->no_bk_shift = RAWDATA_NO_BK_SHIFT_9881F;
+    else
+        idev->chip->no_bk_shift = RAWDATA_NO_BK_SHIFT_9881H;
+
+    idev->chip->max_count = 0x1FFFF;
+    idev->chip->open_c_formula = open_c_formula;
     return 0;
 }
 
@@ -786,29 +807,6 @@ out:
     return ret;
 }
 
-static void ilitek_tddi_ic_init_vars(void)
-{
-    ipio_info();
-
-    if (CHECK_EQUAL(idev->chip->id, ILI9881H_CHIP)) {
-        idev->chip->reset_key = 0x00019881;
-        idev->chip->wtd_key = 0x9881;
-        idev->chip->open_sp_formula = open_sp_formula_ili9881h;
-    } else {
-        idev->chip->reset_key = 0x00019878;
-        idev->chip->wtd_key = 0x9878;
-        idev->chip->open_sp_formula = open_sp_formula_ili7807g;
-    }
-
-    if (CHECK_EQUAL(idev->chip->type_hi, ILI9881_F))
-        idev->chip->no_bk_shift = RAWDATA_NO_BK_SHIFT_9881F;
-    else
-        idev->chip->no_bk_shift = RAWDATA_NO_BK_SHIFT_9881H;
-
-    idev->chip->max_count = 0x1FFFF;
-    idev->chip->open_c_formula = open_c_formula;
-}
-
 int ilitek_tddi_ic_get_info(void)
 {
     int ret = 0;
@@ -835,8 +833,6 @@ int ilitek_tddi_ic_get_info(void)
         idev->chip->ana_id);
 
     ret = ilitek_tddi_ic_check_support(idev->chip->pid, idev->chip->id);
-    if (ret == 0)
-        ilitek_tddi_ic_init_vars();
 
     if (ice == DISABLE)
 	    ilitek_ice_mode_ctrl(DISABLE, OFF);

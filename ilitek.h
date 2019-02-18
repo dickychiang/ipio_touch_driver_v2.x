@@ -471,12 +471,13 @@ enum TP_WQ_TYPE {
 #define P5_X_I2CUART_PACKET_ID	        0x7A
 
 /* Chipes */
-#define ILI9881H_CHIP       			0x9881
-#define ILI9881_H						0x11
-#define ILI9881_F						0x0F
-#define ILI9881H_AE_CHIP    			0x98811103
-#define ILI7807G_CHIP       			0x7807
-#define ILI7807G_AA_CHIP    			0x78071100
+#define ILI9881_CHIP       				0x9881
+#define ILI9881F_AA						0x98810F00
+#define ILI9881H_AD		    			0x98811103
+#define ILI9881H_AE						0x98811104
+#define ILI7807_CHIP       				0x7807
+#define ILI7807G_AA						0x78071000
+#define ILI7807G_AR						0x78071011
 #define RAWDATA_NO_BK_SHIFT_9881H 		8192
 #define RAWDATA_NO_BK_SHIFT_9881F 		4096
 

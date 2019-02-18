@@ -41,6 +41,12 @@ int ilitek_tddi_mp_test_handler(char *apk, bool lcm_on)
 	if (atomic_read(&idev->fw_stat) == START)
 		return 0;
 
+	if (!idev->chip->open_c_formula ||
+		!idev->chip->open_sp_formula) {
+		ipio_err("formula is null\n");
+		return -1;
+	}
+
 	ilitek_tddi_wq_ctrl(WQ_ESD, DISABLE);
 	ilitek_tddi_wq_ctrl(WQ_BAT, DISABLE);
 
