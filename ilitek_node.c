@@ -314,19 +314,24 @@ static ssize_t ilitek_proc_get_delta_data_read(struct file *pFile, char __user *
 		delta[index] = (data[i] << 8) + data[i + 1];
 
 	size = snprintf(g_user_buf + size, PAGE_SIZE - size, "======== Deltadata ========\n");
+	ipio_info("======== Deltadata ========\n");
 
 	size += snprintf(g_user_buf + size, PAGE_SIZE - size,
 		"Header 0x%x ,Type %d, Length %d\n",data[0], data[1], (data[2]<<8) | data[3]);
+	ipio_info("Header 0x%x ,Type %d, Length %d\n",data[0], data[1], (data[2]<<8) | data[3]);
 
 	// print delta data
 	for (y = 0; y < row; y++) {
 		size += snprintf(g_user_buf + size, PAGE_SIZE - size, "[%2d] ", (y+1));
+		ipio_info("[%2d] ", (y+1));
 
 		for (x = 0; x < col; x++) {
 			int shift = y * col + x;
 			size += snprintf(g_user_buf + size, PAGE_SIZE - size, "%5d", delta[shift]);
+			printk(KERN_CONT "%5d", delta[shift]);
 		}
 		size += snprintf(g_user_buf + size, PAGE_SIZE - size, "\n");
+		printk(KERN_CONT "\n");
 	}
 
 	ret = copy_to_user(buf, g_user_buf, size);
@@ -405,19 +410,24 @@ static ssize_t ilitek_proc_fw_get_raw_data_read(struct file *pFile, char __user 
 		rawdata[index] = (data[i] << 8) + data[i + 1];
 
 	size = snprintf(g_user_buf, PAGE_SIZE, "======== RawData ========\n");
+	ipio_info("======== RawData ========\n");
 
 	size += snprintf(g_user_buf + size, PAGE_SIZE - size,
 			"Header 0x%x ,Type %d, Length %d\n",data[0], data[1], (data[2]<<8) | data[3]);
+	ipio_info("Header 0x%x ,Type %d, Length %d\n",data[0], data[1], (data[2]<<8) | data[3]);
 
 	// print raw data
 	for (y = 0; y < row; y++) {
 		size += snprintf(g_user_buf + size, PAGE_SIZE - size, "[%2d] ", (y+1));
+		ipio_info("[%2d] ", (y+1));
 
 		for (x = 0; x < col; x++) {
 			int shift = y * col + x;
 			size += snprintf(g_user_buf + size, PAGE_SIZE - size, "%5d", rawdata[shift]);
+			printk(KERN_CONT "%5d", rawdata[shift]);
 		}
 		size += snprintf(g_user_buf + size, PAGE_SIZE - size, "\n");
+		printk(KERN_CONT "\n");
 	}
 
 	ret = copy_to_user(buf, g_user_buf, size);
