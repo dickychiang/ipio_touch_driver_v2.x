@@ -235,8 +235,8 @@ out:
 
 int ilitek_tddi_move_mp_code_iram(void)
 {
-    ipio_info();
-    return 0;
+	/* Donwload MP code to iram */
+    return ilitek_tddi_fw_upgrade_handler(NULL);;
 }
 
 int ilitek_tddi_move_gesture_code_flash(int mode)
@@ -246,7 +246,7 @@ int ilitek_tddi_move_gesture_code_flash(int mode)
 	return ilitek_tddi_touch_switch_mode(&tp_mode);
 }
 
-void ilitek_tddi_move_gesture_code_iram(int mode)
+int ilitek_tddi_move_gesture_code_iram(int mode)
 {
 	int i;
 	u8 tp_mode = P5_X_FW_GESTURE_MODE;
@@ -296,6 +296,7 @@ void ilitek_tddi_move_gesture_code_iram(int mode)
 	cmd[2] = 0x6;
 	if ((idev->write(cmd, 3)) < 0)
 		ipio_err("write 0x1,0xA,0x6 error");
+	return 0;
 }
 
 u8 ilitek_calc_packet_checksum(u8 *packet, size_t len)
@@ -315,7 +316,7 @@ void ilitek_tddi_touch_esd_gesture(void)
 	u32 answer = 0;
 
 	/* start to download AP code with HW reset or host download */
-	ilitek_tddi_reset_ctrl(idev->reset_mode);
+	ilitek_tddi_reset_ctrl(idev->reset);
 
 	ilitek_ice_mode_ctrl(ENABLE, OFF);
 
@@ -324,7 +325,7 @@ void ilitek_tddi_touch_esd_gesture(void)
 		ipio_err("esd gesture: write password failed\n");
 
 	/* HW reset or host download again gives effect to FW receives password successed */
-	ilitek_tddi_reset_ctrl(idev->reset_mode);
+	ilitek_tddi_reset_ctrl(idev->reset);
 
 	/* waiting for FW reloading code */
     msleep(100);
@@ -394,14 +395,18 @@ int ilitek_tddi_touch_switch_mode(u8 *data)
 
 	mode = data[0];
 	idev->actual_fw_mode = mode;
+	ipio_info("Actual TP mode = %d\n", idev->actual_fw_mode);
 
 	switch(idev->actual_fw_mode) {
 		case P5_X_FW_I2CUART_MODE:
 			ipio_info("Not implemented yet\n");
 			break;
 		case P5_X_FW_DEMO_MODE:
-			ipio_info("Switch to Demo mode");
-			ilitek_tddi_reset_ctrl(idev->reset_mode);
+			ipio_info("Switch to Demo mode\n");
+			if (idev->fw_upgrade_mode == UPGRADE_IRAM)
+				ilitek_tddi_reset_ctrl(idev->hd_reset);
+			else
+				ilitek_tddi_reset_ctrl(idev->reset);
 			break;
 		case P5_X_FW_DEBUG_MODE:
 			cmd[0] = P5_X_MODE_CONTROL;
@@ -428,8 +433,6 @@ int ilitek_tddi_touch_switch_mode(u8 *data)
 
 	if (ret < 0)
 		ipio_err("Switch mode failed\n");
-
-	ipio_info("Actual TP mode = %d\n", idev->actual_fw_mode);
 	atomic_set(&idev->tp_sw_mode, END);
 	return ret;
 }

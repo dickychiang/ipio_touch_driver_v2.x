@@ -297,7 +297,7 @@ static struct of_device_id tp_match_table[] = {
 };
 
 static struct ilitek_hwif_info hwif = {
-    .bus_type = TP_BUS_I2C,
+    .bus_type = TP_BUS_SPI,
     .plat_type = TP_PLAT_MTK,
     .owner = THIS_MODULE,
     .name = TDDI_DEV_ID,

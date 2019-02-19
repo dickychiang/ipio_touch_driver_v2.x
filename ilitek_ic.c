@@ -68,7 +68,7 @@ static u32 ic_sup_list[CHIP_SUP_NUM] = {
     [2] = ILI9881H_AE,
     [3] = ILI7807_CHIP,
     [4] = ILI7807G_AA,
-    [5] = ILI7807G_AR
+    [5] = ILI7807G_AB,
 };
 
 static int ilitek_tddi_ic_check_support(u32 pid, u16 id)
@@ -91,12 +91,17 @@ static int ilitek_tddi_ic_check_support(u32 pid, u16 id)
     if (CHECK_EQUAL(idev->chip->id, ILI9881_CHIP)) {
         idev->chip->reset_key = 0x00019881;
         idev->chip->wtd_key = 0x9881;
-        idev->chip->open_sp_formula = open_sp_formula_ili9881h;
+        idev->chip->open_sp_formula = open_sp_formula_ili9881;
+        idev->chip->hd_dma_check_crc_off = firmware_hd_dma_crc_off_ili9881;
     } else {
         idev->chip->reset_key = 0x00019878;
         idev->chip->wtd_key = 0x9878;
-        idev->chip->open_sp_formula = open_sp_formula_ili7807g;
+        idev->chip->open_sp_formula = open_sp_formula_ili7807;
+        idev->chip->hd_dma_check_crc_off = firmware_hd_dma_crc_off_ili7807;
     }
+
+    if (idev->spi_speed != NULL && idev->chip->id == ILI9881_CHIP)
+        idev->spi_speed(OFF);
 
     if (CHECK_EQUAL(idev->chip->id, ILI9881F_AA))
         idev->chip->no_bk_shift = RAWDATA_NO_BK_SHIFT_9881F;
@@ -218,8 +223,8 @@ int ilitek_ice_mode_ctrl(bool enable, bool mcu)
             if (ret < 0)
                 continue;
 
-            if (idev->spi_setup != NULL)
-                idev->spi_setup(SPI_CLK);
+            if (idev->spi_speed != NULL)
+                idev->spi_speed(ON);
 
             mdelay(25);
 
@@ -247,7 +252,7 @@ int ilitek_ice_mode_ctrl(bool enable, bool mcu)
     return 0;
 }
 
-int ilitek_set_watch_dog(bool enable)
+int ilitek_tddi_ic_watch_dog_ctrl(bool enable)
 {
 	int timeout = 100, ret = 0;
 	u8 off_bit = 0x5A, on_bit = 0xA5;
@@ -263,10 +268,12 @@ int ilitek_set_watch_dog(bool enable)
 		return 0;
 	}
 
+    ipio_info("WDT: enable = %d, key = %x\n", enable, idev->chip->wtd_key);
+
 	if (enable) {
 		ilitek_ice_mode_write(idev->chip->wdt_addr, 1, 1);
 	} else {
-		ilitek_ice_mode_write(idev->chip->wdt_addr, (idev->chip->wtd_key && 0xff), 1);
+		ilitek_ice_mode_write(idev->chip->wdt_addr, (idev->chip->wtd_key & 0xff), 1);
 		ilitek_ice_mode_write(idev->chip->wdt_addr, (idev->chip->wtd_key >> 8), 1);
 		/* need to delay 300us after stop mcu to wait fw relaod */
 		udelay(300);
@@ -274,37 +281,33 @@ int ilitek_set_watch_dog(bool enable)
 
 	while (timeout > 0) {
 		ret = ilitek_ice_mode_read(0x51018, sizeof(u8));
-		//ipio_debug(DEBUG_CONFIG, "bit = %x\n", ret);
-
 		if (enable) {
-			if (CHECK_EQUAL(ret, on_bit) == 0)
+			if (CHECK_EQUAL(ret, on_bit))
 				break;
 		} else {
-			if (CHECK_EQUAL(ret, off_bit) == 0)
+			if (CHECK_EQUAL(ret, off_bit))
 				break;
 
 			/* If WDT can't be disabled, try to command and wait to see */
 			ilitek_ice_mode_write(idev->chip->wdt_addr, 0x00, 1);
 			ilitek_ice_mode_write(idev->chip->wdt_addr, 0x98, 1);
 		}
-
 		timeout--;
 		mdelay(10);
 	}
 
-	if (timeout > 0) {
-		if (enable) {
-			ipio_info("WDT turn on succeed\n");
-		} else {
-			ilitek_ice_mode_write(idev->chip->wdt_addr, 0, 1);
-			ipio_info("WDT turn off succeed\n");
-		}
-	} else {
-		ipio_err("WDT turn on/off timeout !, ret = %x\n", ret);
-		// core_config_read_pc_counter();
+    if (timeout <= 0) {
+		ipio_err("WDT turn on/off timeout !, ret = %x, pc = 0x%x\n",
+                ret, ilitek_tddi_ic_get_pc_counter());
 		return -EINVAL;
-	}
+    }
 
+    if (enable) {
+        ipio_info("WDT turn on succeed\n");
+    } else {
+        ipio_info("WDT turn off succeed\n");
+        ilitek_ice_mode_write(idev->chip->wdt_addr, 0, 1);
+    }
 	return 0;
 }
 
@@ -482,6 +485,21 @@ void ilitek_tddi_ic_get_ddi_reg_onepage(u8 page, u8 reg)
 
     if (ice == DISABLE)
         ilitek_ice_mode_ctrl(DISABLE, ON);
+}
+
+void ilitek_tddi_ic_spi_speed_ctrl(bool on)
+{
+    ipio_info("spi speed up enable = %d\n", on);
+
+    if (on) {
+        ilitek_ice_mode_write(0x063820, 0x00000101, 4);
+        ilitek_ice_mode_write(0x042c34, 0x00000008, 4);
+        ilitek_ice_mode_write(0x063820, 0x00000000, 4);
+    } else {
+        ilitek_ice_mode_write(0x063820, 0x00000101, 4);
+        ilitek_ice_mode_write(0x042c34, 0x00000000, 4);
+        ilitek_ice_mode_write(0x063820, 0x00000000, 4);
+    }
 }
 
 u32 ilitek_tddi_ic_get_pc_counter(void)

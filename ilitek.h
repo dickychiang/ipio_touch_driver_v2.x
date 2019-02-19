@@ -143,6 +143,7 @@ extern u32 ipio_debug_level;
 #define DISABLE 0
 #define END		0
 #define OFF		0
+#define NONE	-1
 
 enum TP_BUS_TYPE {
 	TP_BUS_I2C = 0,
@@ -157,8 +158,9 @@ enum TP_PLAT_TYPE {
 enum TP_RST_METHOD {
 	TP_IC_WHOLE_RST = 0,
 	TP_IC_CODE_RST,
-	TP_RST_HW_ONLY,
-	TP_RST_HOST_DOWNLOAD
+	TP_HW_RST_ONLY,
+	TP_HW_RST_HD,
+	TP_IC_WHOLE_RST_HD,
 };
 
 enum TP_FW_UPGRADE_TYPE {
@@ -477,12 +479,12 @@ enum TP_WQ_TYPE {
 #define ILI9881H_AE						0x98811104
 #define ILI7807_CHIP       				0x7807
 #define ILI7807G_AA						0x78071000
-#define ILI7807G_AR						0x78071011
+#define ILI7807G_AB						0x78071001
 #define RAWDATA_NO_BK_SHIFT_9881H 		8192
 #define RAWDATA_NO_BK_SHIFT_9881F 		4096
 
 /* Path */
-#define DEBUG_DATA_FILE_SIZE	(10 * K)
+#define DEBUG_DATA_FILE_SIZE	(10*K)
 #define DEBUG_DATA_FILE_PATH	"/sdcard/ILITEK_log.csv"
 #define CSV_LCM_ON_PATH     	"/sdcard/ilitek_mp_lcm_on_log"
 #define CSV_LCM_OFF_PATH		"/sdcard/ilitek_mp_lcm_off_log"
@@ -493,11 +495,11 @@ enum TP_WQ_TYPE {
 
 /* Options */
 #define SPI_CLK					(1*M)
-#define TP_RST_BIND 			ENABLE
+#define TP_RST_BIND 			DISABLE
 #define MT_B_TYPE				ENABLE
 #define MT_PRESSURE				DISABLE
-#define ENABLE_WQ_ESD			DISABLE
-#define ENABLE_WQ_BAT			DISABLE
+#define ENABLE_WQ_ESD			ENABLE
+#define ENABLE_WQ_BAT			ENABLE
 #define ENABLE_GESTURE			DISABLE
 
 struct ilitek_tddi_dev
@@ -565,8 +567,8 @@ struct ilitek_tddi_dev
 	int delta_count;
 	int bg_count;
 
-	/* host download */
-	int reset_mode;
+	int reset;
+	int hd_reset;
 	int fw_upgrade_mode;
 	bool wtd_ctrl;
 
@@ -584,7 +586,7 @@ struct ilitek_tddi_dev
 	int (*mp_move_code)(void);
 	int (*gesture_move_code)(int);
 	void (*esd_callabck)(void);
-	int (*spi_setup)(u32);
+	void (*spi_speed)(bool);
 };
 extern struct ilitek_tddi_dev *idev;
 
@@ -638,8 +640,10 @@ struct ilitek_ic_info
 	u32 reset_key;
 	u16 wtd_key;
 	int no_bk_shift;
+	bool spi_speed_ctrl;
 	s32 (*open_sp_formula)(int dac, int raw);
 	s32 (*open_c_formula)(int dac, int raw, int tvch, int gain);
+	void (*hd_dma_check_crc_off)(void);
 };
 
 struct ilitek_hwif_info
@@ -653,43 +657,6 @@ struct ilitek_hwif_info
 	int (*plat_remove)(void);
 	void *info;
 };
-
-static inline void ipio_kfree(void **mem) {
-	if (*mem != NULL) {
-		kfree(*mem);
-		*mem = NULL;
-	}
-}
-
-static inline void ipio_vfree(void **mem) {
-	if (*mem != NULL) {
-		vfree(*mem);
-		*mem = NULL;
-	}
-}
-
-static inline void *ipio_memcpy(void *dest, const void *src, size_t n, size_t dest_size) {
-    if (n > dest_size)
-         n = dest_size;
-
-    return memcpy(dest, src, n);
-}
-
-static inline s32 open_sp_formula_ili9881h(int dac, int raw)
-{
-	return (int)((int)(dac * 2 * 10000 * 161 / 100) - (int)(16384 / 2 - (int)raw) * 20000 * 7 / 16384 * 36 / 10) / 31 / 2;
-}
-
-static inline s32 open_sp_formula_ili7807g(int dac, int raw)
-{
-	return (int)((int)(dac * 2 * 10000 * 131 / 100) - (int)(16384 / 2 - (int)raw) * 20000 * 7 / 16384 * 36 / 10) / 31 / 2;
-}
-
-static inline s32 open_c_formula(int dac, int raw, int tvch, int gain)
-{
-	return (int)((int)(dac * 414 * 39 / 2) + (int)(((int)raw - 8192) * 36 * (7 * 100 - 22) * 10 / 16384)) /
-						tvch / 100 / gain;
-}
 
 /* Prototypes for tddi firmware/flash functions */
 extern void ilitek_tddi_flash_dma_write(u32, u32, u32);
@@ -706,7 +673,7 @@ extern int ilitek_tddi_mp_test_main(char *, bool);
 /* Prototypes for tddi core functions */
 extern void ilitek_tddi_touch_esd_gesture(void);
 extern int ilitek_tddi_move_gesture_code_flash(int);
-extern void ilitek_tddi_move_gesture_code_iram(int);
+extern int ilitek_tddi_move_gesture_code_iram(int);
 extern int ilitek_tddi_move_mp_code_flash(void);
 extern int ilitek_tddi_move_mp_code_iram(void);
 extern int ilitek_tddi_touch_switch_mode(u8 *);
@@ -719,6 +686,7 @@ extern void ilitek_tddi_report_gesture_mode(u8 *, size_t);
 extern void ilitek_tddi_report_i2cuart_mode(u8 *, size_t);
 extern void ilitek_tddi_ic_set_ddi_reg_onepage(u8, u8, u8);
 extern void ilitek_tddi_ic_get_ddi_reg_onepage(u8, u8);
+extern void ilitek_tddi_ic_spi_speed_ctrl(bool);
 extern int ilitek_tddi_ic_whole_reset(void);
 extern int ilitek_tddi_ic_code_reset(void);
 extern int ilitek_tddi_ic_func_ctrl(const char *, int);
@@ -735,7 +703,7 @@ extern int ilitek_ice_mode_bit_mask_write(u32, u32, u32);
 extern int ilitek_ice_mode_write(u32 , u32 , size_t);
 extern u32 ilitek_ice_mode_read(u32, size_t);
 extern int ilitek_ice_mode_ctrl(bool, bool);
-extern int ilitek_set_watch_dog(bool);
+extern int ilitek_tddi_ic_watch_dog_ctrl(bool);
 extern void ilitek_tddi_ic_init(void);
 
 /* Prototypes for tddi events */
@@ -766,4 +734,58 @@ extern void ilitek_dump_data(void *, int, int, int, const char *);
 extern u8 ilitek_calc_packet_checksum(u8 *, size_t);
 extern void netlink_reply_msg(void *, int);
 extern int katoi(char *);
+
+static inline void ipio_kfree(void **mem) {
+	if (*mem != NULL) {
+		kfree(*mem);
+		*mem = NULL;
+	}
+}
+
+static inline void ipio_vfree(void **mem) {
+	if (*mem != NULL) {
+		vfree(*mem);
+		*mem = NULL;
+	}
+}
+
+static inline void *ipio_memcpy(void *dest, const void *src, size_t n, size_t dest_size) {
+    if (n > dest_size)
+         n = dest_size;
+
+    return memcpy(dest, src, n);
+}
+
+static inline s32 open_sp_formula_ili9881(int dac, int raw)
+{
+	return (int)((int)(dac * 2 * 10000 * 161 / 100) - (int)(16384 / 2 - (int)raw) * 20000 * 7 / 16384 * 36 / 10) / 31 / 2;
+}
+
+static inline s32 open_sp_formula_ili7807(int dac, int raw)
+{
+	return (int)((int)(dac * 2 * 10000 * 131 / 100) - (int)(16384 / 2 - (int)raw) * 20000 * 7 / 16384 * 36 / 10) / 31 / 2;
+}
+
+static inline s32 open_c_formula(int dac, int raw, int tvch, int gain)
+{
+	return (int)((int)(dac * 414 * 39 / 2) + (int)(((int)raw - 8192) * 36 * (7 * 100 - 22) * 10 / 16384)) /
+						tvch / 100 / gain;
+}
+
+static inline void firmware_hd_dma_crc_off_ili9881(void)
+{
+	/* crc off */
+	ilitek_ice_mode_write(0x041014, 0x00000000, 4);
+	/* dma crc */
+	ilitek_ice_mode_write(0x041048, 0x00000001, 4);
+}
+
+static inline void firmware_hd_dma_crc_off_ili7807(void)
+{
+	/* crc off */
+	ilitek_ice_mode_write(0x041016, 0x00, 1);
+	/* dma crc */
+	ilitek_ice_mode_write(0x041017, 0x03, 1);
+}
+
 #endif /* __ILITEK_H */

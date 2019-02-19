@@ -174,9 +174,15 @@ static int ilitek_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id *
     idev->write = ilitek_i2c_write;
     idev->read = ilitek_i2c_read;
 
-	idev->spi_setup = NULL;
+	idev->spi_speed = NULL;
 	idev->actual_fw_mode = P5_X_FW_DEMO_MODE;
-    idev->reset_mode = TP_IC_WHOLE_RST;
+
+	if (TP_RST_BIND)
+    	idev->reset = TP_IC_WHOLE_RST_HD;
+	else
+		idev->reset = TP_HW_RST_ONLY;
+
+	idev->hd_reset = NONE;
 	idev->fw_open = FILP_OPEN;
     idev->fw_upgrade_mode = UPGRADE_FLASH;
 	idev->mp_move_code = ilitek_tddi_move_mp_code_flash;

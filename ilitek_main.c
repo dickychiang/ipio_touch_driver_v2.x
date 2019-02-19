@@ -53,8 +53,10 @@ int ilitek_tddi_mp_test_handler(char *apk, bool lcm_on)
 	mutex_lock(&idev->touch_mutex);
 	atomic_set(&idev->mp_stat, ENABLE);
 
-	if (ilitek_tddi_touch_switch_mode(&tp_mode) < 0)
-		goto out;
+	if (idev->actual_fw_mode != P5_X_FW_TEST_MODE) {
+		if (ilitek_tddi_touch_switch_mode(&tp_mode) < 0)
+			goto out;
+	}
 
 	ret = ilitek_tddi_mp_test_main(apk, lcm_on);
 
@@ -290,10 +292,10 @@ int ilitek_tddi_fw_upgrade_handler(void *data)
 
 	idev->fw_update_stat = 0;
 	ret = ilitek_tddi_fw_upgrade(idev->fw_upgrade_mode, HEX_FILE, idev->fw_open);
-	if (ret == 0)
-		idev->fw_update_stat = 100;
-	else
+	if (ret != 0)
 		idev->fw_update_stat = -1;
+	else
+		idev->fw_update_stat = 100;
 
 	mutex_unlock(&idev->touch_mutex);
 	atomic_set(&idev->fw_stat, END);
@@ -401,20 +403,26 @@ int ilitek_tddi_reset_ctrl(int mode)
 
 	switch (mode) {
 		case TP_IC_CODE_RST:
-			ipio_info("Doing TP IC Code RST \n");
+			ipio_info("TP IC Code RST \n");
 			ret = ilitek_tddi_ic_code_reset();
 			break;
 		case TP_IC_WHOLE_RST:
-			ipio_info("Doing TP IC whole RST\n");
+			ipio_info("TP IC whole RST\n");
 			ret = ilitek_tddi_ic_whole_reset();
 			break;
-		case TP_RST_HW_ONLY:
-			ipio_info("Doing TP RST only\n");
+		case TP_HW_RST_ONLY:
+			ipio_info("TP HW RST\n");
 			ilitek_plat_tp_reset();
 			break;
-		case TP_RST_HOST_DOWNLOAD:
-			ipio_info("Doing TP RST with host download\n");
+		case TP_HW_RST_HD:
+			ipio_info("TP HW RST with host download\n");
 			ilitek_plat_tp_reset();
+			ilitek_tddi_fw_upgrade_handler(NULL);
+			break;
+		case TP_IC_WHOLE_RST_HD:
+			ipio_info("TP IC whole RST with host download\n");
+			ilitek_tddi_ic_whole_reset();
+			ilitek_tddi_fw_upgrade_handler(NULL);
 			break;
 		default:
 			ipio_err("Unknown reset mode, %d\n", mode);
@@ -423,8 +431,11 @@ int ilitek_tddi_reset_ctrl(int mode)
 	}
 
 	atomic_set(&idev->tp_reset, END);
-	atomic_set(&idev->ice_stat, DISABLE);
-	idev->actual_fw_mode = P5_X_FW_DEMO_MODE;
+
+	if (mode != TP_IC_CODE_RST) {
+		atomic_set(&idev->ice_stat, DISABLE);
+		idev->actual_fw_mode = P5_X_FW_DEMO_MODE;
+	}
 	return ret;
 }
 
@@ -453,10 +464,7 @@ int ilitek_tddi_init(void)
 	ilitek_tddi_wq_init();
 
 	/* Must do hw reset once in first time for work normally */
-	if (TP_RST_BIND)
-		ilitek_tddi_reset_ctrl(TP_IC_WHOLE_RST);
-	else
-		ilitek_tddi_reset_ctrl(TP_RST_HW_ONLY);
+	ilitek_tddi_reset_ctrl(idev->reset);
 
 	if (ilitek_tddi_ic_get_info() < 0) {
 		ipio_err("Not found ilitek chipes\n");

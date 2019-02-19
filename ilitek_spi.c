@@ -179,7 +179,7 @@ static int core_rx_lock_check(int *ret_size)
 
 		//ipio_debug(DEBUG_SPI, "Rx lock = 0x%x, size = %d\n", status, *ret_size);
 
-		if (CHECK_EQUAL(status, lock) == 0) {
+		if (CHECK_EQUAL(status, lock)) {
 			ipio_info("Rx check lock free!!\n");
 			return 0;
 		}
@@ -487,6 +487,56 @@ out:
 	return ret;
 }
 
+static int ilitek_spi_write(void *buf, size_t len)
+{
+    int ret = 0;
+
+	if (!len) {
+		ipio_err("spi write len is zero\n");
+		return -EINVAL;
+	}
+
+    mutex_lock(&idev->io_mutex);
+
+    ret = core_spi_write(buf, len);
+    if (ret < 0) {
+		if (atomic_read(&idev->tp_reset) == START) {
+			ret = 0;
+			goto out;
+		}
+		ipio_err("spi write Error, ret = %d\n", ret);
+	}
+
+out:
+    mutex_unlock(&idev->io_mutex);
+    return ret;
+}
+
+static int ilitek_spi_read(void *buf, size_t len)
+{
+    int ret = 0;
+
+	if (!len) {
+		ipio_err("spi read len is zero\n");
+		return -EINVAL;
+	}
+
+    mutex_lock(&idev->io_mutex);
+
+    ret = core_spi_read(buf, len);
+    if (ret < 0) {
+		if (atomic_read(&idev->tp_reset) == START) {
+			ret = 0;
+			goto out;
+		}
+		ipio_err("spi read Error, ret = %d\n", ret);
+	}
+
+out:
+    mutex_unlock(&idev->io_mutex);
+    return ret;
+}
+
 static int core_spi_setup(u32 freq)
 {
 #ifdef CONFIG_MTK_SPI
@@ -522,6 +572,9 @@ static int core_spi_setup(u32 freq)
 	chip_config->deassert = 0;
 
 	idev->spi->controller_data = chip_config;
+	ilitek_spi_write_then_read = core_mtk_spi_write_then_read;
+#else
+    ilitek_spi_write_then_read = spi_write_then_read;
 #endif /* CONFIG_MTK_SPI */
 
 	ipio_info("spi clock = %d\n", freq);
@@ -535,49 +588,13 @@ static int core_spi_setup(u32 freq)
 		return -ENODEV;
 	}
 
+	ipio_info("name = %s, bus_num = %d,cs = %d, mode = %d, speed = %d\n",
+			idev->spi->modalias,
+			idev->spi->master->bus_num,
+			idev->spi->chip_select,
+			idev->spi->mode,
+			idev->spi->max_speed_hz);
 	return 0;
-}
-
-static int ilitek_spi_write(void *buf, size_t len)
-{
-    int ret = 0;
-
-    mutex_lock(&idev->io_mutex);
-
-    ret = core_spi_write(buf, len);
-    if (ret < 0) {
-		if (atomic_read(&idev->tp_reset) == START) {
-			ret = 0;
-			goto out;
-		}
-	}
-
-	ipio_err("spi write Error, ret = %d\n", ret);
-
-out:
-    mutex_unlock(&idev->io_mutex);
-    return ret;
-}
-
-static int ilitek_spi_read(void *buf, size_t len)
-{
-    int ret = 0;
-
-    mutex_lock(&idev->io_mutex);
-
-    ret = core_spi_read(buf, len);
-    if (ret < 0) {
-		if (atomic_read(&idev->tp_reset) == START) {
-			ret = 0;
-			goto out;
-		}
-	}
-
-	ipio_err("spi read Error, ret = %d\n", ret);
-
-out:
-    mutex_unlock(&idev->io_mutex);
-    return ret;
 }
 
 static int ilitek_spi_probe(struct spi_device *spi)
@@ -606,15 +623,19 @@ static int ilitek_spi_probe(struct spi_device *spi)
 	idev->write = ilitek_spi_write;
 	idev->read = ilitek_spi_read;
 
-#ifdef CONFIG_MTK_SPI
-    ilitek_spi_write_then_read = core_mtk_spi_write_then_read;
-#else
-    ilitek_spi_write_then_read = spi_write_then_read;
-#endif
-
-	idev->spi_setup = core_spi_setup;
+	idev->spi_speed = ilitek_tddi_ic_spi_speed_ctrl;
 	idev->actual_fw_mode = P5_X_FW_DEMO_MODE;
-    idev->reset_mode = TP_RST_HOST_DOWNLOAD;
+
+	if (TP_RST_BIND)
+		idev->reset = TP_IC_WHOLE_RST;
+	else
+		idev->reset = TP_HW_RST_ONLY;
+
+	if (TP_RST_BIND)
+		idev->hd_reset = TP_IC_WHOLE_RST_HD;
+	else
+		idev->hd_reset = TP_HW_RST_HD;
+
 	idev->fw_open = FILP_OPEN;
     idev->fw_upgrade_mode = UPGRADE_IRAM;
 	idev->mp_move_code = ilitek_tddi_move_mp_code_iram;
@@ -629,6 +650,7 @@ static int ilitek_spi_probe(struct spi_device *spi)
 	if (ENABLE_GESTURE)
 		idev->gesture = ENABLE;
 
+	core_spi_setup(SPI_CLK);
     return info->hwif->plat_probe();
 }
 
