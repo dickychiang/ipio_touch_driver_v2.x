@@ -22,13 +22,6 @@
 
 #include "ilitek.h"
 
-#define TDDI_PID_ADDR           0x4009C
-#define TDDI_OTP_ID_ADDR		0x400A0
-#define TDDI_ANA_ID_ADDR        0x400A4
-#define TDDI_PC_COUNTER_ADDR    0x44008
-#define TDDI_WDT_ADDR           0x5100C
-#define TDDI_CHIP_RESET_ADDR    0x40050
-
 #define PROTOCL_VER_NUM     7
 static struct ilitek_protocol_info protocol_info[PROTOCL_VER_NUM] = {
     /* length -> fw, protocol, tp, key, panel, core, func, window, cdc, mp_info */
@@ -614,8 +607,6 @@ int ilitek_tddi_ic_get_core_ver(void)
         goto out;
     }
 
-    ilitek_dump_data(buf, 8, idev->protocol->core_ver_len, 0, "Core ver");
-
     if (buf[0] != P5_X_GET_CORE_VERSION) {
         ipio_err("Invalid core ver\n");
         ret = -EINVAL;
@@ -623,7 +614,6 @@ int ilitek_tddi_ic_get_core_ver(void)
     }
 
     ipio_info("Core version = %d.%d.%d.%d\n", buf[1], buf[2], buf[3], buf[4]);
-
     idev->chip->core_ver = buf[1] << 24 | buf[2] << 16 | buf[3] << 8 | buf[4];
 
 out:
@@ -657,8 +647,6 @@ int ilitek_tddi_ic_get_fw_ver(void)
         goto out;
     }
 
-    ilitek_dump_data(buf, 8, idev->protocol->fw_ver_len, 0, "firmware ver");
-
     if (buf[0] != P5_X_GET_FW_VERSION) {
         ipio_err("Invalid firmware ver\n");
         ret = -EINVAL;
@@ -666,7 +654,6 @@ int ilitek_tddi_ic_get_fw_ver(void)
     }
 
     ipio_info("Firmware version = %d.%d.%d.%d\n", buf[1], buf[2], buf[3], buf[4]);
-
     idev->chip->fw_ver = buf[1] << 24 | buf[2] << 16 | buf[3] << 8 | buf[4];
 
 out:
@@ -690,8 +677,6 @@ int ilitek_tddi_ic_get_panel_info(void)
         ipio_err("Read panel info error\n");
         goto out;
     }
-
-    ilitek_dump_data(buf, 8, idev->protocol->panel_info_len, 0, "Panel info");
 
 out:
     if (buf[0] != P5_X_GET_PANEL_INFORMATION) {
@@ -732,8 +717,6 @@ int ilitek_tddi_ic_get_tp_info(void)
         ipio_err("Read tp info error\n");
         goto out;
     }
-
-    ilitek_dump_data(buf, 8, idev->protocol->tp_info_len, 0, "TP info");
 
     if (buf[0] != P5_X_GET_TP_INFORMATION) {
         ipio_err("Invalid tp info\n");
@@ -805,8 +788,6 @@ int ilitek_tddi_ic_get_protocl_ver(void)
         ipio_err("Read protocol version error\n");
         goto out;
     }
-
-    ilitek_dump_data(buf, 8, idev->protocol->pro_ver_len, 0, "protocol ver");
 
     if (buf[0] != P5_X_GET_PROTOCOL_VERSION) {
         ipio_err("Invalid protocol ver\n");

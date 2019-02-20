@@ -224,14 +224,9 @@ static irqreturn_t ilitek_plat_isr_top_half(int irq, void *dev_id)
 
 static irqreturn_t ilitek_plat_isr_bottom_half(int irq, void *dev_id)
 {
-	mutex_lock(&idev->touch_mutex);
-
 	ipio_info();
-
-	ilitek_plat_irq_disable();
+	mutex_lock(&idev->touch_mutex);
 	ilitek_tddi_report_handler();
-	ilitek_plat_irq_enable();
-
 	mutex_unlock(&idev->touch_mutex);
 	return IRQ_HANDLED;
 }

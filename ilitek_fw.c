@@ -507,8 +507,6 @@ static int ilitek_tddi_fw_iram_upgrade(u8 *pfw)
 	u32 mode, crc, dma;
 	u8 *fw_ptr = NULL;
 
-	ipio_info();
-
 	if (idev->actual_fw_mode != P5_X_FW_GESTURE_MODE)
 		ilitek_tddi_reset_ctrl(idev->reset);
 
@@ -988,6 +986,10 @@ static void ilitek_tddi_fw_update_tp_info(int ret)
 	ipio_info("FW upgrade %s\n", (ret == UPDATE_PASS ? "PASS" : "FAIL"));
 
 	if (ret == UPDATE_FAIL) {
+		if (atomic_read(&idev->mp_stat)) {
+			ipio_info("No need to erase data during mp test\n");
+			return;
+		}
 		ipio_info("Erase all fw data\n");
 		if (idev->fw_upgrade_mode == UPGRADE_IRAM) {
 			ilitek_tddi_reset_ctrl(idev->reset);

@@ -19,7 +19,6 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
-
 #include "ilitek.h"
 
 /* Debug level */
@@ -38,7 +37,7 @@ int ilitek_tddi_mp_test_handler(char *apk, bool lcm_on)
 
     ipio_info();
 
-	if (atomic_read(&idev->fw_stat) == START)
+	if (atomic_read(&idev->fw_stat))
 		return 0;
 
 	if (!idev->chip->open_c_formula ||
@@ -49,9 +48,8 @@ int ilitek_tddi_mp_test_handler(char *apk, bool lcm_on)
 
 	ilitek_tddi_wq_ctrl(WQ_ESD, DISABLE);
 	ilitek_tddi_wq_ctrl(WQ_BAT, DISABLE);
-
-	mutex_lock(&idev->touch_mutex);
 	atomic_set(&idev->mp_stat, ENABLE);
+	mutex_lock(&idev->touch_mutex);
 
 	if (idev->actual_fw_mode != P5_X_FW_TEST_MODE) {
 		if (ilitek_tddi_touch_switch_mode(&tp_mode) < 0)
@@ -63,6 +61,7 @@ int ilitek_tddi_mp_test_handler(char *apk, bool lcm_on)
 out:
 	tp_mode = P5_X_FW_DEMO_MODE;
 	ilitek_tddi_touch_switch_mode(&tp_mode);
+
 	mutex_unlock(&idev->touch_mutex);
 	atomic_set(&idev->mp_stat, DISABLE);
 	ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
@@ -151,7 +150,7 @@ void ilitek_tddi_wq_ctrl(int type, int ctrl)
 				idev->wq_esd_ctrl = ctrl;
 				if (ctrl == ENABLE) {
 					ipio_info("Execute WQ ESD\n");
-					if (!queue_delayed_work(esd_wq, &esd_work, msecs_to_jiffies(2000)))
+					if (!queue_delayed_work(esd_wq, &esd_work, msecs_to_jiffies(WQ_ESD_DELAY)))
 						ipio_info("execute WQ ESD error\n");
 				} else {
 					cancel_delayed_work_sync(&esd_work);
@@ -167,7 +166,7 @@ void ilitek_tddi_wq_ctrl(int type, int ctrl)
 				idev->wq_bat_ctrl = ctrl;
 				if (ctrl == ENABLE) {
 					ipio_info("Execute WQ BAT\n");
-					if (!queue_delayed_work(bat_wq, &bat_work, msecs_to_jiffies(4000)))
+					if (!queue_delayed_work(bat_wq, &bat_work, msecs_to_jiffies(WQ_BAT_DELAY)))
 						ipio_info("execute WQ BAT error\n");
 				} else {
 					cancel_delayed_work_sync(&bat_work);
@@ -225,7 +224,6 @@ int ilitek_tddi_sleep_handler(int mode)
 
 	atomic_set(&idev->tp_sleep, START);
 	mutex_lock(&idev->sleep_mutex);
-
 	ilitek_plat_irq_disable();
 
 	switch (mode) {
@@ -279,16 +277,16 @@ int ilitek_tddi_fw_upgrade_handler(void *data)
 {
 	int ret = 0;
 
-	if (atomic_read(&idev->tp_sleep)) {
-		ipio_info("TP is suspending, upgrade failed\n");
-		return -1;
+	atomic_set(&idev->fw_stat, START);
+
+	if (!atomic_read(&idev->mp_stat) &&
+		!atomic_read(&idev->tp_sleep)) {
+		ilitek_tddi_wq_ctrl(WQ_ESD, DISABLE);
+		ilitek_tddi_wq_ctrl(WQ_BAT, DISABLE);
 	}
 
-	ilitek_tddi_wq_ctrl(WQ_ESD, DISABLE);
-	ilitek_tddi_wq_ctrl(WQ_BAT, DISABLE);
-
-	mutex_lock(&idev->touch_mutex);
-	atomic_set(&idev->fw_stat, START);
+	if (!atomic_read(&idev->mp_stat))
+		mutex_lock(&idev->touch_mutex);
 
 	idev->fw_update_stat = 0;
 	ret = ilitek_tddi_fw_upgrade(idev->fw_upgrade_mode, HEX_FILE, idev->fw_open);
@@ -297,11 +295,16 @@ int ilitek_tddi_fw_upgrade_handler(void *data)
 	else
 		idev->fw_update_stat = 100;
 
-	mutex_unlock(&idev->touch_mutex);
-	atomic_set(&idev->fw_stat, END);
+	if (!atomic_read(&idev->mp_stat))
+		mutex_unlock(&idev->touch_mutex);
 
-	ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
-	ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
+	if (!atomic_read(&idev->mp_stat) &&
+		!atomic_read(&idev->tp_sleep)) {
+		ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
+		ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
+	}
+
+	atomic_set(&idev->fw_stat, END);
 	return ret;
 }
 
@@ -431,11 +434,6 @@ int ilitek_tddi_reset_ctrl(int mode)
 	}
 
 	atomic_set(&idev->tp_reset, END);
-
-	if (mode != TP_IC_CODE_RST) {
-		atomic_set(&idev->ice_stat, DISABLE);
-		idev->actual_fw_mode = P5_X_FW_DEMO_MODE;
-	}
 	return ret;
 }
 

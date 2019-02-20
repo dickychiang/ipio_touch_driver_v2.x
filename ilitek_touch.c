@@ -235,7 +235,7 @@ out:
 
 int ilitek_tddi_move_mp_code_iram(void)
 {
-	/* Donwload MP code to iram */
+	ipio_info("Download MP code to iram\n");
     return ilitek_tddi_fw_upgrade_handler(NULL);;
 }
 
@@ -395,7 +395,6 @@ int ilitek_tddi_touch_switch_mode(u8 *data)
 
 	mode = data[0];
 	idev->actual_fw_mode = mode;
-	ipio_info("Actual TP mode = %d\n", idev->actual_fw_mode);
 
 	switch(idev->actual_fw_mode) {
 		case P5_X_FW_I2CUART_MODE:
@@ -433,6 +432,8 @@ int ilitek_tddi_touch_switch_mode(u8 *data)
 
 	if (ret < 0)
 		ipio_err("Switch mode failed\n");
+
+	ipio_info("Actual TP mode = %d\n", idev->actual_fw_mode);
 	atomic_set(&idev->tp_sw_mode, END);
 	return ret;
 }

@@ -211,8 +211,8 @@ enum TP_WQ_TYPE {
 	WQ_SUSPEND
 };
 
-#define TDDI_I2C_ADDR	0x41
-#define TDDI_DEV_ID	"ILITEK_TDDI"
+#define TDDI_I2C_ADDR				0x41
+#define TDDI_DEV_ID					"ILITEK_TDDI"
 
  /* define the width and heigth of a screen. */
 #define TOUCH_SCREEN_X_MIN 			0
@@ -473,6 +473,12 @@ enum TP_WQ_TYPE {
 #define P5_X_I2CUART_PACKET_ID	        0x7A
 
 /* Chipes */
+#define TDDI_PID_ADDR           		0x4009C
+#define TDDI_OTP_ID_ADDR				0x400A0
+#define TDDI_ANA_ID_ADDR        		0x400A4
+#define TDDI_PC_COUNTER_ADDR    		0x44008
+#define TDDI_WDT_ADDR           		0x5100C
+#define TDDI_CHIP_RESET_ADDR    		0x40050
 #define ILI9881_CHIP       				0x9881
 #define ILI9881F_AA						0x98810F00
 #define ILI9881H_AD		    			0x98811103
@@ -495,12 +501,14 @@ enum TP_WQ_TYPE {
 
 /* Options */
 #define SPI_CLK					(1*M)
+#define WQ_ESD_DELAY			2000
+#define WQ_BAT_DELAY			4000
 #define TP_RST_BIND 			DISABLE
 #define MT_B_TYPE				ENABLE
 #define MT_PRESSURE				DISABLE
 #define ENABLE_WQ_ESD			ENABLE
-#define ENABLE_WQ_BAT			ENABLE
-#define ENABLE_GESTURE			DISABLE
+#define ENABLE_WQ_BAT			DISABLE
+#define ENABLE_GESTURE			ENABLE
 
 struct ilitek_tddi_dev
 {
@@ -735,21 +743,24 @@ extern u8 ilitek_calc_packet_checksum(u8 *, size_t);
 extern void netlink_reply_msg(void *, int);
 extern int katoi(char *);
 
-static inline void ipio_kfree(void **mem) {
+static inline void ipio_kfree(void **mem)
+{
 	if (*mem != NULL) {
 		kfree(*mem);
 		*mem = NULL;
 	}
 }
 
-static inline void ipio_vfree(void **mem) {
+static inline void ipio_vfree(void **mem)
+{
 	if (*mem != NULL) {
 		vfree(*mem);
 		*mem = NULL;
 	}
 }
 
-static inline void *ipio_memcpy(void *dest, const void *src, size_t n, size_t dest_size) {
+static inline void *ipio_memcpy(void *dest, const void *src, size_t n, size_t dest_size)
+{
     if (n > dest_size)
          n = dest_size;
 
