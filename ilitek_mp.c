@@ -154,12 +154,9 @@ struct mp_test_P540_open {
 };
 
 struct mp_test_open_c {
-	s32 *cap1_dac;
-	s32 *cap2_dac;
-	s32 *cap1_raw;
-	s32 *cap2_raw;
+	s32 *cap_dac;
+	s32 *cap_raw;
 	s32 *dcl_cap;
-	s32 *lfd_cap;
 };
 
 struct open_test_c_spec {
@@ -308,7 +305,7 @@ static struct mp_test_items tItems[MP_TEST_ITEM] = {
 s32 *frame_buf = NULL;
 s32 *key_buf = NULL;
 s32 *frame1_cbk700 = NULL, *frame1_cbk250 = NULL, *frame1_cbk200 = NULL;
-s32 *cap1_dac = NULL, *cap1_raw = NULL, *cap2_dac = NULL, *cap2_raw = NULL;
+s32 *cap_dac = NULL, *cap_raw = NULL;
 int g_ini_items = 0;
 
 static int isspace_t(int x)
@@ -1488,7 +1485,7 @@ static int allnode_open_cdc_data(int mode, int *buf)
 	char str[128] = {0};
 	char tmp[128] = {0};
 	char *key[] = {"open dac", "open raw1", "open raw2", "open raw3",
-					"open cap1 dac", "open cap1 raw", "open cap2 dac", "open cap2 raw"};
+					"open cap1 dac", "open cap1 raw"};
 
 	/* Multipling by 2 is due to the 16 bit in each node */
 	len = (core_mp.xch_len * core_mp.ych_len * 2) + 2;
@@ -1567,7 +1564,7 @@ static int allnode_open_cdc_data(int mode, int *buf)
 
 	/* Convert original data to the physical one in each node */
 	for (i = 0; i < core_mp.frame_len; i++) {
-		if ((mode == 0) || (mode == 4) || (mode == 6)) {
+		if ((mode == 0) || (mode == 4)) {
 			/* DAC - P */
 			if (((ori[(2 * i) + 1] & 0x80) >> 7) == 1) {
 				/* Negative */
@@ -2204,50 +2201,25 @@ static int open_test_cap(int index)
 	if (ret < 0)
 		goto out;
 
-	if (cap1_dac == NULL) {
-		cap1_dac = kcalloc(core_mp.frame_len, sizeof(s32), GFP_KERNEL);
-		if (ERR_ALLOC_MEM(cap1_dac)) {
-			ipio_err("Failed to allocate cap1_dac buffer\n");
+	if (cap_dac == NULL) {
+		cap_dac = kcalloc(core_mp.frame_len, sizeof(s32), GFP_KERNEL);
+		if (ERR_ALLOC_MEM(cap_dac)) {
+			ipio_err("Failed to allocate cap_dac buffer\n");
 			return -ENOMEM;
 		}
 	} else {
-		memset(cap1_dac, 0x0, core_mp.frame_len);
+		memset(cap_dac, 0x0, core_mp.frame_len);
 	}
 
-	if (cap1_raw == NULL) {
-		cap1_raw = kcalloc(core_mp.frame_len, sizeof(s32), GFP_KERNEL);
-		if (ERR_ALLOC_MEM(cap1_raw)) {
-			ipio_err("Failed to allocate cap1_raw buffer\n");
-			ipio_kfree((void **)&cap1_dac);
+	if (cap_raw == NULL) {
+		cap_raw = kcalloc(core_mp.frame_len, sizeof(s32), GFP_KERNEL);
+		if (ERR_ALLOC_MEM(cap_raw)) {
+			ipio_err("Failed to allocate cap_raw buffer\n");
+			ipio_kfree((void **)&cap_dac);
 			return -ENOMEM;
 		}
 	} else {
-		memset(cap1_raw, 0x0, core_mp.frame_len);
-	}
-
-	if (cap2_dac == NULL) {
-		cap2_dac = kcalloc(core_mp.frame_len, sizeof(s32), GFP_KERNEL);
-		if (ERR_ALLOC_MEM(cap2_dac)) {
-			ipio_err("Failed to allocate cap2_dac buffer\n");
-			ipio_kfree((void **)&cap1_dac);
-			ipio_kfree((void **)&cap1_raw);
-			return -ENOMEM;
-		}
-	} else {
-		memset(cap2_dac, 0x0, core_mp.frame_len);
-	}
-
-	if (cap2_raw == NULL) {
-		cap2_raw = kcalloc(core_mp.frame_len, sizeof(s32), GFP_KERNEL);
-		if (ERR_ALLOC_MEM(cap2_raw)) {
-			ipio_err("Failed to allocate cap2_raw buffer\n");
-			ipio_kfree((void **)&cap1_dac);
-			ipio_kfree((void **)&cap1_raw);
-			ipio_kfree((void **)&cap2_dac);
-			return -ENOMEM;
-		}
-	} else {
-		memset(cap2_raw, 0x0, core_mp.frame_len);
+		memset(cap_raw, 0x0, core_mp.frame_len);
 	}
 
 	/* Init Max/Min buffer */
@@ -2286,72 +2258,49 @@ static int open_test_cap(int index)
 			tItems[index].frame_count, open_c_spec.gain, open_c_spec.tvch, open_c_spec.tvcl );
 
 	for (i = 0; i < tItems[index].frame_count; i++) {
-		open[i].cap1_dac = kcalloc(core_mp.frame_len, sizeof(s32), GFP_KERNEL);
-		open[i].cap2_dac = kcalloc(core_mp.frame_len, sizeof(s32), GFP_KERNEL);
-		open[i].cap1_raw = kcalloc(core_mp.frame_len, sizeof(s32), GFP_KERNEL);
-		open[i].cap2_raw = kcalloc(core_mp.frame_len, sizeof(s32), GFP_KERNEL);
+		open[i].cap_dac = kcalloc(core_mp.frame_len, sizeof(s32), GFP_KERNEL);
+		open[i].cap_raw = kcalloc(core_mp.frame_len, sizeof(s32), GFP_KERNEL);
 		open[i].dcl_cap = kcalloc(core_mp.frame_len, sizeof(s32), GFP_KERNEL);
-		open[i].lfd_cap = kcalloc(core_mp.frame_len, sizeof(s32), GFP_KERNEL);
 	}
 
 	for (i = 0; i < tItems[index].frame_count; i++) {
-		ret = allnode_open_cdc_data(4, open[i].cap1_dac);
+		ret = allnode_open_cdc_data(4, open[i].cap_dac);
 		if (ret < 0) {
-			ipio_err("Failed to get Open CAP1 DAC data, %d\n", ret);
+			ipio_err("Failed to get Open CAP DAC data, %d\n", ret);
 			goto out;
 		}
-		ret = allnode_open_cdc_data(5, open[i].cap1_raw);
+		ret = allnode_open_cdc_data(5, open[i].cap_raw);
 		if (ret < 0) {
-			ipio_err("Failed to get Open CAP1 RAW data, %d\n", ret);
-			goto out;
-		}
-		ret = allnode_open_cdc_data(6, open[i].cap2_dac);
-		if (ret < 0) {
-			ipio_err("Failed to get Open CAP2 DAC data, %d\n", ret);
-			goto out;
-		}
-		ret = allnode_open_cdc_data(7, open[i].cap2_raw);
-		if (ret < 0) {
-			ipio_err("Failed to get Open CAP2 RAW data, %d\n", ret);
+			ipio_err("Failed to get Open CAP RAW data, %d\n", ret);
 			goto out;
 		}
 
-		allnode_open_cdc_result(index, open[i].dcl_cap, open[i].cap1_dac, open[i].cap1_raw);
-		allnode_open_cdc_result(index, open[i].lfd_cap, open[i].cap2_dac, open[i].cap2_raw);
+		allnode_open_cdc_result(index, open[i].dcl_cap, open[i].cap_dac, open[i].cap_raw);
 
 		/* record fist frame for debug */
 		if (i == 0) {
-			ipio_memcpy(cap1_dac, open[i].cap1_dac, core_mp.frame_len * sizeof(s32), core_mp.frame_len * sizeof(s32));
-			ipio_memcpy(cap1_raw, open[i].cap1_raw, core_mp.frame_len * sizeof(s32), core_mp.frame_len * sizeof(s32));
-			ipio_memcpy(cap2_dac, open[i].cap2_dac, core_mp.frame_len * sizeof(s32), core_mp.frame_len * sizeof(s32));
-			ipio_memcpy(cap2_raw, open[i].cap2_raw, core_mp.frame_len * sizeof(s32), core_mp.frame_len * sizeof(s32));
+			ipio_memcpy(cap_dac, open[i].cap_dac, core_mp.frame_len * sizeof(s32), core_mp.frame_len * sizeof(s32));
+			ipio_memcpy(cap_raw, open[i].cap_raw, core_mp.frame_len * sizeof(s32), core_mp.frame_len * sizeof(s32));
 		}
 
 		ilitek_dump_data(open[i].dcl_cap, 10, core_mp.frame_len, core_mp.xch_len, "DCL_Cap");
-		ilitek_dump_data(open[i].lfd_cap, 10, core_mp.frame_len, core_mp.xch_len, "LFD_Cap");
 
 		addr = 0;
 		for (y = 0; y < core_mp.ych_len; y++) {
 			for (x = 0; x < core_mp.xch_len; x++) {
-				tItems[index].buf[(i * core_mp.frame_len) + addr] = open[i].dcl_cap[addr] - open[i].lfd_cap[addr];
+				tItems[index].buf[(i * core_mp.frame_len) + addr] = open[i].dcl_cap[addr];
 				addr++;
 			}
 		}
 
-		if (ipio_debug_level & DEBUG_MP_TEST)
-			ilitek_dump_data(&tItems[index].buf[(i * core_mp.frame_len)], 10, core_mp.frame_len, core_mp.xch_len, "SX_SRC CAP");
 	}
 
 out:
-	ipio_kfree((void **)&tItems[index].node_type);
 
 	for (i = 0; i < tItems[index].frame_count; i++) {
-		ipio_kfree((void **)&open[i].cap1_dac);
-		ipio_kfree((void **)&open[i].cap2_dac);
-		ipio_kfree((void **)&open[i].cap1_raw);
-		ipio_kfree((void **)&open[i].cap2_raw);
+		ipio_kfree((void **)&open[i].cap_dac);
+		ipio_kfree((void **)&open[i].cap_raw);
 		ipio_kfree((void **)&open[i].dcl_cap);
-		ipio_kfree((void **)&open[i].lfd_cap);
 	}
     return ret;
 }
@@ -2721,10 +2670,8 @@ static void mp_show_result(const char *csv_path)
 		}
 
 		if (strcmp(tItems[i].name, "open test_c") == 0) {
-			mp_compare_cdc_show_result(i, cap1_dac, csv, &csv_len, TYPE_NO_JUGE, max_threshold, min_threshold, "CAP1_DAC");
-			mp_compare_cdc_show_result(i, cap1_raw, csv, &csv_len, TYPE_NO_JUGE, max_threshold, min_threshold, "CAP1_RAW");
-			mp_compare_cdc_show_result(i, cap2_dac, csv, &csv_len, TYPE_NO_JUGE, max_threshold, min_threshold, "CAP2_DAC");
-			mp_compare_cdc_show_result(i, cap2_raw, csv, &csv_len, TYPE_NO_JUGE, max_threshold, min_threshold, "CAP2_RAW");
+			mp_compare_cdc_show_result(i, cap_dac, csv, &csv_len, TYPE_NO_JUGE, max_threshold, min_threshold, "CAP_DAC");
+			mp_compare_cdc_show_result(i, cap_raw, csv, &csv_len, TYPE_NO_JUGE, max_threshold, min_threshold, "CAP_RAW");
 		}
 
 		if (tItems[i].catalog == TX_RX_DELTA) {
