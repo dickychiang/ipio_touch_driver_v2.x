@@ -52,7 +52,7 @@ int ilitek_tddi_mp_test_handler(char *apk, bool lcm_on)
 	mutex_lock(&idev->touch_mutex);
 
 	if (idev->actual_fw_mode != P5_X_FW_TEST_MODE) {
-		if (ilitek_tddi_touch_switch_mode(&tp_mode) < 0)
+		if (ilitek_tddi_switch_mode(&tp_mode) < 0)
 			goto out;
 	}
 
@@ -60,13 +60,69 @@ int ilitek_tddi_mp_test_handler(char *apk, bool lcm_on)
 
 out:
 	tp_mode = P5_X_FW_DEMO_MODE;
-	ilitek_tddi_touch_switch_mode(&tp_mode);
+	ilitek_tddi_switch_mode(&tp_mode);
 
 	mutex_unlock(&idev->touch_mutex);
 	atomic_set(&idev->mp_stat, DISABLE);
 	ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
 	ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
     return ret;
+}
+
+int ilitek_tddi_switch_mode(u8 *data)
+{
+	int ret = 0, mode;
+	u8 cmd[4] = {0};
+
+	if (!data) {
+		ipio_err("data is null\n");
+		return -EINVAL;
+	}
+
+	atomic_set(&idev->tp_sw_mode, START);
+
+	mode = data[0];
+	idev->actual_fw_mode = mode;
+
+	switch(idev->actual_fw_mode) {
+		case P5_X_FW_I2CUART_MODE:
+			ipio_info("Not implemented yet\n");
+			break;
+		case P5_X_FW_DEMO_MODE:
+			ipio_info("Switch to Demo mode\n");
+			if (idev->fw_upgrade_mode == UPGRADE_IRAM)
+				ilitek_tddi_reset_ctrl(idev->hd_reset);
+			else
+				ilitek_tddi_reset_ctrl(idev->reset);
+			break;
+		case P5_X_FW_DEBUG_MODE:
+			cmd[0] = P5_X_MODE_CONTROL;
+			cmd[1] = mode;
+			ipio_info("Switch to Debug mode\n");
+			ret = idev->write(cmd, 2);
+			if (ret < 0)
+				ipio_err("Failed to switch Debug mode\n");
+			break;
+		case P5_X_FW_GESTURE_MODE:
+			ipio_info("Switch to Gesture mode, lpwg cmd = %d\n",  idev->gesture_mode);
+			ret = ilitek_tddi_ic_func_ctrl("lpwg", idev->gesture_mode);
+			break;
+		case P5_X_FW_TEST_MODE:
+			ipio_info("Switch to Test mode\n");
+			ret = idev->mp_move_code();
+			break;
+		default:
+			ipio_err("Unknown firmware mode: %x\n", mode);
+			ret = -1;
+			break;
+	}
+
+	if (ret < 0)
+		ipio_err("Switch mode failed\n");
+
+	ipio_info("Actual TP mode = %d\n", idev->actual_fw_mode);
+	atomic_set(&idev->tp_sw_mode, END);
+	return ret;
 }
 
 void ilitek_tddi_wq_esd_spi_check(void)
@@ -215,8 +271,7 @@ int ilitek_tddi_sleep_handler(int mode)
 
 	ipio_info("Sleep Mode = %d\n", mode);
 
-	if (atomic_read(&idev->fw_stat) == START ||
-		atomic_read(&idev->mp_stat) == ENABLE)
+	if (atomic_read(&idev->fw_stat) || atomic_read(&idev->mp_stat))
 		return 0;
 
 	ilitek_tddi_wq_ctrl(WQ_ESD, DISABLE);
@@ -254,7 +309,7 @@ int ilitek_tddi_sleep_handler(int mode)
 			if (idev->gesture)
 				disable_irq_wake(idev->irq_num);
 
-			ilitek_tddi_touch_switch_mode(&tp_mode);
+			ilitek_tddi_switch_mode(&tp_mode);
 
 			ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
 			ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
@@ -279,8 +334,7 @@ int ilitek_tddi_fw_upgrade_handler(void *data)
 
 	atomic_set(&idev->fw_stat, START);
 
-	if (!atomic_read(&idev->mp_stat) &&
-		!atomic_read(&idev->tp_sleep)) {
+	if (!atomic_read(&idev->mp_stat) && !atomic_read(&idev->tp_sleep)) {
 		ilitek_tddi_wq_ctrl(WQ_ESD, DISABLE);
 		ilitek_tddi_wq_ctrl(WQ_BAT, DISABLE);
 	}
@@ -298,8 +352,7 @@ int ilitek_tddi_fw_upgrade_handler(void *data)
 	if (!atomic_read(&idev->mp_stat))
 		mutex_unlock(&idev->touch_mutex);
 
-	if (!atomic_read(&idev->mp_stat) &&
-		!atomic_read(&idev->tp_sleep)) {
+	if (!atomic_read(&idev->mp_stat) && !atomic_read(&idev->tp_sleep)) {
 		ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
 		ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
 	}
@@ -315,8 +368,8 @@ void ilitek_tddi_report_handler(void)
 	size_t rlen = 0;
 	u16 self_key = 2;
 
-	if (atomic_read(&idev->tp_sleep) == START)
-		return;
+	// if (atomic_read(&idev->tp_sleep))
+	// 	return;
 
 	ilitek_tddi_wq_ctrl(WQ_ESD, DISABLE);
 	ilitek_tddi_wq_ctrl(WQ_BAT, DISABLE);

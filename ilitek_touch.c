@@ -243,7 +243,7 @@ int ilitek_tddi_move_gesture_code_flash(int mode)
 {
 	u8 tp_mode = P5_X_FW_GESTURE_MODE;
 	ipio_info();
-	return ilitek_tddi_touch_switch_mode(&tp_mode);
+	return ilitek_tddi_switch_mode(&tp_mode);
 }
 
 int ilitek_tddi_move_gesture_code_iram(int mode)
@@ -257,7 +257,7 @@ int ilitek_tddi_move_gesture_code_iram(int mode)
 	if (ilitek_tddi_ic_func_ctrl("lpwg", 0x3) < 0)
 		ipio_err("write gesture flag failed\n");
 
-	ilitek_tddi_touch_switch_mode(&tp_mode);
+	ilitek_tddi_switch_mode(&tp_mode);
 
 	for (i = 0; i < 20; i++) {
 		/* Prepare Check Ready */
@@ -379,63 +379,6 @@ static void ilitek_tddi_touch_send_debug_data(u8 *buf, size_t len)
 
 out:
 	mutex_unlock(&idev->debug_mutex);
-}
-
-int ilitek_tddi_touch_switch_mode(u8 *data)
-{
-	int ret = 0, mode;
-	u8 cmd[4] = {0};
-
-	if (!data) {
-		ipio_err("data is null\n");
-		return -EINVAL;
-	}
-
-	atomic_set(&idev->tp_sw_mode, START);
-
-	mode = data[0];
-	idev->actual_fw_mode = mode;
-
-	switch(idev->actual_fw_mode) {
-		case P5_X_FW_I2CUART_MODE:
-			ipio_info("Not implemented yet\n");
-			break;
-		case P5_X_FW_DEMO_MODE:
-			ipio_info("Switch to Demo mode\n");
-			if (idev->fw_upgrade_mode == UPGRADE_IRAM)
-				ilitek_tddi_reset_ctrl(idev->hd_reset);
-			else
-				ilitek_tddi_reset_ctrl(idev->reset);
-			break;
-		case P5_X_FW_DEBUG_MODE:
-			cmd[0] = P5_X_MODE_CONTROL;
-			cmd[1] = mode;
-
-			ipio_info("Switch to Debug mode\n");
-			ret = idev->write(cmd, 2);
-			if (ret < 0)
-				ipio_err("Failed to switch Debug mode\n");
-			break;
-		case P5_X_FW_GESTURE_MODE:
-			ipio_info("Switch to Gesture mode, lpwg cmd = %d\n",  idev->gesture_mode);
-			ret = ilitek_tddi_ic_func_ctrl("lpwg", idev->gesture_mode);
-			break;
-		case P5_X_FW_TEST_MODE:
-			ipio_info("Switch to Test mode\n");
-			ret = idev->mp_move_code();
-			break;
-		default:
-			ipio_err("Unknown firmware mode: %x\n", mode);
-			ret = -1;
-			break;
-	}
-
-	if (ret < 0)
-		ipio_err("Switch mode failed\n");
-
-	ipio_info("Actual TP mode = %d\n", idev->actual_fw_mode);
-	atomic_set(&idev->tp_sw_mode, END);
-	return ret;
 }
 
 void ilitek_tddi_touch_press(u16 x, u16 y, u16 pressure, u16 id)

@@ -684,7 +684,7 @@ extern int ilitek_tddi_move_gesture_code_flash(int);
 extern int ilitek_tddi_move_gesture_code_iram(int);
 extern int ilitek_tddi_move_mp_code_flash(void);
 extern int ilitek_tddi_move_mp_code_iram(void);
-extern int ilitek_tddi_touch_switch_mode(u8 *);
+extern int ilitek_tddi_switch_mode(u8 *);
 extern void ilitek_tddi_touch_press(u16, u16, u16, u16);
 extern void ilitek_tddi_touch_release(u16, u16, u16);
 extern void ilitek_tddi_touch_release_all_point(void);

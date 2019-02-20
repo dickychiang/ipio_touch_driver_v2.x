@@ -130,7 +130,7 @@ int ilitek_ice_mode_write(u32 addr, u32 data, size_t len)
     int ret = 0, i;
     u8 txbuf[64] = {0};
 
-    if (atomic_read(&idev->ice_stat) == DISABLE) {
+    if (!atomic_read(&idev->ice_stat)) {
         ipio_err("ice mode not enabled\n");
         return -1;
     }
@@ -156,7 +156,7 @@ u32 ilitek_ice_mode_read(u32 addr, size_t len)
     u8 *rxbuf = NULL;
     u8 txbuf[4] = {0};
 
-    if (atomic_read(&idev->ice_stat) == DISABLE) {
+    if (!atomic_read(&idev->ice_stat)) {
         ipio_err("ice mode not enabled\n");
         return -1;
     }
@@ -347,14 +347,14 @@ int ilitek_tddi_ic_code_reset(void)
     int ret = 0;
     bool ice = atomic_read(&idev->ice_stat);
 
-    if (ice == DISABLE)
+    if (!ice)
         ilitek_ice_mode_ctrl(ENABLE, OFF);
 
    ret = ilitek_ice_mode_write(0x40040, 0xAE, 1);
     if (ret < 0)
         ipio_err("ic code reset failed, ret = %d\n", ret);
 
-    if (ice == DISABLE)
+    if (!ice)
         ilitek_ice_mode_ctrl(DISABLE, OFF);
     return ret;
 }
@@ -366,7 +366,7 @@ int ilitek_tddi_ic_whole_reset(void)
 	u32 key = idev->chip->reset_key;
     u32 addr = idev->chip->reset_addr;
 
-    if (ice == DISABLE)
+    if (!ice)
         ilitek_ice_mode_ctrl(ENABLE, OFF);
 
 	ipio_info("ic whole reset key = 0x%x\n", key);
@@ -430,7 +430,7 @@ void ilitek_tddi_ic_set_ddi_reg_onepage(u8 page, u8 reg, u8 data)
 
 	ipio_info("setpage =  0x%X setreg = 0x%X\n", setpage, setreg);
 
-    if (ice == DISABLE)
+    if (!ice)
         ilitek_ice_mode_ctrl(ENABLE, ON);
 
 	/*TDI_WR_KEY*/
@@ -442,7 +442,7 @@ void ilitek_tddi_ic_set_ddi_reg_onepage(u8 page, u8 reg, u8 data)
 	/*TDI_WR_KEY OFF*/
 	ilitek_tddi_ic_wr_pack(0x1FFF9500);
 
-    if (ice == DISABLE)
+    if (!ice)
         ilitek_ice_mode_ctrl(DISABLE, ON);
 }
 
@@ -455,7 +455,7 @@ void ilitek_tddi_ic_get_ddi_reg_onepage(u8 page, u8 reg)
 
 	ipio_info("setpage =  0x%X setreg = 0x%X\n", setpage, setreg);
 
-    if (ice == DISABLE)
+    if (!ice)
         ilitek_ice_mode_ctrl(ENABLE, ON);
 
 	/*TDI_WR_KEY*/
@@ -476,7 +476,7 @@ void ilitek_tddi_ic_get_ddi_reg_onepage(u8 page, u8 reg)
 	/*TDI_WR_KEY OFF*/
 	ilitek_tddi_ic_wr_pack(0x1FFF9500);
 
-    if (ice == DISABLE)
+    if (!ice)
         ilitek_ice_mode_ctrl(DISABLE, ON);
 }
 
@@ -502,14 +502,14 @@ u32 ilitek_tddi_ic_get_pc_counter(void)
 
     ice = atomic_read(&idev->ice_stat);
 
-    if (ice == DISABLE)
+    if (!ice)
         ilitek_ice_mode_ctrl(ENABLE, OFF);
 
     pc = ilitek_ice_mode_read(idev->chip->pc_counter_addr, sizeof(u32));
 
     ipio_info("pc counter = 0x%x\n", pc);
 
-    if (ice == DISABLE)
+    if (!ice)
         ilitek_ice_mode_ctrl(DISABLE, OFF);
 
     return pc;
@@ -811,7 +811,7 @@ int ilitek_tddi_ic_get_info(void)
     int ret = 0;
     bool ice = atomic_read(&idev->ice_stat);;
 
-    if (ice == DISABLE)
+    if (!ice)
         ilitek_ice_mode_ctrl(ENABLE, OFF);
 
     idev->chip->pid = ilitek_ice_mode_read(idev->chip->pid_addr, sizeof(u32));
@@ -833,7 +833,7 @@ int ilitek_tddi_ic_get_info(void)
 
     ret = ilitek_tddi_ic_check_support(idev->chip->pid, idev->chip->id);
 
-    if (ice == DISABLE)
+    if (!ice)
 	    ilitek_ice_mode_ctrl(DISABLE, OFF);
 
     return ret;

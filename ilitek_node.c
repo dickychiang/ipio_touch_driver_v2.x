@@ -713,7 +713,7 @@ static ssize_t ilitek_proc_get_debug_mode_data_read(struct file *filp, char __us
 
 	/* change to debug mode */
 	tp_mode = P5_X_FW_DEBUG_MODE;
-	ret = ilitek_tddi_touch_switch_mode(&tp_mode);
+	ret = ilitek_tddi_switch_mode(&tp_mode);
 	if (ret < 0)
 		goto out;
 
@@ -737,7 +737,7 @@ static ssize_t ilitek_proc_get_debug_mode_data_read(struct file *filp, char __us
 
 	/* change to demo mode */
 	tp_mode = P5_X_FW_DEMO_MODE;
-	ilitek_tddi_touch_switch_mode(&tp_mode);
+	ilitek_tddi_switch_mode(&tp_mode);
 
 out:
 	ipio_vfree((void **)&csv.ptr);
@@ -945,13 +945,13 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 		ipio_info("netlink flag= %d\n", idev->netlink);
 	} else if (strcmp(cmd, "switchtestmode") == 0) {
 		tp_mode = P5_X_FW_TEST_MODE;
-		ilitek_tddi_touch_switch_mode(&tp_mode);
+		ilitek_tddi_switch_mode(&tp_mode);
 	} else if (strcmp(cmd, "switchdebugmode") == 0) {
 		tp_mode = P5_X_FW_DEBUG_MODE;
-		ilitek_tddi_touch_switch_mode(&tp_mode);
+		ilitek_tddi_switch_mode(&tp_mode);
 	} else if (strcmp(cmd, "switchdemomode") == 0) {
 		tp_mode = P5_X_FW_DEMO_MODE;
-		ilitek_tddi_touch_switch_mode(&tp_mode);
+		ilitek_tddi_switch_mode(&tp_mode);
 	} else if (strcmp(cmd, "dbgflag") == 0) {
 		idev->debug_node_open = !idev->debug_node_open;
 		ipio_info("debug flag message = %d\n", idev->debug_node_open);
@@ -1209,7 +1209,7 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 			break;
 		}
 		ipio_info("ioctl: switch fw mode = %d\n", szBuf[0]);
-		ret = ilitek_tddi_touch_switch_mode(szBuf);
+		ret = ilitek_tddi_switch_mode(szBuf);
 		if (ret < 0) {
 			ipio_debug(DEBUG_IOCTL, "switch to fw mode (%d) failed\n", szBuf[0]);
 		}
