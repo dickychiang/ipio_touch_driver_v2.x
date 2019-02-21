@@ -503,10 +503,10 @@ enum TP_WQ_TYPE {
 #define SPI_CLK					(1*M)
 #define WQ_ESD_DELAY			2000
 #define WQ_BAT_DELAY			4000
-#define TP_RST_BIND 			DISABLE
+#define TDDI_RST_BIND 		ENABLE
 #define MT_B_TYPE				ENABLE
 #define MT_PRESSURE				DISABLE
-#define ENABLE_WQ_ESD			ENABLE
+#define ENABLE_WQ_ESD			DISABLE
 #define ENABLE_WQ_BAT			DISABLE
 #define ENABLE_GESTURE			ENABLE
 
@@ -523,7 +523,6 @@ struct ilitek_tddi_dev
 	struct mutex touch_mutex;
 	struct mutex io_mutex;
 	struct mutex wq_mutex;
-	struct mutex sleep_mutex;
 	struct mutex debug_mutex;
 	struct mutex debug_read_mutex;
 	spinlock_t irq_spin;
@@ -684,7 +683,6 @@ extern int ilitek_tddi_move_gesture_code_flash(int);
 extern int ilitek_tddi_move_gesture_code_iram(int);
 extern int ilitek_tddi_move_mp_code_flash(void);
 extern int ilitek_tddi_move_mp_code_iram(void);
-extern int ilitek_tddi_switch_mode(u8 *);
 extern void ilitek_tddi_touch_press(u16, u16, u16, u16);
 extern void ilitek_tddi_touch_release(u16, u16, u16);
 extern void ilitek_tddi_touch_release_all_point(void);
@@ -715,6 +713,7 @@ extern int ilitek_tddi_ic_watch_dog_ctrl(bool);
 extern void ilitek_tddi_ic_init(void);
 
 /* Prototypes for tddi events */
+extern int ilitek_tddi_switch_mode(u8 *);
 extern int ilitek_tddi_fw_upgrade_handler(void *);
 extern void ilitek_tddi_wq_esd_i2c_check(void);
 extern void ilitek_tddi_wq_esd_spi_check(void);

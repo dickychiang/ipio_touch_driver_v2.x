@@ -177,8 +177,8 @@ static int ilitek_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id *
 	idev->spi_speed = NULL;
 	idev->actual_fw_mode = P5_X_FW_DEMO_MODE;
 
-	if (TP_RST_BIND)
-    	idev->reset = TP_IC_WHOLE_RST_HD;
+	if (TDDI_RST_BIND)
+    	idev->reset = TP_IC_WHOLE_RST;
 	else
 		idev->reset = TP_HW_RST_ONLY;
 

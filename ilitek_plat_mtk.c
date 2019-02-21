@@ -203,28 +203,34 @@ static irqreturn_t ilitek_plat_isr_top_half(int irq, void *dev_id)
 {
 	ipio_info();
 
-	if (irq != idev->irq_num)
+	if (irq != idev->irq_num) {
+		ipio_err("Incorrect irq number (%d)\n", irq);
 		return IRQ_NONE;
+	}
 
 	if (atomic_read(&idev->mp_int_check) == ENABLE) {
 		atomic_set(&idev->mp_int_check, DISABLE);
+		ipio_info("Get an INT for mp, ignore\n");
 		return IRQ_HANDLED;
 	}
 
-	if (idev->report == DISABLE ||
-		atomic_read(&idev->tp_reset) == START ||
-		atomic_read(&idev->fw_stat) == START ||
-		atomic_read(&idev->tp_sw_mode) == START ||
-		atomic_read(&idev->mp_stat) == ENABLE ||
-		atomic_read(&idev->tp_sleep) == START)
-		return IRQ_HANDLED;
-
+	if (!idev->report || atomic_read(&idev->tp_reset) ||
+		atomic_read(&idev->fw_stat) || atomic_read(&idev->tp_sw_mode) ||
+		atomic_read(&idev->mp_stat) || atomic_read(&idev->tp_sleep)) {
+			ipio_info("ignore interrupt !\n");
+			return IRQ_HANDLED;
+	}
 	return IRQ_WAKE_THREAD;
 }
 
 static irqreturn_t ilitek_plat_isr_bottom_half(int irq, void *dev_id)
 {
 	ipio_info();
+
+	if (mutex_is_locked(&idev->touch_mutex)) {
+		ipio_info("touch is locked, ignore\n");
+		return IRQ_HANDLED;
+	}
 	mutex_lock(&idev->touch_mutex);
 	ilitek_tddi_report_handler();
 	mutex_unlock(&idev->touch_mutex);
@@ -292,7 +298,7 @@ static struct of_device_id tp_match_table[] = {
 };
 
 static struct ilitek_hwif_info hwif = {
-    .bus_type = TP_BUS_SPI,
+    .bus_type = TP_BUS_I2C,
     .plat_type = TP_PLAT_MTK,
     .owner = THIS_MODULE,
     .name = TDDI_DEV_ID,

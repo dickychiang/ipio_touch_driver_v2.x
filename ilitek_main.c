@@ -196,7 +196,10 @@ static void ilitek_tddi_wq_bat_check(struct work_struct *work)
 
 void ilitek_tddi_wq_ctrl(int type, int ctrl)
 {
-	mutex_lock(&idev->wq_mutex);
+	if (atomic_read(&idev->tp_sleep)) {
+		ipio_info("ignore any wq ctrl requests during sleep stat\n");
+		return;
+	}
 
 	switch (type) {
 		case WQ_ESD:
@@ -238,7 +241,6 @@ void ilitek_tddi_wq_ctrl(int type, int ctrl)
 			ipio_err("Unknown WQ type, %d\n", type);
 			break;
 	}
-	mutex_unlock(&idev->wq_mutex);
 }
 
 static void ilitek_tddi_wq_init(void)
@@ -269,16 +271,17 @@ int ilitek_tddi_sleep_handler(int mode)
 	u8 tp_mode = P5_X_FW_DEMO_MODE;
 	int ret = 0;
 
-	ipio_info("Sleep Mode = %d\n", mode);
+	atomic_set(&idev->tp_sleep, START);
 
-	if (atomic_read(&idev->fw_stat) || atomic_read(&idev->mp_stat))
+	if (atomic_read(&idev->fw_stat) ||
+		atomic_read(&idev->mp_stat)) {
+		ipio_info("fw upgrade or mp still running, ignore sleep requst\n");
 		return 0;
+	}
 
+	ipio_info("Sleep Mode = %d\n", mode);
 	ilitek_tddi_wq_ctrl(WQ_ESD, DISABLE);
 	ilitek_tddi_wq_ctrl(WQ_BAT, DISABLE);
-
-	atomic_set(&idev->tp_sleep, START);
-	mutex_lock(&idev->sleep_mutex);
 	ilitek_plat_irq_disable();
 
 	switch (mode) {
@@ -290,7 +293,6 @@ int ilitek_tddi_sleep_handler(int mode)
 			if (idev->gesture) {
 				idev->gesture_move_code(idev->gesture_mode);
 				enable_irq_wake(idev->irq_num);
-				msleep(20); /* wait for isr queue completed. */
 				ilitek_plat_irq_enable();
 			} else {
 				ilitek_tddi_ic_func_ctrl("sleep", SLEEP_IN);
@@ -310,9 +312,6 @@ int ilitek_tddi_sleep_handler(int mode)
 				disable_irq_wake(idev->irq_num);
 
 			ilitek_tddi_switch_mode(&tp_mode);
-
-			ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
-			ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
 			ilitek_plat_irq_enable();
 			ipio_info("TP resume end\n");
 			break;
@@ -323,8 +322,11 @@ int ilitek_tddi_sleep_handler(int mode)
 	}
 
 	ilitek_tddi_touch_release_all_point();
-	mutex_unlock(&idev->sleep_mutex);
 	atomic_set(&idev->tp_sleep, END);
+	if (mode == TP_RESUME) {
+		ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
+		ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
+	}
 	return ret;
 }
 
@@ -368,8 +370,13 @@ void ilitek_tddi_report_handler(void)
 	size_t rlen = 0;
 	u16 self_key = 2;
 
-	// if (atomic_read(&idev->tp_sleep))
-	// 	return;
+	/* Just in case these threads couldn't be blocked in top half context */
+	if (!idev->report || atomic_read(&idev->tp_reset) ||
+		atomic_read(&idev->fw_stat) || atomic_read(&idev->tp_sw_mode) ||
+		atomic_read(&idev->mp_stat) || atomic_read(&idev->tp_sleep)) {
+		ipio_info("ignore report request\n");
+		return;
+	}
 
 	ilitek_tddi_wq_ctrl(WQ_ESD, DISABLE);
 	ilitek_tddi_wq_ctrl(WQ_BAT, DISABLE);
@@ -496,8 +503,6 @@ int ilitek_tddi_init(void)
 
 	mutex_init(&idev->io_mutex);
 	mutex_init(&idev->touch_mutex);
-	mutex_init(&idev->wq_mutex);
-	mutex_init(&idev->sleep_mutex);
 	mutex_init(&idev->debug_mutex);
 	mutex_init(&idev->debug_read_mutex);
 	init_waitqueue_head(&(idev->inq));
@@ -514,8 +519,9 @@ int ilitek_tddi_init(void)
 	ilitek_tddi_ic_init();
 	ilitek_tddi_wq_init();
 
-	/* Must do hw reset once in first time for work normally */
-	ilitek_tddi_reset_ctrl(idev->reset);
+	/* Must do hw reset once in first time for work normally if tp reset is avaliable */
+	if (!TDDI_RST_BIND)
+		ilitek_tddi_reset_ctrl(idev->reset);
 
 	if (ilitek_tddi_ic_get_info() < 0) {
 		ipio_err("Not found ilitek chipes\n");
