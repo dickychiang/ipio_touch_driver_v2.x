@@ -140,13 +140,13 @@ static void ilitek_plat_regulator_power_init(void)
 	const char *vdd_name = "vdd";
 	const char *vcc_name = "vcc";
 
-	ipd->vdd = regulator_get(tpd->tpd_dev, vdd_name);
+	idev->vdd = regulator_get(tpd->tpd_dev, vdd_name);
 	if (ERR_ALLOC_MEM(idev->vdd)) {
 		ipio_err("regulator_get VDD fail\n");
 		idev->vdd = NULL;
 	}
 
-	tpd->reg = ipd->vdd;
+	tpd->reg = idev->vdd;
 
 	if (regulator_set_voltage(idev->vdd, VDD_VOLTAGE, VDD_VOLTAGE) < 0)
 		ipio_err("Failed to set VDD %d\n", VDD_VOLTAGE);
