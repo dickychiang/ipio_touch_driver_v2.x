@@ -7,7 +7,7 @@ ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/
 
 ccflags-y += -Wall
 
-BUILD_INFAE := i2c
+BUILD_INFAE := spi
 BUILD_PLATFORM := mtk
 BUILD_MODULE := n
 
