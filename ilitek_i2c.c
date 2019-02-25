@@ -169,7 +169,10 @@ static int ilitek_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id *
     }
 
 	idev->i2c = i2c;
+	idev->spi = NULL;
 	idev->dev = &i2c->dev;
+	idev->hwif = info->hwif;
+	idev->phys = "I2C";
 
     idev->write = ilitek_i2c_write;
     idev->read = ilitek_i2c_read;
@@ -225,7 +228,7 @@ int ilitek_tddi_interface_dev_init(struct ilitek_hwif_info *hwif)
 		return -ENOMEM;
 	}
 
-	if (hwif->bus_type != TP_BUS_I2C) {
+	if (hwif->bus_type != BUS_I2C) {
 		ipio_err("incorrect interface\n");
 		return -EINVAL;
 	}

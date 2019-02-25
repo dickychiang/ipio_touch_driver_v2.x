@@ -145,11 +145,6 @@ extern u32 ipio_debug_level;
 #define OFF		0
 #define NONE	-1
 
-enum TP_BUS_TYPE {
-	TP_BUS_I2C = 0,
-	TP_BUS_SPI
-};
-
 enum TP_PLAT_TYPE {
 	TP_PLAT_MTK = 0,
 	TP_PLAT_QCOM
@@ -500,15 +495,21 @@ enum TP_WQ_TYPE {
 #define DUMP_FLASH_PATH			"/sdcard/flash_dump"
 
 /* Options */
+#define VDD_VOLTAGE				1800000
+#define VCC_VOLTAGE				1800000
 #define SPI_CLK					(1*M)
 #define WQ_ESD_DELAY			2000
 #define WQ_BAT_DELAY			4000
-#define TDDI_RST_BIND 		ENABLE
+#define TDDI_RST_BIND 			ENABLE
 #define MT_B_TYPE				ENABLE
 #define MT_PRESSURE				DISABLE
 #define ENABLE_WQ_ESD			DISABLE
 #define ENABLE_WQ_BAT			DISABLE
 #define ENABLE_GESTURE			ENABLE
+#define REGULATOR_POWER			DISABLE
+
+/* Compatible with SPRD platform */
+// #define CONFIG_PLAT_SPRD
 
 struct ilitek_tddi_dev
 {
@@ -517,8 +518,18 @@ struct ilitek_tddi_dev
     struct input_dev *input;
     struct device *dev;
 
+	struct ilitek_hwif_info *hwif;
 	struct ilitek_ic_info *chip;
 	struct ilitek_protocol_info *protocol;
+
+	struct regulator *vdd;
+	struct regulator *vcc;
+
+#ifdef CONFIG_FB
+	struct notifier_block notifier_fb;
+#else
+	struct early_suspend early_suspend;
+#endif
 
 	struct mutex touch_mutex;
 	struct mutex io_mutex;
@@ -526,6 +537,9 @@ struct ilitek_tddi_dev
 	struct mutex debug_mutex;
 	struct mutex debug_read_mutex;
 	spinlock_t irq_spin;
+
+	/* physical path to the input device in the system hierarchy */
+	const char *phys;
 
 	u16 max_x;
 	u16 max_y;
@@ -730,6 +744,7 @@ extern void ilitek_tddi_dev_remove(void);
 extern int ilitek_tddi_interface_dev_init(struct ilitek_hwif_info *);
 
 /* Prototypes for platform level */
+extern void ilitek_plat_regulator_power_on(bool);
 extern void ilitek_plat_input_register(void);
 extern void ilitek_plat_irq_disable(void);
 extern void ilitek_plat_irq_enable(void);

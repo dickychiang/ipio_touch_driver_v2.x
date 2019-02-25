@@ -609,7 +609,6 @@ static int ilitek_spi_probe(struct spi_device *spi)
 	}
 
     ipio_info("bus type = %d\n", info->hwif->bus_type);
-    ipio_info("platform type = %d\n", info->hwif->plat_type);
 
 	idev = devm_kzalloc(&spi->dev, sizeof(struct ilitek_tddi_dev), GFP_KERNEL);
 	if (ERR_ALLOC_MEM(idev)) {
@@ -617,8 +616,11 @@ static int ilitek_spi_probe(struct spi_device *spi)
 		return -ENOMEM;
 	}
 
+	idev->i2c = NULL;
 	idev->spi = spi;
 	idev->dev = &spi->dev;
+	idev->hwif = info->hwif;
+	idev->phys = "I2C";
 
 	idev->write = ilitek_spi_write;
 	idev->read = ilitek_spi_read;
@@ -678,7 +680,7 @@ int ilitek_tddi_interface_dev_init(struct ilitek_hwif_info *hwif)
 		return -ENOMEM;
 	}
 
-	if (hwif->bus_type != TP_BUS_SPI) {
+	if (hwif->bus_type != BUS_SPI) {
 		ipio_err("incorrect interface\n");
 		return -EINVAL;
 	}

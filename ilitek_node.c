@@ -885,7 +885,7 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 		}
 	}
 
-	ipio_info("size = %ld, cmd = %s\n", size, cmd);
+	ipio_info("size = %d, cmd = %s\n", (int)size, cmd);
 
 	token = cur = cmd;
 
@@ -1238,10 +1238,7 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 		}
 		break;
 	case ILITEK_IOCTL_TP_INTERFACE_TYPE:
-		if (!idev->i2c)
-			if_to_user = TP_BUS_SPI;
-		else
-			if_to_user = TP_BUS_I2C;
+		if_to_user = idev->hwif->bus_type;
 		ret = copy_to_user((u8 *) arg, &if_to_user, sizeof(if_to_user));
 		if (ret < 0) {
 			ipio_err("Failed to copy interface type to user space\n");

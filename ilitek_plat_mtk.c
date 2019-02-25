@@ -108,6 +108,60 @@ void ilitek_plat_input_register(void)
 	__set_bit(KEY_GESTURE_F, idev->input->keybit);
 }
 
+void ilitek_plat_regulator_power_on(bool status)
+{
+	ipio_info("%s\n", status ? "POWER ON" : "POWER OFF");
+
+	if (status) {
+		if (idev->vdd) {
+			if (regulator_enable(idev->vdd) < 0)
+				ipio_err("regulator_enable VDD fail\n");
+		}
+		if (idev->vcc) {
+			if (regulator_enable(idev->vcc) < 0)
+				ipio_err("regulator_enable VCC fail\n");
+		}
+	} else {
+		if (idev->vdd) {
+			if (regulator_disable(idev->vdd) < 0)
+				ipio_err("regulator_enable VDD fail\n");
+		}
+		if (idev->vcc) {
+			if (regulator_disable(idev->vcc) < 0)
+				ipio_err("regulator_enable VCC fail\n");
+		}
+	}
+	atomic_set(&idev->ice_stat, DISABLE);
+	mdelay(5);
+}
+
+static void ilitek_plat_regulator_power_init(void)
+{
+	const char *vdd_name = "vdd";
+	const char *vcc_name = "vcc";
+
+	ipd->vdd = regulator_get(tpd->tpd_dev, vdd_name);
+	if (ERR_ALLOC_MEM(idev->vdd)) {
+		ipio_err("regulator_get VDD fail\n");
+		idev->vdd = NULL;
+	}
+
+	tpd->reg = ipd->vdd;
+
+	if (regulator_set_voltage(idev->vdd, VDD_VOLTAGE, VDD_VOLTAGE) < 0)
+		ipio_err("Failed to set VDD %d\n", VDD_VOLTAGE);
+
+	idev->vcc = regulator_get(idev->dev, vcc_name);
+	if (ERR_ALLOC_MEM(idev->vcc)) {
+		ipio_err("regulator_get VCC fail.\n");
+		idev->vcc = NULL;
+	}
+	if (regulator_set_voltage(idev->vcc, VCC_VOLTAGE, VCC_VOLTAGE) < 0)
+		ipio_err("Failed to set VCC %d\n", VCC_VOLTAGE);
+
+	ilitek_plat_regulator_power_on(true);
+}
+
 static int ilitek_plat_gpio_register(void)
 {
 	int ret = 0;
@@ -273,14 +327,17 @@ static void tpd_suspend(struct device *h)
 
 static int ilitek_plat_probe(void)
 {
+	if (REGULATOR_POWER)
+		ilitek_plat_regulator_power_init();
+
     ilitek_plat_gpio_register();
+    ilitek_plat_irq_register();
 
     if (ilitek_tddi_init() < 0) {
         ipio_err("Platform probe failed\n");
         return -ENODEV;
     }
 
-    ilitek_plat_irq_register();
  	tpd_load_status = 1;
     return 0;
 }
@@ -298,7 +355,7 @@ static struct of_device_id tp_match_table[] = {
 };
 
 static struct ilitek_hwif_info hwif = {
-    .bus_type = TP_BUS_I2C,
+    .bus_type = BUS_I2C, /* BUS_I2C(0x18) or BUS_SPI(0x1C) */
     .plat_type = TP_PLAT_MTK,
     .owner = THIS_MODULE,
     .name = TDDI_DEV_ID,

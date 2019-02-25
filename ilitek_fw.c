@@ -1025,8 +1025,7 @@ int ilitek_tddi_fw_upgrade(int upgrade_type, int file_type, int open_file_method
 
 	ipio_info("Convert fw data from %s\n", (file_type == ILI_FILE ? "ILI_FILE" : "HEX_FILE"));
 
-	if (idev->fw_upgrade_mode == UPGRADE_IRAM &&
-		idev->actual_fw_mode != P5_X_FW_GESTURE_MODE) {
+	if (idev->actual_fw_mode != P5_X_FW_GESTURE_MODE) {
 		if (ilitek_tdd_fw_hex_open(open_file_method, pfw) < 0) {
 			ipio_err("Open hex file fail, try upgrade from ILI file\n");
 			ilitek_tddi_fw_ili_convert(pfw);

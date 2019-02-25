@@ -276,6 +276,7 @@ int ilitek_tddi_sleep_handler(int mode)
 	if (atomic_read(&idev->fw_stat) ||
 		atomic_read(&idev->mp_stat)) {
 		ipio_info("fw upgrade or mp still running, ignore sleep requst\n");
+		atomic_set(&idev->tp_sleep, END);
 		return 0;
 	}
 
@@ -404,7 +405,7 @@ void ilitek_tddi_report_handler(void)
 			break;
 	}
 
-	ipio_info("Packget length = %ld\n", rlen);
+	ipio_info("Packget length = %d\n", (int)rlen);
 
 	if (!rlen) {
 		ipio_err("Length of packet is invaild\n");
