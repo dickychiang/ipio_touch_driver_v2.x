@@ -766,6 +766,34 @@ static void ilitek_tddi_ic_check_protocol_ver(u32 pver)
     idev->protocol = &protocol_info[PROTOCL_VER_NUM - 1];
 }
 
+int ilitek_tddi_edge_plam_ctrl(u8 type)
+{
+	int ret = 0;
+	u8 cmd[4] = { 0 };
+
+	ipio_info("edge plam ctrl ,Type = %d\n", type);
+
+	cmd[0] = P5_X_READ_DATA_CTRL;
+	cmd[1] = P5_X_EDGE_PLAM_CTRL_1;
+	cmd[2] = P5_X_EDGE_PLAM_CTRL_2;
+	cmd[3] = type;
+
+    ret = idev->write(cmd, sizeof(cmd));
+    if (ret < 0) {
+        ipio_err("Write edge plam ctrl error\n");
+        goto out;
+    }
+
+    ret = idev->write(&cmd[1], (sizeof(cmd) - 1));
+    if (ret < 0) {
+        ipio_err("Write edge plam ctrl error\n");
+        goto out;
+    }
+
+out:
+	return ret;
+}
+
 int ilitek_tddi_ic_get_protocl_ver(void)
 {
     int ret = 0;
