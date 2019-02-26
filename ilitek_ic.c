@@ -81,25 +81,30 @@ static int ilitek_tddi_ic_check_support(u32 pid, u16 id)
 
     ipio_info("ILITEK CHIP (%x, %x) found.\n", pid, id);
 
-    if (CHECK_EQUAL(idev->chip->id, ILI9881_CHIP)) {
+    if (CHECK_EQUAL(id, ILI9881_CHIP)) {
         idev->chip->reset_key = 0x00019881;
         idev->chip->wtd_key = 0x9881;
         idev->chip->open_sp_formula = open_sp_formula_ili9881;
         idev->chip->hd_dma_check_crc_off = firmware_hd_dma_crc_off_ili9881;
+
+        /*
+         * Since it has been enabled previsouly whenever enter to ICE mode,
+         * we have to disable if find out the ic is ili9881.
+         */
+        if (idev->spi_speed != NULL)
+            idev->spi_speed(OFF);
+
+        if (CHECK_EQUAL(pid, ILI9881F_AA))
+            idev->chip->no_bk_shift = RAWDATA_NO_BK_SHIFT_9881F;
+        else
+            idev->chip->no_bk_shift = RAWDATA_NO_BK_SHIFT_9881H;
     } else {
         idev->chip->reset_key = 0x00019878;
         idev->chip->wtd_key = 0x9878;
         idev->chip->open_sp_formula = open_sp_formula_ili7807;
         idev->chip->hd_dma_check_crc_off = firmware_hd_dma_crc_off_ili7807;
-    }
-
-    if (idev->spi_speed != NULL && idev->chip->id == ILI9881_CHIP)
-        idev->spi_speed(OFF);
-
-    if (CHECK_EQUAL(idev->chip->id, ILI9881F_AA))
-        idev->chip->no_bk_shift = RAWDATA_NO_BK_SHIFT_9881F;
-    else
         idev->chip->no_bk_shift = RAWDATA_NO_BK_SHIFT_9881H;
+    }
 
     idev->chip->max_count = 0x1FFFF;
     idev->chip->open_c_formula = open_c_formula;

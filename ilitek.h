@@ -508,7 +508,7 @@ enum TP_WQ_TYPE {
 #define ENABLE_GESTURE			ENABLE
 #define REGULATOR_POWER			DISABLE
 
-/* Compatible with SPRD platform */
+/* Plaform compatibility */
 // #define CONFIG_PLAT_SPRD
 
 struct ilitek_tddi_dev

@@ -565,6 +565,6 @@ void ilitek_tddi_dev_remove(void)
 
 int ilitek_tddi_dev_init(struct ilitek_hwif_info *hwif)
 {
-	ipio_info("TP interface = %d\n", hwif->bus_type);
+	ipio_info("TP Interface: %s\n", (hwif->bus_type == BUS_I2C) ? "I2C" : "SPI");
 	return ilitek_tddi_interface_dev_init(hwif);
 }

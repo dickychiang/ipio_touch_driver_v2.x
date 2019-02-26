@@ -149,9 +149,6 @@ static int ilitek_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id *
 		return -ENODEV;
 	}
 
-    ipio_info("bus type = %d\n", info->hwif->bus_type);
-    ipio_info("platform type = %d\n", info->hwif->plat_type);
-
 	if (i2c->addr != TDDI_I2C_ADDR) {
 		i2c->addr = TDDI_I2C_ADDR;
 		ipio_info("i2c addr doesn't be set up, use default : 0x%x\n", i2c->addr);
@@ -210,8 +207,8 @@ static int ilitek_i2c_remove(struct i2c_client *i2c)
 			struct touch_bus_info, bus_driver);
 
     ipio_info();
-    info->hwif->plat_remove();
-    return 0;
+	i2c_del_driver(&info->bus_driver);
+    return info->hwif->plat_remove();
 }
 
 static const struct i2c_device_id tp_i2c_id[] = {

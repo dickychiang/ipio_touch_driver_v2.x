@@ -608,8 +608,6 @@ static int ilitek_spi_probe(struct spi_device *spi)
 		return -ENODEV;
 	}
 
-    ipio_info("bus type = %d\n", info->hwif->bus_type);
-
 	idev = devm_kzalloc(&spi->dev, sizeof(struct ilitek_tddi_dev), GFP_KERNEL);
 	if (ERR_ALLOC_MEM(idev)) {
 		ipio_err("Failed to allocate idev memory, %ld\n", PTR_ERR(idev));
@@ -663,6 +661,7 @@ static int ilitek_spi_remove(struct spi_device *spi)
 		struct touch_bus_info, bus_driver);
 
     ipio_info();
+	spi_unregister_driver(&info->bus_driver);
     return info->hwif->plat_remove();
 }
 
