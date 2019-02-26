@@ -591,6 +591,7 @@ struct ilitek_tddi_dev
 	int bg_count;
 
 	int reset;
+	int rst_edge_delay;
 	int hd_reset;
 	int fw_upgrade_mode;
 	bool wtd_ctrl;
