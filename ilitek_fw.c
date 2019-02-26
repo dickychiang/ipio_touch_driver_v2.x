@@ -792,6 +792,8 @@ static void ilitek_tddi_fw_update_block_info(u8 *pfw, u8 type)
 static void ilitek_tddi_fw_ili_convert(u8 *pfw)
 {
 	int i = 0, block_enable = 0, num = 0;
+	u8 block;
+	u32 Addr;
 
 	ipio_info("Start to parser ILI file, type = %d, block_count = %d\n", CTPM_FW[32], CTPM_FW[33]);
 
@@ -826,6 +828,18 @@ static void ilitek_tddi_fw_ili_convert(u8 *pfw)
 					num, fbi[num].start, fbi[num].end);
 		}
 	}
+	if ((block_enable & 0x80) == 0x80) {
+		for (i = 0; i < 3; i++) {
+			Addr = (CTPM_FW[6 + i * 4] << 16) + (CTPM_FW[7 + i * 4] << 8) + (CTPM_FW[8 + i * 4]);
+			block = CTPM_FW[9 + i * 4];
+
+			if ((block != 0) && (Addr != 0x000000)) {
+				fbi[block].fix_mem_start = Addr;
+				ipio_info("Tag 0xB0: change Block[%d] to addr = 0x%x\n", block, fbi[block].fix_mem_start);
+			}
+		}
+	}
+
 
 out:
 	tfd.block_number = CTPM_FW[33];
@@ -872,7 +886,7 @@ static int ilitek_tddi_fw_hex_convert(u8 *phex, size_t size, u8 *pfw)
 		} else if (type == BLOCK_TAG_B0 && tfd.hex_tag == BLOCK_TAG_AF) {
 			num = HexToDec(&phex[i + 9 + 6], 2);
 			fbi[num].fix_mem_start = HexToDec(&phex[i + 9], 6);
-			ipio_info("number = 0x%x, fix_mem_start = 0x%x",num, fbi[num].fix_mem_start);
+			ipio_info("Tag 0xB0: change Block[%d] to addr = 0x%x\n", num, fbi[num].fix_mem_start);
 		}
 
 		addr = addr + (ex_addr << 16);
