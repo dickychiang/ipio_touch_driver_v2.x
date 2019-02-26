@@ -28,6 +28,7 @@
 #define UPDATE_FAIL -1
 #define TIMEOUT_SECTOR	 500
 #define TIMEOUT_PAGE	 3500
+#define TIMEOUT_PROGRAM	 10
 
 struct touch_fw_data {
 	u8 block_number;
@@ -607,10 +608,12 @@ static int ilitek_tddi_fw_flash_program(u8 *pfw)
 
 			ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x1, 1); /* CS high */
 
-			if (idev->flash_mid == 0x85)
-				mdelay(2);
-			else
+			if (idev->flash_mid == 0xEF) {
 				mdelay(1);
+			} else {
+				if (ilitek_tddi_flash_poll_busy(TIMEOUT_PROGRAM) < 0)
+					return UPDATE_FAIL;
+			}
 
 			/* holding the status until finish this upgrade. */
 			idev->fw_update_stat = (addr * 101) / tfd.end_addr;
