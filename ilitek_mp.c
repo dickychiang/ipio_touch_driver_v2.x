@@ -250,7 +250,7 @@ struct mp_test_items {
 	int (*do_test)(int index);
 };
 
-#define MP_TEST_ITEM    47
+#define MP_TEST_ITEM    48
 static struct mp_test_items tItems[MP_TEST_ITEM] = {
 	{.name = "mutual_dac", .desp = "calibration data(dac)", .result = "FAIL", .catalog = MUTUAL_TEST},
 	{.name = "mutual_bg", .desp = "baseline data(bg)", .result = "FAIL", .catalog = MUTUAL_TEST},
@@ -300,6 +300,7 @@ static struct mp_test_items tItems[MP_TEST_ITEM] = {
 	{.name = "doze_p2p_td_lcm_off", .desp = "peak to peak_td (lcm off)", .result = "FAIL", .catalog = PEAK_TO_PEAK_TEST},
 	{.name = "rx_short", .desp = "short test", .result = "FAIL", .catalog = SHORT_TEST},
 	{.name = "open test_c", .desp = "open test_c", .result = "FAIL", .catalog = OPEN_TEST},
+	{.name = "touch deltac", .desp = "touch deltac", .result = "FAIL", .catalog = MUTUAL_TEST},
 };
 
 s32 *frame_buf = NULL;
@@ -3113,6 +3114,7 @@ int ilitek_tddi_mp_test_main(char *apk, bool lcm_on)
 			mp_test_run("doze raw data");
 			mp_test_run("doze peak to peak");
 			mp_test_run("open test_c");
+			mp_test_run("touch deltac");
 		} else {
 			csv_path = CSV_LCM_OFF_PATH;
 			mp_test_run("raw data(have bk) (lcm off)");
