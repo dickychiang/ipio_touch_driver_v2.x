@@ -41,7 +41,7 @@
 
 #define NORMAL_CSV_PASS_NAME		"mp_pass"
 #define NORMAL_CSV_FAIL_NAME		"mp_fail"
-#define CSV_FILE_SIZE       		(500 * K)
+#define CSV_FILE_SIZE       		(1024 * K)
 
 
 #define PARSER_MAX_CFG_BUF          (512 * 3)
@@ -2292,7 +2292,7 @@ static int open_test_cap(int index)
 				addr++;
 			}
 		}
-
+		compare_MaxMin_result(index, &tItems[index].buf[i * core_mp.frame_len]);
 	}
 
 out:
@@ -2618,6 +2618,8 @@ static void mp_show_result(const char *csv_path)
 	mp_print_csv_header(csv, &csv_len, &line_count);
 
 	for (i = 0; i < ARRAY_SIZE(tItems); i++) {
+
+		get_frame_cont = 1;
 		if (tItems[i].run != 1)
 			continue;
 
@@ -2723,8 +2725,8 @@ static void mp_show_result(const char *csv_path)
 			if (tItems[i].trimmed_mean && tItems[i].catalog != PEAK_TO_PEAK_TEST) {
 				mp_compare_cdc_show_result(i, tItems[i].result_buf, csv, &csv_len, TYPE_JUGE, max_threshold, min_threshold,"Mean result");
 			} else {
-				mp_compare_cdc_show_result(i, tItems[i].buf, csv, &csv_len, TYPE_JUGE, max_threshold, min_threshold,"Max Hold");
-				mp_compare_cdc_show_result(i, tItems[i].buf, csv, &csv_len, TYPE_JUGE, max_threshold, min_threshold,"Min Hold");
+				mp_compare_cdc_show_result(i, tItems[i].max_buf, csv, &csv_len, TYPE_JUGE, max_threshold, min_threshold,"Max Hold");
+				mp_compare_cdc_show_result(i, tItems[i].min_buf, csv, &csv_len, TYPE_JUGE, max_threshold, min_threshold,"Min Hold");
 			}
 			if (tItems[i].catalog != PEAK_TO_PEAK_TEST)
 				get_frame_cont = tItems[i].frame_count;
