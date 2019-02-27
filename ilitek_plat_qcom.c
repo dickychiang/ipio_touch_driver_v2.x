@@ -28,12 +28,13 @@
 
 void ilitek_plat_tp_reset(void)
 {
+	ipio_info("HW reset edge_delay = %d\n", idev->rst_edge_delay);
 	gpio_direction_output(idev->tp_rst, 1);
 	mdelay(10);
 	gpio_set_value(idev->tp_rst, 0);
 	mdelay(5);
 	gpio_set_value(idev->tp_rst, 1);
-	mdelay(10);
+	mdelay(idev->rst_edge_delay);
 }
 
 void ilitek_plat_input_register(void)
