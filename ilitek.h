@@ -507,6 +507,7 @@ enum TP_WQ_TYPE {
 #define ENABLE_WQ_BAT			DISABLE
 #define ENABLE_GESTURE			ENABLE
 #define REGULATOR_POWER			DISABLE
+#define TP_SUSPEND_PRIO			ENABLE
 
 /* Compatible with SPRD platform */
 // #define CONFIG_PLAT_SPRD
