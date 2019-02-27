@@ -410,7 +410,8 @@ static int ilitek_plat_probe(void)
 static int ilitek_plat_remove(void)
 {
     ipio_info();
-    return 0;
+	ilitek_tddi_dev_remove();
+    return 0
 }
 
 static struct of_device_id tp_match_table[] = {

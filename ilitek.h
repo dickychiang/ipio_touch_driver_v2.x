@@ -466,6 +466,8 @@ enum TP_WQ_TYPE {
 #define P5_X_TEST_PACKET_ID		        0xF2
 #define P5_X_GESTURE_PACKET_ID	        0xAA
 #define P5_X_I2CUART_PACKET_ID	        0x7A
+#define P5_X_EDGE_PLAM_CTRL_1	        0x01
+#define P5_X_EDGE_PLAM_CTRL_2	        0x12
 
 /* Chipes */
 #define TDDI_PID_ADDR           		0x4009C
@@ -500,7 +502,7 @@ enum TP_WQ_TYPE {
 #define SPI_CLK					(1*M)
 #define WQ_ESD_DELAY			2000
 #define WQ_BAT_DELAY			4000
-#define TDDI_RST_BIND 			ENABLE
+#define TDDI_RST_BIND 			DISABLE
 #define MT_B_TYPE				ENABLE
 #define MT_PRESSURE				DISABLE
 #define ENABLE_WQ_ESD			DISABLE
@@ -509,7 +511,7 @@ enum TP_WQ_TYPE {
 #define REGULATOR_POWER			DISABLE
 #define TP_SUSPEND_PRIO			ENABLE
 
-/* Compatible with SPRD platform */
+/* Plaform compatibility */
 // #define CONFIG_PLAT_SPRD
 
 struct ilitek_tddi_dev
@@ -590,6 +592,7 @@ struct ilitek_tddi_dev
 	int bg_count;
 
 	int reset;
+	int rst_edge_delay;
 	int hd_reset;
 	int fw_upgrade_mode;
 	bool wtd_ctrl;
@@ -726,6 +729,7 @@ extern u32 ilitek_ice_mode_read(u32, size_t);
 extern int ilitek_ice_mode_ctrl(bool, bool);
 extern int ilitek_tddi_ic_watch_dog_ctrl(bool);
 extern void ilitek_tddi_ic_init(void);
+extern int ilitek_tddi_edge_plam_ctrl(u8 type);
 
 /* Prototypes for tddi events */
 extern int ilitek_tddi_switch_mode(u8 *);

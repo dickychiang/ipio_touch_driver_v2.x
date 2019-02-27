@@ -33,12 +33,13 @@ extern struct tpd_device *tpd;
 
 void ilitek_plat_tp_reset(void)
 {
+    ipio_info("HW reset edge_delay = %d\n", idev->rst_edge_delay);
     tpd_gpio_output(idev->tp_rst, 1);
     mdelay(10);
     tpd_gpio_output(idev->tp_rst, 0);
     mdelay(5);
     tpd_gpio_output(idev->tp_rst, 1);
-    mdelay(100);
+    mdelay(idev->rst_edge_delay);
 }
 
 void ilitek_plat_input_register(void)
@@ -255,7 +256,13 @@ out:
 
 static irqreturn_t ilitek_plat_isr_top_half(int irq, void *dev_id)
 {
-	ipio_info();
+	ipio_info("report: %d, rst: %d, fw: %d, switch: %d, mp: %d, sleep: %d\n",
+			idev->report,
+			atomic_read(&idev->tp_reset),
+			atomic_read(&idev->fw_stat),
+			atomic_read(&idev->tp_sw_mode),
+			atomic_read(&idev->mp_stat),
+			atomic_read(&idev->tp_sleep));
 
 	if (irq != idev->irq_num) {
 		ipio_err("Incorrect irq number (%d)\n", irq);
@@ -345,7 +352,7 @@ static int ilitek_plat_probe(void)
 static int ilitek_plat_remove(void)
 {
     ipio_info();
-    ilitek_tddi_dev_remove();
+	ilitek_tddi_dev_remove();
     return 0;
 }
 
@@ -374,15 +381,12 @@ static int tpd_local_init(void)
     }
 	if (tpd_load_status == 0) {
 		ipio_err("Add error touch panel driver\n");
-		// i2c_del_driver(&tp_i2c_driver);
-		// spi_unregister_driver(&tp_spi_driver);
 		return -1;
 	}
 	if (tpd_dts_data.use_tpd_button) {
 		tpd_button_setting(tpd_dts_data.tpd_key_num, tpd_dts_data.tpd_key_local,
 				   tpd_dts_data.tpd_key_dim_local);
 	}
-
 	tpd_type_cap = 1;
 	return 0;
 }

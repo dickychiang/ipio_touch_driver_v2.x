@@ -41,7 +41,7 @@
 
 #define NORMAL_CSV_PASS_NAME		"mp_pass"
 #define NORMAL_CSV_FAIL_NAME		"mp_fail"
-#define CSV_FILE_SIZE       		(500 * K)
+#define CSV_FILE_SIZE       		(1024 * K)
 
 
 #define PARSER_MAX_CFG_BUF          (512 * 3)
@@ -250,7 +250,7 @@ struct mp_test_items {
 	int (*do_test)(int index);
 };
 
-#define MP_TEST_ITEM    47
+#define MP_TEST_ITEM    48
 static struct mp_test_items tItems[MP_TEST_ITEM] = {
 	{.name = "mutual_dac", .desp = "calibration data(dac)", .result = "FAIL", .catalog = MUTUAL_TEST},
 	{.name = "mutual_bg", .desp = "baseline data(bg)", .result = "FAIL", .catalog = MUTUAL_TEST},
@@ -300,6 +300,7 @@ static struct mp_test_items tItems[MP_TEST_ITEM] = {
 	{.name = "doze_p2p_td_lcm_off", .desp = "peak to peak_td (lcm off)", .result = "FAIL", .catalog = PEAK_TO_PEAK_TEST},
 	{.name = "rx_short", .desp = "short test", .result = "FAIL", .catalog = SHORT_TEST},
 	{.name = "open test_c", .desp = "open test_c", .result = "FAIL", .catalog = OPEN_TEST},
+	{.name = "touch deltac", .desp = "touch deltac", .result = "FAIL", .catalog = MUTUAL_TEST},
 };
 
 s32 *frame_buf = NULL;
@@ -2292,7 +2293,7 @@ static int open_test_cap(int index)
 				addr++;
 			}
 		}
-
+		compare_MaxMin_result(index, &tItems[index].buf[i * core_mp.frame_len]);
 	}
 
 out:
@@ -2618,6 +2619,8 @@ static void mp_show_result(const char *csv_path)
 	mp_print_csv_header(csv, &csv_len, &line_count);
 
 	for (i = 0; i < ARRAY_SIZE(tItems); i++) {
+
+		get_frame_cont = 1;
 		if (tItems[i].run != 1)
 			continue;
 
@@ -2723,8 +2726,8 @@ static void mp_show_result(const char *csv_path)
 			if (tItems[i].trimmed_mean && tItems[i].catalog != PEAK_TO_PEAK_TEST) {
 				mp_compare_cdc_show_result(i, tItems[i].result_buf, csv, &csv_len, TYPE_JUGE, max_threshold, min_threshold,"Mean result");
 			} else {
-				mp_compare_cdc_show_result(i, tItems[i].buf, csv, &csv_len, TYPE_JUGE, max_threshold, min_threshold,"Max Hold");
-				mp_compare_cdc_show_result(i, tItems[i].buf, csv, &csv_len, TYPE_JUGE, max_threshold, min_threshold,"Min Hold");
+				mp_compare_cdc_show_result(i, tItems[i].max_buf, csv, &csv_len, TYPE_JUGE, max_threshold, min_threshold,"Max Hold");
+				mp_compare_cdc_show_result(i, tItems[i].min_buf, csv, &csv_len, TYPE_JUGE, max_threshold, min_threshold,"Min Hold");
 			}
 			if (tItems[i].catalog != PEAK_TO_PEAK_TEST)
 				get_frame_cont = tItems[i].frame_count;
@@ -3111,6 +3114,7 @@ int ilitek_tddi_mp_test_main(char *apk, bool lcm_on)
 			mp_test_run("doze raw data");
 			mp_test_run("doze peak to peak");
 			mp_test_run("open test_c");
+			mp_test_run("touch deltac");
 		} else {
 			csv_path = CSV_LCM_OFF_PATH;
 			mp_test_run("raw data(have bk) (lcm off)");

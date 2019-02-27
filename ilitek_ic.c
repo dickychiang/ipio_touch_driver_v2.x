@@ -81,25 +81,30 @@ static int ilitek_tddi_ic_check_support(u32 pid, u16 id)
 
     ipio_info("ILITEK CHIP (%x, %x) found.\n", pid, id);
 
-    if (CHECK_EQUAL(idev->chip->id, ILI9881_CHIP)) {
+    if (CHECK_EQUAL(id, ILI9881_CHIP)) {
         idev->chip->reset_key = 0x00019881;
         idev->chip->wtd_key = 0x9881;
         idev->chip->open_sp_formula = open_sp_formula_ili9881;
         idev->chip->hd_dma_check_crc_off = firmware_hd_dma_crc_off_ili9881;
+
+        /*
+         * Since it has been enabled previsouly whenever enter to ICE mode,
+         * we have to disable if find out the ic is ili9881.
+         */
+        if (idev->spi_speed != NULL)
+            idev->spi_speed(OFF);
+
+        if (CHECK_EQUAL(pid, ILI9881F_AA))
+            idev->chip->no_bk_shift = RAWDATA_NO_BK_SHIFT_9881F;
+        else
+            idev->chip->no_bk_shift = RAWDATA_NO_BK_SHIFT_9881H;
     } else {
         idev->chip->reset_key = 0x00019878;
         idev->chip->wtd_key = 0x9878;
         idev->chip->open_sp_formula = open_sp_formula_ili7807;
         idev->chip->hd_dma_check_crc_off = firmware_hd_dma_crc_off_ili7807;
-    }
-
-    if (idev->spi_speed != NULL && idev->chip->id == ILI9881_CHIP)
-        idev->spi_speed(OFF);
-
-    if (CHECK_EQUAL(idev->chip->id, ILI9881F_AA))
-        idev->chip->no_bk_shift = RAWDATA_NO_BK_SHIFT_9881F;
-    else
         idev->chip->no_bk_shift = RAWDATA_NO_BK_SHIFT_9881H;
+    }
 
     idev->chip->max_count = 0x1FFFF;
     idev->chip->open_c_formula = open_c_formula;
@@ -369,13 +374,13 @@ int ilitek_tddi_ic_whole_reset(void)
     if (!ice)
         ilitek_ice_mode_ctrl(ENABLE, OFF);
 
-	ipio_info("ic whole reset key = 0x%x\n", key);
+	ipio_info("ic whole reset key = 0x%x, edge_delay = %d\n", key, idev->rst_edge_delay);
 
     ret = ilitek_ice_mode_write(addr, key, sizeof(u32));
     if (ret < 0)
         ipio_err("ic whole reset failed, ret = %d\n", ret);
 
-	msleep(100);
+	msleep(idev->rst_edge_delay);
 	return ret;
 }
 
@@ -759,6 +764,34 @@ static void ilitek_tddi_ic_check_protocol_ver(u32 pver)
 
     ipio_info("Not found a correct protocol version in list, use newest version\n");
     idev->protocol = &protocol_info[PROTOCL_VER_NUM - 1];
+}
+
+int ilitek_tddi_edge_plam_ctrl(u8 type)
+{
+	int ret = 0;
+	u8 cmd[4] = { 0 };
+
+	ipio_info("edge plam ctrl ,Type = %d\n", type);
+
+	cmd[0] = P5_X_READ_DATA_CTRL;
+	cmd[1] = P5_X_EDGE_PLAM_CTRL_1;
+	cmd[2] = P5_X_EDGE_PLAM_CTRL_2;
+	cmd[3] = type;
+
+    ret = idev->write(cmd, sizeof(cmd));
+    if (ret < 0) {
+        ipio_err("Write edge plam ctrl error\n");
+        goto out;
+    }
+
+    ret = idev->write(&cmd[1], (sizeof(cmd) - 1));
+    if (ret < 0) {
+        ipio_err("Write edge plam ctrl error\n");
+        goto out;
+    }
+
+out:
+	return ret;
 }
 
 int ilitek_tddi_ic_get_protocl_ver(void)
