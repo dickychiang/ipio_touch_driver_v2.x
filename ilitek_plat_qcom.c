@@ -337,13 +337,20 @@ static int ilitek_plat_notifier_fb(struct notifier_block *self, unsigned long ev
 	 *  FB_EVENT_BLANK(0x09): A hardware display blank change occurred.
 	 *  FB_EARLY_EVENT_BLANK(0x10): A hardware display blank early change occurred.
 	 */
-	if (evdata && evdata->data && (event == FB_EVENT_BLANK)) {
+	if (evdata && evdata->data) {
 		blank = evdata->data;
 		switch (*blank) {
 		case FB_BLANK_POWERDOWN:
 #ifdef CONFIG_PLAT_SPRD
 		case DRM_MODE_DPMS_OFF:
 #endif /* CONFIG_PLAT_SPRD */
+			if (TP_SUSPEND_PRIO) {
+				if (event != FB_EARLY_EVENT_BLANK)
+					return NOTIFY_DONE;
+			} else {
+				 if (event != FB_EVENT_BLANK)
+					return NOTIFY_DONE;
+			}
 			ilitek_tddi_sleep_handler(TP_SUSPEND);
 			break;
 		case FB_BLANK_UNBLANK:
@@ -351,7 +358,8 @@ static int ilitek_plat_notifier_fb(struct notifier_block *self, unsigned long ev
 #ifdef CONFIG_PLAT_SPRD
 		case DRM_MODE_DPMS_ON:
 #endif /* CONFIG_PLAT_SPRD */
-			ilitek_tddi_sleep_handler(TP_RESUME);
+			if (event == FB_EVENT_BLANK)
+				ilitek_tddi_sleep_handler(TP_RESUME);
 			break;
 		default:
 			ipio_err("Unknown event, blank = %d\n", *blank);

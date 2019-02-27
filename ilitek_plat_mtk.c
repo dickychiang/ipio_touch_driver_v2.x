@@ -33,12 +33,13 @@ extern struct tpd_device *tpd;
 
 void ilitek_plat_tp_reset(void)
 {
+    ipio_info("HW reset edge_delay = %d\n", idev->rst_edge_delay);
     tpd_gpio_output(idev->tp_rst, 1);
     mdelay(10);
     tpd_gpio_output(idev->tp_rst, 0);
     mdelay(5);
     tpd_gpio_output(idev->tp_rst, 1);
-    mdelay(100);
+    mdelay(idev->rst_edge_delay);
 }
 
 void ilitek_plat_input_register(void)
