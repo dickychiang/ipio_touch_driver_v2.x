@@ -22,16 +22,15 @@
 
 #include "ilitek.h"
 
-#define SPI_WRITE 		0x82
-#define SPI_READ 		0x83
-#define SPI_CLK_HZ		(10 * 1024 * 1024)
-#define SPI_RETRY		5
-#define DMA_TRANSFER_MAX_TIMES 2
-#define DMA_TRANSFER_MAX_SIZE 1024
-#define SPI_WRITE_BUFF_MAXSIZE (1024 * DMA_TRANSFER_MAX_TIMES + 5)//plus 5 for IC Mode :(Head + Address) 0x82,0x25,Addr_L,Addr_M,Addr_H
-#define SPI_READ_BUFF_MAXSIZE  (1024 * DMA_TRANSFER_MAX_TIMES)
+#define SPI_WRITE 					0x82
+#define SPI_READ 					0x83
+#define SPI_RETRY					5
+#define DMA_TRANSFER_MAX_TIMES 		2
+#define DMA_TRANSFER_MAX_SIZE 		1024
 
-#define CHECK_RECOVER 			-2
+/* plus 5 for IC Mode :(Head + Address) 0x82,0x25,Addr_L,Addr_M,Addr_H */
+#define SPI_WRITE_BUFF_MAXSIZE 		(1024 * DMA_TRANSFER_MAX_TIMES + 5)
+#define SPI_READ_BUFF_MAXSIZE  		(1024 * DMA_TRANSFER_MAX_TIMES)
 
 static int (*ilitek_spi_write_then_read)(struct spi_device *spi,
 		const void *txbuf, unsigned n_tx,
@@ -351,7 +350,7 @@ static int core_spi_ice_mode_enable(void)
 	/* check recover data */
 	if(rxbuf[0] != 0xA3){
 		ipio_err("Check Recovery data failed (0x%x)\n", rxbuf[0]);
-		return CHECK_RECOVER;
+		return DO_SPI_RECOVER;
 	}
 
 	if (ilitek_spi_write_then_read(idev->spi, txbuf, 5, rxbuf, 0) < 0) {
@@ -603,6 +602,8 @@ static int ilitek_spi_probe(struct spi_device *spi)
 	container_of(to_spi_driver(spi->dev.driver),
 		struct touch_bus_info, bus_driver);
 
+	ipio_info("spi probe\n");
+
 	if (!spi) {
 		ipio_err("spi device is NULL\n");
 		return -ENODEV;
@@ -618,7 +619,7 @@ static int ilitek_spi_probe(struct spi_device *spi)
 	idev->spi = spi;
 	idev->dev = &spi->dev;
 	idev->hwif = info->hwif;
-	idev->phys = "I2C";
+	idev->phys = "SPI";
 
 	idev->write = ilitek_spi_write;
 	idev->read = ilitek_spi_read;

@@ -333,17 +333,19 @@ static void tpd_suspend(struct device *h)
 
 static int ilitek_plat_probe(void)
 {
+	ipio_info("platform probe\n");
+
 	if (REGULATOR_POWER)
 		ilitek_plat_regulator_power_init();
 
     ilitek_plat_gpio_register();
-    ilitek_plat_irq_register();
 
     if (ilitek_tddi_init() < 0) {
-        ipio_err("Platform probe failed\n");
+        ipio_err("platform probe failed\n");
         return -ENODEV;
     }
 
+    ilitek_plat_irq_register();
  	tpd_load_status = 1;
     return 0;
 }
@@ -361,7 +363,7 @@ static struct of_device_id tp_match_table[] = {
 };
 
 static struct ilitek_hwif_info hwif = {
-    .bus_type = BUS_I2C, /* BUS_I2C(0x18) or BUS_SPI(0x1C) */
+    .bus_type = TDDI_INTERFACE,
     .plat_type = TP_PLAT_MTK,
     .owner = THIS_MODULE,
     .name = TDDI_DEV_ID,

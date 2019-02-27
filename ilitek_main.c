@@ -27,8 +27,10 @@ EXPORT_SYMBOL(ipio_debug_level);
 
 static struct workqueue_struct *esd_wq;
 static struct workqueue_struct *bat_wq;
+static struct workqueue_struct *spi_recover_wq;
 static struct delayed_work esd_work;
 static struct delayed_work bat_work;
+static struct work_struct spi_recover_work;
 
 int ilitek_tddi_mp_test_handler(char *apk, bool lcm_on)
 {
@@ -160,6 +162,15 @@ static int read_power_status(u8 *buf)
 	return 0;
 }
 
+static void ilitek_tddi_wq_spi_recover(struct work_struct *work)
+{
+	if (atomic_read(&idev->fw_stat)) {
+		ipio_info("fw upgrading still processing\n");
+		return;
+	}
+	ilitek_tddi_fw_upgrade_handler(NULL);
+}
+
 static void ilitek_tddi_wq_esd_check(struct work_struct *work)
 {
 	ipio_info();
@@ -234,6 +245,10 @@ void ilitek_tddi_wq_ctrl(int type, int ctrl)
 				}
 			}
 			break;
+		case WQ_SPI_RECOVER:
+			ipio_info("Execute WQ SPI Recovery\n");
+			schedule_work(&spi_recover_work);
+			break;
 		case WQ_SUSPEND:
 			ipio_err("Not implement yet\n");
 			break;
@@ -249,12 +264,15 @@ static void ilitek_tddi_wq_init(void)
 
 	esd_wq = alloc_workqueue("esd_check", WQ_MEM_RECLAIM, 0);
 	bat_wq = alloc_workqueue("bat_check", WQ_MEM_RECLAIM, 0);
+	spi_recover_wq = alloc_workqueue("spi_recover", WQ_MEM_RECLAIM, 0);
 
 	WARN_ON(!esd_wq);
 	WARN_ON(!bat_wq);
+	WARN_ON(!spi_recover_wq);
 
 	INIT_DELAYED_WORK(&esd_work, ilitek_tddi_wq_esd_check);
 	INIT_DELAYED_WORK(&bat_work, ilitek_tddi_wq_bat_check);
+	INIT_WORK(&spi_recover_work, ilitek_tddi_wq_spi_recover);
 
 	if (ENABLE_WQ_ESD) {
 		idev->wq_esd_ctrl = ENABLE;
@@ -421,6 +439,8 @@ void ilitek_tddi_report_handler(void)
 	ret = idev->read(buf, rlen);
 	if (ret < 0) {
 		ipio_err("Read report packet buf failed\n");
+		if (ret == DO_SPI_RECOVER)
+			ilitek_tddi_wq_ctrl(WQ_SPI_RECOVER, ENABLE);
 		goto out;
 	}
 
@@ -502,6 +522,8 @@ int ilitek_tddi_init(void)
 {
 	struct task_struct *fw_boot_th;
 
+	ipio_info("ilitek tddi main init\n");
+
 	mutex_init(&idev->io_mutex);
 	mutex_init(&idev->touch_mutex);
 	mutex_init(&idev->debug_mutex);
@@ -519,6 +541,7 @@ int ilitek_tddi_init(void)
 
 	ilitek_tddi_ic_init();
 	ilitek_tddi_wq_init();
+	ilitek_tddi_node_init();
 
 	/* Must do hw reset once in first time for work normally if tp reset is avaliable */
 	if (!TDDI_RST_BIND)
@@ -537,8 +560,6 @@ int ilitek_tddi_init(void)
 		WARN_ON(!fw_boot_th);
 		ipio_err("Failed to create fw upgrade thread\n");
 	}
-
-	ilitek_tddi_node_init();
 	return 0;
 }
 

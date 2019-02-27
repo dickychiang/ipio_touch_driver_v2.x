@@ -137,13 +137,14 @@ extern u32 ipio_debug_level;
 #define ERR_ALLOC_MEM(X)	((IS_ERR(X) || X == NULL) ? 1 : 0)
 #define K (1024)
 #define M (K * K)
-#define ENABLE	1
-#define START	1
-#define ON		1
-#define DISABLE 0
-#define END		0
-#define OFF		0
-#define NONE	-1
+#define ENABLE			1
+#define START			1
+#define ON				1
+#define DISABLE 		0
+#define END				0
+#define OFF				0
+#define NONE			-1
+#define DO_SPI_RECOVER 	-2
 
 enum TP_PLAT_TYPE {
 	TP_PLAT_MTK = 0,
@@ -203,7 +204,8 @@ enum TP_FW_BLOCK_TAG {
 enum TP_WQ_TYPE {
 	WQ_ESD = 0,
 	WQ_BAT,
-	WQ_SUSPEND
+	WQ_SUSPEND,
+	WQ_SPI_RECOVER
 };
 
 #define TDDI_I2C_ADDR				0x41
@@ -495,17 +497,18 @@ enum TP_WQ_TYPE {
 #define DUMP_FLASH_PATH			"/sdcard/flash_dump"
 
 /* Options */
+#define TDDI_INTERFACE			BUS_SPI /* BUS_I2C(0x18) or BUS_SPI(0x1C) */
 #define VDD_VOLTAGE				1800000
 #define VCC_VOLTAGE				1800000
 #define SPI_CLK					(1*M)
 #define WQ_ESD_DELAY			2000
 #define WQ_BAT_DELAY			4000
-#define TDDI_RST_BIND 			ENABLE
 #define MT_B_TYPE				ENABLE
+#define TDDI_RST_BIND 			DISABLE
 #define MT_PRESSURE				DISABLE
 #define ENABLE_WQ_ESD			DISABLE
 #define ENABLE_WQ_BAT			DISABLE
-#define ENABLE_GESTURE			ENABLE
+#define ENABLE_GESTURE			DISABLE
 #define REGULATOR_POWER			DISABLE
 
 /* Plaform compatibility */

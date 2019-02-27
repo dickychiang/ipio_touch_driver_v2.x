@@ -144,6 +144,8 @@ static int ilitek_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id *
 		container_of(to_i2c_driver(i2c->dev.driver),
 			struct touch_bus_info, bus_driver);
 
+	ipio_info("i2c probe\n");
+
 	if (!i2c) {
 		ipio_err("i2c client is NULL\n");
 		return -ENODEV;

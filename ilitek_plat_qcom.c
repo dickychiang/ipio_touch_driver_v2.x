@@ -263,7 +263,13 @@ out:
 
 static irqreturn_t ilitek_plat_isr_top_half(int irq, void *dev_id)
 {
-	ipio_info();
+	ipio_info("report: %d, rst: %d, fw: %d, switch: %d, mp: %d, sleep: %d\n",
+			idev->report,
+			atomic_read(&idev->tp_reset),
+			atomic_read(&idev->fw_stat),
+			atomic_read(&idev->tp_sw_mode),
+			atomic_read(&idev->mp_stat),
+			atomic_read(&idev->tp_sleep));
 
 	if (irq != idev->irq_num) {
 		ipio_err("Incorrect irq number (%d)\n", irq);
@@ -389,21 +395,28 @@ static void ilitek_plat_sleep_init(void)
 
 static int ilitek_plat_probe(void)
 {
+	ipio_info("platform probe\n");
+
 	if (REGULATOR_POWER)
 		ilitek_plat_regulator_power_init();
 
-	ilitek_plat_sleep_init();
     ilitek_plat_gpio_register();
-    ilitek_plat_irq_register();
 
-    return ilitek_tddi_init();
+    if (ilitek_tddi_init() < 0) {
+        ipio_err("platform probe failed\n");
+        return -ENODEV;
+    }
+
+    ilitek_plat_irq_register();
+	ilitek_plat_sleep_init();
+	return 0;
 }
 
 static int ilitek_plat_remove(void)
 {
     ipio_info();
 	ilitek_tddi_dev_remove();
-    return 0
+    return 0;
 }
 
 static struct of_device_id tp_match_table[] = {
@@ -412,7 +425,7 @@ static struct of_device_id tp_match_table[] = {
 };
 
 static struct ilitek_hwif_info hwif = {
-    .bus_type = BUS_I2C, /* BUS_I2C(0x18) or BUS_SPI(0x1C) */
+    .bus_type = TDDI_INTERFACE,
     .plat_type = TP_PLAT_QCOM,
     .owner = THIS_MODULE,
     .name = TDDI_DEV_ID,
