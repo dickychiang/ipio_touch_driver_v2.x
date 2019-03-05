@@ -133,7 +133,6 @@ extern u32 ipio_debug_level;
 		pr_info("ILITEK: (%s, %d): " fmt, __func__, __LINE__, ##arg);	\
 	} while (0)
 
-#define CHECK_EQUAL(X, Y) 	((X == Y) ? 1 : 0)
 #define ERR_ALLOC_MEM(X)	((IS_ERR(X) || X == NULL) ? 1 : 0)
 #define K (1024)
 #define M (K * K)

@@ -69,8 +69,7 @@ static int ilitek_tddi_ic_check_support(u32 pid, u16 id)
     int i = 0;
 
     for (i = 0; i < CHIP_SUP_NUM; i++) {
-        if (CHECK_EQUAL(pid, ic_sup_list[i]) ||
-            CHECK_EQUAL(id, ic_sup_list[i]))
+        if ((pid == ic_sup_list[i]) || (id == ic_sup_list[i]))
             break;
     }
 
@@ -81,7 +80,7 @@ static int ilitek_tddi_ic_check_support(u32 pid, u16 id)
 
     ipio_info("ILITEK CHIP (%x, %x) found.\n", pid, id);
 
-    if (CHECK_EQUAL(id, ILI9881_CHIP)) {
+    if (id == ILI9881_CHIP) {
         idev->chip->reset_key = 0x00019881;
         idev->chip->wtd_key = 0x9881;
         idev->chip->open_sp_formula = open_sp_formula_ili9881;
@@ -94,7 +93,7 @@ static int ilitek_tddi_ic_check_support(u32 pid, u16 id)
         if (idev->spi_speed != NULL)
             idev->spi_speed(OFF);
 
-        if (CHECK_EQUAL(pid, ILI9881F_AA))
+        if (pid == ILI9881F_AA)
             idev->chip->no_bk_shift = RAWDATA_NO_BK_SHIFT_9881F;
         else
             idev->chip->no_bk_shift = RAWDATA_NO_BK_SHIFT_9881H;
@@ -261,7 +260,7 @@ int ilitek_tddi_ic_watch_dog_ctrl(bool enable)
 	}
 
 	/* FW will automatiacally disable WDT in I2C */
-	if (CHECK_EQUAL(idev->wtd_ctrl, OFF)) {
+	if (idev->wtd_ctrl == OFF) {
 		ipio_info("Interface is I2C, do nothing\n");
 		return 0;
 	}
@@ -280,10 +279,10 @@ int ilitek_tddi_ic_watch_dog_ctrl(bool enable)
 	while (timeout > 0) {
 		ret = ilitek_ice_mode_read(0x51018, sizeof(u8));
 		if (enable) {
-			if (CHECK_EQUAL(ret, on_bit))
+			if (ret == on_bit)
 				break;
 		} else {
-			if (CHECK_EQUAL(ret, off_bit))
+			if (ret == off_bit)
 				break;
 
 			/* If WDT can't be disabled, try to command and wait to see */
@@ -315,7 +314,7 @@ int ilitek_tddi_ic_func_ctrl(const char *name, int ctrl)
 
     for (i = 0; i < FUNC_CTRL_NUM; i++) {
         if (strncmp(name, func_ctrl[i].name, strlen(name)) == 0) {
-            if (!CHECK_EQUAL(strlen(name), strlen(func_ctrl[i].name)))
+            if (strlen(name) != strlen(func_ctrl[i].name))
                 continue;
             break;
         }
@@ -569,7 +568,7 @@ int ilitek_tddi_ic_check_busy(int count, int delay)
 
         ipio_info("busy = 0x%x\n", busy);
 
-        if (CHECK_EQUAL(busy, rby)) {
+        if (busy == rby) {
             ipio_info("Check busy free\n");
             goto out;
         }
@@ -749,13 +748,13 @@ static void ilitek_tddi_ic_check_protocol_ver(u32 pver)
 {
     int i = 0;
 
-    if (CHECK_EQUAL(idev->protocol->ver, pver)) {
+    if (idev->protocol->ver == pver) {
         ipio_info("same procotol version, do nothing\n");
         return;
     }
 
     for (i = 0; i < PROTOCL_VER_NUM - 1; i++) {
-        if (CHECK_EQUAL(protocol_info[i].ver, pver)) {
+        if (protocol_info[i].ver == pver) {
             idev->protocol = &protocol_info[i];
             ipio_info("update protocol version = %x\n", idev->protocol->ver);
             return;

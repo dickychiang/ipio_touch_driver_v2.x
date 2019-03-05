@@ -447,7 +447,7 @@ void ilitek_tddi_report_handler(void)
 	ilitek_dump_data(buf, 8, rlen, 0, "finger report");
 
 	checksum = ilitek_calc_packet_checksum(buf, rlen - 1);
-	if (!CHECK_EQUAL(checksum, buf[rlen-1])) {
+	if (checksum != buf[rlen-1]) {
 		ipio_err("Wrong checksum, checksum = %x, buf = %x\n", checksum, buf[rlen-1]);
 		goto out;
 	}

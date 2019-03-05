@@ -2932,7 +2932,7 @@ static void mp_test_run(char *item)
 
 	for (i = 0; i < MP_TEST_ITEM; i++) {
 		if (strncmp(item, tItems[i].desp, strlen(item)) == 0) {
-			if(!CHECK_EQUAL(strlen(item), strlen(tItems[i].desp)))
+			if(strlen(item) != strlen(tItems[i].desp))
 				continue;
 
 			/* Get parameters from ini */
