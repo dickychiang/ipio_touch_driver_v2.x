@@ -174,7 +174,12 @@ static int core_rx_lock_check(int *ret_size)
 
 		//ipio_debug(DEBUG_SPI, "Rx lock = 0x%x, size = %d\n", status, *ret_size);
 
+<<<<<<< HEAD
 		if (CHECK_EQUAL(status, lock))
+=======
+		if (status == lock) {
+			ipio_info("Rx check lock free!!\n");
+>>>>>>> 7fc3b82ca663964884d84c548994d31e2fea1b28
 			return 0;
 
 		mdelay(1);
@@ -209,7 +214,12 @@ static int core_tx_unlock_check(void)
 
 		//ipio_debug(DEBUG_SPI, "Tx unlock = 0x%x\n", status);
 
+<<<<<<< HEAD
 		if (CHECK_EQUAL(status, unlock))
+=======
+		if (status == unlock) {
+			ipio_info("Tx check unlock free!\n");
+>>>>>>> 7fc3b82ca663964884d84c548994d31e2fea1b28
 			return 0;
 
 		mdelay(1);

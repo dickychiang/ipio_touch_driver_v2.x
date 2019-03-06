@@ -196,7 +196,7 @@ static int ilitek_tddi_fw_check_hex_hw_crc(u8 *pfw)
 
 		ipio_info("Block = %d, Hex CRC = %x, HW CRC = %x\n", i, hex_crc, hw_crc);
 
-		if(!CHECK_EQUAL(hex_crc, hw_crc)) {
+		if(hex_crc != hw_crc) {
 			ipio_info("Hex and HW CRC are incorrect!\n");
 			return UPDATE_FAIL;
 		}
@@ -540,7 +540,7 @@ static int ilitek_tddi_fw_iram_upgrade(u8 *pfw)
 
 			ipio_info("%s CRC is %s (%x) : (%x)\n",fbi[i].name, (crc != dma ? "Invalid !" : "Correct !"), crc, dma);
 
-			if (CHECK_EQUAL(crc, dma) == UPDATE_FAIL)
+			if (crc != dma)
 				ret = UPDATE_FAIL;
 		}
 	}
@@ -645,7 +645,7 @@ static int ilitek_tddi_fw_flash_erase(void)
 			ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x0, 1); /* CS low */
 			ilitek_ice_mode_write(FLASH1_ADDR, 0x66aa55, 3); /* Key */
 
-			if (CHECK_EQUAL(addr, fbi[AP].start))
+			if (addr == fbi[AP].start)
 				ilitek_ice_mode_write(FLASH2_ADDR, 0xD8, 1);
 			else
 				ilitek_ice_mode_write(FLASH2_ADDR, 0x20, 1);
@@ -657,7 +657,7 @@ static int ilitek_tddi_fw_flash_erase(void)
 
 			mdelay(1);
 
-			if (CHECK_EQUAL(addr, fbi[AP].start))
+			if (addr == fbi[AP].start)
 				ret = ilitek_tddi_flash_poll_busy(TIMEOUT_PAGE);
 			else
 				ret = ilitek_tddi_flash_poll_busy(TIMEOUT_SECTOR);
