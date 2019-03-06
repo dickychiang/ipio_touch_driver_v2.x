@@ -97,6 +97,35 @@
 
 #define DRIVER_VERSION "2.0.0.0"
 
+/* Options */
+#define TDDI_INTERFACE			BUS_SPI /* BUS_I2C(0x18) or BUS_SPI(0x1C) */
+#define VDD_VOLTAGE				1800000
+#define VCC_VOLTAGE				1800000
+#define SPI_CLK					(1*M)
+#define WQ_ESD_DELAY			4000
+#define WQ_BAT_DELAY			2000
+#define MT_B_TYPE				ENABLE
+#define TDDI_RST_BIND 			DISABLE
+#define MT_PRESSURE				DISABLE
+#define ENABLE_WQ_ESD			ENABLE
+#define ENABLE_WQ_BAT			DISABLE
+#define ENABLE_GESTURE			ENABLE
+#define REGULATOR_POWER			DISABLE
+#define TP_SUSPEND_PRIO			ENABLE
+
+/* Plaform compatibility */
+// #define CONFIG_PLAT_SPRD
+
+/* Path */
+#define DEBUG_DATA_FILE_SIZE	(10*K)
+#define DEBUG_DATA_FILE_PATH	"/sdcard/ILITEK_log.csv"
+#define CSV_LCM_ON_PATH     	"/sdcard/ilitek_mp_lcm_on_log"
+#define CSV_LCM_OFF_PATH		"/sdcard/ilitek_mp_lcm_off_log"
+#define INI_NAME_PATH			"/sdcard/mp.ini"
+#define UPDATE_FW_PATH			"/sdcard/ILITEK_FW"
+#define POWER_STATUS_PATH 		"/sys/class/power_supply/battery/status"
+#define DUMP_FLASH_PATH			"/sdcard/flash_dump"
+
 /*  Debug messages */
 #ifdef BIT
 #undef BIT
@@ -488,35 +517,6 @@ enum TP_WQ_TYPE {
 #define RAWDATA_NO_BK_SHIFT_9881H 		8192
 #define RAWDATA_NO_BK_SHIFT_9881F 		4096
 
-/* Path */
-#define DEBUG_DATA_FILE_SIZE	(10*K)
-#define DEBUG_DATA_FILE_PATH	"/sdcard/ILITEK_log.csv"
-#define CSV_LCM_ON_PATH     	"/sdcard/ilitek_mp_lcm_on_log"
-#define CSV_LCM_OFF_PATH		"/sdcard/ilitek_mp_lcm_off_log"
-#define INI_NAME_PATH			"/sdcard/mp.ini"
-#define UPDATE_FW_PATH			"/sdcard/ILITEK_FW"
-#define POWER_STATUS_PATH 		"/sys/class/power_supply/battery/status"
-#define DUMP_FLASH_PATH			"/sdcard/flash_dump"
-
-/* Options */
-#define TDDI_INTERFACE			BUS_SPI /* BUS_I2C(0x18) or BUS_SPI(0x1C) */
-#define VDD_VOLTAGE				1800000
-#define VCC_VOLTAGE				1800000
-#define SPI_CLK					(1*M)
-#define WQ_ESD_DELAY			2000
-#define WQ_BAT_DELAY			4000
-#define MT_B_TYPE				ENABLE
-#define TDDI_RST_BIND 			DISABLE
-#define MT_PRESSURE				DISABLE
-#define ENABLE_WQ_ESD			DISABLE
-#define ENABLE_WQ_BAT			DISABLE
-#define ENABLE_GESTURE			DISABLE
-#define REGULATOR_POWER			DISABLE
-#define TP_SUSPEND_PRIO			ENABLE
-
-/* Plaform compatibility */
-// #define CONFIG_PLAT_SPRD
-
 struct ilitek_tddi_dev
 {
     struct i2c_client *i2c;
@@ -539,7 +539,6 @@ struct ilitek_tddi_dev
 
 	struct mutex touch_mutex;
 	struct mutex io_mutex;
-	struct mutex wq_mutex;
 	struct mutex debug_mutex;
 	struct mutex debug_read_mutex;
 	spinlock_t irq_spin;
@@ -611,9 +610,10 @@ struct ilitek_tddi_dev
 
     int (*write)(void *, size_t);
     int (*read)(void *, size_t);
+	int (*spi_write_then_read)(struct spi_device *, const void *, unsigned, void *, unsigned);
 	int (*mp_move_code)(void);
 	int (*gesture_move_code)(int);
-	void (*esd_callabck)(void);
+	int (*esd_callabck)(void);
 	void (*spi_speed)(bool);
 };
 extern struct ilitek_tddi_dev *idev;
@@ -737,8 +737,8 @@ extern int ilitek_tddi_edge_plam_ctrl(u8 type);
 /* Prototypes for tddi events */
 extern int ilitek_tddi_switch_mode(u8 *);
 extern int ilitek_tddi_fw_upgrade_handler(void *);
-extern void ilitek_tddi_wq_esd_i2c_check(void);
-extern void ilitek_tddi_wq_esd_spi_check(void);
+extern int ilitek_tddi_wq_esd_i2c_check(void);
+extern int ilitek_tddi_wq_esd_spi_check(void);
 extern void ilitek_tddi_wq_ctrl(int, int);
 extern int ilitek_tddi_mp_test_handler(char *, bool);
 extern void ilitek_tddi_report_handler(void);

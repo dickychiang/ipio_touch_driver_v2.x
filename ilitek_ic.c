@@ -842,7 +842,7 @@ out:
 int ilitek_tddi_ic_get_info(void)
 {
     int ret = 0;
-    bool ice = atomic_read(&idev->ice_stat);;
+    bool ice = atomic_read(&idev->ice_stat);
 
     if (!ice)
         ilitek_ice_mode_ctrl(ENABLE, OFF);

@@ -32,10 +32,6 @@
 #define SPI_WRITE_BUFF_MAXSIZE 		(1024 * DMA_TRANSFER_MAX_TIMES + 5)
 #define SPI_READ_BUFF_MAXSIZE  		(1024 * DMA_TRANSFER_MAX_TIMES)
 
-static int (*ilitek_spi_write_then_read)(struct spi_device *spi,
-		const void *txbuf, unsigned n_tx,
-			void *rxbuf, unsigned n_rx);
-
 /* Declare dma buffer as 4 byte alignment */
 __attribute__ ((section ("NONCACHEDRW"), aligned(4)))
 uint8_t dma_txbuf[SPI_WRITE_BUFF_MAXSIZE] = {0};
@@ -162,13 +158,13 @@ static int core_rx_lock_check(int *ret_size)
 
 	for (i = 0; i < count; i++) {
 		txbuf[0] = SPI_WRITE;
-		if (ilitek_spi_write_then_read(idev->spi, txbuf, 5, txbuf, 0) < 0) {
+		if (idev->spi_write_then_read(idev->spi, txbuf, 5, txbuf, 0) < 0) {
 			ipio_err("spi Write Error\n");
 			goto out;
 		}
 
 		txbuf[0] = SPI_READ;
-		if (ilitek_spi_write_then_read(idev->spi, txbuf, 1, rxbuf, 4) < 0) {
+		if (idev->spi_write_then_read(idev->spi, txbuf, 1, rxbuf, 4) < 0) {
 			ipio_err("spi Read Error\n");
 			goto out;
 		}
@@ -178,10 +174,8 @@ static int core_rx_lock_check(int *ret_size)
 
 		//ipio_debug(DEBUG_SPI, "Rx lock = 0x%x, size = %d\n", status, *ret_size);
 
-		if (CHECK_EQUAL(status, lock)) {
-			ipio_info("Rx check lock free!!\n");
+		if (CHECK_EQUAL(status, lock))
 			return 0;
-		}
 
 		mdelay(1);
 	}
@@ -200,13 +194,13 @@ static int core_tx_unlock_check(void)
 
 	for (i = 0; i < count; i++) {
 		txbuf[0] = SPI_WRITE;
-		if (ilitek_spi_write_then_read(idev->spi, txbuf, 5, txbuf, 0) < 0) {
+		if (idev->spi_write_then_read(idev->spi, txbuf, 5, txbuf, 0) < 0) {
 			ipio_err("spi Write Error\n");
 			goto out;
 		}
 
 		txbuf[0] = SPI_READ;
-		if (ilitek_spi_write_then_read(idev->spi, txbuf, 1, rxbuf, 4) < 0) {
+		if (idev->spi_write_then_read(idev->spi, txbuf, 1, rxbuf, 4) < 0) {
 			ipio_err("spi Read Error\n");
 			goto out;
 		}
@@ -215,10 +209,8 @@ static int core_tx_unlock_check(void)
 
 		//ipio_debug(DEBUG_SPI, "Tx unlock = 0x%x\n", status);
 
-		if (CHECK_EQUAL(status, unlock)) {
-			ipio_info("Tx check unlock free!\n");
+		if (CHECK_EQUAL(status, unlock))
 			return 0;
-		}
 
 		mdelay(1);
 	}
@@ -239,14 +231,14 @@ static int core_spi_ice_mode_unlock_read(u8 *data, size_t size)
 	txbuf[2] = 0x98;
 	txbuf[3] = 0x0;
 	txbuf[4] = 0x2;
-	if (ilitek_spi_write_then_read(idev->spi, txbuf, 5, txbuf, 0) < 0) {
+	if (idev->spi_write_then_read(idev->spi, txbuf, 5, txbuf, 0) < 0) {
 		ret = -EIO;
 		return ret;
 	}
 
 	/* read data */
 	txbuf[0] = SPI_READ;
-	if (ilitek_spi_write_then_read(idev->spi, txbuf, 1, data, size) < 0) {
+	if (idev->spi_write_then_read(idev->spi, txbuf, 1, data, size) < 0) {
 		ret = -EIO;
 		return ret;
 	}
@@ -261,7 +253,7 @@ static int core_spi_ice_mode_unlock_read(u8 *data, size_t size)
 	txbuf[6] = size & 0xFF;
 	txbuf[7] = (char)0x98;
 	txbuf[8] = (char)0x81;
-	if (ilitek_spi_write_then_read(idev->spi, txbuf, 9, txbuf, 0) < 0) {
+	if (idev->spi_write_then_read(idev->spi, txbuf, 9, txbuf, 0) < 0) {
 		ret = -EIO;
 		ipio_err("spi Write data unlock error, ret = %d\n", ret);
 	}
@@ -299,7 +291,7 @@ static int core_spi_ice_mode_lock_write(u8 *data, size_t size)
 	if (wsize % 4 != 0)
 		wsize += 4 - (wsize % 4);
 
-	if (ilitek_spi_write_then_read(idev->spi, txbuf, wsize + 5, txbuf, 0) < 0) {
+	if (idev->spi_write_then_read(idev->spi, txbuf, wsize + 5, txbuf, 0) < 0) {
 		ret = -EIO;
 		ipio_err("spi Write Error, ret = %d\n", ret);
 		goto out;
@@ -315,7 +307,7 @@ static int core_spi_ice_mode_lock_write(u8 *data, size_t size)
 	txbuf[6] = size & 0xFF;
 	txbuf[7] = (char)0x5A;
 	txbuf[8] = (char)0xA5;
-	if (ilitek_spi_write_then_read(idev->spi, txbuf, 9, txbuf, 0) < 0) {
+	if (idev->spi_write_then_read(idev->spi, txbuf, 9, txbuf, 0) < 0) {
 		ret = -EIO;
 		ipio_err("spi Write data lock Error, ret = %d\n", ret);
 	}
@@ -329,7 +321,7 @@ static int core_spi_ice_mode_disable(void)
 {
 	u8 txbuf[5] = {0x82, 0x1B, 0x62, 0x10, 0x18};
 
-	if (ilitek_spi_write_then_read(idev->spi, txbuf, 5, txbuf, 0) < 0) {
+	if (idev->spi_write_then_read(idev->spi, txbuf, 5, txbuf, 0) < 0) {
 		ipio_err("spi R/W Error\n");
 		return -EIO;
 	}
@@ -342,7 +334,7 @@ static int core_spi_ice_mode_enable(void)
 	u8 txbuf[5] = {0x82, 0x1F, 0x62, 0x10, 0x18};
 	u8 rxbuf[2]= {0};
 
-	if (ilitek_spi_write_then_read(idev->spi, txbuf, 1, rxbuf, 1) < 0) {
+	if (idev->spi_write_then_read(idev->spi, txbuf, 1, rxbuf, 1) < 0) {
 		ipio_err("spi R/W Error\n");
 		return -EIO;
 	}
@@ -353,7 +345,7 @@ static int core_spi_ice_mode_enable(void)
 		return DO_SPI_RECOVER;
 	}
 
-	if (ilitek_spi_write_then_read(idev->spi, txbuf, 5, rxbuf, 0) < 0) {
+	if (idev->spi_write_then_read(idev->spi, txbuf, 5, rxbuf, 0) < 0) {
 		ipio_err("spi R/W Error\n");
 		return -EIO;
 	}
@@ -449,7 +441,7 @@ static int core_spi_write(u8 *data, size_t len)
 	txbuf[0] = SPI_WRITE;
 	ipio_memcpy(txbuf+1, data, len, safe_size + 1);
 
-	if (ilitek_spi_write_then_read(idev->spi, txbuf, len+1, txbuf, 0) < 0) {
+	if (idev->spi_write_then_read(idev->spi, txbuf, len+1, txbuf, 0) < 0) {
 		ret = -EIO;
 		goto out;
 	}
@@ -477,7 +469,7 @@ static int core_spi_read(u8 *rxbuf, size_t len)
 		goto out;
 	}
 
-	if(ilitek_spi_write_then_read(idev->spi, txbuf, 1, rxbuf, len) < 0) {
+	if(idev->spi_write_then_read(idev->spi, txbuf, 1, rxbuf, len) < 0) {
 		ret = -EIO;
 		goto out;
 	}
@@ -503,7 +495,7 @@ static int ilitek_spi_write(void *buf, size_t len)
 			ret = 0;
 			goto out;
 		}
-		ipio_err("spi write Error, ret = %d\n", ret);
+		ipio_err("spi write error, ret = %d\n", ret);
 	}
 
 out:
@@ -528,7 +520,7 @@ static int ilitek_spi_read(void *buf, size_t len)
 			ret = 0;
 			goto out;
 		}
-		ipio_err("spi read Error, ret = %d\n", ret);
+		ipio_err("spi read error, ret = %d\n", ret);
 	}
 
 out:
@@ -571,9 +563,9 @@ static int core_spi_setup(u32 freq)
 	chip_config->deassert = 0;
 
 	idev->spi->controller_data = chip_config;
-	ilitek_spi_write_then_read = core_mtk_spi_write_then_read;
+	idev->spi_write_then_read = core_mtk_spi_write_then_read;
 #else
-    ilitek_spi_write_then_read = spi_write_then_read;
+    idev->spi_write_then_read = spi_write_then_read;
 #endif /* CONFIG_MTK_SPI */
 
 	ipio_info("spi clock = %d\n", freq);
@@ -636,8 +628,8 @@ static int ilitek_spi_probe(struct spi_device *spi)
 		idev->hd_reset = TP_IC_WHOLE_RST_HD;
 	else
 		idev->hd_reset = TP_HW_RST_HD;
-	idev->rst_edge_delay = 1;
 
+	idev->rst_edge_delay = 1;
 	idev->fw_open = FILP_OPEN;
     idev->fw_upgrade_mode = UPGRADE_IRAM;
 	idev->mp_move_code = ilitek_tddi_move_mp_code_iram;
