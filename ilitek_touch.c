@@ -310,13 +310,14 @@ u8 ilitek_calc_packet_checksum(u8 *packet, size_t len)
 	return (u8) ((-sum) & 0xFF);
 }
 
-void ilitek_tddi_touch_esd_gesture(void)
+void ilitek_tddi_touch_esd_gesture_flash(void)
 {
 	int retry = 100;
 	u32 answer = 0;
+	u8 tp_mode = P5_X_FW_DEMO_MODE;
 
-	/* start to download AP code with HW reset or host download */
-	ilitek_tddi_reset_ctrl(idev->reset);
+	/* start to download AP code with HW reset */
+	ilitek_tddi_switch_mode(&tp_mode);
 
 	ilitek_ice_mode_ctrl(ENABLE, OFF);
 
@@ -324,7 +325,7 @@ void ilitek_tddi_touch_esd_gesture(void)
 	if (ilitek_ice_mode_write(ESD_GESTURE_PWD_ADDR, ESD_GESTURE_PWD, 4) < 0)
 		ipio_err("esd gesture: write password failed\n");
 
-	/* HW reset or host download again gives effect to FW receives password successed */
+	/* HW reset gives effect to FW receives password successed */
 	ilitek_tddi_reset_ctrl(idev->reset);
 
 	/* waiting for FW reloading code */
@@ -339,6 +340,44 @@ void ilitek_tddi_touch_esd_gesture(void)
 		msleep(10);
 		retry--;
 	} while (answer != ESD_GESTURE_RUN && retry > 0);
+
+	if (retry <= 0)
+		ipio_err("re-enter gesture failed\n");
+
+	ilitek_ice_mode_ctrl(DISABLE, ON);
+
+	idev->gesture_move_code(idev->gesture_mode);
+}
+
+void ilitek_tddi_touch_esd_gesture_iram(void)
+{
+	int retry = 100;
+	u32 answer = 0;
+	u8 tp_mode = P5_X_FW_DEMO_MODE;
+
+	/* start to download AP code with host download */
+	ilitek_tddi_switch_mode(&tp_mode);
+
+	ilitek_ice_mode_ctrl(ENABLE, OFF);
+
+	/* write a special password to inform FW go back into gesture mode */
+	if (ilitek_ice_mode_write(ESD_GESTURE_PWD_ADDR, ESD_GESTURE_PWD, 4) < 0)
+		ipio_err("esd gesture: write password failed\n");
+
+	/* Host download gives effect to FW receives password successed */
+	ilitek_tddi_reset_ctrl(idev->hd_reset);
+
+	/* waiting for FW reloading code */
+    msleep(100);
+
+	ilitek_ice_mode_ctrl(ENABLE, ON);
+
+	/* polling another specific register to see if gesutre is enabled properly */
+	do {
+		answer = ilitek_ice_mode_read(ESD_GESTURE_PWD_ADDR, sizeof(u32));
+		ipio_info("answer = 0x%x\n", answer);
+		msleep(10);
+	} while (answer != ESD_GESTURE_RUN && --retry > 0);
 
 	if (retry <= 0)
 		ipio_err("re-enter gesture failed\n");

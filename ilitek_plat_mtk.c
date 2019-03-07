@@ -256,13 +256,14 @@ out:
 
 static irqreturn_t ilitek_plat_isr_top_half(int irq, void *dev_id)
 {
-	ipio_info("report: %d, rst: %d, fw: %d, switch: %d, mp: %d, sleep: %d\n",
+	ipio_info("report: %d, rst: %d, fw: %d, switch: %d, mp: %d, sleep: %d, esd: %d\n",
 			idev->report,
 			atomic_read(&idev->tp_reset),
 			atomic_read(&idev->fw_stat),
 			atomic_read(&idev->tp_sw_mode),
 			atomic_read(&idev->mp_stat),
-			atomic_read(&idev->tp_sleep));
+			atomic_read(&idev->tp_sleep),
+			atomic_read(&idev->esd_stat));
 
 	if (irq != idev->irq_num) {
 		ipio_err("Incorrect irq number (%d)\n", irq);
@@ -277,7 +278,8 @@ static irqreturn_t ilitek_plat_isr_top_half(int irq, void *dev_id)
 
 	if (!idev->report || atomic_read(&idev->tp_reset) ||
 		atomic_read(&idev->fw_stat) || atomic_read(&idev->tp_sw_mode) ||
-		atomic_read(&idev->mp_stat) || atomic_read(&idev->tp_sleep)) {
+		atomic_read(&idev->mp_stat) || atomic_read(&idev->tp_sleep) ||
+		atomic_read(&idev->esd_stat)) {
 			ipio_info("ignore interrupt !\n");
 			return IRQ_HANDLED;
 	}

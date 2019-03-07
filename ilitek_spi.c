@@ -174,7 +174,7 @@ static int core_rx_lock_check(int *ret_size)
 
 		//ipio_debug(DEBUG_SPI, "Rx lock = 0x%x, size = %d\n", status, *ret_size);
 
-		if (CHECK_EQUAL(status, lock))
+		if (status == lock)
 			return 0;
 
 		mdelay(1);
@@ -209,7 +209,7 @@ static int core_tx_unlock_check(void)
 
 		//ipio_debug(DEBUG_SPI, "Tx unlock = 0x%x\n", status);
 
-		if (CHECK_EQUAL(status, unlock))
+		if (status == unlock)
 			return 0;
 
 		mdelay(1);
@@ -426,8 +426,6 @@ static int core_spi_write(u8 *data, size_t len)
 			ret = core_spi_ice_mode_write(data, len);
 			if (ret >= 0)
 				break;
-
-			ipio_err("spi ice mode write failed, retry = %d\n", count);
 		} while(--count > 0);
 		goto out;
 	}
@@ -463,8 +461,6 @@ static int core_spi_read(u8 *rxbuf, size_t len)
 			ret = core_spi_ice_mode_read(rxbuf);
 			if (ret >= 0)
 				break;
-
-			ipio_err("spi ice mode write failed, retry = %d\n", count);
 		} while(--count > 0);
 		goto out;
 	}
@@ -634,7 +630,8 @@ static int ilitek_spi_probe(struct spi_device *spi)
     idev->fw_upgrade_mode = UPGRADE_IRAM;
 	idev->mp_move_code = ilitek_tddi_move_mp_code_iram;
 	idev->gesture_move_code = ilitek_tddi_move_gesture_code_iram;
-	idev->esd_callabck = ilitek_tddi_wq_esd_spi_check;
+	idev->esd_recover = ilitek_tddi_wq_esd_spi_check;
+	idev->ges_recover = ilitek_tddi_touch_esd_gesture_iram;
 	idev->gesture_mode = P5_X_FW_GESTURE_NORMAL_MODE;
 	idev->wtd_ctrl = ON;
 	idev->report = ENABLE;

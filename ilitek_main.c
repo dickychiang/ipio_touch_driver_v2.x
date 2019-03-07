@@ -28,9 +28,11 @@ EXPORT_SYMBOL(ipio_debug_level);
 static struct workqueue_struct *esd_wq;
 static struct workqueue_struct *bat_wq;
 static struct workqueue_struct *spi_recover_wq;
+static struct workqueue_struct *esd_gesture_wq;
 static struct delayed_work esd_work;
 static struct delayed_work bat_work;
-static struct work_struct spi_recover_work;
+static struct delayed_work spi_recover_work;
+static struct delayed_work esd_gesture_work;
 
 int ilitek_tddi_mp_test_handler(char *apk, bool lcm_on)
 {
@@ -127,6 +129,27 @@ int ilitek_tddi_switch_mode(u8 *data)
 	return ret;
 }
 
+static void ilitek_tddi_wq_ges_recover(struct work_struct *work)
+{
+	mutex_lock(&idev->touch_mutex);
+	atomic_set(&idev->esd_stat, START);
+	ipio_info("doing gesture recovery\n");
+	idev->ges_recover();
+	atomic_set(&idev->esd_stat, END);
+	mutex_unlock(&idev->touch_mutex);
+}
+
+static void ilitek_tddi_wq_spi_recover(struct work_struct *work)
+{
+	ilitek_tddi_wq_ctrl(WQ_ESD, DISABLE);
+	mutex_lock(&idev->touch_mutex);
+	atomic_set(&idev->esd_stat, START);
+	ilitek_tddi_fw_upgrade_handler(NULL);
+	atomic_set(&idev->esd_stat, END);
+	mutex_unlock(&idev->touch_mutex);
+	ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
+}
+
 int ilitek_tddi_wq_esd_spi_check(void)
 {
 	u8 tx = 0x82, rx = 0;
@@ -142,6 +165,16 @@ int ilitek_tddi_wq_esd_i2c_check(void)
 {
 	ipio_info();
 	return 0;
+}
+
+static void ilitek_tddi_wq_esd_check(struct work_struct *work)
+{
+	if (idev->esd_recover() < 0) {
+		ipio_info("doing esd spi recovery\n");
+		ilitek_tddi_wq_ctrl(WQ_SPI_RECOVER, ENABLE);
+		return;
+	}
+	ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
 }
 
 static int read_power_status(u8 *buf)
@@ -167,25 +200,6 @@ static int read_power_status(u8 *buf)
 	set_fs(old_fs);
 	filp_close(f, NULL);
 	return 0;
-}
-
-static void ilitek_tddi_wq_spi_recover(struct work_struct *work)
-{
-	if (atomic_read(&idev->fw_stat)) {
-		ipio_info("fw upgrading still processing\n");
-		return;
-	}
-	ilitek_tddi_fw_upgrade_handler(NULL);
-}
-
-static void ilitek_tddi_wq_esd_check(struct work_struct *work)
-{
-	if (idev->esd_callabck() < 0) {
-		ipio_info("Do ESD Recovery\n");
-		ilitek_tddi_wq_ctrl(WQ_SPI_RECOVER, ENABLE);
-		return;
-	}
-	ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
 }
 
 static void ilitek_tddi_wq_bat_check(struct work_struct *work)
@@ -215,8 +229,6 @@ static void ilitek_tddi_wq_bat_check(struct work_struct *work)
 
 void ilitek_tddi_wq_ctrl(int type, int ctrl)
 {
-	ipio_info("wq type = %d, ctrl = %d\n", type, ctrl);
-
 	switch (type) {
 		case WQ_ESD:
 			if (ENABLE_WQ_ESD) {
@@ -260,8 +272,17 @@ void ilitek_tddi_wq_ctrl(int type, int ctrl)
 				break;
 			}
 			ipio_info("Execute WQ SPI Recovery\n");
-			if(!schedule_work(&spi_recover_work))
+			if(!queue_delayed_work(spi_recover_wq, &spi_recover_work, msecs_to_jiffies(HZ)))
 				ipio_info("WQ SPI RECOVER was already on queue\n");
+			break;
+		case WQ_GES_RECOVER:
+			if (!esd_gesture_wq) {
+				ipio_err("WQ GESTURE Recover is null\n");
+				break;
+			}
+			ipio_info("Execute WQ GESTURE Recovery\n");
+			if (!queue_delayed_work(esd_gesture_wq, &esd_gesture_work, msecs_to_jiffies(HZ)))
+				ipio_info("WQ GESTURE recovery was already on queue\n");
 			break;
 		case WQ_SUSPEND:
 			ipio_err("Not implement yet\n");
@@ -279,14 +300,17 @@ static void ilitek_tddi_wq_init(void)
 	esd_wq = alloc_workqueue("esd_check", WQ_MEM_RECLAIM, 0);
 	bat_wq = alloc_workqueue("bat_check", WQ_MEM_RECLAIM, 0);
 	spi_recover_wq = alloc_workqueue("spi_recover", WQ_MEM_RECLAIM, 0);
+	esd_gesture_wq = alloc_workqueue("esd_gesture", WQ_MEM_RECLAIM, 0);
 
 	WARN_ON(!esd_wq);
 	WARN_ON(!bat_wq);
 	WARN_ON(!spi_recover_wq);
+	WARN_ON(!esd_gesture_wq);
 
 	INIT_DELAYED_WORK(&esd_work, ilitek_tddi_wq_esd_check);
 	INIT_DELAYED_WORK(&bat_work, ilitek_tddi_wq_bat_check);
-	INIT_WORK(&spi_recover_work, ilitek_tddi_wq_spi_recover);
+	INIT_DELAYED_WORK(&spi_recover_work, ilitek_tddi_wq_spi_recover);
+	INIT_DELAYED_WORK(&esd_gesture_work, ilitek_tddi_wq_ges_recover);
 
 	if (ENABLE_WQ_ESD) {
 		idev->wq_esd_ctrl = ENABLE;
@@ -367,16 +391,21 @@ int ilitek_tddi_sleep_handler(int mode)
 int ilitek_tddi_fw_upgrade_handler(void *data)
 {
 	int ret = 0;
+	bool get_lock = false;
 
 	atomic_set(&idev->fw_stat, START);
 
-	if (!atomic_read(&idev->tp_sleep) && !atomic_read(&idev->mp_stat)) {
+	if (!atomic_read(&idev->tp_sleep) &&
+		!atomic_read(&idev->mp_stat) &&
+		!atomic_read(&idev->esd_stat)) {
 		ilitek_tddi_wq_ctrl(WQ_ESD, DISABLE);
 		ilitek_tddi_wq_ctrl(WQ_BAT, DISABLE);
 	}
 
-	if (!atomic_read(&idev->mp_stat) && !atomic_read(&idev->tp_sleep))
+	if (!mutex_is_locked(&idev->touch_mutex)) {
 		mutex_lock(&idev->touch_mutex);
+		get_lock = true;
+	}
 
 	idev->fw_update_stat = 0;
 	ret = ilitek_tddi_fw_upgrade(idev->fw_upgrade_mode, HEX_FILE, idev->fw_open);
@@ -385,10 +414,12 @@ int ilitek_tddi_fw_upgrade_handler(void *data)
 	else
 		idev->fw_update_stat = 100;
 
-	if (!atomic_read(&idev->mp_stat) && !atomic_read(&idev->tp_sleep))
+	if (get_lock)
 		mutex_unlock(&idev->touch_mutex);
 
-	if (!atomic_read(&idev->tp_sleep) && !atomic_read(&idev->mp_stat)) {
+	if (!atomic_read(&idev->tp_sleep) &&
+		!atomic_read(&idev->mp_stat) &&
+		!atomic_read(&idev->esd_stat)) {
 		ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
 		ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
 	}
@@ -404,7 +435,7 @@ void ilitek_tddi_report_handler(void)
 	size_t rlen = 0;
 	u16 self_key = 2;
 
-	/* Just in case these threads couldn't be blocked in top half context */
+	/* Just in case these stats couldn't be blocked in top half context */
 	if (!idev->report || atomic_read(&idev->tp_reset) ||
 		atomic_read(&idev->fw_stat) || atomic_read(&idev->tp_sw_mode) ||
 		atomic_read(&idev->mp_stat) || atomic_read(&idev->tp_sleep)) {
@@ -453,9 +484,14 @@ void ilitek_tddi_report_handler(void)
 
 	ret = idev->read(buf, rlen);
 	if (ret < 0) {
-		ipio_err("Read report packet buf failed\n");
-		if (ret == DO_SPI_RECOVER)
+		ipio_err("Read report packet failed\n");
+		if (idev->actual_fw_mode == P5_X_FW_GESTURE_MODE && idev->gesture) {
+			ilitek_tddi_wq_ctrl(WQ_GES_RECOVER, ENABLE);
+			goto recover;
+		} else if (ret == DO_SPI_RECOVER) {
 			ilitek_tddi_wq_ctrl(WQ_SPI_RECOVER, ENABLE);
+			goto recover;
+		}
 		goto out;
 	}
 
@@ -491,6 +527,7 @@ void ilitek_tddi_report_handler(void)
 out:
 	ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
 	ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
+recover:
 	ipio_kfree((void **)&buf);
 }
 
@@ -553,6 +590,7 @@ int ilitek_tddi_init(void)
 	atomic_set(&idev->mp_stat, DISABLE);
 	atomic_set(&idev->tp_sleep, END);
 	atomic_set(&idev->mp_int_check, DISABLE);
+	atomic_set(&idev->esd_stat, END);
 
 	ilitek_tddi_ic_init();
 	ilitek_tddi_wq_init();

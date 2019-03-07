@@ -233,7 +233,8 @@ enum TP_WQ_TYPE {
 	WQ_ESD = 0,
 	WQ_BAT,
 	WQ_SUSPEND,
-	WQ_SPI_RECOVER
+	WQ_SPI_RECOVER,
+	WQ_GES_RECOVER
 };
 
 #define TDDI_I2C_ADDR				0x41
@@ -606,14 +607,16 @@ struct ilitek_tddi_dev
 	atomic_t tp_sleep;
 	atomic_t tp_sw_mode;
 	atomic_t mp_int_check;
+	atomic_t esd_stat;
 
     int (*write)(void *, size_t);
     int (*read)(void *, size_t);
 	int (*spi_write_then_read)(struct spi_device *, const void *, unsigned, void *, unsigned);
 	int (*mp_move_code)(void);
 	int (*gesture_move_code)(int);
-	int (*esd_callabck)(void);
+	int (*esd_recover)(void);
 	void (*spi_speed)(bool);
+	void (*ges_recover)(void);
 };
 extern struct ilitek_tddi_dev *idev;
 
@@ -698,7 +701,8 @@ extern int ilitek_tddi_fw_upgrade(int, int, int);
 extern int ilitek_tddi_mp_test_main(char *, bool);
 
 /* Prototypes for tddi core functions */
-extern void ilitek_tddi_touch_esd_gesture(void);
+extern void ilitek_tddi_touch_esd_gesture_flash(void);
+extern void ilitek_tddi_touch_esd_gesture_iram(void);
 extern int ilitek_tddi_move_gesture_code_flash(int);
 extern int ilitek_tddi_move_gesture_code_iram(int);
 extern int ilitek_tddi_move_mp_code_flash(void);
