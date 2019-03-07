@@ -213,7 +213,7 @@ struct core_mp_test_data {
 	s32 *rx_min_buf;
 
 	int tdf;
-	bool busy_cdc;
+	int busy_cdc;
 	bool ctrl_lcm;
 } core_mp = {0};
 

@@ -792,11 +792,11 @@ static ssize_t ilitek_node_mp_lcm_on_test_read(struct file *filp, char __user *b
 
 	ilitek_tddi_mp_test_handler(apk_ret, ON);
 
-	ret = copy_to_user((char *)buff, apk_ret, sizeof(apk_ret) * 100);
+	ret = copy_to_user((char *)buff, apk_ret, sizeof(apk_ret));
 	if (ret < 0)
 		ipio_err("Failed to copy data to user space\n");
 
-	return 0;
+	return ret;
 }
 
 static ssize_t ilitek_node_mp_lcm_off_test_read(struct file *filp, char __user *buff, size_t size, loff_t *pos)
@@ -816,11 +816,11 @@ static ssize_t ilitek_node_mp_lcm_off_test_read(struct file *filp, char __user *
 
 	ilitek_tddi_mp_test_handler(apk_ret, OFF);
 
-	ret = copy_to_user((char *)buff, apk_ret, sizeof(apk_ret) * 100);
+	ret = copy_to_user((char *)buff, apk_ret, sizeof(apk_ret));
 	if (ret < 0)
 		ipio_err("Failed to copy data to user space\n");
 
-	return 0;
+	return ret;
 }
 
 static ssize_t ilitek_proc_fw_process_read(struct file *filp, char __user *buff, size_t size, loff_t *pos)
