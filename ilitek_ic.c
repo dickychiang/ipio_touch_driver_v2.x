@@ -484,6 +484,39 @@ void ilitek_tddi_ic_get_ddi_reg_onepage(u8 page, u8 reg)
 		ilitek_ice_mode_ctrl(DISABLE, ON);
 }
 
+void ilitek_tddi_ic_protect_otp_prog_mode(void)
+{
+	int prog_mode, prog_done, retry = 5;
+
+	if (!idev->do_otp_check)
+		return;
+
+	if (ilitek_ice_mode_ctrl(ENABLE, OFF) < 0) {
+		ipio_err("enter ice mode failed in otp\n");
+		return;
+	}
+
+	do {
+		ilitek_ice_mode_write(0x43008, 0x80, 1);
+		ilitek_ice_mode_write(0x43030, 0x0, 1);
+		ilitek_ice_mode_write(0x4300C, 0x4, 1);
+
+		mdelay(1);
+
+		ilitek_ice_mode_write(0x4300C, 0x4, 1);
+
+		prog_done = ilitek_ice_mode_read(0x43030, sizeof(u8));
+		prog_mode = ilitek_ice_mode_read(0x43008, sizeof(u8));
+		ipio_info("otp prog_mode = 0x%x, prog_done = 0x%x\n", prog_mode, prog_done);
+
+		if (prog_done == 0x0 && prog_mode == 0x80)
+			break;
+	} while (--retry > 0);
+
+	if (retry <= 0)
+		ipio_err("OTP Program mode error!\n");
+}
+
 void ilitek_tddi_ic_spi_speed_ctrl(bool enable)
 {
 	ipio_info("%s spi speed up\n", (enable ? "Enable" : "Disable"));

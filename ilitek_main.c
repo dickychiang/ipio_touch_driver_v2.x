@@ -144,7 +144,7 @@ static void ilitek_tddi_wq_spi_recover(struct work_struct *work)
 	ilitek_tddi_wq_ctrl(WQ_ESD, DISABLE);
 	mutex_lock(&idev->touch_mutex);
 	atomic_set(&idev->esd_stat, START);
-	ilitek_tddi_fw_upgrade_handler(NULL);
+	ilitek_tddi_reset_ctrl(idev->hd_reset);
 	atomic_set(&idev->esd_stat, END);
 	mutex_unlock(&idev->touch_mutex);
 	ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
@@ -526,6 +526,8 @@ int ilitek_tddi_reset_ctrl(int mode)
 
 	atomic_set(&idev->tp_reset, START);
 
+	ilitek_tddi_ic_protect_otp_prog_mode();
+
 	switch (mode) {
 	case TP_IC_CODE_RST:
 		ipio_info("TP IC Code RST \n");
@@ -583,9 +585,14 @@ int ilitek_tddi_init(void)
 	ilitek_tddi_wq_init();
 	ilitek_tddi_node_init();
 
+	if (idev->reset == TP_IC_WHOLE_RST)
+		idev->do_otp_check = ENABLE;
+
 	/* Must do hw reset once in first time for work normally if tp reset is avaliable */
 	if (!TDDI_RST_BIND)
 		ilitek_tddi_reset_ctrl(idev->reset);
+
+	idev->do_otp_check = ENABLE;
 
 	if (ilitek_tddi_ic_get_info() < 0) {
 		ipio_err("Not found ilitek chipes\n");

@@ -602,6 +602,7 @@ struct ilitek_tddi_dev {
 	int hd_reset;
 	int fw_upgrade_mode;
 	bool wtd_ctrl;
+	bool do_otp_check;
 
 	atomic_t irq_stat;
 	atomic_t tp_reset;
@@ -688,6 +689,7 @@ struct ilitek_hwif_info {
 };
 
 /* Prototypes for tddi firmware/flash functions */
+extern void ilitek_tddi_ic_protect_otp_prog_mode(void);
 extern void ilitek_tddi_flash_dma_write(u32 start, u32 end, u32 len);
 extern void ilitek_tddi_flash_clear_dma(void);
 extern void ilitek_tddi_fw_read_flash_info(bool mode);
