@@ -24,8 +24,8 @@
 /* Firmware data with static array */
 #include "ilitek_fw.h"
 
-#define UPDATE_PASS 0
-#define UPDATE_FAIL -1
+#define UPDATE_PASS		0
+#define UPDATE_FAIL		-1
 #define TIMEOUT_SECTOR	 500
 #define TIMEOUT_PAGE	 3500
 #define TIMEOUT_PROGRAM	 10
@@ -59,19 +59,17 @@ static u32 HexToDec(char *phex, s32 len)
 	s32 shift = (len - 1) * 4;
 
 	for (i = 0; i < len; shift -= 4, i++) {
-		if ((phex[i] >= '0') && (phex[i] <= '9')) {
+		if ((phex[i] >= '0') && (phex[i] <= '9'))
 			temp = phex[i] - '0';
-		} else if ((phex[i] >= 'a') && (phex[i] <= 'f')) {
+		else if ((phex[i] >= 'a') && (phex[i] <= 'f'))
 			temp = (phex[i] - 'a') + 10;
-		} else if ((phex[i] >= 'A') && (phex[i] <= 'F')) {
+		else if ((phex[i] >= 'A') && (phex[i] <= 'F'))
 			temp = (phex[i] - 'A') + 10;
-		} else {
+		else
 			return -1;
-		}
 
 		ret |= (temp << shift);
 	}
-
 	return ret;
 }
 
@@ -143,7 +141,7 @@ static int ilitek_tddi_fw_iram_program(u32 start, u32 size, u8 *w_buf, u32 w_len
 	u32 end = start + size;
 	u8 *buf = NULL;
 
-    buf = (u8*)kmalloc(sizeof(u8) * size + 4, GFP_KERNEL);
+	buf = (u8 *)kmalloc(sizeof(u8) * size + 4, GFP_KERNEL);
 
 	if (ERR_ALLOC_MEM(buf)) {
 		ipio_err("Failed to allocate a buffer to be read, %ld\n", PTR_ERR(buf));
@@ -196,13 +194,13 @@ static int ilitek_tddi_fw_check_hex_hw_crc(u8 *pfw)
 
 		ipio_info("Block = %d, Hex CRC = %x, HW CRC = %x\n", i, hex_crc, hw_crc);
 
-		if(hex_crc != hw_crc) {
-			ipio_info("Hex and HW CRC are incorrect!\n");
+		if (hex_crc != hw_crc) {
+			ipio_info("Hex and HW CRC NO matched !!!\n");
 			return UPDATE_FAIL;
 		}
 	}
 
-	ipio_info("Hex and HW CRC are correct !\n");
+	ipio_info("Hex and HW CRC match!\n");
 	return UPDATE_PASS;
 }
 
@@ -255,25 +253,30 @@ void ilitek_tddi_flash_dma_write(u32 start, u32 end, u32 len)
 	ilitek_ice_mode_write(FLASH1_reg_flash_key1, 0x66aa55, 3);	/* Key */
 
 	ilitek_ice_mode_write(FLASH2_reg_tx_data, 0x0b, 1);
-	while(!(ilitek_ice_mode_read(INTR1_ADDR & BIT(25), sizeof(u32))));
+	while (!(ilitek_ice_mode_read(INTR1_ADDR & BIT(25), sizeof(u32))))
+			continue;
 	ilitek_ice_mode_bit_mask_write(INTR1_ADDR, INTR1_reg_flash_int_flag, (1 << 25));
 
 	ilitek_ice_mode_write(FLASH2_reg_tx_data, (start & 0xFF0000) >> 16, 1);
-	while(!(ilitek_ice_mode_read(INTR1_ADDR & BIT(25), sizeof(u32))));
+	while (!(ilitek_ice_mode_read(INTR1_ADDR & BIT(25), sizeof(u32))))
+			continue;
 	ilitek_ice_mode_bit_mask_write(INTR1_ADDR, INTR1_reg_flash_int_flag, (1 << 25));
 
 	ilitek_ice_mode_write(FLASH2_reg_tx_data, (start & 0x00FF00) >> 8, 1);
-	while(!(ilitek_ice_mode_read(INTR1_ADDR & BIT(25), sizeof(u32))));
+	while (!(ilitek_ice_mode_read(INTR1_ADDR & BIT(25), sizeof(u32))))
+			continue;
 	ilitek_ice_mode_bit_mask_write(INTR1_ADDR, INTR1_reg_flash_int_flag, (1 << 25));
 
 	ilitek_ice_mode_write(FLASH2_reg_tx_data, (start & 0x0000FF), 1);
-	while(!(ilitek_ice_mode_read(INTR1_ADDR & BIT(25), sizeof(u32))));
+	while (!(ilitek_ice_mode_read(INTR1_ADDR & BIT(25), sizeof(u32))))
+			continue;
 	ilitek_ice_mode_bit_mask_write(INTR1_ADDR, INTR1_reg_flash_int_flag, (1 << 25));
 
 	ilitek_ice_mode_bit_mask_write(FLASH0_ADDR, FLASH0_reg_rx_dual, 0 << 24);
 
 	ilitek_ice_mode_write(FLASH2_reg_tx_data, 0x00, 1);	/* Dummy */
-	while(!(ilitek_ice_mode_read(INTR1_ADDR & BIT(25), sizeof(u32))));
+	while (!(ilitek_ice_mode_read(INTR1_ADDR & BIT(25), sizeof(u32))))
+		continue;
 	ilitek_ice_mode_bit_mask_write(INTR1_ADDR, INTR1_reg_flash_int_flag, (1 << 25));
 
 	ilitek_ice_mode_write(FLASH3_reg_rcv_cnt, len, 4);	/* Write Length */
@@ -354,7 +357,7 @@ int ilitek_tddi_fw_read_flash_data(u32 start, u32 end, u8 *data, size_t len)
 		data[index] = ilitek_ice_mode_read(FLASH4_ADDR, sizeof(u8));
 		index++;
 		precent = (i * 100) / end;
-		ipio_info("Reading flash data .... %d%c", precent, '%');
+		ipio_debug(DEBUG_FW, "Reading flash data .... %d%c", precent, '%');
 	}
 
 	ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x1, 1); /* CS high */
@@ -508,10 +511,10 @@ static int ilitek_tddi_fw_iram_upgrade(u8 *pfw)
 	u32 mode, crc, dma;
 	u8 *fw_ptr = NULL;
 
-	if (idev->actual_fw_mode != P5_X_FW_GESTURE_MODE)
+	if (idev->actual_tp_mode != P5_X_FW_GESTURE_MODE)
 		ilitek_tddi_reset_ctrl(idev->reset);
 
-    ret = ilitek_ice_mode_ctrl(ENABLE, OFF);
+	ret = ilitek_ice_mode_ctrl(ENABLE, OFF);
 	if (ret < 0)
 		return ret;
 
@@ -520,9 +523,9 @@ static int ilitek_tddi_fw_iram_upgrade(u8 *pfw)
 		goto out;
 
 	fw_ptr = pfw;
-	if (idev->actual_fw_mode == P5_X_FW_TEST_MODE) {
+	if (idev->actual_tp_mode == P5_X_FW_TEST_MODE) {
 		mode = MP;
-	} else if (idev->actual_fw_mode == P5_X_FW_GESTURE_MODE) {
+	} else if (idev->actual_tp_mode == P5_X_FW_GESTURE_MODE) {
 		mode = GESTURE;
 		fw_ptr = gestrue_fw;
 	} else {
@@ -533,12 +536,12 @@ static int ilitek_tddi_fw_iram_upgrade(u8 *pfw)
 	for (i = 0; i < ARRAY_SIZE(fbi); i++) {
 		if (fbi[i].mode == mode && fbi[i].len != 0) {
 			ipio_info("Download %s code from hex 0x%x to IRAN 0x%x len = 0x%x\n", fbi[i].name, fbi[i].start, fbi[i].mem_start, fbi[i].len);
-			ilitek_tddi_fw_iram_program(fbi[i].mem_start, fbi[i].len, (fw_ptr + fbi[i].start) , SPI_UPGRADE_LEN);
+			ilitek_tddi_fw_iram_program(fbi[i].mem_start, fbi[i].len, (fw_ptr + fbi[i].start), SPI_UPGRADE_LEN);
 
-			crc = CalculateCRC32(fbi[i].start, fbi[i].len - 4 , fw_ptr);
+			crc = CalculateCRC32(fbi[i].start, fbi[i].len - 4, fw_ptr);
 			dma = host_download_dma_check(fbi[i].mem_start, fbi[i].len - 4);
 
-			ipio_info("%s CRC is %s (%x) : (%x)\n",fbi[i].name, (crc != dma ? "Invalid !" : "Correct !"), crc, dma);
+			ipio_info("%s CRC is %s (%x) : (%x)\n", fbi[i].name, (crc != dma ? "Invalid !" : "Correct !"), crc, dma);
 
 			if (crc != dma)
 				ret = UPDATE_FAIL;
@@ -546,7 +549,7 @@ static int ilitek_tddi_fw_iram_upgrade(u8 *pfw)
 	}
 
 out:
-	if (idev->actual_fw_mode != P5_X_FW_GESTURE_MODE)
+	if (idev->actual_tp_mode != P5_X_FW_GESTURE_MODE)
 		ilitek_tddi_reset_ctrl(TP_IC_CODE_RST);
 
 	ilitek_ice_mode_ctrl(DISABLE, OFF);
@@ -639,7 +642,7 @@ static int ilitek_tddi_fw_flash_erase(void)
 
 		ipio_info("Block[%d]: Erasing from (0x%x) to (0x%x) \n", i, fbi[i].start, fbi[i].end);
 
-		for(addr = fbi[i].start; addr <= fbi[i].end; addr += idev->flash_sector) {
+		for (addr = fbi[i].start; addr <= fbi[i].end; addr += idev->flash_sector) {
 			ilitek_tddi_flash_write_enable();
 
 			ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x0, 1); /* CS low */
@@ -717,7 +720,7 @@ static void ilitek_tddi_fw_update_block_info(u8 *pfw, u8 type)
 {
 	u32 ges_area_section, ges_info_addr, ges_fw_start, ges_fw_end;
 
-    ipio_info("Upgarde = %s, Tag = %x\n", type ? "IRAM" : "Flash", tfd.hex_tag);
+	ipio_info("Upgarde = %s, Tag = %x\n", type ? "IRAM" : "Flash", tfd.hex_tag);
 
 	if (type == UPGRADE_IRAM) {
 		if (tfd.hex_tag == BLOCK_TAG_AF) {
@@ -725,7 +728,7 @@ static void ilitek_tddi_fw_update_block_info(u8 *pfw, u8 type)
 			fbi[DATA].mem_start = (fbi[DATA].fix_mem_start != INT_MAX) ? fbi[DATA].fix_mem_start : DLM_START_ADDRESS;
 			fbi[TUNING].mem_start = (fbi[TUNING].fix_mem_start != INT_MAX) ? fbi[TUNING].fix_mem_start :  fbi[DATA].mem_start + fbi[DATA].len;
 			fbi[MP].mem_start = (fbi[MP].fix_mem_start != INT_MAX) ? fbi[MP].fix_mem_start :  0;
-			fbi[GESTURE].mem_start = (fbi[GESTURE].fix_mem_start != INT_MAX) ? fbi[GESTURE].fix_mem_start :  0;
+			fbi[GESTURE].mem_start = (fbi[GESTURE].fix_mem_start != INT_MAX) ? fbi[GESTURE].fix_mem_start :	 0;
 
 			/* Parsing gesture info form AP code */
 			ges_info_addr = (fbi[AP].end + 1 - 60);
@@ -765,14 +768,14 @@ static void ilitek_tddi_fw_update_block_info(u8 *pfw, u8 type)
 		else
 			ipio_err("There is no gesture data inside fw\n");
 
-		ipio_info("GESTURE memory start = 0x%x, upgrade lenth = 0x%x, hex area = %d, ap_start_addr = 0x%x, ap_end_addr = 0x%x",
+		ipio_info("gesture memory start = 0x%x, upgrade lenth = 0x%x, hex area = %d, ap_start_addr = 0x%x, ap_end_addr = 0x%x",
 					fbi[GESTURE].mem_start, MAX_GESTURE_FIRMWARE_SIZE, ges_area_section, ges_fw_start, ges_fw_end);
 
-		fbi[AP].name ="AP";
-		fbi[DATA].name ="DATA";
-		fbi[TUNING].name ="TUNING";
-		fbi[MP].name ="MP";
-		fbi[GESTURE].name ="GESTURE";
+		fbi[AP].name = "AP";
+		fbi[DATA].name = "DATA";
+		fbi[TUNING].name = "TUNING";
+		fbi[MP].name = "MP";
+		fbi[GESTURE].name = "GESTURE";
 
 		/* upgrade mode define */
 		fbi[DATA].mode = fbi[AP].mode = fbi[TUNING].mode = AP;
@@ -784,7 +787,7 @@ static void ilitek_tddi_fw_update_block_info(u8 *pfw, u8 type)
 	tfd.new_fw_cb = (pfw[FW_VER_ADDR] << 24) | (pfw[FW_VER_ADDR + 1] << 16) |
 			(pfw[FW_VER_ADDR + 2] << 8) | (pfw[FW_VER_ADDR + 3]);
 
-	/* Calculate update adress  */
+	/* Calculate update adress	*/
 	ipio_info("New FW ver = 0x%x\n", tfd.new_fw_cb);
 	ipio_info("star_addr = 0x%06X, end_addr = 0x%06X, Block Num = %d\n", tfd.start_addr, tfd.end_addr, tfd.block_number);
 }
@@ -795,7 +798,7 @@ static void ilitek_tddi_fw_ili_convert(u8 *pfw)
 	u8 block;
 	u32 Addr;
 
-	ipio_info("Start to parser ILI file, type = %d, block_count = %d\n", CTPM_FW[32], CTPM_FW[33]);
+	ipio_info("Start to parse ILI file, type = %d, block_count = %d\n", CTPM_FW[32], CTPM_FW[33]);
 
 	memset(fbi, 0x0, sizeof(fbi));
 
@@ -824,10 +827,10 @@ static void ilitek_tddi_fw_ili_convert(u8 *pfw)
 				fbi[num].fix_mem_start = INT_MAX;
 			}
 			fbi[num].len = fbi[num].end - fbi[num].start + 1;
-			ipio_info("Block[%d]: start_addr = %x, end = %x\n",
-					num, fbi[num].start, fbi[num].end);
+			ipio_info("Block[%d]: start_addr = %x, end = %x\n", num, fbi[num].start, fbi[num].end);
 		}
 	}
+
 	if ((block_enable & 0x80) == 0x80) {
 		for (i = 0; i < 3; i++) {
 			Addr = (CTPM_FW[6 + i * 4] << 16) + (CTPM_FW[7 + i * 4] << 8) + (CTPM_FW[8 + i * 4]);
@@ -839,7 +842,6 @@ static void ilitek_tddi_fw_ili_convert(u8 *pfw)
 			}
 		}
 	}
-
 
 out:
 	tfd.block_number = CTPM_FW[33];
@@ -927,75 +929,73 @@ static int ilitek_tdd_fw_hex_open(u8 open_file_method, u8 *pfw)
 	mm_segment_t old_fs;
 	loff_t pos = 0;
 
-    ipio_info("Open file method = %s, path = %s\n",
+	ipio_info("Open file method = %s, path = %s\n",
 		open_file_method ? "FILP_OPEN" : "REQUEST_FIRMWARE", UPDATE_FW_PATH);
 
 	switch (open_file_method) {
-		case REQUEST_FIRMWARE:
-            if (request_firmware(&fw, UPDATE_FW_PATH, idev->dev) < 0) {
-                ipio_err("Rquest firmware failed\n");
-                return -ENOMEM;
-            }
+	case REQUEST_FIRMWARE:
+		if (request_firmware(&fw, UPDATE_FW_PATH, idev->dev) < 0) {
+			ipio_err("Rquest firmware failed\n");
+			return -ENOMEM;
+		}
 
-            fsize = fw->size;
-            ipio_info("fsize = %d\n", fsize);
-            if (fsize <= 0) {
-                ipio_err("The size of file is zero\n");
-                release_firmware(fw);
-                return -ENOMEM;
-            }
-
-			hex_buffer = vmalloc(fsize * sizeof(u8));
-			if (ERR_ALLOC_MEM(hex_buffer)) {
-				ipio_err("Failed to allocate hex_buffer memory, %ld\n", PTR_ERR(hex_buffer));
-				release_firmware(fw);
-				return -ENOMEM;
-			}
-
-			ipio_memcpy(hex_buffer, fw->data, fsize * sizeof(*fw->data), fsize);
+		fsize = fw->size;
+		ipio_info("fsize = %d\n", fsize);
+		if (fsize <= 0) {
+			ipio_err("The size of file is zero\n");
 			release_firmware(fw);
-            break;
-        case FILP_OPEN:
-            f = filp_open(UPDATE_FW_PATH, O_RDONLY, 0644);
-            if (ERR_ALLOC_MEM(f)) {
-                ipio_err("Failed to open the file at %ld.\n", PTR_ERR(f));
-                return -ENOMEM;
-            }
+			return -ENOMEM;
+		}
 
-            fsize = f->f_inode->i_size;
-            ipio_info("fsize = %d\n", fsize);
-            if (fsize <= 0) {
-                ipio_err("The size of file is invaild\n");
-                filp_close(f, NULL);
-                return -ENOMEM;
-            }
+		hex_buffer = vmalloc(fsize * sizeof(u8));
+		if (ERR_ALLOC_MEM(hex_buffer)) {
+			ipio_err("Failed to allocate hex_buffer memory, %ld\n", PTR_ERR(hex_buffer));
+			release_firmware(fw);
+			return -ENOMEM;
+		}
 
-            hex_buffer = vmalloc(fsize * sizeof(u8));
-            if (ERR_ALLOC_MEM(hex_buffer)) {
-                ipio_err("Failed to allocate hex_buffer memory, %ld\n", PTR_ERR(hex_buffer));
-                filp_close(f, NULL);
-                return -ENOMEM;
-            }
+		ipio_memcpy(hex_buffer, fw->data, fsize * sizeof(*fw->data), fsize);
+		release_firmware(fw);
+		break;
+	case FILP_OPEN:
+		f = filp_open(UPDATE_FW_PATH, O_RDONLY, 0644);
+		if (ERR_ALLOC_MEM(f)) {
+			ipio_err("Failed to open the file at %ld.\n", PTR_ERR(f));
+			return -ENOMEM;
+		}
 
-            /* ready to map user's memory to obtain data by reading files */
-            old_fs = get_fs();
-            set_fs(get_ds());
-            set_fs(KERNEL_DS);
-            pos = 0;
-            vfs_read(f, hex_buffer, fsize, &pos);
-            set_fs(old_fs);
-            filp_close(f, NULL);
-            break;
-        default:
-            ipio_err("Unknown open file method, %d\n", open_file_method);
-            break;
-    }
+		fsize = f->f_inode->i_size;
+		ipio_info("fsize = %d\n", fsize);
+		if (fsize <= 0) {
+			ipio_err("The size of file is invaild\n");
+			filp_close(f, NULL);
+			return -ENOMEM;
+		}
 
+		hex_buffer = vmalloc(fsize * sizeof(u8));
+		if (ERR_ALLOC_MEM(hex_buffer)) {
+			ipio_err("Failed to allocate hex_buffer memory, %ld\n", PTR_ERR(hex_buffer));
+			filp_close(f, NULL);
+			return -ENOMEM;
+		}
+
+		/* ready to map user's memory to obtain data by reading files */
+		old_fs = get_fs();
+		set_fs(get_ds());
+		set_fs(KERNEL_DS);
+		pos = 0;
+		vfs_read(f, hex_buffer, fsize, &pos);
+		set_fs(old_fs);
+		filp_close(f, NULL);
+		break;
+	default:
+		ipio_err("Unknown open file method, %d\n", open_file_method);
+		break;
+	}
 	/* Convert hex and copy data from hex_buffer to pfw */
 	ilitek_tddi_fw_hex_convert(hex_buffer, fsize, pfw);
-
 	ipio_vfree((void **)&hex_buffer);
-    return 0;
+	return 0;
 }
 
 static void ilitek_tddi_fw_update_tp_info(int ret)
@@ -1028,8 +1028,8 @@ static void ilitek_tddi_fw_update_tp_info(int ret)
 
 int ilitek_tddi_fw_upgrade(int upgrade_type, int file_type, int open_file_method)
 {
-    int ret = 0, retry = 3;
-    u8 *pfw = NULL;
+	int ret = 0, retry = 3;
+	u8 *pfw = NULL;
 
 	pfw = vmalloc(MAX_HEX_FILE_SIZE * sizeof(u8));
 	if (ERR_ALLOC_MEM(pfw)) {
@@ -1040,9 +1040,9 @@ int ilitek_tddi_fw_upgrade(int upgrade_type, int file_type, int open_file_method
 
 	memset(pfw, 0xFF, MAX_HEX_FILE_SIZE * sizeof(u8));
 
-	ipio_info("Convert fw data from %s\n", (file_type == ILI_FILE ? "ILI_FILE" : "HEX_FILE"));
+	ipio_info("Convert FW file from %s\n", (file_type == ILI_FILE ? "ILI_FILE" : "HEX_FILE"));
 
-	if (idev->actual_fw_mode != P5_X_FW_GESTURE_MODE) {
+	if (idev->actual_tp_mode != P5_X_FW_GESTURE_MODE) {
 		if (ilitek_tdd_fw_hex_open(open_file_method, pfw) < 0) {
 			ipio_err("Open hex file fail, try upgrade from ILI file\n");
 			ilitek_tddi_fw_ili_convert(pfw);
@@ -1058,7 +1058,7 @@ int ilitek_tddi_fw_upgrade(int upgrade_type, int file_type, int open_file_method
 
 		if (ret == UPDATE_PASS)
 			break;
-	} while(--retry > 0);
+	} while (--retry > 0);
 
 	if (ret != UPDATE_PASS) {
 		ipio_err("Upgrade firmware failed after retry 3 times\n");
@@ -1068,7 +1068,7 @@ int ilitek_tddi_fw_upgrade(int upgrade_type, int file_type, int open_file_method
 	ilitek_tddi_fw_update_tp_info(ret);
 out:
 	ipio_vfree((void **)&pfw);
-    return ret;
+	return ret;
 }
 
 struct flash_table {
@@ -1079,8 +1079,8 @@ struct flash_table {
 	int sector;
 } flashtab[] = {
 	[0] = {0x00, 0x0000, (256 * K), 256, (4 * K)}, /* Default */
-	[1] = {0xEF, 0x6011, (128 * K), 256, (4 * K)}, /* W25Q10EW  */
-	[2] = {0xEF, 0x6012, (256 * K), 256, (4 * K)}, /* W25Q20EW  */
+	[1] = {0xEF, 0x6011, (128 * K), 256, (4 * K)}, /* W25Q10EW	*/
+	[2] = {0xEF, 0x6012, (256 * K), 256, (4 * K)}, /* W25Q20EW	*/
 	[3] = {0xC8, 0x6012, (256 * K), 256, (4 * K)}, /* GD25LQ20B */
 	[4] = {0xC8, 0x6013, (512 * K), 256, (4 * K)}, /* GD25LQ40 */
 	[5] = {0x85, 0x6013, (4 * M), 256, (4 * K)},
@@ -1107,7 +1107,6 @@ void ilitek_tddi_fw_read_flash_info(bool mode)
 	for (i = 0; i < ARRAY_SIZE(buf); i++) {
 		ilitek_ice_mode_write(FLASH2_ADDR, 0xFF, 1);
 		buf[i] = ilitek_ice_mode_read(FLASH4_ADDR, sizeof(u8));
-		//ipio_info("buf[%d] = %x\n", i, buf[i]);
 	}
 
 	ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x1, 1); /* CS high */

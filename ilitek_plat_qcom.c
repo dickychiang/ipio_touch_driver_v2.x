@@ -335,8 +335,8 @@ static int ilitek_plat_notifier_fb(struct notifier_block *self, unsigned long ev
 	ipio_info("Notifier's event = %ld\n", event);
 
 	/*
-	 *  FB_EVENT_BLANK(0x09): A hardware display blank change occurred.
-	 *  FB_EARLY_EVENT_BLANK(0x10): A hardware display blank early change occurred.
+	 *	FB_EVENT_BLANK(0x09): A hardware display blank change occurred.
+	 *	FB_EARLY_EVENT_BLANK(0x10): A hardware display blank early change occurred.
 	 */
 	if (evdata && evdata->data) {
 		blank = evdata->data;
@@ -349,7 +349,7 @@ static int ilitek_plat_notifier_fb(struct notifier_block *self, unsigned long ev
 				if (event != FB_EARLY_EVENT_BLANK)
 					return NOTIFY_DONE;
 			} else {
-				 if (event != FB_EVENT_BLANK)
+				if (event != FB_EVENT_BLANK)
 					return NOTIFY_DONE;
 			}
 			ilitek_tddi_sleep_handler(TP_SUSPEND);
@@ -387,10 +387,10 @@ static void ilitek_plat_sleep_init(void)
 	ipio_info("Init notifier_fb struct\n");
 	idev->notifier_fb.notifier_call = ilitek_plat_notifier_fb;
 #ifdef CONFIG_PLAT_SPRD
-	if(adf_register_client(&idev->notifier_fb))
+	if (adf_register_client(&idev->notifier_fb))
 		ipio_err("Unable to register notifier_fb\n");
 #else
-	if(fb_register_client(&idev->notifier_fb))
+	if (fb_register_client(&idev->notifier_fb))
 		ipio_err("Unable to register notifier_fb\n");
 #endif /* CONFIG_PLAT_SPRD */
 #else
@@ -409,47 +409,47 @@ static int ilitek_plat_probe(void)
 	if (REGULATOR_POWER)
 		ilitek_plat_regulator_power_init();
 
-    ilitek_plat_gpio_register();
+	ilitek_plat_gpio_register();
 
-    if (ilitek_tddi_init() < 0) {
-        ipio_err("platform probe failed\n");
-        return -ENODEV;
-    }
+	if (ilitek_tddi_init() < 0) {
+		ipio_err("platform probe failed\n");
+		return -ENODEV;
+	}
 
-    ilitek_plat_irq_register();
+	ilitek_plat_irq_register();
 	ilitek_plat_sleep_init();
 	return 0;
 }
 
 static int ilitek_plat_remove(void)
 {
-    ipio_info();
+	ipio_info();
 	ilitek_tddi_dev_remove();
-    return 0;
+	return 0;
 }
 
-static struct of_device_id tp_match_table[] = {
+static const struct of_device_id tp_match_table[] = {
 	{.compatible = DTS_OF_NAME},
 	{},
 };
 
 static struct ilitek_hwif_info hwif = {
-    .bus_type = TDDI_INTERFACE,
-    .plat_type = TP_PLAT_QCOM,
-    .owner = THIS_MODULE,
-    .name = TDDI_DEV_ID,
-    .of_match_table = of_match_ptr(tp_match_table),
-    .plat_probe = ilitek_plat_probe,
-    .plat_remove = ilitek_plat_remove,
+	.bus_type = TDDI_INTERFACE,
+	.plat_type = TP_PLAT_QCOM,
+	.owner = THIS_MODULE,
+	.name = TDDI_DEV_ID,
+	.of_match_table = of_match_ptr(tp_match_table),
+	.plat_probe = ilitek_plat_probe,
+	.plat_remove = ilitek_plat_remove,
 };
 
 static int __init ilitek_plat_dev_init(void)
 {
 	ipio_info("ILITEK TP driver init for QCOM\n");
-    if (ilitek_tddi_dev_init(&hwif) < 0) {
-        ipio_err("Failed to register i2c/spi bus driver\n");
-        return -ENODEV;
-    }
+	if (ilitek_tddi_dev_init(&hwif) < 0) {
+		ipio_err("Failed to register i2c/spi bus driver\n");
+		return -ENODEV;
+	}
 	return 0;
 }
 
@@ -462,3 +462,4 @@ module_init(ilitek_plat_dev_init);
 module_exit(ilitek_plat_dev_exit);
 MODULE_AUTHOR("ILITEK");
 MODULE_LICENSE("GPL");
+\ No newline at end of file

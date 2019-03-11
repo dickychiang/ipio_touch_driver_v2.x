@@ -196,28 +196,28 @@ static int debug_mode_get_data(struct file_buffer *file, u8 type, u32 frame_coun
 	if (ret < 0)
 		return ret;
 
-	while((write_index < frame_count) && (timeout > 0)) {
-		ipio_info("frame = %d,index = %d,count = %d\n",write_index, write_index % 1024, idev->debug_data_frame);
+	while ((write_index < frame_count) && (timeout > 0)) {
+		ipio_info("frame = %d,index = %d,count = %d\n", write_index, write_index % 1024, idev->debug_data_frame);
 		if ((write_index % 1024) < idev->debug_data_frame) {
 			mutex_lock(&idev->touch_mutex);
 			file->file_len = 0;
 			memset(file->ptr, 0, file->file_max_zise);
-			file->file_len += sprintf(file->ptr + file->file_len, "\n\nFrame%d,",write_index);
-			for (j = 0; j < col; j ++)
-				file->file_len += sprintf(file->ptr + file->file_len, "[X%d] ,",j);
+			file->file_len += sprintf(file->ptr + file->file_len, "\n\nFrame%d,", write_index);
+			for (j = 0; j < col; j++)
+				file->file_len += sprintf(file->ptr + file->file_len, "[X%d] ,", j);
 			ptr = &idev->debug_buf[write_index%1024][35];
-			for (j = 0; j < row * col; j ++, ptr+=2) {
+			for (j = 0; j < row * col; j++, ptr += 2) {
 				temp = (*ptr << 8) + *(ptr + 1);
 				if (j % col == 0)
-					file->file_len += sprintf(file->ptr + file->file_len, "\n[Y%d] ,",(j / col));
-				file->file_len += sprintf(file->ptr + file->file_len, "%d, ",temp);
+					file->file_len += sprintf(file->ptr + file->file_len, "\n[Y%d] ,", (j / col));
+				file->file_len += sprintf(file->ptr + file->file_len, "%d, ", temp);
 			}
 			file->file_len += sprintf(file->ptr + file->file_len, "\n[X] ,");
-			for (j = 0; j < row + col; j ++, ptr+=2) {
+			for (j = 0; j < row + col; j++, ptr += 2) {
 				temp = (*ptr << 8) + *(ptr + 1);
 				if (j == col)
 					file->file_len += sprintf(file->ptr + file->file_len, "\n[Y] ,");
-				file->file_len += sprintf(file->ptr + file->file_len, "%d, ",temp);
+				file->file_len += sprintf(file->ptr + file->file_len, "%d, ", temp);
 			}
 			file_write(file, false);
 			write_index++;
@@ -239,19 +239,19 @@ static int debug_mode_get_data(struct file_buffer *file, u8 type, u32 frame_coun
 
 static int dev_mkdir(char *name, umode_t mode)
 {
-    struct dentry *dentry;
-    struct path path;
-    int err;
+	struct dentry *dentry;
+	struct path path;
+	int err;
 
 	ipio_info("mkdir: %s\n", name);
 
-    dentry = kern_path_create(AT_FDCWD, name, &path, LOOKUP_DIRECTORY);
-    if (IS_ERR(dentry))
-        return PTR_ERR(dentry);
+	dentry = kern_path_create(AT_FDCWD, name, &path, LOOKUP_DIRECTORY);
+	if (IS_ERR(dentry))
+		return PTR_ERR(dentry);
 
-    err = vfs_mkdir(path.dentry->d_inode, dentry, mode);
-    done_path_create(&path, dentry);
-    return err;
+	err = vfs_mkdir(path.dentry->d_inode, dentry, mode);
+	done_path_create(&path, dentry);
+	return err;
 }
 
 static ssize_t ilitek_proc_get_delta_data_read(struct file *pFile, char __user *buf, size_t size, loff_t *pos)
@@ -317,8 +317,8 @@ static ssize_t ilitek_proc_get_delta_data_read(struct file *pFile, char __user *
 	ipio_info("======== Deltadata ========\n");
 
 	size += snprintf(g_user_buf + size, PAGE_SIZE - size,
-		"Header 0x%x ,Type %d, Length %d\n",data[0], data[1], (data[2]<<8) | data[3]);
-	ipio_info("Header 0x%x ,Type %d, Length %d\n",data[0], data[1], (data[2]<<8) | data[3]);
+		"Header 0x%x ,Type %d, Length %d\n", data[0], data[1], (data[2] << 8) | data[3]);
+	ipio_info("Header 0x%x ,Type %d, Length %d\n", data[0], data[1], (data[2] << 8) | data[3]);
 
 	// print delta data
 	for (y = 0; y < row; y++) {
@@ -413,8 +413,8 @@ static ssize_t ilitek_proc_fw_get_raw_data_read(struct file *pFile, char __user 
 	ipio_info("======== RawData ========\n");
 
 	size += snprintf(g_user_buf + size, PAGE_SIZE - size,
-			"Header 0x%x ,Type %d, Length %d\n",data[0], data[1], (data[2]<<8) | data[3]);
-	ipio_info("Header 0x%x ,Type %d, Length %d\n",data[0], data[1], (data[2]<<8) | data[3]);
+			"Header 0x%x ,Type %d, Length %d\n", data[0], data[1], (data[2] << 8) | data[3]);
+	ipio_info("Header 0x%x ,Type %d, Length %d\n", data[0], data[1], (data[2] << 8) | data[3]);
 
 	// print raw data
 	for (y = 0; y < row; y++) {
@@ -626,8 +626,8 @@ static ssize_t ilitek_proc_debug_message_read(struct file *filp, char __user *bu
 			if (need_read_data_len <= 0) {
 				ipio_err("parse data err data len = %d\n", need_read_data_len);
 				send_data_len +=
-				    sprintf(tmpbuf + send_data_len, "parse data err data len = %d\n",
-					    need_read_data_len);
+					sprintf(tmpbuf + send_data_len, "parse data err data len = %d\n",
+						need_read_data_len);
 			} else {
 				for (i = 0; i < need_read_data_len; i++) {
 					send_data_len += sprintf(tmpbuf + send_data_len, "%02X", idev->debug_buf[0][i]);
@@ -667,7 +667,7 @@ static ssize_t ilitek_proc_debug_message_read(struct file *filp, char __user *bu
 	} else {
 		*pos += count;
 		ret = count;
-		ipio_debug(DEBUG_FINGER_REPORT, "Read %d bytes(s) from %ld\n", count, p);
+		ipio_debug(DEBUG_TOUCH, "Read %d bytes(s) from %ld\n", count, p);
 	}
 
 out:
@@ -787,8 +787,8 @@ static ssize_t ilitek_node_mp_lcm_on_test_read(struct file *filp, char __user *b
 
 	/* Create the directory for mp_test result */
 	ret = dev_mkdir(CSV_LCM_ON_PATH, S_IRUGO | S_IWUSR);
-    if (ret != 0)
-        ipio_err("Failed to create directory for mp_test\n");
+	if (ret != 0)
+		ipio_err("Failed to create directory for mp_test\n");
 
 	ilitek_tddi_mp_test_handler(apk_ret, ON);
 
@@ -811,8 +811,8 @@ static ssize_t ilitek_node_mp_lcm_off_test_read(struct file *filp, char __user *
 
 	/* Create the directory for mp_test result */
 	ret = dev_mkdir(CSV_LCM_OFF_PATH, S_IRUGO | S_IWUSR);
-    if (ret != 0)
-        ipio_err("Failed to create directory for mp_test\n");
+	if (ret != 0)
+		ipio_err("Failed to create directory for mp_test\n");
 
 	ilitek_tddi_mp_test_handler(apk_ret, OFF);
 
@@ -856,14 +856,14 @@ static ssize_t ilitek_node_fw_upgrade_read(struct file *filp, char __user *buff,
 	if (*pos != 0)
 		return 0;
 
-    memset(g_user_buf, 0, USER_STR_BUFF * sizeof(unsigned char));
+	memset(g_user_buf, 0, USER_STR_BUFF * sizeof(unsigned char));
 
-    ret = ilitek_tddi_fw_upgrade_handler(NULL);
+	ret = ilitek_tddi_fw_upgrade_handler(NULL);
 	len = sprintf(g_user_buf, "upgrade firwmare %s\n", (ret != 0) ? "failed" : "succeed");
 
 	ret = copy_to_user((u32 *) buff, g_user_buf, len);
 	if (ret < 0)
-        ipio_err("Failed to copy data to user space\n");
+		ipio_err("Failed to copy data to user space\n");
 
 	return 0;
 }
@@ -893,7 +893,7 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 
 	while ((token = strsep(&cur, ",")) != NULL) {
 		data[count] = str2hex(token);
-		ipio_info("data[%d] = %x\n",count, data[count]);
+		ipio_info("data[%d] = %x\n", count, data[count]);
 		count++;
 	}
 
@@ -1002,7 +1002,7 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 		ipio_info("Start = 0x%x, End = 0x%x, Dump Hex path = %s\n", data[1], data[2], DUMP_FLASH_PATH);
 		ilitek_tddi_fw_dump_flash_data(data[1], data[2], false);
 	} else if (strcmp(cmd, "edge_plam_ctrl") == 0) {
-		ilitek_tddi_edge_plam_ctrl(data[1]);
+		ilitek_tddi_edge_palm_ctrl(data[1]);
 	} else {
 		ipio_err("Unknown command\n");
 	}
@@ -1015,7 +1015,7 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 {
 	int ret = 0, length = 0;
 	u8 *szBuf = NULL, if_to_user = 0;
-	static u16 i2c_rw_length = 0;
+	static u16 i2c_rw_length;
 	u32 id_to_user[3] = {0};
 	char dbg[10] = { 0 };
 
@@ -1111,7 +1111,7 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 			ipio_err("Failed to copy data from user space\n");
 			break;
 		}
-		ipio_info("ioctl: set func mode = %x,%x,%x\n", szBuf[0],szBuf[1],szBuf[2]);
+		ipio_info("ioctl: set func mode = %x,%x,%x\n", szBuf[0], szBuf[1], szBuf[2]);
 		idev->write(&szBuf[0], 3);
 		break;
 	case ILITEK_IOCTL_TP_FW_VER:
@@ -1192,10 +1192,10 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 		ipio_info("ioctl: netlink ctrl = %d\n", szBuf[0]);
 		if (szBuf[0]) {
 			idev->netlink = ENABLE;
-			ipio_debug(DEBUG_IOCTL, "ioctl: Netlink is enabled\n");
+			ipio_debug(DEBUG_NODE, "ioctl: Netlink is enabled\n");
 		} else {
 			idev->netlink = DISABLE;
-			ipio_debug(DEBUG_IOCTL, "ioctl: Netlink is disabled\n");
+			ipio_debug(DEBUG_NODE, "ioctl: Netlink is disabled\n");
 		}
 		break;
 	case ILITEK_IOCTL_TP_NETLINK_STATUS:
@@ -1213,12 +1213,12 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 		ipio_info("ioctl: switch fw mode = %d\n", szBuf[0]);
 		ret = ilitek_tddi_switch_mode(szBuf);
 		if (ret < 0) {
-			ipio_debug(DEBUG_IOCTL, "switch to fw mode (%d) failed\n", szBuf[0]);
+			ipio_debug(DEBUG_NODE, "switch to fw mode (%d) failed\n", szBuf[0]);
 		}
 		break;
 	case ILITEK_IOCTL_TP_MODE_STATUS:
-		ipio_info("ioctl: current firmware mode = %d", idev->actual_fw_mode);
-		ret = copy_to_user((int *)arg, &idev->actual_fw_mode, sizeof(int));
+		ipio_info("ioctl: current firmware mode = %d", idev->actual_tp_mode);
+		ret = copy_to_user((int *)arg, &idev->actual_tp_mode, sizeof(int));
 		if (ret < 0)
 			ipio_err("Failed to copy chip id to user space\n");
 		break;
@@ -1232,11 +1232,10 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 		ipio_info("ioctl: switch ice mode = %d", szBuf[0]);
 		if (szBuf[0]) {
 			atomic_set(&idev->ice_stat, ENABLE);
-			ipio_debug(DEBUG_IOCTL, "ioctl: set ice mode enabled\n");
-		}
-		else {
+			ipio_debug(DEBUG_NODE, "ioctl: set ice mode enabled\n");
+		} else {
 			atomic_set(&idev->ice_stat, DISABLE);
-			ipio_debug(DEBUG_IOCTL, "ioctl: set ice mode disabled\n");
+			ipio_debug(DEBUG_NODE, "ioctl: set ice mode disabled\n");
 		}
 		break;
 	case ILITEK_IOCTL_TP_INTERFACE_TYPE:
@@ -1350,9 +1349,9 @@ void netlink_reply_msg(void *raw, int size)
 	int msg_size = size;
 	u8 *data = (u8 *) raw;
 
-	ipio_debug(DEBUG_NETLINK, "The size of data being sent to user = %d\n", msg_size);
-	ipio_debug(DEBUG_NETLINK, "pid = %d\n", netlink_pid);
-	ipio_debug(DEBUG_NETLINK, "Netlink is enable = %d\n", idev->netlink);
+	ipio_debug(DEBUG_NODE, "The size of data being sent to user = %d\n", msg_size);
+	ipio_debug(DEBUG_NODE, "pid = %d\n", netlink_pid);
+	ipio_debug(DEBUG_NODE, "Netlink is enable = %d\n", idev->netlink);
 
 	if (idev->netlink) {
 		skb_out = nlmsg_new(msg_size, 0);
@@ -1378,17 +1377,17 @@ static void netlink_recv_msg(struct sk_buff *skb)
 {
 	netlink_pid = 0;
 
-	ipio_debug(DEBUG_NETLINK, "Netlink = %d\n", idev->netlink);
+	ipio_debug(DEBUG_NODE, "Netlink = %d\n", idev->netlink);
 
 	netlink_head = (struct nlmsghdr *)skb->data;
 
-	ipio_debug(DEBUG_NETLINK, "Received a request from client: %s, %d\n",
-	    (char *)NLMSG_DATA(netlink_head), (int)strlen((char *)NLMSG_DATA(netlink_head)));
+	ipio_debug(DEBUG_NODE, "Received a request from client: %s, %d\n",
+		(char *)NLMSG_DATA(netlink_head), (int)strlen((char *)NLMSG_DATA(netlink_head)));
 
 	/* pid of sending process */
 	netlink_pid = netlink_head->nlmsg_pid;
 
-	ipio_debug(DEBUG_NETLINK, "the pid of sending process = %d\n", netlink_pid);
+	ipio_debug(DEBUG_NODE, "the pid of sending process = %d\n", netlink_pid);
 
 	/* TODO: may do something if there's not receiving msg from user. */
 	if (netlink_pid != 0) {
@@ -1430,7 +1429,7 @@ void ilitek_tddi_node_init(void)
 	proc_dir_ilitek = proc_mkdir("ilitek", NULL);
 
 	for (; i < ARRAY_SIZE(proc_table); i++) {
-		proc_table[i].node = proc_create(proc_table[i].name, 0666, proc_dir_ilitek, proc_table[i].fops);
+		proc_table[i].node = proc_create(proc_table[i].name, 0644, proc_dir_ilitek, proc_table[i].fops);
 
 		if (proc_table[i].node == NULL) {
 			proc_table[i].isCreated = false;

@@ -42,7 +42,7 @@
 #include <linux/regulator/consumer.h>
 #include <linux/power_supply.h>
 #include <linux/fs.h>
-#include <asm/uaccess.h>
+#include <linux/uaccess.h>
 
 #include <linux/cdev.h>
 #include <linux/device.h>
@@ -101,11 +101,12 @@
 #define TDDI_INTERFACE			BUS_SPI /* BUS_I2C(0x18) or BUS_SPI(0x1C) */
 #define VDD_VOLTAGE				1800000
 #define VCC_VOLTAGE				1800000
-#define SPI_CLK					(1*M)
+#define SPI_CLK					(10*M)
+#define SPI_RETRY				5
 #define WQ_ESD_DELAY			4000
 #define WQ_BAT_DELAY			2000
 #define MT_B_TYPE				ENABLE
-#define TDDI_RST_BIND 			DISABLE
+#define TDDI_RST_BIND			DISABLE
 #define MT_PRESSURE				DISABLE
 #define ENABLE_WQ_ESD			ENABLE
 #define ENABLE_WQ_BAT			DISABLE
@@ -119,14 +120,14 @@
 /* Path */
 #define DEBUG_DATA_FILE_SIZE	(10*K)
 #define DEBUG_DATA_FILE_PATH	"/sdcard/ILITEK_log.csv"
-#define CSV_LCM_ON_PATH     	"/sdcard/ilitek_mp_lcm_on_log"
+#define CSV_LCM_ON_PATH			"/sdcard/ilitek_mp_lcm_on_log"
 #define CSV_LCM_OFF_PATH		"/sdcard/ilitek_mp_lcm_off_log"
 #define INI_NAME_PATH			"/sdcard/mp.ini"
 #define UPDATE_FW_PATH			"/sdcard/ILITEK_FW"
-#define POWER_STATUS_PATH 		"/sys/class/power_supply/battery/status"
+#define POWER_STATUS_PATH		"/sys/class/power_supply/battery/status"
 #define DUMP_FLASH_PATH			"/sdcard/flash_dump"
 
-/*  Debug messages */
+/*	Debug messages */
 #ifdef BIT
 #undef BIT
 #endif
@@ -134,45 +135,46 @@
 
 enum {
 	DEBUG_NONE = 0,
-	DEBUG_IRQ = BIT(0),
-	DEBUG_FINGER_REPORT = BIT(1),
-	DEBUG_FIRMWARE = BIT(2),
-	DEBUG_CONFIG = BIT(3),
-	DEBUG_I2C = BIT(4),
-	DEBUG_BATTERY = BIT(5),
-	DEBUG_MP_TEST = BIT(6),
-	DEBUG_IOCTL = BIT(7),
-	DEBUG_NETLINK = BIT(8),
-	DEBUG_PARSER = BIT(9),
-	DEBUG_GESTURE = BIT(10),
-	DEBUG_SPI = BIT(11),
+	DEBUG_MAIN = BIT(0),
+	DEBUG_TOUCH = BIT(1),
+	DEBUG_IC = BIT(2),
+	DEBUG_FW = BIT(3),
+	DEBUG_MP = BIT(4),
+	DEBUG_NODE = BIT(5),
+	DEBUG_I2C = BIT(6),
+	DEBUG_SPI = BIT(7),
+	DEBUG_PLAT = BIT(8),
 	DEBUG_ALL = ~0,
 };
 
-extern u32 ipio_debug_level;
-#define ipio_info(fmt, arg...)	\
-	pr_info("ILITEK: (%s, %d): " fmt, __func__, __LINE__, ##arg);
+extern s32 ipio_debug_level;
+#define ipio_info(fmt, arg...)										\
+({																	\
+	pr_info("ILITEK: (%s, %d): " fmt, __func__, __LINE__, ##arg);	\
+})																	\
 
-#define ipio_err(fmt, arg...)	\
-	pr_err("ILITEK: (%s, %d): " fmt, __func__, __LINE__, ##arg);
+#define ipio_err(fmt, arg...)										\
+({																	\
+	pr_err("ILITEK: (%s, %d): " fmt, __func__, __LINE__, ##arg);	\
+})																	\
 
-#define ipio_debug(level, fmt, arg...)									\
-	do {																\
-		if (level & ipio_debug_level)									\
-		pr_info("ILITEK: (%s, %d): " fmt, __func__, __LINE__, ##arg);	\
-	} while (0)
+#define ipio_debug(level, fmt, arg...)								\
+do {																\
+	if (level & ipio_debug_level)									\
+	pr_info("ILITEK: (%s, %d): " fmt, __func__, __LINE__, ##arg);	\
+} while (0)
 
 #define ERR_ALLOC_MEM(X)	((IS_ERR(X) || X == NULL) ? 1 : 0)
-#define K (1024)
-#define M (K * K)
-#define ENABLE			1
-#define START			1
-#define ON				1
-#define DISABLE 		0
-#define END				0
-#define OFF				0
-#define NONE			-1
-#define DO_SPI_RECOVER 	-2
+#define K					(1024)
+#define M					(K * K)
+#define ENABLE				1
+#define START				1
+#define ON					1
+#define DISABLE				0
+#define END					0
+#define OFF					0
+#define NONE				-1
+#define DO_SPI_RECOVER		-2
 
 enum TP_PLAT_TYPE {
 	TP_PLAT_MTK = 0,
@@ -241,10 +243,10 @@ enum TP_WQ_TYPE {
 #define TDDI_DEV_ID					"ILITEK_TDDI"
 
  /* define the width and heigth of a screen. */
-#define TOUCH_SCREEN_X_MIN 			0
-#define TOUCH_SCREEN_Y_MIN 			0
-#define TOUCH_SCREEN_X_MAX 			720
-#define TOUCH_SCREEN_Y_MAX 			1440
+#define TOUCH_SCREEN_X_MIN			0
+#define TOUCH_SCREEN_Y_MIN			0
+#define TOUCH_SCREEN_X_MAX			720
+#define TOUCH_SCREEN_Y_MAX			1440
 #define MAX_TOUCH_NUM				10
 
 /* define the range on panel */
@@ -262,9 +264,9 @@ enum TP_WQ_TYPE {
 #define MAX_GESTURE_FIRMWARE_SIZE	(8*K)
 #define MAX_TUNING_FIRMWARE_SIZE	(4*K)
 #define MAX_DDI_FIRMWARE_SIZE		(4*K)
-#define DLM_START_ADDRESS           0x20610
-#define DLM_HEX_ADDRESS             0x10000
-#define MP_HEX_ADDRESS              0x13000
+#define DLM_START_ADDRESS			0x20610
+#define DLM_HEX_ADDRESS				0x10000
+#define MP_HEX_ADDRESS				0x13000
 #define RESERVE_BLOCK_START_ADDR	0x1D000
 #define RESERVE_BLOCK_END_ADDR		0x1DFFF
 #define FW_VER_ADDR					0xFFE0
@@ -273,97 +275,97 @@ enum TP_WQ_TYPE {
 #define FW_BLOCK_INFO_NUM			7
 
 /* DMA Control Registers */
-#define DMA_BASED_ADDR 						0x72000
-#define DMA48_ADDR  						(DMA_BASED_ADDR + 0xC0)
-#define DMA48_reg_dma_ch0_busy_flag         DMA48_ADDR
-#define DMA48_reserved_0                    0xFFFE
-#define DMA48_reg_dma_ch0_trigger_sel       BIT(16)|BIT(17)|BIT(18)|BIT(19)
-#define DMA48_reserved_1                    BIT(20)|BIT(21)|BIT(22)|BIT(23)
-#define DMA48_reg_dma_ch0_start_set         BIT(24)
-#define DMA48_reg_dma_ch0_start_clear       BIT(25)
-#define DMA48_reg_dma_ch0_trigger_src_mask  BIT(26)
-#define DMA48_reserved_2                    BIT(27)
+#define DMA_BASED_ADDR						0x72000
+#define DMA48_ADDR							(DMA_BASED_ADDR + 0xC0)
+#define DMA48_reg_dma_ch0_busy_flag			DMA48_ADDR
+#define DMA48_reserved_0					0xFFFE
+#define DMA48_reg_dma_ch0_trigger_sel		(BIT(16)|BIT(17)|BIT(18)|BIT(19))
+#define DMA48_reserved_1					(BIT(20)|BIT(21)|BIT(22)|BIT(23))
+#define DMA48_reg_dma_ch0_start_set			BIT(24)
+#define DMA48_reg_dma_ch0_start_clear		BIT(25)
+#define DMA48_reg_dma_ch0_trigger_src_mask	BIT(26)
+#define DMA48_reserved_2					BIT(27)
 
-#define DMA49_ADDR  						(DMA_BASED_ADDR + 0xC4)
-#define DMA49_reg_dma_ch0_src1_addr         DMA49_ADDR
-#define DMA49_reserved_0                    BIT(20)
+#define DMA49_ADDR							(DMA_BASED_ADDR + 0xC4)
+#define DMA49_reg_dma_ch0_src1_addr			DMA49_ADDR
+#define DMA49_reserved_0					BIT(20)
 
-#define DMA50_ADDR  						(DMA_BASED_ADDR + 0xC8)
-#define DMA50_reg_dma_ch0_src1_step_inc     DMA50_ADDR
-#define DMA50_reserved_0                    (DMA50_ADDR + 0x01)
-#define DMA50_reg_dma_ch0_src1_format       BIT(24)|BIT(25)
-#define DMA50_reserved_1                    BIT(26)|BIT(27)|BIT(28)|BIT(29)|BIT(30)
-#define DMA50_reg_dma_ch0_src1_en           BIT(31)
+#define DMA50_ADDR							(DMA_BASED_ADDR + 0xC8)
+#define DMA50_reg_dma_ch0_src1_step_inc		DMA50_ADDR
+#define DMA50_reserved_0					(DMA50_ADDR + 0x01)
+#define DMA50_reg_dma_ch0_src1_format		(BIT(24)|BIT(25))
+#define DMA50_reserved_1					(BIT(26)|BIT(27)|BIT(28)|BIT(29)|BIT(30))
+#define DMA50_reg_dma_ch0_src1_en			BIT(31)
 
-#define DMA52_ADDR  						(DMA_BASED_ADDR + 0xD0)
-#define DMA52_reg_dma_ch0_src2_step_inc     DMA52_ADDR
-#define DMA52_reserved_0                    (DMA52_ADDR + 0x01)
-#define DMA52_reg_dma_ch0_src2_format       BIT(24)|BIT(25)
-#define DMA52_reserved_1                    BIT(26)|BIT(27)|BIT(28)|BIT(29)|BIT(30)
-#define DMA52_reg_dma_ch0_src2_en           BIT(31) // [RESET] h0
+#define DMA52_ADDR							(DMA_BASED_ADDR + 0xD0)
+#define DMA52_reg_dma_ch0_src2_step_inc		DMA52_ADDR
+#define DMA52_reserved_0					(DMA52_ADDR + 0x01)
+#define DMA52_reg_dma_ch0_src2_format		(BIT(24)|BIT(25))
+#define DMA52_reserved_1					(BIT(26)|BIT(27)|BIT(28)|BIT(29)|BIT(30))
+#define DMA52_reg_dma_ch0_src2_en			BIT(31) // [RESET] h0
 
-#define DMA53_ADDR  						(DMA_BASED_ADDR + 0xD4)
-#define DMA53_reg_dma_ch0_dest_addr         DMA53_ADDR
-#define DMA53_reserved_0                    BIT(20)
+#define DMA53_ADDR							(DMA_BASED_ADDR + 0xD4)
+#define DMA53_reg_dma_ch0_dest_addr			DMA53_ADDR
+#define DMA53_reserved_0					BIT(20)
 
-#define DMA54_ADDR  						(DMA_BASED_ADDR + 0xD8)
-#define DMA54_reg_dma_ch0_dest_step_inc     DMA54_ADDR
-#define DMA54_reserved_0                    (DMA54_ADDR + 0x01)
-#define DMA54_reg_dma_ch0_dest_format       BIT(24)|BIT(25)
-#define DMA54_reserved_1                    BIT(26)|BIT(27)|BIT(28)|BIT(29)|BIT(30)
-#define DMA54_reg_dma_ch0_dest_en           BIT(31)
+#define DMA54_ADDR							(DMA_BASED_ADDR + 0xD8)
+#define DMA54_reg_dma_ch0_dest_step_inc		DMA54_ADDR
+#define DMA54_reserved_0					(DMA54_ADDR + 0x01)
+#define DMA54_reg_dma_ch0_dest_format		(BIT(24)|BIT(25))
+#define DMA54_reserved_1					(BIT(26)|BIT(27)|BIT(28)|BIT(29)|BIT(30))
+#define DMA54_reg_dma_ch0_dest_en			BIT(31)
 
-#define DMA55_ADDR  						(DMA_BASED_ADDR + 0xDC)
-#define DMA55_reg_dma_ch0_trafer_counts     DMA55_ADDR
-#define DMA55_reserved_0                    BIT(17)|BIT(18)|BIT(19)|BIT(20)|BIT(21)|BIT(22)|BIT(23)
-#define DMA55_reg_dma_ch0_trafer_mode       BIT(24)|BIT(25)|BIT(26)|BIT(27)
-#define DMA55_reserved_1                    BIT(28)|BIT(29)|BIT(30)|BIT(31)
+#define DMA55_ADDR							(DMA_BASED_ADDR + 0xDC)
+#define DMA55_reg_dma_ch0_trafer_counts		DMA55_ADDR
+#define DMA55_reserved_0					(BIT(17)|BIT(18)|BIT(19)|BIT(20)|BIT(21)|BIT(22)|BIT(23))
+#define DMA55_reg_dma_ch0_trafer_mode		(BIT(24)|BIT(25)|BIT(26)|BIT(27))
+#define DMA55_reserved_1					(BIT(28)|BIT(29)|BIT(30)|BIT(31))
 
 /* INT Function Registers */
-#define INTR_BASED_ADDR     					0x48000
+#define INTR_BASED_ADDR							0x48000
 #define INTR1_ADDR								(INTR_BASED_ADDR + 0x4)
-#define INTR1_reg_uart_tx_int_flag            	INTR1_ADDR
-#define INTR1_reserved_0                      	BIT(1)|BIT(2)|BIT(3)|BIT(4)|BIT(5)|BIT(6)|BIT(7)
-#define INTR1_reg_wdt_alarm_int_flag          	BIT(8)
-#define INTR1_reserved_1                      	BIT(9)|BIT(10)|BIT(11)|BIT(12)|BIT(13)|BIT(14)|BIT(15)
-#define INTR1_reg_dma_ch1_int_flag            	BIT(16)
-#define INTR1_reg_dma_ch0_int_flag            	BIT(17)
-#define INTR1_reg_dma_frame_done_int_flag     	BIT(18)
-#define INTR1_reg_dma_tdi_done_int_flag       	BIT(19)
-#define INTR1_reserved_2                      	BIT(20)|BIT(21)|BIT(22)|BIT(23)
-#define INTR1_reg_flash_error_flag           	BIT(24)
-#define INTR1_reg_flash_int_flag              	BIT(25)
-#define INTR1_reserved_3                      	BIT(26)
+#define INTR1_reg_uart_tx_int_flag				INTR1_ADDR
+#define INTR1_reserved_0						(BIT(1)|BIT(2)|BIT(3)|BIT(4)|BIT(5)|BIT(6)|BIT(7))
+#define INTR1_reg_wdt_alarm_int_flag			BIT(8)
+#define INTR1_reserved_1						(BIT(9)|BIT(10)|BIT(11)|BIT(12)|BIT(13)|BIT(14)|BIT(15))
+#define INTR1_reg_dma_ch1_int_flag				BIT(16)
+#define INTR1_reg_dma_ch0_int_flag				BIT(17)
+#define INTR1_reg_dma_frame_done_int_flag		BIT(18)
+#define INTR1_reg_dma_tdi_done_int_flag			BIT(19)
+#define INTR1_reserved_2						(BIT(20)|BIT(21)|BIT(22)|BIT(23))
+#define INTR1_reg_flash_error_flag				BIT(24)
+#define INTR1_reg_flash_int_flag				BIT(25)
+#define INTR1_reserved_3						BIT(26)
 
-#define INTR2_ADDR  							   (INTR_BASED_ADDR + 0x8)
-#define INTR2_td_int_flag_clear                    INTR2_ADDR
-#define INTR2_td_timeout_int_flag_clear            BIT(1)
+#define INTR2_ADDR								   (INTR_BASED_ADDR + 0x8)
+#define INTR2_td_int_flag_clear					   INTR2_ADDR
+#define INTR2_td_timeout_int_flag_clear			   BIT(1)
 #define INTR2_td_debug_frame_done_int_flag_clear   BIT(2)
 #define INTR2_td_frame_start_scan_int_flag_clear   BIT(3)
-#define INTR2_log_int_flag_clear                   BIT(4)
-#define INTR2_d2t_crc_err_int_flag_clear           BIT(8)
-#define INTR2_d2t_flash_req_int_flag_clear         BIT(9)
-#define INTR2_d2t_ddi_int_flag_clear               BIT(10)
-#define INTR2_wr_done_int_flag_clear               BIT(16)
-#define INTR2_rd_done_int_flag_clear               BIT(17)
-#define INTR2_tdi_err_int_flag_clear               BIT(18)
-#define INTR2_d2t_slpout_rise_flag_clear           BIT(24)
-#define INTR2_d2t_slpout_fall_flag_clear           BIT(25)
-#define INTR2_d2t_dstby_flag_clear                 BIT(26)
-#define INTR2_ddi_pwr_rdy_flag_clear               BIT(27)
+#define INTR2_log_int_flag_clear				   BIT(4)
+#define INTR2_d2t_crc_err_int_flag_clear		   BIT(8)
+#define INTR2_d2t_flash_req_int_flag_clear		   BIT(9)
+#define INTR2_d2t_ddi_int_flag_clear			   BIT(10)
+#define INTR2_wr_done_int_flag_clear			   BIT(16)
+#define INTR2_rd_done_int_flag_clear			   BIT(17)
+#define INTR2_tdi_err_int_flag_clear			   BIT(18)
+#define INTR2_d2t_slpout_rise_flag_clear		   BIT(24)
+#define INTR2_d2t_slpout_fall_flag_clear		   BIT(25)
+#define INTR2_d2t_dstby_flag_clear				   BIT(26)
+#define INTR2_ddi_pwr_rdy_flag_clear			   BIT(27)
 
-#define INTR32_ADDR  						  (INTR_BASED_ADDR + 0x80)
-#define INTR32_reg_ice_sw_int_en 			  INTR32_ADDR
+#define INTR32_ADDR							  (INTR_BASED_ADDR + 0x80)
+#define INTR32_reg_ice_sw_int_en			  INTR32_ADDR
 #define INTR32_reg_ice_apb_conflict_int_en	  BIT(1)
 #define INTR32_reg_ice_ilm_conflict_int_en	  BIT(2)
 #define INTR32_reg_ice_dlm_conflict_int_en	  BIT(3)
-#define INTR32_reserved_0 	  				  BIT(4)|BIT(5)|BIT(6)|BIT(7)
+#define INTR32_reserved_0					  (BIT(4)|BIT(5)|BIT(6)|BIT(7))
 #define INTR32_reg_spi_sr_int_en			  BIT(8)
 #define INTR32_reg_spi_sp_int_en			  BIT(9)
 #define INTR32_reg_spi_trx_int_en			  BIT(10)
 #define INTR32_reg_spi_cmd_int_en			  BIT(11)
 #define INTR32_reg_spi_rw_int_en			  BIT(12)
-#define INTR32_reserved_1					  BIT(13)|BIT(14)|BIT(15)
+#define INTR32_reserved_1					  (BIT(13)|BIT(14)|BIT(15))
 #define INTR32_reg_i2c_start_int_en			  BIT(16)
 #define INTR32_reg_i2c_addr_match_int_en	  BIT(17)
 #define INTR32_reg_i2c_cmd_int_en			  BIT(18)
@@ -374,52 +376,52 @@ enum TP_WQ_TYPE {
 #define INTR32_reserved_2					  BIT(23)
 #define INTR32_reg_t0_int_en				  BIT(24)
 #define INTR32_reg_t1_int_en				  BIT(25)
-#define INTR32_reserved_3					  BIT(26)|BIT(27)|BIT(28)|BIT(29)|BIT(30)|BIT(31)
+#define INTR32_reserved_3					  (BIT(26)|BIT(27)|BIT(28)|BIT(29)|BIT(30)|BIT(31))
 
 #define INTR33_ADDR							  (INTR_BASED_ADDR + 0x84)
-#define INTR33_reg_uart_tx_int_en             INTR33_ADDR
-#define INTR33_reserved_0                     BIT(1)|BIT(2)|BIT(3)|BIT(4)|BIT(5)|BIT(6)|BIT(7)
-#define INTR33_reg_wdt_alarm_int_en           BIT(8)
-#define INTR33_reserved_1                     BIT(9)|BIT(10)|BIT(11)|BIT(12)|BIT(13)|BIT(14)|BIT(15)
-#define INTR33_reg_dma_ch1_int_en             BIT(16)
-#define INTR33_reg_dma_ch0_int_en             BIT(17)
-#define INTR33_reg_dma_frame_done_int_en      BIT(18)
-#define INTR33_reg_dma_tdi_done_int_en        BIT(19)
-#define INTR33_reserved_2                     BIT(20)|BIT(21)|BIT(22)|BIT(23)
-#define INTR33_reg_flash_error_en             BIT(24)
-#define INTR33_reg_flash_int_en               BIT(25)
-#define INTR33_reserved_3                     BIT(26)|BIT(27)|BIT(28)|BIT(29)|BIT(30)|BIT(31)
+#define INTR33_reg_uart_tx_int_en			  INTR33_ADDR
+#define INTR33_reserved_0					  (BIT(1)|BIT(2)|BIT(3)|BIT(4)|BIT(5)|BIT(6)|BIT(7))
+#define INTR33_reg_wdt_alarm_int_en			  BIT(8)
+#define INTR33_reserved_1					  (BIT(9)|BIT(10)|BIT(11)|BIT(12)|BIT(13)|BIT(14)|BIT(15))
+#define INTR33_reg_dma_ch1_int_en			  BIT(16)
+#define INTR33_reg_dma_ch0_int_en			  BIT(17)
+#define INTR33_reg_dma_frame_done_int_en	  BIT(18)
+#define INTR33_reg_dma_tdi_done_int_en		  BIT(19)
+#define INTR33_reserved_2					  (BIT(20)|BIT(21)|BIT(22)|BIT(23))
+#define INTR33_reg_flash_error_en			  BIT(24)
+#define INTR33_reg_flash_int_en				  BIT(25)
+#define INTR33_reserved_3					  (BIT(26)|BIT(27)|BIT(28)|BIT(29)|BIT(30)|BIT(31))
 
 /* Flash */
 #define FLASH_BASED_ADDR					0x41000
 #define FLASH0_ADDR							(FLASH_BASED_ADDR + 0x0)
 #define FLASH0_reg_flash_csb				FLASH0_ADDR
-#define FLASH0_reserved_0					BIT(8)|BIT(9)|BIT(10)|BIT(11)|BIT(12)|BIT(13)|BIT(14)|BIT(15)
-#define FLASH0_reg_preclk_sel		        BIT(16)|BIT(17)|BIT(18)|BIT(19)|BIT(20)|BIT(21)|BIT(22)|BIT(23)
-#define FLASH0_reg_rx_dual                  BIT(24)
-#define FLASH0_reg_tx_dual                  BIT(25)
-#define FLASH0_reserved_26                  BIT(26)|BIT(27)|BIT(28)|BIT(29)|BIT(30)|BIT(31)
+#define FLASH0_reserved_0					(BIT(8)|BIT(9)|BIT(10)|BIT(11)|BIT(12)|BIT(13)|BIT(14)|BIT(15))
+#define FLASH0_reg_preclk_sel				(BIT(16)|BIT(17)|BIT(18)|BIT(19)|BIT(20)|BIT(21)|BIT(22)|BIT(23))
+#define FLASH0_reg_rx_dual					BIT(24)
+#define FLASH0_reg_tx_dual					BIT(25)
+#define FLASH0_reserved_26					(BIT(26)|BIT(27)|BIT(28)|BIT(29)|BIT(30)|BIT(31))
 #define FLASH1_ADDR							(FLASH_BASED_ADDR + 0x4)
-#define FLASH1_reg_flash_key1               FLASH1_ADDR
-#define FLASH1_reg_flash_key2               (FLASH1_ADDR + 0x01)
-#define FLASH1_reg_flash_key3               (FLASH1_ADDR + 0x02)
-#define FLASH1_reserved_0                   (FLASH1_ADDR + 0x03)
-#define FLASH2_ADDR  						(FLASH_BASED_ADDR + 0x8)
-#define FLASH2_reg_tx_data                  FLASH2_ADDR
-#define FLASH3_ADDR  						(FLASH_BASED_ADDR + 0xC)
-#define FLASH3_reg_rcv_cnt                  FLASH3_ADDR
-#define FLASH4_ADDR  						(FLASH_BASED_ADDR + 0x10)
-#define FLASH4_reg_rcv_data 				FLASH4_ADDR
+#define FLASH1_reg_flash_key1				FLASH1_ADDR
+#define FLASH1_reg_flash_key2				(FLASH1_ADDR + 0x01)
+#define FLASH1_reg_flash_key3				(FLASH1_ADDR + 0x02)
+#define FLASH1_reserved_0					(FLASH1_ADDR + 0x03)
+#define FLASH2_ADDR							(FLASH_BASED_ADDR + 0x8)
+#define FLASH2_reg_tx_data					FLASH2_ADDR
+#define FLASH3_ADDR							(FLASH_BASED_ADDR + 0xC)
+#define FLASH3_reg_rcv_cnt					FLASH3_ADDR
+#define FLASH4_ADDR							(FLASH_BASED_ADDR + 0x10)
+#define FLASH4_reg_rcv_data					FLASH4_ADDR
 #define FLASH4_reg_rcv_dly					BIT(8)
 #define FLASH4_reg_sutrg_en					BIT(9)
-#define FLASH4_reserved_1					BIT(10)|BIT(11)|BIT(12)|BIT(13)|BIT(14)|BIT(15)
-#define FLASH4_reg_rcv_data_valid_state     BIT(16)
-#define FLASH4_reg_flash_rd_finish_state	BIT(17);
-#define FLASH4_reserved_2					BIT(18)|BIT(19)|BIT(20)|BIT(21)|BIT(22)|BIT(23)
-#define FLASH4_reg_flash_dma_trigger_en		BIT(24)|BIT(25)|BIT(26)|BIT(27)|BIT(28)|BIT(29)|BIT(30)|BIT(31)
+#define FLASH4_reserved_1					(BIT(10)|BIT(11)|BIT(12)|BIT(13)|BIT(14)|BIT(15))
+#define FLASH4_reg_rcv_data_valid_state		BIT(16)
+#define FLASH4_reg_flash_rd_finish_state	BIT(17)
+#define FLASH4_reserved_2					(BIT(18)|BIT(19)|BIT(20)|BIT(21)|BIT(22)|BIT(23))
+#define FLASH4_reg_flash_dma_trigger_en		(BIT(24)|BIT(25)|BIT(26)|BIT(27)|BIT(28)|BIT(29)|BIT(30)|BIT(31))
 
 /* The example for the gesture virtual keys */
-#define GESTURE_DOUBLECLICK			    0x58
+#define GESTURE_DOUBLECLICK				0x58
 #define GESTURE_UP						0x60
 #define GESTURE_DOWN					0x61
 #define GESTURE_LEFT					0x62
@@ -451,36 +453,36 @@ enum TP_WQ_TYPE {
 #define GESTURE_CODE_V_RIGHT			0x6E
 #define GESTURE_CODE_TWO_LINE_2_BOTTOM	0x6F
 #define GESTURE_F						0x70
-#define GESTURE_AT              		0x71
+#define GESTURE_AT						0x71
 #define ESD_GESTURE_PWD					0xF38A94EF
 #define ESD_GESTURE_RUN					0x5B92E7F4
 #define ESD_GESTURE_PWD_ADDR			0x25FF8
 
 /* Protocol */
-#define PROTOCOL_VER_500    			0x050000
-#define PROTOCOL_VER_510    			0x050100
-#define PROTOCOL_VER_520    			0x050200
-#define PROTOCOL_VER_530    			0x050300
-#define PROTOCOL_VER_540    			0x050400
-#define PROTOCOL_VER_550    			0x050500
-#define PROTOCOL_VER_560    			0x050600
-#define P5_X_READ_DATA_CTRL			    0xF6
-#define P5_X_GET_TP_INFORMATION		    0x20
-#define P5_X_GET_KEY_INFORMATION	    0x27
-#define P5_X_GET_PANEL_INFORMATION	    0x29
-#define P5_X_GET_FW_VERSION 			0x21
-#define P5_X_GET_PROTOCOL_VERSION	    0x22
-#define P5_X_GET_CORE_VERSION		    0x23
-#define P5_X_MODE_CONTROL			    0xF0
-#define P5_X_SET_CDC_INIT               0xF1
-#define P5_X_GET_CDC_DATA               0xF2
-#define P5_X_CDC_BUSY_STATE			    0xF3
+#define PROTOCOL_VER_500				0x050000
+#define PROTOCOL_VER_510				0x050100
+#define PROTOCOL_VER_520				0x050200
+#define PROTOCOL_VER_530				0x050300
+#define PROTOCOL_VER_540				0x050400
+#define PROTOCOL_VER_550				0x050500
+#define PROTOCOL_VER_560				0x050600
+#define P5_X_READ_DATA_CTRL				0xF6
+#define P5_X_GET_TP_INFORMATION			0x20
+#define P5_X_GET_KEY_INFORMATION		0x27
+#define P5_X_GET_PANEL_INFORMATION		0x29
+#define P5_X_GET_FW_VERSION				0x21
+#define P5_X_GET_PROTOCOL_VERSION		0x22
+#define P5_X_GET_CORE_VERSION			0x23
+#define P5_X_MODE_CONTROL				0xF0
+#define P5_X_SET_CDC_INIT				0xF1
+#define P5_X_GET_CDC_DATA				0xF2
+#define P5_X_CDC_BUSY_STATE				0xF3
 #define P5_X_MP_TEST_MODE_INFO			0xFE
-#define P5_X_I2C_UART				    0x40
+#define P5_X_I2C_UART					0x40
 #define P5_X_FW_UNKNOWN_MODE			0xFF
 #define P5_X_FW_DEMO_MODE				0x00
 #define P5_X_FW_TEST_MODE				0x01
-#define P5_X_FW_DEBUG_MODE 				0x02
+#define P5_X_FW_DEBUG_MODE				0x02
 #define P5_X_FW_GESTURE_NORMAL_MODE		0x01
 #define P5_X_FW_GESTURE_INFO_MODE		0x02
 #define P5_X_FW_I2CUART_MODE			0x03
@@ -492,37 +494,39 @@ enum TP_WQ_TYPE {
 #define P5_X_TEST_MODE_PACKET_LENGTH	1180
 #define P5_X_GESTURE_NORMAL_LENGTH		8
 #define P5_X_GESTURE_INFO_LENGTH		170
-#define P5_X_DEMO_PACKET_ID		        0x5A
-#define P5_X_DEBUG_PACKET_ID	        0xA7
-#define P5_X_TEST_PACKET_ID		        0xF2
-#define P5_X_GESTURE_PACKET_ID	        0xAA
-#define P5_X_I2CUART_PACKET_ID	        0x7A
-#define P5_X_EDGE_PLAM_CTRL_1	        0x01
-#define P5_X_EDGE_PLAM_CTRL_2	        0x12
+#define P5_X_DEMO_PACKET_ID				0x5A
+#define P5_X_DEBUG_PACKET_ID			0xA7
+#define P5_X_TEST_PACKET_ID				0xF2
+#define P5_X_GESTURE_PACKET_ID			0xAA
+#define P5_X_I2CUART_PACKET_ID			0x7A
+#define P5_X_EDGE_PLAM_CTRL_1			0x01
+#define P5_X_EDGE_PLAM_CTRL_2			0x12
+#define SPI_WRITE						0x82
+#define SPI_READ						0x83
+#define SPI_ACK							0xA3
 
 /* Chipes */
-#define TDDI_PID_ADDR           		0x4009C
+#define TDDI_PID_ADDR					0x4009C
 #define TDDI_OTP_ID_ADDR				0x400A0
-#define TDDI_ANA_ID_ADDR        		0x400A4
-#define TDDI_PC_COUNTER_ADDR    		0x44008
-#define TDDI_WDT_ADDR           		0x5100C
-#define TDDI_CHIP_RESET_ADDR    		0x40050
-#define ILI9881_CHIP       				0x9881
+#define TDDI_ANA_ID_ADDR				0x400A4
+#define TDDI_PC_COUNTER_ADDR			0x44008
+#define TDDI_WDT_ADDR					0x5100C
+#define TDDI_CHIP_RESET_ADDR			0x40050
+#define ILI9881_CHIP					0x9881
 #define ILI9881F_AA						0x98810F00
-#define ILI9881H_AD		    			0x98811103
+#define ILI9881H_AD						0x98811103
 #define ILI9881H_AE						0x98811104
-#define ILI7807_CHIP       				0x7807
+#define ILI7807_CHIP					0x7807
 #define ILI7807G_AA						0x78071000
 #define ILI7807G_AB						0x78071001
-#define RAWDATA_NO_BK_SHIFT_9881H 		8192
-#define RAWDATA_NO_BK_SHIFT_9881F 		4096
+#define RAWDATA_NO_BK_SHIFT_9881H		8192
+#define RAWDATA_NO_BK_SHIFT_9881F		4096
 
-struct ilitek_tddi_dev
-{
-    struct i2c_client *i2c;
-    struct spi_device *spi;
-    struct input_dev *input;
-    struct device *dev;
+struct ilitek_tddi_dev {
+	struct i2c_client *i2c;
+	struct spi_device *spi;
+	struct input_dev *input;
+	struct device *dev;
 
 	struct ilitek_hwif_info *hwif;
 	struct ilitek_ic_info *chip;
@@ -557,7 +561,7 @@ struct ilitek_tddi_dev
 	u8 stx;
 	u8 srx;
 
-	int actual_fw_mode;
+	int actual_tp_mode;
 
 	int irq_num;
 	int tp_rst;
@@ -609,9 +613,9 @@ struct ilitek_tddi_dev
 	atomic_t mp_int_check;
 	atomic_t esd_stat;
 
-    int (*write)(void *, size_t);
-    int (*read)(void *, size_t);
-	int (*spi_write_then_read)(struct spi_device *, const void *, unsigned, void *, unsigned);
+	int (*write)(void *, size_t);
+	int (*read)(void *, size_t);
+	int (*spi_write_then_read)(struct spi_device *, const void *, unsigned intint, void *, unsigned);
 	int (*mp_move_code)(void);
 	int (*gesture_move_code)(int);
 	int (*esd_recover)(void);
@@ -620,16 +624,14 @@ struct ilitek_tddi_dev
 };
 extern struct ilitek_tddi_dev *idev;
 
-struct ilitek_touch_info
-{
+struct ilitek_touch_info {
 	u16 id;
 	u16 x;
 	u16 y;
 	u16 pressure;
 };
 
-struct ilitek_protocol_info
-{
+struct ilitek_protocol_info {
 	u32 ver;
 	int fw_ver_len;
 	int pro_ver_len;
@@ -643,19 +645,17 @@ struct ilitek_protocol_info
 	int mp_info_len;
 };
 
-struct ilitek_ic_func_ctrl
-{
+struct ilitek_ic_func_ctrl {
 	const char *name;
 	u8 cmd[3];
 	int len;
 };
 
-struct ilitek_ic_info
-{
+struct ilitek_ic_info {
 	u32 pid_addr;
 	u32 wdt_addr;
 	u32 pc_counter_addr;
-    u32 reset_addr;
+	u32 reset_addr;
 	u32 otp_addr;
 	u32 ana_addr;
 	u32 pid;
@@ -664,7 +664,7 @@ struct ilitek_ic_info
 	u16 type_low;
 	u32 otp_id;
 	u32 ana_id;
-    u32 fw_ver;
+	u32 fw_ver;
 	u32 core_ver;
 	u32 max_count;
 	u32 reset_key;
@@ -676,8 +676,7 @@ struct ilitek_ic_info
 	void (*hd_dma_check_crc_off)(void);
 };
 
-struct ilitek_hwif_info
-{
+struct ilitek_hwif_info {
 	u8 bus_type;
 	u8 plat_type;
 	const char *name;
@@ -689,73 +688,73 @@ struct ilitek_hwif_info
 };
 
 /* Prototypes for tddi firmware/flash functions */
-extern void ilitek_tddi_flash_dma_write(u32, u32, u32);
+extern void ilitek_tddi_flash_dma_write(u32 start, u32 end, u32 len);
 extern void ilitek_tddi_flash_clear_dma(void);
-extern void ilitek_tddi_fw_read_flash_info(bool);
-extern u32 ilitek_tddi_fw_read_hw_crc(u32, u32);
-extern int ilitek_tddi_fw_read_flash(u32, u32, u8 *, size_t);
-extern int ilitek_tddi_fw_dump_flash_data(u32, u32, bool);
-extern int ilitek_tddi_fw_upgrade(int, int, int);
+extern void ilitek_tddi_fw_read_flash_info(bool mode);
+extern u32 ilitek_tddi_fw_read_hw_crc(u32 start, u32 end);
+extern int ilitek_tddi_fw_read_flash(u32 start, u32 end, u8 *data, size_t len);
+extern int ilitek_tddi_fw_dump_flash_data(u32 start, u32 end, bool user);
+extern int ilitek_tddi_fw_upgrade(int upgrade_type, int file_type, int open_file_method);
 
 /* Prototypes for tddi mp test */
-extern int ilitek_tddi_mp_test_main(char *, bool);
+extern int ilitek_tddi_mp_test_main(char *apk, bool lcm_on);
 
 /* Prototypes for tddi core functions */
 extern void ilitek_tddi_touch_esd_gesture_flash(void);
 extern void ilitek_tddi_touch_esd_gesture_iram(void);
-extern int ilitek_tddi_move_gesture_code_flash(int);
-extern int ilitek_tddi_move_gesture_code_iram(int);
+extern int ilitek_tddi_move_gesture_code_flash(int mode);
+extern int ilitek_tddi_move_gesture_code_iram(int mode);
 extern int ilitek_tddi_move_mp_code_flash(void);
 extern int ilitek_tddi_move_mp_code_iram(void);
-extern void ilitek_tddi_touch_press(u16, u16, u16, u16);
-extern void ilitek_tddi_touch_release(u16, u16, u16);
+extern void ilitek_tddi_touch_press(u16 x, u16 y, u16 pressure, u16 id);
+extern void ilitek_tddi_touch_release(u16 x, u16 y, u16 id);
 extern void ilitek_tddi_touch_release_all_point(void);
-extern void ilitek_tddi_report_ap_mode(u8 *, size_t);
-extern void ilitek_tddi_report_debug_mode(u8 *, size_t);
-extern void ilitek_tddi_report_gesture_mode(u8 *, size_t);
-extern void ilitek_tddi_report_i2cuart_mode(u8 *, size_t);
-extern void ilitek_tddi_ic_set_ddi_reg_onepage(u8, u8, u8);
-extern void ilitek_tddi_ic_get_ddi_reg_onepage(u8, u8);
-extern void ilitek_tddi_ic_spi_speed_ctrl(bool);
+extern void ilitek_tddi_report_ap_mode(u8 *buf, size_t len);
+extern void ilitek_tddi_report_debug_mode(u8 *buf, size_t rlen);
+extern void ilitek_tddi_report_gesture_mode(u8 *buf, size_t rlen);
+extern void ilitek_tddi_report_i2cuart_mode(u8 *buf, size_t rlen);
+extern void ilitek_tddi_ic_set_ddi_reg_onepage(u8 page, u8 reg, u8 data);
+extern void ilitek_tddi_ic_get_ddi_reg_onepage(u8 page, u8 reg);
+extern void ilitek_tddi_ic_spi_speed_ctrl(bool enable);
 extern int ilitek_tddi_ic_whole_reset(void);
 extern int ilitek_tddi_ic_code_reset(void);
-extern int ilitek_tddi_ic_func_ctrl(const char *, int);
+extern int ilitek_tddi_ic_func_ctrl(const char *name, int ctrl);
 extern u32 ilitek_tddi_ic_get_pc_counter(void);
-extern int ilitek_tddi_ic_check_int_stat(bool high);
-extern int ilitek_tddi_ic_check_busy(int, int);
+extern int ilitek_tddi_ic_check_int_stat(void);
+extern int ilitek_tddi_ic_check_busy(int count, int delay);
 extern int ilitek_tddi_ic_get_panel_info(void);
 extern int ilitek_tddi_ic_get_tp_info(void);
 extern int ilitek_tddi_ic_get_core_ver(void);
 extern int ilitek_tddi_ic_get_protocl_ver(void);
 extern int ilitek_tddi_ic_get_fw_ver(void);
 extern int ilitek_tddi_ic_get_info(void);
-extern int ilitek_ice_mode_bit_mask_write(u32, u32, u32);
-extern int ilitek_ice_mode_write(u32 , u32 , size_t);
-extern u32 ilitek_ice_mode_read(u32, size_t);
-extern int ilitek_ice_mode_ctrl(bool, bool);
-extern int ilitek_tddi_ic_watch_dog_ctrl(bool);
+extern int ilitek_ice_mode_bit_mask_write(u32 addr, u32 mask, u32 value);
+extern int ilitek_ice_mode_write(u32 addr, u32 data, size_t len);
+extern u32 ilitek_ice_mode_read(u32 addr, size_t len);
+extern int ilitek_ice_mode_ctrl(bool enable, bool mcu);
+extern int ilitek_tddi_ic_watch_dog_ctrl(bool enable);
 extern void ilitek_tddi_ic_init(void);
-extern int ilitek_tddi_edge_plam_ctrl(u8 type);
+extern int ilitek_tddi_edge_palm_ctrl(u8 type);
 
 /* Prototypes for tddi events */
-extern int ilitek_tddi_switch_mode(u8 *);
-extern int ilitek_tddi_fw_upgrade_handler(void *);
+extern int ilitek_tddi_switch_mode(u8 *data);
+extern int ilitek_tddi_fw_upgrade_handler(void *data);
 extern int ilitek_tddi_wq_esd_i2c_check(void);
 extern int ilitek_tddi_wq_esd_spi_check(void);
-extern void ilitek_tddi_wq_ctrl(int, int);
-extern int ilitek_tddi_mp_test_handler(char *, bool);
+extern void ilitek_tddi_wq_ctrl(int type, int ctrl);
+extern int ilitek_tddi_mp_test_handler(char *apk, bool lcm_on);
 extern void ilitek_tddi_report_handler(void);
-extern int ilitek_tddi_sleep_handler(int);
-extern int ilitek_tddi_reset_ctrl(int);
+extern int ilitek_tddi_sleep_handler(int mode);
+extern int ilitek_tddi_reset_ctrl(int mode);
 extern int ilitek_tddi_init(void);
-extern int ilitek_tddi_dev_init(struct ilitek_hwif_info *);
+extern int ilitek_tddi_dev_init(struct ilitek_hwif_info *hwif);
 extern void ilitek_tddi_dev_remove(void);
 
 /* Prototypes for i2c/spi interface */
-extern int ilitek_tddi_interface_dev_init(struct ilitek_hwif_info *);
+extern int ilitek_tddi_interface_dev_init(struct ilitek_hwif_info *hwif);
 
 /* Prototypes for platform level */
-extern void ilitek_plat_regulator_power_on(bool);
+extern void ilitek_plat_regulator_power_on(bool status);
 extern void ilitek_plat_input_register(void);
 extern void ilitek_plat_irq_disable(void);
 extern void ilitek_plat_irq_enable(void);
@@ -763,10 +762,10 @@ extern void ilitek_plat_tp_reset(void);
 
 /* Prototypes for miscs */
 extern void ilitek_tddi_node_init(void);
-extern void ilitek_dump_data(void *, int, int, int, const char *);
-extern u8 ilitek_calc_packet_checksum(u8 *, size_t);
-extern void netlink_reply_msg(void *, int);
-extern int katoi(char *);
+extern void ilitek_dump_data(void *data, int type, int len, int row_len, const char *name);
+extern u8 ilitek_calc_packet_checksum(u8 *packet, size_t len);
+extern void netlink_reply_msg(void *raw, int size);
+extern int katoi(char *str);
 
 static inline void ipio_kfree(void **mem)
 {
@@ -786,10 +785,10 @@ static inline void ipio_vfree(void **mem)
 
 static inline void *ipio_memcpy(void *dest, const void *src, size_t n, size_t dest_size)
 {
-    if (n > dest_size)
-         n = dest_size;
+	if (n > dest_size)
+		 n = dest_size;
 
-    return memcpy(dest, src, n);
+	return memcpy(dest, src, n);
 }
 
 static inline s32 open_sp_formula_ili9881(int dac, int raw)

@@ -22,28 +22,25 @@
 
 #include "ilitek.h"
 
-#define SPI_WRITE 					0x82
-#define SPI_READ 					0x83
-#define SPI_RETRY					5
-#define DMA_TRANSFER_MAX_TIMES 		2
-#define DMA_TRANSFER_MAX_SIZE 		1024
+#define DMA_TRANSFER_MAX_TIMES		2
+#define DMA_TRANSFER_MAX_SIZE		1024
 
 /* plus 5 for IC Mode :(Head + Address) 0x82,0x25,Addr_L,Addr_M,Addr_H */
-#define SPI_WRITE_BUFF_MAXSIZE 		(1024 * DMA_TRANSFER_MAX_TIMES + 5)
-#define SPI_READ_BUFF_MAXSIZE  		(1024 * DMA_TRANSFER_MAX_TIMES)
+#define SPI_WRITE_BUFF_MAXSIZE		(1024 * DMA_TRANSFER_MAX_TIMES + 5)
+#define SPI_READ_BUFF_MAXSIZE		(1024 * DMA_TRANSFER_MAX_TIMES)
 
 /* Declare dma buffer as 4 byte alignment */
-__attribute__ ((section ("NONCACHEDRW"), aligned(4)))
+__attribute__((section ("NONCACHEDRW"), aligned(4)))
 uint8_t dma_txbuf[SPI_WRITE_BUFF_MAXSIZE] = {0};
-__attribute__ ((section ("NONCACHEDRW"), aligned(4)))
+__attribute__((section ("NONCACHEDRW"), aligned(4)))
 uint8_t dma_rxbuf[SPI_READ_BUFF_MAXSIZE] = {0};
 
 struct touch_bus_info {
 	struct spi_driver bus_driver;
-    struct ilitek_hwif_info *hwif;
+	struct ilitek_hwif_info *hwif;
 };
 
-struct ilitek_tddi_dev *idev = NULL;
+struct ilitek_tddi_dev *idev;
 
 /*
  * As spi_write_then_read() in kernel can't guarante the data we
@@ -66,11 +63,11 @@ static int core_mtk_spi_write_then_read(struct spi_device *spi,
 	struct spi_transfer	xfer[DMA_TRANSFER_MAX_TIMES + 1];
 
 	if (n_tx > (SPI_WRITE_BUFF_MAXSIZE)) {
-		ipio_err("[spi write] Exceeded transmission length, %d > Max length:%d\n", n_tx, SPI_WRITE_BUFF_MAXSIZE);
+		ipio_err("Exceeded length (%d) > %d\n", n_tx, SPI_WRITE_BUFF_MAXSIZE);
 		goto out;
 	}
 	if (n_rx > (SPI_READ_BUFF_MAXSIZE)) {
-		ipio_err("[spi read] Exceeded transmission length, %d > Max length:%d\n", n_rx, SPI_READ_BUFF_MAXSIZE);
+		ipio_err("Exceeded length (%d) > %d\n", n_rx, SPI_READ_BUFF_MAXSIZE);
 		goto out;
 	}
 
@@ -84,66 +81,64 @@ static int core_mtk_spi_write_then_read(struct spi_device *spi,
 	else
 		cmd = *((u8 *)txbuf);
 
-	switch(cmd) {
-		case SPI_WRITE:
-			if(n_tx % DMA_TRANSFER_MAX_SIZE)
-				xferloop = (n_tx / DMA_TRANSFER_MAX_SIZE) + 1;
-			else
-				xferloop = n_tx / DMA_TRANSFER_MAX_SIZE ;
+	switch (cmd) {
+	case SPI_WRITE:
+		if (n_tx % DMA_TRANSFER_MAX_SIZE)
+			xferloop = (n_tx / DMA_TRANSFER_MAX_SIZE) + 1;
+		else
+			xferloop = n_tx / DMA_TRANSFER_MAX_SIZE;
 
-			xferlen = n_tx;
-			memcpy(dma_txbuf, (u8 *)txbuf, xferlen);
+		xferlen = n_tx;
+		memcpy(dma_txbuf, (u8 *)txbuf, xferlen);
 
-			for(xfercnt = 0; xfercnt < xferloop; xfercnt++) {
-				if(xferlen > DMA_TRANSFER_MAX_SIZE)
-					xferlen = DMA_TRANSFER_MAX_SIZE;
+		for (xfercnt = 0; xfercnt < xferloop; xfercnt++) {
+			if (xferlen > DMA_TRANSFER_MAX_SIZE)
+				xferlen = DMA_TRANSFER_MAX_SIZE;
 
-				xfer[xfercnt].len = xferlen;
-				xfer[xfercnt].tx_buf = dma_txbuf + xfercnt * DMA_TRANSFER_MAX_SIZE;
-				spi_message_add_tail(&xfer[xfercnt], &message);
+			xfer[xfercnt].len = xferlen;
+			xfer[xfercnt].tx_buf = dma_txbuf + xfercnt * DMA_TRANSFER_MAX_SIZE;
+			spi_message_add_tail(&xfer[xfercnt], &message);
 
-				xferlen = n_tx - (xfercnt+1) * DMA_TRANSFER_MAX_SIZE;
-			}
+			xferlen = n_tx - (xfercnt+1) * DMA_TRANSFER_MAX_SIZE;
+		}
+		status = spi_sync(spi, &message);
+		break;
+	case SPI_READ:
+		/* for write cmd and head */
+		memcpy(dma_txbuf, (u8 *)txbuf, n_tx);
+		xfer[0].len = n_tx;
+		xfer[0].tx_buf = dma_txbuf;
+		xfer[0].rx_buf = temp1;
+		spi_message_add_tail(&xfer[0], &message);
 
-			status = spi_sync(spi, &message);
-			break;
-		case SPI_READ:
-			/* for write cmd and head */
-			memcpy(dma_txbuf, (u8 *)txbuf, n_tx);
-			xfer[0].len = n_tx;
-			xfer[0].tx_buf = dma_txbuf;
-			xfer[0].rx_buf = temp1;
-			spi_message_add_tail(&xfer[0], &message);
+		/* for read data */
+		if (n_rx % DMA_TRANSFER_MAX_SIZE)
+			xferloop = (n_rx / DMA_TRANSFER_MAX_SIZE) + 1;
+		else
+			xferloop = n_rx / DMA_TRANSFER_MAX_SIZE;
 
-			/* for read data */
-			if (n_rx % DMA_TRANSFER_MAX_SIZE)
-				xferloop = (n_rx / DMA_TRANSFER_MAX_SIZE) + 1;
-			else
-				xferloop = n_rx / DMA_TRANSFER_MAX_SIZE ;
+		xferlen = n_rx;
+		for (xfercnt = 0; xfercnt < xferloop; xfercnt++) {
+			if (xferlen > DMA_TRANSFER_MAX_SIZE)
+				xferlen = DMA_TRANSFER_MAX_SIZE;
 
-			xferlen = n_rx;
-			for(xfercnt = 0; xfercnt < xferloop; xfercnt++) {
-				if (xferlen > DMA_TRANSFER_MAX_SIZE)
-					xferlen = DMA_TRANSFER_MAX_SIZE;
+			xfer[xfercnt+1].len = xferlen;
+			xfer[xfercnt+1].tx_buf = temp2;
+			xfer[xfercnt+1].rx_buf = dma_rxbuf + xfercnt * DMA_TRANSFER_MAX_SIZE;
+			spi_message_add_tail(&xfer[xfercnt+1], &message);
 
-				xfer[xfercnt+1].len = xferlen;
-				xfer[xfercnt+1].tx_buf = temp2;
-				xfer[xfercnt+1].rx_buf = dma_rxbuf + xfercnt * DMA_TRANSFER_MAX_SIZE;
-				spi_message_add_tail(&xfer[xfercnt+1], &message);
-
-				xferlen = n_rx - (xfercnt+1) * DMA_TRANSFER_MAX_SIZE;
-			}
-			status = spi_sync(spi, &message);
-			if(status == 0)
-				memcpy((u8 *)rxbuf, dma_rxbuf, n_rx);
-			break;
-		default:
-			ipio_info("Unknown command 0x%x\n", cmd);
-			break;
+			xferlen = n_rx - (xfercnt+1) * DMA_TRANSFER_MAX_SIZE;
+		}
+		status = spi_sync(spi, &message);
+		if (status == 0)
+			memcpy((u8 *)rxbuf, dma_rxbuf, n_rx);
+		break;
+	default:
+		ipio_info("Unknown command 0x%x\n", cmd);
+		break;
 	}
 
 	mutex_unlock(&lock);
-
 out:
 	return status;
 }
@@ -159,20 +154,20 @@ static int core_rx_lock_check(int *ret_size)
 	for (i = 0; i < count; i++) {
 		txbuf[0] = SPI_WRITE;
 		if (idev->spi_write_then_read(idev->spi, txbuf, 5, txbuf, 0) < 0) {
-			ipio_err("spi Write Error\n");
+			ipio_err("spi write (0x25,0x94,0x0,0x2) error\n");
 			goto out;
 		}
 
 		txbuf[0] = SPI_READ;
 		if (idev->spi_write_then_read(idev->spi, txbuf, 1, rxbuf, 4) < 0) {
-			ipio_err("spi Read Error\n");
+			ipio_err("spi read error\n");
 			goto out;
 		}
 
 		status = (rxbuf[2] << 8) + rxbuf[3];
 		*ret_size = (rxbuf[0] << 8) + rxbuf[1];
 
-		//ipio_debug(DEBUG_SPI, "Rx lock = 0x%x, size = %d\n", status, *ret_size);
+		ipio_debug(DEBUG_SPI, "Rx lock = 0x%x, size = %d\n", status, *ret_size);
 
 		if (status == lock)
 			return 0;
@@ -195,19 +190,19 @@ static int core_tx_unlock_check(void)
 	for (i = 0; i < count; i++) {
 		txbuf[0] = SPI_WRITE;
 		if (idev->spi_write_then_read(idev->spi, txbuf, 5, txbuf, 0) < 0) {
-			ipio_err("spi Write Error\n");
+			ipio_err("spi write (0x25,0x0,0x0,0x2) error\n");
 			goto out;
 		}
 
 		txbuf[0] = SPI_READ;
 		if (idev->spi_write_then_read(idev->spi, txbuf, 1, rxbuf, 4) < 0) {
-			ipio_err("spi Read Error\n");
+			ipio_err("spi read error\n");
 			goto out;
 		}
 
 		status = (rxbuf[2] << 8) + rxbuf[3];
 
-		//ipio_debug(DEBUG_SPI, "Tx unlock = 0x%x\n", status);
+		ipio_debug(DEBUG_SPI, "Tx unlock = 0x%x\n", status);
 
 		if (status == unlock)
 			return 0;
@@ -232,6 +227,7 @@ static int core_spi_ice_mode_unlock_read(u8 *data, size_t size)
 	txbuf[3] = 0x0;
 	txbuf[4] = 0x2;
 	if (idev->spi_write_then_read(idev->spi, txbuf, 5, txbuf, 0) < 0) {
+		ipio_info("spi write (0x25,0x98,0x00,0x2) error\n");
 		ret = -EIO;
 		return ret;
 	}
@@ -254,10 +250,9 @@ static int core_spi_ice_mode_unlock_read(u8 *data, size_t size)
 	txbuf[7] = (char)0x98;
 	txbuf[8] = (char)0x81;
 	if (idev->spi_write_then_read(idev->spi, txbuf, 9, txbuf, 0) < 0) {
+		ipio_err("spi write unlock (0x9881) error, ret = %d\n", ret);
 		ret = -EIO;
-		ipio_err("spi Write data unlock error, ret = %d\n", ret);
 	}
-
 	return ret;
 }
 
@@ -265,10 +260,10 @@ static int core_spi_ice_mode_lock_write(u8 *data, size_t size)
 {
 	int ret = 0;
 	int safe_size = size;
-	uint8_t check_sum = 0,wsize = 0;
+	uint8_t check_sum = 0, wsize = 0;
 	uint8_t *txbuf = NULL;
 
-    txbuf = kcalloc(size + 9, sizeof(u8), GFP_KERNEL);
+	txbuf = kcalloc(size + 9, sizeof(u8), GFP_KERNEL);
 	if (ERR_ALLOC_MEM(txbuf)) {
 		ipio_err("Failed to allocate txbuf\n");
 		ret = -ENOMEM;
@@ -292,8 +287,8 @@ static int core_spi_ice_mode_lock_write(u8 *data, size_t size)
 		wsize += 4 - (wsize % 4);
 
 	if (idev->spi_write_then_read(idev->spi, txbuf, wsize + 5, txbuf, 0) < 0) {
+		ipio_info("spi write (0x25,0x4,0x00,0x2) error\n");
 		ret = -EIO;
-		ipio_err("spi Write Error, ret = %d\n", ret);
 		goto out;
 	}
 
@@ -308,8 +303,8 @@ static int core_spi_ice_mode_lock_write(u8 *data, size_t size)
 	txbuf[7] = (char)0x5A;
 	txbuf[8] = (char)0xA5;
 	if (idev->spi_write_then_read(idev->spi, txbuf, 9, txbuf, 0) < 0) {
+		ipio_err("spi write lock (0x5AA5) error, ret = %d\n", ret);
 		ret = -EIO;
-		ipio_err("spi Write data lock Error, ret = %d\n", ret);
 	}
 
 out:
@@ -322,97 +317,79 @@ static int core_spi_ice_mode_disable(void)
 	u8 txbuf[5] = {0x82, 0x1B, 0x62, 0x10, 0x18};
 
 	if (idev->spi_write_then_read(idev->spi, txbuf, 5, txbuf, 0) < 0) {
-		ipio_err("spi R/W Error\n");
+		ipio_err("spi write ice mode disable failed\n");
 		return -EIO;
 	}
-
 	return 0;
 }
 
 static int core_spi_ice_mode_enable(void)
 {
 	u8 txbuf[5] = {0x82, 0x1F, 0x62, 0x10, 0x18};
-	u8 rxbuf[2]= {0};
+	u8 rxbuf[2] = {0};
 
 	if (idev->spi_write_then_read(idev->spi, txbuf, 1, rxbuf, 1) < 0) {
-		ipio_err("spi R/W Error\n");
+		ipio_err("spi write 0x82 error\n");
 		return -EIO;
 	}
 
 	/* check recover data */
-	if(rxbuf[0] != 0xA3){
-		ipio_err("Check Recovery data failed (0x%x)\n", rxbuf[0]);
+	if (rxbuf[0] != SPI_ACK) {
+		ipio_err("Check SPI_ACK failed (0x%x)\n", rxbuf[0]);
 		return DO_SPI_RECOVER;
 	}
 
 	if (idev->spi_write_then_read(idev->spi, txbuf, 5, rxbuf, 0) < 0) {
-		ipio_err("spi R/W Error\n");
+		ipio_err("spi write ice mode enable failed\n");
 		return -EIO;
 	}
-
 	return 0;
 }
 
 static int core_spi_ice_mode_write(u8 *data, size_t len)
 {
-	int ret = 0;
+	if (core_spi_ice_mode_enable() < 0)
+		return -EIO;
 
-	ret = core_spi_ice_mode_enable();
-	if (ret < 0) {
-		ipio_err("spi ice mode enable failed\n");
-		return ret;
-	}
-
-	ret = core_spi_ice_mode_lock_write(data, len);
-	if (ret < 0) {
-		ipio_err("spi ice mode lock write failed\n");
+	/* send data and change lock status to 0x5AA5. */
+	if (core_spi_ice_mode_lock_write(data, len) < 0)
 		goto out;
-	}
 
-	ret = core_tx_unlock_check();
-	if (ret < 0) {
-		ipio_err("tx unlock check error\n");
+	/*
+	 * Check FW if they already received the data we sent.
+	 * They change lock status from 0x5AA5 to 0x9881 if they did.
+	 */
+	if (core_tx_unlock_check() < 0)
 		goto out;
-	}
 
 out:
-	if (core_spi_ice_mode_disable() < 0) {
-		ret = -EIO;
-		ipio_err("spi ice mode disable failed\n");
-	}
-
-	return ret;
+	if (core_spi_ice_mode_disable() < 0)
+		return -EIO;
+	return 0;
 }
 
 static int core_spi_ice_mode_read(u8 *data)
 {
-	int ret = 0, size = 0;
+	int size = 0;
 
-	ret = core_spi_ice_mode_enable();
-	if (ret < 0) {
-		ipio_err("spi ice mode enable failed\n");
-		return ret;
-	}
+	if (core_spi_ice_mode_enable() < 0)
+		return -EIO;
 
-	ret = core_rx_lock_check(&size);
-	if (ret < 0) {
-		ipio_err("Rx lock check error\n");
+	/*
+	 * Check FW if they already send their data to rxbuf.
+	 * They change lock status from 0x9881 to 0x5AA5 if they did.
+	 */
+	if (core_rx_lock_check(&size) < 0)
 		goto out;
-	}
 
-	ret = core_spi_ice_mode_unlock_read(data, size);
-	if ( ret < 0) {
-		ipio_err("spi ice mode unlock write failed\n");
+	/* receive data from rxbuf and change lock status to 0x9881. */
+	if (core_spi_ice_mode_unlock_read(data, size) < 0)
 		goto out;
-	}
 
 out:
-	if (core_spi_ice_mode_disable() < 0) {
-		ret = -EIO;
-		ipio_err("spi ice mode disable failed\n");
-	}
-
-	return ret;
+	if (core_spi_ice_mode_disable() < 0)
+		return -EIO;
+	return 0;
 }
 
 static int core_spi_write(u8 *data, size_t len)
@@ -426,11 +403,11 @@ static int core_spi_write(u8 *data, size_t len)
 			ret = core_spi_ice_mode_write(data, len);
 			if (ret >= 0)
 				break;
-		} while(--count > 0);
+		} while (--count > 0);
 		goto out;
 	}
 
-    txbuf = kcalloc(len + 1, sizeof(u8), GFP_KERNEL);
+	txbuf = kcalloc(len + 1, sizeof(u8), GFP_KERNEL);
 	if (ERR_ALLOC_MEM(txbuf)) {
 		ipio_err("Failed to allocate txbuf\n");
 		return -ENOMEM;
@@ -440,6 +417,7 @@ static int core_spi_write(u8 *data, size_t len)
 	ipio_memcpy(txbuf+1, data, len, safe_size + 1);
 
 	if (idev->spi_write_then_read(idev->spi, txbuf, len+1, txbuf, 0) < 0) {
+		ipio_err("spi write data error in ice mode\n");
 		ret = -EIO;
 		goto out;
 	}
@@ -461,11 +439,12 @@ static int core_spi_read(u8 *rxbuf, size_t len)
 			ret = core_spi_ice_mode_read(rxbuf);
 			if (ret >= 0)
 				break;
-		} while(--count > 0);
+		} while (--count > 0);
 		goto out;
 	}
 
-	if(idev->spi_write_then_read(idev->spi, txbuf, 1, rxbuf, len) < 0) {
+	if (idev->spi_write_then_read(idev->spi, txbuf, 1, rxbuf, len) < 0) {
+		ipio_err("spi read data error in ice mode\n");
 		ret = -EIO;
 		goto out;
 	}
@@ -476,17 +455,17 @@ out:
 
 static int ilitek_spi_write(void *buf, size_t len)
 {
-    int ret = 0;
+	int ret = 0;
 
 	if (!len) {
-		ipio_err("spi write len is zero\n");
+		ipio_err("spi write len is invaild\n");
 		return -EINVAL;
 	}
 
-    mutex_lock(&idev->io_mutex);
+	mutex_lock(&idev->io_mutex);
 
-    ret = core_spi_write(buf, len);
-    if (ret < 0) {
+	ret = core_spi_write(buf, len);
+	if (ret < 0) {
 		if (atomic_read(&idev->tp_reset) == START) {
 			ret = 0;
 			goto out;
@@ -495,23 +474,23 @@ static int ilitek_spi_write(void *buf, size_t len)
 	}
 
 out:
-    mutex_unlock(&idev->io_mutex);
-    return ret;
+	mutex_unlock(&idev->io_mutex);
+	return ret;
 }
 
 static int ilitek_spi_read(void *buf, size_t len)
 {
-    int ret = 0;
+	int ret = 0;
 
 	if (!len) {
-		ipio_err("spi read len is zero\n");
+		ipio_err("spi read len is invaild\n");
 		return -EINVAL;
 	}
 
-    mutex_lock(&idev->io_mutex);
+	mutex_lock(&idev->io_mutex);
 
-    ret = core_spi_read(buf, len);
-    if (ret < 0) {
+	ret = core_spi_read(buf, len);
+	if (ret < 0) {
 		if (atomic_read(&idev->tp_reset) == START) {
 			ret = 0;
 			goto out;
@@ -520,8 +499,8 @@ static int ilitek_spi_read(void *buf, size_t len)
 	}
 
 out:
-    mutex_unlock(&idev->io_mutex);
-    return ret;
+	mutex_unlock(&idev->io_mutex);
+	return ret;
 }
 
 static int core_spi_setup(u32 freq)
@@ -561,7 +540,7 @@ static int core_spi_setup(u32 freq)
 	idev->spi->controller_data = chip_config;
 	idev->spi_write_then_read = core_mtk_spi_write_then_read;
 #else
-    idev->spi_write_then_read = spi_write_then_read;
+	idev->spi_write_then_read = spi_write_then_read;
 #endif /* CONFIG_MTK_SPI */
 
 	ipio_info("spi clock = %d\n", freq);
@@ -590,7 +569,7 @@ static int ilitek_spi_probe(struct spi_device *spi)
 	container_of(to_spi_driver(spi->dev.driver),
 		struct touch_bus_info, bus_driver);
 
-	ipio_info("spi probe\n");
+	ipio_info("ilitek spi probe\n");
 
 	if (!spi) {
 		ipio_err("spi device is NULL\n");
@@ -613,7 +592,7 @@ static int ilitek_spi_probe(struct spi_device *spi)
 	idev->read = ilitek_spi_read;
 
 	idev->spi_speed = ilitek_tddi_ic_spi_speed_ctrl;
-	idev->actual_fw_mode = P5_X_FW_DEMO_MODE;
+	idev->actual_tp_mode = P5_X_FW_DEMO_MODE;
 
 	if (TDDI_RST_BIND)
 		idev->reset = TP_IC_WHOLE_RST;
@@ -627,7 +606,7 @@ static int ilitek_spi_probe(struct spi_device *spi)
 
 	idev->rst_edge_delay = 1;
 	idev->fw_open = FILP_OPEN;
-    idev->fw_upgrade_mode = UPGRADE_IRAM;
+	idev->fw_upgrade_mode = UPGRADE_IRAM;
 	idev->mp_move_code = ilitek_tddi_move_mp_code_iram;
 	idev->gesture_move_code = ilitek_tddi_move_gesture_code_iram;
 	idev->esd_recover = ilitek_tddi_wq_esd_spi_check;
@@ -642,7 +621,7 @@ static int ilitek_spi_probe(struct spi_device *spi)
 		idev->gesture = ENABLE;
 
 	core_spi_setup(SPI_CLK);
-    return info->hwif->plat_probe();
+	return info->hwif->plat_probe();
 }
 
 static int ilitek_spi_remove(struct spi_device *spi)
@@ -651,9 +630,9 @@ static int ilitek_spi_remove(struct spi_device *spi)
 	container_of(to_spi_driver(spi->dev.driver),
 		struct touch_bus_info, bus_driver);
 
-    ipio_info();
+	ipio_info();
 	spi_unregister_driver(&info->bus_driver);
-    return info->hwif->plat_remove();
+	return info->hwif->plat_remove();
 }
 
 static struct spi_device_id tp_spi_id[] = {
@@ -662,11 +641,11 @@ static struct spi_device_id tp_spi_id[] = {
 
 int ilitek_tddi_interface_dev_init(struct ilitek_hwif_info *hwif)
 {
-    struct touch_bus_info *info;
+	struct touch_bus_info *info;
 
-    info = kzalloc(sizeof(*info), GFP_KERNEL);
+	info = kzalloc(sizeof(*info), GFP_KERNEL);
 	if (!info) {
-		ipio_err("faied to allocate i2c_driver\n");
+		ipio_err("faied to allocate spi_driver\n");
 		return -ENOMEM;
 	}
 
@@ -675,16 +654,16 @@ int ilitek_tddi_interface_dev_init(struct ilitek_hwif_info *hwif)
 		return -EINVAL;
 	}
 
-    hwif->info = info;
+	hwif->info = info;
 
-    info->bus_driver.driver.name = hwif->name;
-    info->bus_driver.driver.owner = hwif->owner;
-    info->bus_driver.driver.of_match_table = hwif->of_match_table;
+	info->bus_driver.driver.name = hwif->name;
+	info->bus_driver.driver.owner = hwif->owner;
+	info->bus_driver.driver.of_match_table = hwif->of_match_table;
 
 	info->bus_driver.probe = ilitek_spi_probe;
 	info->bus_driver.remove = ilitek_spi_remove;
 	info->bus_driver.id_table = tp_spi_id;
 
-    info->hwif = hwif;
-    return spi_register_driver(&info->bus_driver);
+	info->hwif = hwif;
+	return spi_register_driver(&info->bus_driver);
 }

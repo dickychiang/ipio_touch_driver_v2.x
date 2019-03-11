@@ -31,15 +31,15 @@ void ilitek_dump_data(void *data, int type, int len, int row_len, const char *na
 	if (row_len > 0)
 		row = row_len;
 
-	if (ipio_debug_level & DEBUG_MP_TEST) {
+	if (ipio_debug_level & DEBUG_ALL) {
 		if (data == NULL) {
 			ipio_err("The data going to dump is NULL\n");
 			return;
 		}
 
-		printk(KERN_CONT "\n\n");
-		printk(KERN_CONT "ILITEK: Dump %s data\n", name);
-		printk(KERN_CONT "ILITEK: ");
+		pr_cont("\n\n");
+		pr_cont("ILITEK: Dump %s data\n", name);
+		pr_cont("ILITEK: ");
 
 		if (type == 8)
 			p8 = (u8 *) data;
@@ -48,17 +48,17 @@ void ilitek_dump_data(void *data, int type, int len, int row_len, const char *na
 
 		for (i = 0; i < len; i++) {
 			if (type == 8)
-				printk(KERN_CONT " %4x ", p8[i]);
+				pr_cont(" %4x ", p8[i]);
 			else if (type == 32)
-				printk(KERN_CONT " %4x ", p32[i]);
+				pr_cont(" %4x ", p32[i]);
 			else if (type == 10)
-				printk(KERN_CONT " %4d ", p32[i]);
+				pr_cont(" %4d ", p32[i]);
 			if ((i % row) == row - 1) {
-				printk(KERN_CONT "\n");
-				printk(KERN_CONT "ILITEK: ");
+				pr_cont("\n");
+				pr_cont("ILITEK: ");
 			}
 		}
-		printk(KERN_CONT "\n\n");
+		pr_cont("\n\n");
 	}
 }
 
@@ -125,8 +125,8 @@ static void dma_trigger_reg_setting(uint32_t reg_dest_addr, uint32_t flash_start
 	ipio_info("set dma channel 0 trigger select\n");
 	ilitek_ice_mode_bit_mask_write(DMA48_ADDR, DMA48_reg_dma_ch0_trigger_sel, (1 << 16));
 
-	ipio_info("set dma flash setting, FlashAddr = 0x%x\n",flash_start_addr);
-	ilitek_tddi_flash_dma_write(flash_start_addr,(flash_start_addr+copy_size), copy_size);
+	ipio_info("set dma flash setting, FlashAddr = 0x%x\n", flash_start_addr);
+	ilitek_tddi_flash_dma_write(flash_start_addr, (flash_start_addr+copy_size), copy_size);
 
 	ipio_info("clear flash and dma ch0 int flag\n");
 	ilitek_ice_mode_bit_mask_write(INTR1_ADDR, INTR1_reg_flash_int_flag, (1 << 25));
@@ -186,7 +186,7 @@ int ilitek_tddi_move_mp_code_flash(void)
 		overlay_end_addr, mp_flash_addr, mp_size);
 
 	/* Check if ic is ready switching test mode from demo mode */
-	idev->actual_fw_mode = P5_X_FW_DEMO_MODE;
+	idev->actual_tp_mode = P5_X_FW_DEMO_MODE;
 	ret = ilitek_tddi_ic_check_busy(50, 50); /* Set busy as 0x41 */
 	if (ret < 0)
 		goto out;
@@ -198,12 +198,12 @@ int ilitek_tddi_move_mp_code_flash(void)
 	if (dma_trigger_enable) {
 		mp_andes_init_size = overlay_start_addr;
 		mp_text_size = (mp_size - overlay_end_addr) + 1;
-		ipio_info("MP andes init size = %d , MP text size = %d\n",mp_andes_init_size, mp_text_size);
+		ipio_info("MP andes init size = %d , MP text size = %d\n", mp_andes_init_size, mp_text_size);
 
 		dma_clear_reg_setting();
 
 		ipio_info("[Move ANDES.INIT to DRAM]\n");
-		dma_trigger_reg_setting(0, mp_flash_addr, mp_andes_init_size);   /* DMA ANDES.INIT */
+		dma_trigger_reg_setting(0, mp_flash_addr, mp_andes_init_size);	 /* DMA ANDES.INIT */
 
 		dma_clear_reg_setting();
 
@@ -226,22 +226,23 @@ int ilitek_tddi_move_mp_code_flash(void)
 		goto out;
 
 	/* Check if ic is already in test mode */
-	idev->actual_fw_mode = P5_X_FW_TEST_MODE; /* set busy as 0x51 */
+	idev->actual_tp_mode = P5_X_FW_TEST_MODE; /* set busy as 0x51 */
 	ret = ilitek_tddi_ic_check_busy(300, 50);
 
 out:
-    return ret;
+	return ret;
 }
 
 int ilitek_tddi_move_mp_code_iram(void)
 {
 	ipio_info("Download MP code to iram\n");
-    return ilitek_tddi_fw_upgrade_handler(NULL);;
+	return ilitek_tddi_fw_upgrade_handler(NULL);
 }
 
 int ilitek_tddi_move_gesture_code_flash(int mode)
 {
 	u8 tp_mode = P5_X_FW_GESTURE_MODE;
+
 	ipio_info();
 	return ilitek_tddi_switch_mode(&tp_mode);
 }
@@ -329,7 +330,7 @@ void ilitek_tddi_touch_esd_gesture_flash(void)
 	ilitek_tddi_reset_ctrl(idev->reset);
 
 	/* waiting for FW reloading code */
-    msleep(100);
+	msleep(100);
 
 	ilitek_ice_mode_ctrl(ENABLE, ON);
 
@@ -368,7 +369,7 @@ void ilitek_tddi_touch_esd_gesture_iram(void)
 	ilitek_tddi_reset_ctrl(idev->hd_reset);
 
 	/* waiting for FW reloading code */
-    msleep(100);
+	msleep(100);
 
 	ilitek_ice_mode_ctrl(ENABLE, ON);
 
@@ -594,7 +595,6 @@ void ilitek_tddi_report_debug_mode(u8 *buf, size_t rlen)
 				ilitek_tddi_touch_press(touch_info[i].x, touch_info[i].y, touch_info[i].pressure, touch_info[i].id);
 				input_report_key(idev->input, BTN_TOOL_FINGER, 1);
 			}
-
 			for (i = 0; i < MAX_TOUCH_NUM; i++) {
 				if (idev->curt_touch[i] == 0 && idev->prev_touch[i] == 1)
 					ilitek_tddi_touch_release(0, 0, i);

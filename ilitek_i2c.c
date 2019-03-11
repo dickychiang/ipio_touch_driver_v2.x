@@ -27,11 +27,11 @@ struct touch_bus_info {
 	struct ilitek_hwif_info *hwif;
 };
 
-struct ilitek_tddi_dev *idev = NULL;
+struct ilitek_tddi_dev *idev;
 
 static int core_i2c_write(void *buf, size_t len)
 {
-    u8 *txbuf = (u8 *)buf;
+	u8 *txbuf = (u8 *)buf;
 	u8 check_sum = 0;
 	u8 *mpbuf = NULL;
 
@@ -49,7 +49,7 @@ static int core_i2c_write(void *buf, size_t len)
 	 * to the last index and plus 1 with size.
 	 */
 	if (idev->protocol->ver >= PROTOCOL_VER_540) {
-		if (txbuf[0] == P5_X_SET_CDC_INIT && idev->actual_fw_mode == P5_X_FW_TEST_MODE) {
+		if (txbuf[0] == P5_X_SET_CDC_INIT && idev->actual_tp_mode == P5_X_FW_TEST_MODE) {
 			check_sum = ilitek_calc_packet_checksum(txbuf, len);
 			mpbuf = kcalloc(len + 1, sizeof(u8), GFP_KERNEL);
 			if (ERR_ALLOC_MEM(mpbuf)) {
@@ -71,7 +71,7 @@ static int core_i2c_write(void *buf, size_t len)
 
 static int core_i2c_read(void *buf, size_t len)
 {
-    u8 *rxbuf = (u8 *)buf;
+	u8 *rxbuf = (u8 *)buf;
 
 	struct i2c_msg msgs[] = {
 		{
@@ -90,17 +90,17 @@ static int core_i2c_read(void *buf, size_t len)
 
 static int ilitek_i2c_write(void *buf, size_t len)
 {
-    int ret = 0;
+	int ret = 0;
 
 	if (len == 0) {
-		ipio_err("i2c write len is zero\n");
+		ipio_err("i2c write len is invalid\n");
 		return -EINVAL;
 	}
 
-    mutex_lock(&idev->io_mutex);
+	mutex_lock(&idev->io_mutex);
 
-    ret = core_i2c_write(buf, len);
-    if (ret < 0) {
+	ret = core_i2c_write(buf, len);
+	if (ret < 0) {
 		if (atomic_read(&idev->tp_reset) == START) {
 			ret = 0;
 			goto out;
@@ -109,23 +109,23 @@ static int ilitek_i2c_write(void *buf, size_t len)
 	}
 
 out:
-    mutex_unlock(&idev->io_mutex);
-    return ret;
+	mutex_unlock(&idev->io_mutex);
+	return ret;
 }
 
 static int ilitek_i2c_read(void *buf, size_t len)
 {
-    int ret = 0;
+	int ret = 0;
 
 	if (len == 0) {
-		ipio_err("i2c read len is zero\n");
+		ipio_err("i2c read len is invalid\n");
 		return -EINVAL;
 	}
 
-    mutex_lock(&idev->io_mutex);
+	mutex_lock(&idev->io_mutex);
 
-    ret = core_i2c_read(buf, len);
-    if (ret < 0) {
+	ret = core_i2c_read(buf, len);
+	if (ret < 0) {
 		if (atomic_read(&idev->tp_reset) == START) {
 			ret = 0;
 			goto out;
@@ -134,8 +134,8 @@ static int ilitek_i2c_read(void *buf, size_t len)
 	}
 
 out:
-    mutex_unlock(&idev->io_mutex);
-    return ret;
+	mutex_unlock(&idev->io_mutex);
+	return ret;
 }
 
 static int ilitek_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id *id)
@@ -144,7 +144,7 @@ static int ilitek_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id *
 		container_of(to_i2c_driver(i2c->dev.driver),
 			struct touch_bus_info, bus_driver);
 
-	ipio_info("i2c probe\n");
+	ipio_info("ilitek i2c probe\n");
 
 	if (!i2c) {
 		ipio_err("i2c client is NULL\n");
@@ -161,11 +161,11 @@ static int ilitek_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id *
 		return -ENODEV;
 	}
 
-    idev = devm_kzalloc(&i2c->dev, sizeof(struct ilitek_tddi_dev), GFP_KERNEL);
-    if (ERR_ALLOC_MEM(idev)) {
-        ipio_err("Failed to allocate idev memory, %ld\n", PTR_ERR(idev));
-        return -ENOMEM;
-    }
+	idev = devm_kzalloc(&i2c->dev, sizeof(struct ilitek_tddi_dev), GFP_KERNEL);
+	if (ERR_ALLOC_MEM(idev)) {
+		ipio_err("Failed to allocate idev memory, %ld\n", PTR_ERR(idev));
+		return -ENOMEM;
+	}
 
 	idev->i2c = i2c;
 	idev->spi = NULL;
@@ -173,21 +173,21 @@ static int ilitek_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id *
 	idev->hwif = info->hwif;
 	idev->phys = "I2C";
 
-    idev->write = ilitek_i2c_write;
-    idev->read = ilitek_i2c_read;
+	idev->write = ilitek_i2c_write;
+	idev->read = ilitek_i2c_read;
 
 	idev->spi_speed = NULL;
-	idev->actual_fw_mode = P5_X_FW_DEMO_MODE;
+	idev->actual_tp_mode = P5_X_FW_DEMO_MODE;
 
 	if (TDDI_RST_BIND)
-    	idev->reset = TP_IC_WHOLE_RST;
+		idev->reset = TP_IC_WHOLE_RST;
 	else
 		idev->reset = TP_HW_RST_ONLY;
 
-	idev->rst_edge_delay = 100;
 	idev->hd_reset = NONE;
+	idev->rst_edge_delay = 100;
 	idev->fw_open = FILP_OPEN;
-    idev->fw_upgrade_mode = UPGRADE_FLASH;
+	idev->fw_upgrade_mode = UPGRADE_FLASH;
 	idev->mp_move_code = ilitek_tddi_move_mp_code_flash;
 	idev->gesture_move_code = ilitek_tddi_move_gesture_code_flash;
 	idev->esd_recover = ilitek_tddi_wq_esd_i2c_check;
@@ -201,7 +201,7 @@ static int ilitek_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id *
 	if (ENABLE_GESTURE)
 		idev->gesture = ENABLE;
 
-    return info->hwif->plat_probe();
+	return info->hwif->plat_probe();
 }
 
 static int ilitek_i2c_remove(struct i2c_client *i2c)
@@ -210,9 +210,9 @@ static int ilitek_i2c_remove(struct i2c_client *i2c)
 		container_of(to_i2c_driver(i2c->dev.driver),
 			struct touch_bus_info, bus_driver);
 
-    ipio_info();
+	ipio_info();
 	i2c_del_driver(&info->bus_driver);
-    return info->hwif->plat_remove();
+	return info->hwif->plat_remove();
 }
 
 static const struct i2c_device_id tp_i2c_id[] = {
@@ -221,9 +221,9 @@ static const struct i2c_device_id tp_i2c_id[] = {
 
 int ilitek_tddi_interface_dev_init(struct ilitek_hwif_info *hwif)
 {
-    struct touch_bus_info *info;
+	struct touch_bus_info *info;
 
-    info = kzalloc(sizeof(*info), GFP_KERNEL);
+	info = kzalloc(sizeof(*info), GFP_KERNEL);
 	if (!info) {
 		ipio_err("faied to allocate i2c_driver\n");
 		return -ENOMEM;
@@ -234,16 +234,16 @@ int ilitek_tddi_interface_dev_init(struct ilitek_hwif_info *hwif)
 		return -EINVAL;
 	}
 
-    hwif->info = info;
+	hwif->info = info;
 
-    info->bus_driver.driver.name = hwif->name;
-    info->bus_driver.driver.owner = hwif->owner;
-    info->bus_driver.driver.of_match_table = hwif->of_match_table;
+	info->bus_driver.driver.name = hwif->name;
+	info->bus_driver.driver.owner = hwif->owner;
+	info->bus_driver.driver.of_match_table = hwif->of_match_table;
 
 	info->bus_driver.probe = ilitek_i2c_probe;
 	info->bus_driver.remove = ilitek_i2c_remove;
 	info->bus_driver.id_table = tp_i2c_id;
 
-    info->hwif = hwif;
-    return i2c_add_driver(&info->bus_driver);
+	info->hwif = hwif;
+	return i2c_add_driver(&info->bus_driver);
 }

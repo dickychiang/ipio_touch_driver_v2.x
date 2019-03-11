@@ -33,27 +33,24 @@ extern struct tpd_device *tpd;
 
 void ilitek_plat_tp_reset(void)
 {
-    ipio_info("HW reset edge_delay = %d\n", idev->rst_edge_delay);
-    tpd_gpio_output(idev->tp_rst, 1);
-    mdelay(10);
-    tpd_gpio_output(idev->tp_rst, 0);
-    mdelay(5);
-    tpd_gpio_output(idev->tp_rst, 1);
-    mdelay(idev->rst_edge_delay);
+	ipio_info("HW reset edge_delay = %d\n", idev->rst_edge_delay);
+	tpd_gpio_output(idev->tp_rst, 1);
+	mdelay(10);
+	tpd_gpio_output(idev->tp_rst, 0);
+	mdelay(5);
+	tpd_gpio_output(idev->tp_rst, 1);
+	mdelay(idev->rst_edge_delay);
 }
 
 void ilitek_plat_input_register(void)
 {
 	int i;
 
-	ipio_info();
-
 	idev->input = tpd->dev;
 
 	if (tpd_dts_data.use_tpd_button) {
-		for (i = 0; i < tpd_dts_data.tpd_key_num; i++) {
+		for (i = 0; i < tpd_dts_data.tpd_key_num; i++)
 			input_set_capability(idev->input, EV_KEY, tpd_dts_data.tpd_key_local[i]);
-		}
 	}
 
 	/* set the supported event type for input device */
@@ -226,7 +223,7 @@ void ilitek_plat_irq_disable(void)
 
 	disable_irq_nosync(idev->irq_num);
 	atomic_set(&idev->irq_stat, DISABLE);
-	ipio_debug(DEBUG_IRQ, "Disable irq success\n");
+	ipio_debug(DEBUG_PLAT, "Disable irq success\n");
 
 out:
 	spin_unlock_irqrestore(&idev->irq_spin, flag);
@@ -248,7 +245,7 @@ void ilitek_plat_irq_enable(void)
 
 	enable_irq(idev->irq_num);
 	atomic_set(&idev->irq_stat, ENABLE);
-	ipio_debug(DEBUG_IRQ, "Enable irq success\n");
+	ipio_debug(DEBUG_PLAT, "Enable irq success\n");
 
 out:
 	spin_unlock_irqrestore(&idev->irq_spin, flag);
@@ -256,7 +253,7 @@ out:
 
 static irqreturn_t ilitek_plat_isr_top_half(int irq, void *dev_id)
 {
-	ipio_info("report: %d, rst: %d, fw: %d, switch: %d, mp: %d, sleep: %d, esd: %d\n",
+	ipio_debug(DEBUG_PLAT, "report: %d, rst: %d, fw: %d, switch: %d, mp: %d, sleep: %d, esd: %d\n",
 			idev->report,
 			atomic_read(&idev->tp_reset),
 			atomic_read(&idev->fw_stat),
@@ -272,7 +269,7 @@ static irqreturn_t ilitek_plat_isr_top_half(int irq, void *dev_id)
 
 	if (atomic_read(&idev->mp_int_check) == ENABLE) {
 		atomic_set(&idev->mp_int_check, DISABLE);
-		ipio_info("Get an INT for mp, ignore\n");
+		ipio_debug(DEBUG_PLAT, "Get an INT for mp test, ignore\n");
 		return IRQ_HANDLED;
 	}
 
@@ -280,7 +277,7 @@ static irqreturn_t ilitek_plat_isr_top_half(int irq, void *dev_id)
 		atomic_read(&idev->fw_stat) || atomic_read(&idev->tp_sw_mode) ||
 		atomic_read(&idev->mp_stat) || atomic_read(&idev->tp_sleep) ||
 		atomic_read(&idev->esd_stat)) {
-			ipio_info("ignore interrupt !\n");
+			ipio_debug(DEBUG_PLAT, "ignore interrupt !\n");
 			return IRQ_HANDLED;
 	}
 	return IRQ_WAKE_THREAD;
@@ -291,7 +288,7 @@ static irqreturn_t ilitek_plat_isr_bottom_half(int irq, void *dev_id)
 	ipio_info();
 
 	if (mutex_is_locked(&idev->touch_mutex)) {
-		ipio_info("touch is locked, ignore\n");
+		ipio_debug(DEBUG_PLAT, "touch is locked, ignore\n");
 		return IRQ_HANDLED;
 	}
 	mutex_lock(&idev->touch_mutex);
@@ -341,48 +338,47 @@ static int ilitek_plat_probe(void)
 	if (REGULATOR_POWER)
 		ilitek_plat_regulator_power_init();
 
-    ilitek_plat_gpio_register();
+	ilitek_plat_gpio_register();
 
-    if (ilitek_tddi_init() < 0) {
-        ipio_err("platform probe failed\n");
-        return -ENODEV;
-    }
-
-    ilitek_plat_irq_register();
- 	tpd_load_status = 1;
-    return 0;
+	if (ilitek_tddi_init() < 0) {
+		ipio_err("platform probe failed\n");
+		return -ENODEV;
+	}
+	ilitek_plat_irq_register();
+	tpd_load_status = 1;
+	return 0;
 }
 
 static int ilitek_plat_remove(void)
 {
-    ipio_info();
+	ipio_info();
 	ilitek_tddi_dev_remove();
-    return 0;
+	return 0;
 }
 
-static struct of_device_id tp_match_table[] = {
+static const struct of_device_id tp_match_table[] = {
 	{.compatible = DTS_OF_NAME},
 	{},
 };
 
 static struct ilitek_hwif_info hwif = {
-    .bus_type = TDDI_INTERFACE,
-    .plat_type = TP_PLAT_MTK,
-    .owner = THIS_MODULE,
-    .name = TDDI_DEV_ID,
-    .of_match_table = of_match_ptr(tp_match_table),
-    .plat_probe = ilitek_plat_probe,
-    .plat_remove = ilitek_plat_remove,
+	.bus_type = TDDI_INTERFACE,
+	.plat_type = TP_PLAT_MTK,
+	.owner = THIS_MODULE,
+	.name = TDDI_DEV_ID,
+	.of_match_table = of_match_ptr(tp_match_table),
+	.plat_probe = ilitek_plat_probe,
+	.plat_remove = ilitek_plat_remove,
 };
 
 static int tpd_local_init(void)
 {
 	ipio_info("TPD init device driver\n");
 
-    if (ilitek_tddi_dev_init(&hwif) < 0) {
-        ipio_err("Failed to register i2c/spi bus driver\n");
-        return -ENODEV;
-    }
+	if (ilitek_tddi_dev_init(&hwif) < 0) {
+		ipio_err("Failed to register i2c/spi bus driver\n");
+		return -ENODEV;
+	}
 	if (tpd_load_status == 0) {
 		ipio_err("Add error touch panel driver\n");
 		return -1;
