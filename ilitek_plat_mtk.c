@@ -285,8 +285,6 @@ static irqreturn_t ilitek_plat_isr_top_half(int irq, void *dev_id)
 
 static irqreturn_t ilitek_plat_isr_bottom_half(int irq, void *dev_id)
 {
-	ipio_info();
-
 	if (mutex_is_locked(&idev->touch_mutex)) {
 		ipio_debug(DEBUG_PLAT, "touch is locked, ignore\n");
 		return IRQ_HANDLED;

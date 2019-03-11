@@ -234,7 +234,7 @@ void ilitek_plat_irq_disable(void)
 
 	disable_irq_nosync(idev->irq_num);
 	atomic_set(&idev->irq_stat, DISABLE);
-	ipio_debug(DEBUG_IRQ, "Disable irq success\n");
+	ipio_debug(DEBUG_PLAT, "Disable irq success\n");
 
 out:
 	spin_unlock_irqrestore(&idev->irq_spin, flag);
@@ -256,7 +256,7 @@ void ilitek_plat_irq_enable(void)
 
 	enable_irq(idev->irq_num);
 	atomic_set(&idev->irq_stat, ENABLE);
-	ipio_debug(DEBUG_IRQ, "Enable irq success\n");
+	ipio_debug(DEBUG_PLAT, "Enable irq success\n");
 
 out:
 	spin_unlock_irqrestore(&idev->irq_spin, flag);
@@ -264,13 +264,14 @@ out:
 
 static irqreturn_t ilitek_plat_isr_top_half(int irq, void *dev_id)
 {
-	ipio_info("report: %d, rst: %d, fw: %d, switch: %d, mp: %d, sleep: %d\n",
+	ipio_debug(DEBUG_PLAT, "report: %d, rst: %d, fw: %d, switch: %d, mp: %d, sleep: %d, esd: %d\n",
 			idev->report,
 			atomic_read(&idev->tp_reset),
 			atomic_read(&idev->fw_stat),
 			atomic_read(&idev->tp_sw_mode),
 			atomic_read(&idev->mp_stat),
-			atomic_read(&idev->tp_sleep));
+			atomic_read(&idev->tp_sleep),
+			atomic_read(&idev->esd_stat));
 
 	if (irq != idev->irq_num) {
 		ipio_err("Incorrect irq number (%d)\n", irq);
@@ -279,14 +280,15 @@ static irqreturn_t ilitek_plat_isr_top_half(int irq, void *dev_id)
 
 	if (atomic_read(&idev->mp_int_check) == ENABLE) {
 		atomic_set(&idev->mp_int_check, DISABLE);
-		ipio_info("Get an INT for mp, ignore\n");
+		ipio_debug(DEBUG_PLAT, "Get an INT for mp, ignore\n");
 		return IRQ_HANDLED;
 	}
 
 	if (!idev->report || atomic_read(&idev->tp_reset) ||
 		atomic_read(&idev->fw_stat) || atomic_read(&idev->tp_sw_mode) ||
-		atomic_read(&idev->mp_stat) || atomic_read(&idev->tp_sleep)) {
-			ipio_info("ignore interrupt !\n");
+		atomic_read(&idev->mp_stat) || atomic_read(&idev->tp_sleep) ||
+		atomic_read(&idev->esd_stat)) {
+			ipio_debug(DEBUG_PLAT, "ignore interrupt !\n");
 			return IRQ_HANDLED;
 	}
 	return IRQ_WAKE_THREAD;
@@ -294,10 +296,8 @@ static irqreturn_t ilitek_plat_isr_top_half(int irq, void *dev_id)
 
 static irqreturn_t ilitek_plat_isr_bottom_half(int irq, void *dev_id)
 {
-	ipio_info();
-
 	if (mutex_is_locked(&idev->touch_mutex)) {
-		ipio_info("touch is locked, ignore\n");
+		ipio_debug(DEBUG_PLAT, "touch is locked, ignore\n");
 		return IRQ_HANDLED;
 	}
 	mutex_lock(&idev->touch_mutex);
