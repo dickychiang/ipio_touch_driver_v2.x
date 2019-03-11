@@ -526,7 +526,7 @@ int ilitek_tddi_reset_ctrl(int mode)
 
 	atomic_set(&idev->tp_reset, START);
 
-	ilitek_tddi_ic_protect_otp_prog_mode();
+	ilitek_tddi_ic_check_otp_prog_mode();
 
 	switch (mode) {
 	case TP_IC_CODE_RST:

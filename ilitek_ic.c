@@ -484,7 +484,7 @@ void ilitek_tddi_ic_get_ddi_reg_onepage(u8 page, u8 reg)
 		ilitek_ice_mode_ctrl(DISABLE, ON);
 }
 
-void ilitek_tddi_ic_protect_otp_prog_mode(void)
+void ilitek_tddi_ic_check_otp_prog_mode(void)
 {
 	int prog_mode, prog_done, retry = 5;
 
@@ -515,6 +515,12 @@ void ilitek_tddi_ic_protect_otp_prog_mode(void)
 
 	if (retry <= 0)
 		ipio_err("OTP Program mode error!\n");
+
+	/*
+	 * Since OTP must be folloing with reset after leave out the func,
+	 * the stat of ice mode should be set as 0.
+	 */
+	atomic_set(&idev->ice_stat, DISABLE);
 }
 
 void ilitek_tddi_ic_spi_speed_ctrl(bool enable)

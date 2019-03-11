@@ -689,7 +689,7 @@ struct ilitek_hwif_info {
 };
 
 /* Prototypes for tddi firmware/flash functions */
-extern void ilitek_tddi_ic_protect_otp_prog_mode(void);
+extern void ilitek_tddi_ic_check_otp_prog_mode(void);
 extern void ilitek_tddi_flash_dma_write(u32 start, u32 end, u32 len);
 extern void ilitek_tddi_flash_clear_dma(void);
 extern void ilitek_tddi_fw_read_flash_info(bool mode);
