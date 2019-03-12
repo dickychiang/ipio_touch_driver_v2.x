@@ -671,5 +671,52 @@ void ilitek_tddi_report_gesture_mode(u8 *buf, size_t len)
 
 void ilitek_tddi_report_i2cuart_mode(u8 *buf, size_t len)
 {
-	ipio_info();
+	int type = buf[3] & 0x0F;
+	int need_read_len = 0, one_data_bytes = 0;
+	int actual_len = len - 5;
+	size_t uart_len;
+	u8 *uart_buf, *total_buf;
+
+	ipio_debug(DEBUG_TOUCH, "data[3] = %x, type = %x, actual_len = %d\n",
+					buf[3], type, actual_len);
+
+	need_read_len = buf[1] * buf[2];
+
+	if (type == 0 || type == 1 || type == 6) {
+		one_data_bytes = 1;
+	} else if (type == 2 || type == 3) {
+		one_data_bytes = 2;
+	} else if (type == 4 || type == 5) {
+		one_data_bytes = 4;
+	}
+
+	need_read_len *=  one_data_bytes + 1;
+	ipio_debug(DEBUG_TOUCH, "need_read_len = %d  one_data_bytes = %d\n", need_read_len, one_data_bytes);
+
+	if (need_read_len > actual_len) {
+		uart_len = need_read_len - actual_len;
+		ipio_debug(DEBUG_TOUCH, "uart len = %ld\n", uart_len);
+
+		uart_buf = kcalloc(uart_len, sizeof(u8), GFP_KERNEL);
+		if (ERR_ALLOC_MEM(uart_buf)) {
+			ipio_err("Failed to allocate uart_buf memory %ld\n", PTR_ERR(uart_buf));
+			return;
+		}
+
+		if (idev->read(uart_buf, uart_len) < 0) {
+			ipio_err("i2cuart read data failed\n");
+			return;
+		}
+
+		total_buf = kcalloc(len + uart_len, sizeof(u8), GFP_KERNEL);
+		if (ERR_ALLOC_MEM(total_buf)) {
+			ipio_err("Failed to allocate total_buf memory %ld\n", PTR_ERR(total_buf));
+			return;
+		}
+		memcpy(total_buf, buf, len);
+		memcpy(total_buf + len, uart_buf, uart_len);
+		ilitek_tddi_touch_send_debug_data(total_buf, len + uart_len);
+		return;
+	}
+	ilitek_tddi_touch_send_debug_data(buf, len);
 }
