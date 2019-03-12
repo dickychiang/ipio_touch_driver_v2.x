@@ -599,11 +599,6 @@ static int ilitek_spi_probe(struct spi_device *spi)
 	else
 		idev->reset = TP_HW_RST_ONLY;
 
-	if (TDDI_RST_BIND)
-		idev->hd_reset = TP_IC_WHOLE_RST_HD;
-	else
-		idev->hd_reset = TP_HW_RST_HD;
-
 	idev->rst_edge_delay = 1;
 	idev->fw_open = FILP_OPEN;
 	idev->fw_upgrade_mode = UPGRADE_IRAM;

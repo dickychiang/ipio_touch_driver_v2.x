@@ -184,7 +184,6 @@ static int ilitek_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id *
 	else
 		idev->reset = TP_HW_RST_ONLY;
 
-	idev->hd_reset = NONE;
 	idev->rst_edge_delay = 100;
 	idev->fw_open = FILP_OPEN;
 	idev->fw_upgrade_mode = UPGRADE_FLASH;

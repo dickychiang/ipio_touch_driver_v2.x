@@ -366,7 +366,7 @@ void ilitek_tddi_touch_esd_gesture_iram(void)
 		ipio_err("esd gesture: write password failed\n");
 
 	/* Host download gives effect to FW receives password successed */
-	ilitek_tddi_reset_ctrl(idev->hd_reset);
+	ilitek_tddi_fw_upgrade_handler(NULL);
 
 	/* waiting for FW reloading code */
 	msleep(100);

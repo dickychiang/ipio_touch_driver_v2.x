@@ -95,7 +95,7 @@ int ilitek_tddi_switch_mode(u8 *data)
 	case P5_X_FW_DEMO_MODE:
 		ipio_info("Switch to Demo mode\n");
 		if (idev->fw_upgrade_mode == UPGRADE_IRAM)
-			ilitek_tddi_reset_ctrl(idev->hd_reset);
+			ilitek_tddi_fw_upgrade_handler(NULL);
 		else
 			ilitek_tddi_reset_ctrl(idev->reset);
 		break;
@@ -133,7 +133,6 @@ static void ilitek_tddi_wq_ges_recover(struct work_struct *work)
 {
 	mutex_lock(&idev->touch_mutex);
 	atomic_set(&idev->esd_stat, START);
-	ipio_info("doing gesture recovery\n");
 	idev->ges_recover();
 	atomic_set(&idev->esd_stat, END);
 	mutex_unlock(&idev->touch_mutex);
@@ -144,7 +143,7 @@ static void ilitek_tddi_wq_spi_recover(struct work_struct *work)
 	ilitek_tddi_wq_ctrl(WQ_ESD, DISABLE);
 	mutex_lock(&idev->touch_mutex);
 	atomic_set(&idev->esd_stat, START);
-	ilitek_tddi_reset_ctrl(idev->hd_reset);
+	ilitek_tddi_fw_upgrade_handler(NULL);
 	atomic_set(&idev->esd_stat, END);
 	mutex_unlock(&idev->touch_mutex);
 	ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
@@ -170,7 +169,7 @@ int ilitek_tddi_wq_esd_i2c_check(void)
 static void ilitek_tddi_wq_esd_check(struct work_struct *work)
 {
 	if (idev->esd_recover() < 0) {
-		ipio_info("doing spi recovery\n");
+		ipio_info("SPI ACK failed, doing spi recovery\n");
 		ilitek_tddi_wq_ctrl(WQ_SPI_RECOVER, ENABLE);
 		return;
 	}
@@ -475,9 +474,11 @@ void ilitek_tddi_report_handler(void)
 	if (ret < 0) {
 		ipio_err("Read report packet failed\n");
 		if (idev->actual_tp_mode == P5_X_FW_GESTURE_MODE && idev->gesture) {
+			ipio_info("Gesture failed, doing gesture recovery\n");
 			ilitek_tddi_wq_ctrl(WQ_GES_RECOVER, ENABLE);
 			goto recover;
 		} else if (ret == DO_SPI_RECOVER) {
+			ipio_info("SPI ACK failed, doing spi recovery\n");
 			ilitek_tddi_wq_ctrl(WQ_SPI_RECOVER, ENABLE);
 			goto recover;
 		}
