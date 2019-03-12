@@ -174,8 +174,6 @@ u32 ilitek_ice_mode_read(u32 addr, size_t len)
 	if (ret < 0)
 		goto out;
 
-	mdelay(10);
-
 	rxbuf = kcalloc(len, sizeof(u8), GFP_KERNEL);
 	if (ERR_ALLOC_MEM(rxbuf)) {
 		ipio_err("Failed to allocate rxbuf, %ld\n", PTR_ERR(rxbuf));
