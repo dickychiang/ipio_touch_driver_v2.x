@@ -33,7 +33,7 @@ extern struct tpd_device *tpd;
 
 void ilitek_plat_tp_reset(void)
 {
-	ipio_info("HW reset edge_delay = %d\n", idev->rst_edge_delay);
+	ipio_info("edge delay = %d\n", idev->rst_edge_delay);
 	tpd_gpio_output(idev->tp_rst, 1);
 	mdelay(10);
 	tpd_gpio_output(idev->tp_rst, 0);
@@ -269,7 +269,7 @@ static irqreturn_t ilitek_plat_isr_top_half(int irq, void *dev_id)
 
 	if (atomic_read(&idev->mp_int_check) == ENABLE) {
 		atomic_set(&idev->mp_int_check, DISABLE);
-		ipio_debug(DEBUG_PLAT, "Get an INT for mp test, ignore\n");
+		ipio_info("Get an INT for mp test, ignore\n");
 		return IRQ_HANDLED;
 	}
 

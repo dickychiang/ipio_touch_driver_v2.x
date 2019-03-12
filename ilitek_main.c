@@ -40,7 +40,7 @@ int ilitek_tddi_mp_test_handler(char *apk, bool lcm_on)
 	u8 tp_mode = P5_X_FW_TEST_MODE;
 
 	if (atomic_read(&idev->fw_stat)) {
-		ipio_info("fw upgrade processing, ignore\n");
+		ipio_err("fw upgrade processing, ignore\n");
 		return 0;
 	}
 
@@ -124,7 +124,7 @@ int ilitek_tddi_switch_mode(u8 *data)
 	if (ret < 0)
 		ipio_err("Switch mode failed\n");
 
-	ipio_info("Actual TP mode = %d\n", idev->actual_tp_mode);
+	ipio_debug(DEBUG_MAIN, "Actual TP mode = %d\n", idev->actual_tp_mode);
 	atomic_set(&idev->tp_sw_mode, END);
 	return ret;
 }
@@ -169,7 +169,7 @@ int ilitek_tddi_wq_esd_i2c_check(void)
 static void ilitek_tddi_wq_esd_check(struct work_struct *work)
 {
 	if (idev->esd_recover() < 0) {
-		ipio_info("SPI ACK failed, doing spi recovery\n");
+		ipio_err("SPI ACK failed, doing spi recovery\n");
 		ilitek_tddi_wq_ctrl(WQ_SPI_RECOVER, ENABLE);
 		return;
 	}
@@ -393,6 +393,7 @@ int ilitek_tddi_fw_upgrade_handler(void *data)
 	if (!mutex_is_locked(&idev->touch_mutex)) {
 		mutex_lock(&idev->touch_mutex);
 		get_lock = true;
+		ipio_info("get touch lock\n");
 	}
 
 	idev->fw_update_stat = 0;
@@ -474,11 +475,11 @@ void ilitek_tddi_report_handler(void)
 	if (ret < 0) {
 		ipio_err("Read report packet failed\n");
 		if (idev->actual_tp_mode == P5_X_FW_GESTURE_MODE && idev->gesture) {
-			ipio_info("Gesture failed, doing gesture recovery\n");
+			ipio_err("Gesture failed, doing gesture recovery\n");
 			ilitek_tddi_wq_ctrl(WQ_GES_RECOVER, ENABLE);
 			goto recover;
 		} else if (ret == DO_SPI_RECOVER) {
-			ipio_info("SPI ACK failed, doing spi recovery\n");
+			ipio_err("SPI ACK failed, doing spi recovery\n");
 			ilitek_tddi_wq_ctrl(WQ_SPI_RECOVER, ENABLE);
 			goto recover;
 		}

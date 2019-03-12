@@ -279,7 +279,7 @@ int ilitek_tddi_move_gesture_code_iram(int mode)
 		if ((idev->read(cmd, 1)) < 0)
 			ipio_err("read gesture ready byte error\n");
 
-		ipio_info("gesture ready byte = 0x%x\n", cmd[0]);
+		ipio_debug(DEBUG_TOUCH, "gesture ready byte = 0x%x\n", cmd[0]);
 		if (cmd[0] == 0x91) {
 			ipio_info("Gesture check fw ready\n");
 			break;
@@ -407,7 +407,7 @@ static void ilitek_tddi_touch_send_debug_data(u8 *buf, size_t len)
 		ipio_memcpy(idev->debug_buf[idev->debug_data_frame], buf, len, 2048);
 		idev->debug_data_frame++;
 		if (idev->debug_data_frame > 1)
-			ipio_info("idev->debug_data_frame = %d\n", idev->debug_data_frame);
+			ipio_debug(DEBUG_TOUCH, "idev->debug_data_frame = %d\n", idev->debug_data_frame);
 		if (idev->debug_data_frame > 1023) {
 			ipio_err("idev->debug_data_frame = %d > 1024\n",
 				idev->debug_data_frame);
@@ -423,7 +423,7 @@ out:
 
 void ilitek_tddi_touch_press(u16 x, u16 y, u16 pressure, u16 id)
 {
-	ipio_info("Touch Press: id = %d, x = %d, y = %d, p = %d\n", id, x, y, pressure);
+	ipio_debug(DEBUG_TOUCH, "Touch Press: id = %d, x = %d, y = %d, p = %d\n", id, x, y, pressure);
 
 	if (MT_B_TYPE) {
 		input_mt_slot(idev->input, id);
@@ -448,7 +448,7 @@ void ilitek_tddi_touch_press(u16 x, u16 y, u16 pressure, u16 id)
 
 void ilitek_tddi_touch_release(u16 x, u16 y, u16 id)
 {
-	ipio_info("Touch Release: id = %d, x = %d, y = %d\n", id, x, y);
+	ipio_debug(DEBUG_TOUCH, "Touch Release: id = %d, x = %d, y = %d\n", id, x, y);
 
 	if (MT_B_TYPE) {
 		input_mt_slot(idev->input, id);
@@ -506,13 +506,13 @@ void ilitek_tddi_report_ap_mode(u8 *buf, size_t len)
 		else
 			touch_info[i].pressure = 1;
 
-		ipio_info("original x = %d, y = %d\n", xop, yop);
+		ipio_debug(DEBUG_TOUCH, "original x = %d, y = %d\n", xop, yop);
 		idev->finger++;
 		if (MT_B_TYPE)
 			idev->curt_touch[i] = 1;
 	}
 
-	ipio_info("figner number = %d, LastTouch = %d\n", idev->finger, idev->last_touch);
+	ipio_debug(DEBUG_TOUCH, "figner number = %d, LastTouch = %d\n", idev->finger, idev->last_touch);
 
 	if (idev->finger) {
 		if (MT_B_TYPE) {
@@ -580,13 +580,13 @@ void ilitek_tddi_report_debug_mode(u8 *buf, size_t rlen)
 		else
 			touch_info[i].pressure = 1;
 
-		ipio_info("original x = %d, y = %d\n", xop, yop);
+		ipio_debug(DEBUG_TOUCH, "original x = %d, y = %d\n", xop, yop);
 		idev->finger++;
 		if (MT_B_TYPE)
 			idev->curt_touch[i] = 1;
 	}
 
-	ipio_info("figner number = %d, LastTouch = %d\n", idev->finger, idev->last_touch);
+	ipio_debug(DEBUG_TOUCH, "figner number = %d, LastTouch = %d\n", idev->finger, idev->last_touch);
 
 	if (idev->finger) {
 		if (MT_B_TYPE) {

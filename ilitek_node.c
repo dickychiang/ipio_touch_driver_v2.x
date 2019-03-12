@@ -886,7 +886,6 @@ static ssize_t ilitek_proc_debug_level_read(struct file *filp, char __user *buff
 	ipio_info("DEBUG_IC = %d\n", DEBUG_IC);
 	ipio_info("DEBUG_FW = %d\n", DEBUG_FW);
 	ipio_info("DEBUG_MP = %d\n", DEBUG_MP);
-	ipio_info("DEBUG_NODE = %d\n", DEBUG_NODE);
 	ipio_info("DEBUG_I2C = %d\n", DEBUG_I2C);
 	ipio_info("DEBUG_SPI = %d\n", DEBUG_SPI);
 	ipio_info("DEBUG_PLAT = %d\n", DEBUG_PLAT);
@@ -900,7 +899,6 @@ static ssize_t ilitek_proc_debug_level_read(struct file *filp, char __user *buff
 	len += snprintf(g_user_buf + len, PAGE_SIZE - len, "DEBUG_IC = %d\n", DEBUG_IC);
 	len += snprintf(g_user_buf + len, PAGE_SIZE - len, "DEBUG_FW = %d\n", DEBUG_FW);
 	len += snprintf(g_user_buf + len, PAGE_SIZE - len, "DEBUG_MP = %d\n", DEBUG_MP);
-	len += snprintf(g_user_buf + len, PAGE_SIZE - len, "DEBUG_NODE = %d\n", DEBUG_NODE);
 	len += snprintf(g_user_buf + len, PAGE_SIZE - len, "DEBUG_I2C = %d\n", DEBUG_I2C);
 	len += snprintf(g_user_buf + len, PAGE_SIZE - len, "DEBUG_SPI = %d\n", DEBUG_SPI);
 	len += snprintf(g_user_buf + len, PAGE_SIZE - len, "DEBUG_PLAT = %d\n", DEBUG_PLAT);
@@ -1256,10 +1254,10 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 		ipio_info("ioctl: netlink ctrl = %d\n", szBuf[0]);
 		if (szBuf[0]) {
 			idev->netlink = ENABLE;
-			ipio_debug(DEBUG_NODE, "ioctl: Netlink is enabled\n");
+			ipio_info("ioctl: Netlink is enabled\n");
 		} else {
 			idev->netlink = DISABLE;
-			ipio_debug(DEBUG_NODE, "ioctl: Netlink is disabled\n");
+			ipio_info("ioctl: Netlink is disabled\n");
 		}
 		break;
 	case ILITEK_IOCTL_TP_NETLINK_STATUS:
@@ -1277,7 +1275,7 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 		ipio_info("ioctl: switch fw mode = %d\n", szBuf[0]);
 		ret = ilitek_tddi_switch_mode(szBuf);
 		if (ret < 0) {
-			ipio_debug(DEBUG_NODE, "switch to fw mode (%d) failed\n", szBuf[0]);
+			ipio_info("switch to fw mode (%d) failed\n", szBuf[0]);
 		}
 		break;
 	case ILITEK_IOCTL_TP_MODE_STATUS:
@@ -1296,10 +1294,10 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 		ipio_info("ioctl: switch ice mode = %d", szBuf[0]);
 		if (szBuf[0]) {
 			atomic_set(&idev->ice_stat, ENABLE);
-			ipio_debug(DEBUG_NODE, "ioctl: set ice mode enabled\n");
+			ipio_info("ioctl: set ice mode enabled\n");
 		} else {
 			atomic_set(&idev->ice_stat, DISABLE);
-			ipio_debug(DEBUG_NODE, "ioctl: set ice mode disabled\n");
+			ipio_info("ioctl: set ice mode disabled\n");
 		}
 		break;
 	case ILITEK_IOCTL_TP_INTERFACE_TYPE:
@@ -1418,9 +1416,9 @@ void netlink_reply_msg(void *raw, int size)
 	int msg_size = size;
 	u8 *data = (u8 *) raw;
 
-	ipio_debug(DEBUG_NODE, "The size of data being sent to user = %d\n", msg_size);
-	ipio_debug(DEBUG_NODE, "pid = %d\n", netlink_pid);
-	ipio_debug(DEBUG_NODE, "Netlink is enable = %d\n", idev->netlink);
+	ipio_info("The size of data being sent to user = %d\n", msg_size);
+	ipio_info("pid = %d\n", netlink_pid);
+	ipio_info("Netlink is enable = %d\n", idev->netlink);
 
 	if (idev->netlink) {
 		skb_out = nlmsg_new(msg_size, 0);
@@ -1446,17 +1444,17 @@ static void netlink_recv_msg(struct sk_buff *skb)
 {
 	netlink_pid = 0;
 
-	ipio_debug(DEBUG_NODE, "Netlink = %d\n", idev->netlink);
+	ipio_info("Netlink = %d\n", idev->netlink);
 
 	netlink_head = (struct nlmsghdr *)skb->data;
 
-	ipio_debug(DEBUG_NODE, "Received a request from client: %s, %d\n",
+	ipio_info("Received a request from client: %s, %d\n",
 		(char *)NLMSG_DATA(netlink_head), (int)strlen((char *)NLMSG_DATA(netlink_head)));
 
 	/* pid of sending process */
 	netlink_pid = netlink_head->nlmsg_pid;
 
-	ipio_debug(DEBUG_NODE, "the pid of sending process = %d\n", netlink_pid);
+	ipio_info("the pid of sending process = %d\n", netlink_pid);
 
 	/* TODO: may do something if there's not receiving msg from user. */
 	if (netlink_pid != 0) {

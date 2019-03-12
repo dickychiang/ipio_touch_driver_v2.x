@@ -1249,7 +1249,7 @@ static int codeToOhm(s32 Code, u16 *v_tdf, u16 *h_tdf)
 	}
 
 	if (Code == 0) {
-		ipio_debug(DEBUG_MP, "code is invalid\n");
+		ipio_err("code is invalid\n");
 	} else {
 		temp = ((douTVCH - douTVCL) * douVariation * (douTDF1 - douTDF2) * (1 << 12) / (9 * Code * douCint)) * 100;
 		temp = (temp - douRinternal) / 1000;

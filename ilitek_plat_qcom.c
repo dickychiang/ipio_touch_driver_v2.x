@@ -28,7 +28,7 @@
 
 void ilitek_plat_tp_reset(void)
 {
-	ipio_info("HW reset edge_delay = %d\n", idev->rst_edge_delay);
+	ipio_info("edge delay = %d\n", idev->rst_edge_delay);
 	gpio_direction_output(idev->tp_rst, 1);
 	mdelay(10);
 	gpio_set_value(idev->tp_rst, 0);
@@ -280,7 +280,7 @@ static irqreturn_t ilitek_plat_isr_top_half(int irq, void *dev_id)
 
 	if (atomic_read(&idev->mp_int_check) == ENABLE) {
 		atomic_set(&idev->mp_int_check, DISABLE);
-		ipio_debug(DEBUG_PLAT, "Get an INT for mp, ignore\n");
+		ipio_info("Get an INT for mp, ignore\n");
 		return IRQ_HANDLED;
 	}
 

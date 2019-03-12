@@ -123,6 +123,7 @@ static int host_download_dma_check(u32 start_addr, u32 block_size)
 	while (count > 0) {
 		mdelay(1);
 		busy = ilitek_ice_mode_read(0x048006, sizeof(u8));
+		ipio_debug(DEBUG_FW, "busy = %x\n", busy);
 		if ((busy & 0x01) == 1)
 			break;
 		count--;
@@ -195,7 +196,7 @@ static int ilitek_tddi_fw_check_hex_hw_crc(u8 *pfw)
 		ipio_info("Block = %d, Hex CRC = %x, HW CRC = %x\n", i, hex_crc, hw_crc);
 
 		if (hex_crc != hw_crc) {
-			ipio_info("Hex and HW CRC NO matched !!!\n");
+			ipio_err("Hex and HW CRC NO matched !!!\n");
 			return UPDATE_FAIL;
 		}
 	}
@@ -320,6 +321,7 @@ u32 ilitek_tddi_fw_read_hw_crc(u32 start, u32 end)
 
 	do {
 		busy = ilitek_ice_mode_read(0x048007, sizeof(u8));
+		ipio_debug(DEBUG_FW, "busy = %x\n", busy);
 		if (((busy >> 1) & 0x01) == 0x01)
 			break;
 	} while (--retry >= 0);
@@ -392,6 +394,7 @@ int ilitek_tddi_fw_dump_flash_data(u32 start, u32 end, bool user)
 	}
 
 	length = end_addr - start_addr + 1;
+	ipio_info("len = %d\n", length);
 
 	hex_buffer = vmalloc(length * sizeof(u8));
 	if (ERR_ALLOC_MEM(hex_buffer)) {

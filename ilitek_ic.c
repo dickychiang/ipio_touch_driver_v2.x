@@ -120,7 +120,7 @@ int ilitek_ice_mode_bit_mask_write(u32 addr, u32 mask, u32 value)
 	data &= (~mask);
 	data |= (value & mask);
 
-	ipio_info("mask value data = %x\n", data);
+	ipio_debug(DEBUG_IC, "mask value data = %x\n", data);
 
 	ret = ilitek_ice_mode_write(addr, data, sizeof(u32));
 	if (ret < 0)
@@ -278,6 +278,7 @@ int ilitek_tddi_ic_watch_dog_ctrl(bool enable)
 
 	while (timeout > 0) {
 		ret = ilitek_ice_mode_read(0x51018, sizeof(u8));
+		ipio_debug(DEBUG_IC, "ret = %x\n", ret);
 		if (enable) {
 			if (ret == on_bit)
 				break;
@@ -457,7 +458,7 @@ void ilitek_tddi_ic_get_ddi_reg_onepage(u8 page, u8 reg)
 	u32 setreg = 0x2F000100 | (reg << 16);
 	bool ice = atomic_read(&idev->ice_stat);
 
-	ipio_info("setpage =  0x%X setreg = 0x%X\n", setpage, setreg);
+	ipio_info("setpage = 0x%X setreg = 0x%X\n", setpage, setreg);
 
 	if (!ice)
 		ilitek_ice_mode_ctrl(ENABLE, ON);
@@ -473,7 +474,7 @@ void ilitek_tddi_ic_get_ddi_reg_onepage(u8 page, u8 reg)
 	ilitek_ice_mode_write(0x4800A, 0x02, 1);
 
 	reg_data = ilitek_tddi_ic_rd_pack(setreg);
-	ipio_info("check page = 0x%X reg = 0x%X read 0x%X\n", page, reg, reg_data);
+	ipio_info("check page = 0x%X, reg = 0x%X, read 0x%X\n", page, reg, reg_data);
 
 	/*TDI_RD_KEY OFF*/
 	ilitek_tddi_ic_wr_pack(0x1FFF9400);
