@@ -542,14 +542,6 @@ int ilitek_tddi_reset_ctrl(int mode)
 		ipio_info("TP HW RST\n");
 		ilitek_plat_tp_reset();
 		break;
-	case TP_HW_RST_HD:
-		ipio_info("TP HW RST with host download\n");
-		ilitek_tddi_fw_upgrade_handler(NULL);
-		break;
-	case TP_IC_WHOLE_RST_HD:
-		ipio_info("TP IC whole RST with host download\n");
-		ilitek_tddi_fw_upgrade_handler(NULL);
-		break;
 	default:
 		ipio_err("Unknown reset mode, %d\n", mode);
 		ret = -EINVAL;
