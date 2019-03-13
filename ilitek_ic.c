@@ -22,6 +22,7 @@
 
 #include "ilitek.h"
 
+
 #define PROTOCL_VER_NUM		7
 static struct ilitek_protocol_info protocol_info[PROTOCL_VER_NUM] = {
 	/* length -> fw, protocol, tp, key, panel, core, func, window, cdc, mp_info */
@@ -63,6 +64,8 @@ static u32 ic_sup_list[CHIP_SUP_NUM] = {
 	[4] = ILI7807G_AA,
 	[5] = ILI7807G_AB,
 };
+
+static int ilitek_tddi_ic_watch_dog_ctrl(bool enable);
 
 static int ilitek_tddi_ic_check_support(u32 pid, u16 id)
 {
@@ -208,7 +211,12 @@ int ilitek_ice_mode_ctrl(bool enable, bool mcu)
 	ipio_info("%s ICE mode, mcu on = %d\n", (enable ? "Enable" : "Disable"), mcu);
 
 	if (enable) {
-		if (mcu == ON)
+		if (atomic_read(&idev->ice_stat)) {
+			ipio_info("ice mode already enabled\n");
+			return 0;
+		}
+
+		if (mcu)
 			cmd_open[0] = 0x1F;
 
 		atomic_set(&idev->ice_stat, ENABLE);
@@ -235,9 +243,27 @@ int ilitek_ice_mode_ctrl(bool enable, bool mcu)
 			atomic_set(&idev->ice_stat, DISABLE);
 			goto out;
 		}
+
 		/* Patch to resolve the issue of i2c nack after exit to ice mode */
 		ilitek_ice_mode_write(0x47002, 0x00, 1);
+
+		if (!mcu) {
+			if (ilitek_tddi_ic_watch_dog_ctrl(DISABLE) < 0) {
+				ipio_err("Disable wdt failed !!\n");
+				ret = -1;
+			}
+		}
 	} else {
+		if (!atomic_read(&idev->ice_stat)) {
+			ipio_info("ice mode already disabled\n");
+			return 0;
+		}
+
+		if (!mcu) {
+			if (ilitek_tddi_ic_watch_dog_ctrl(ENABLE) < 0)
+				ipio_err("Enable WDT failed !!\n");
+		}
+
 		ret = idev->write(cmd_close, sizeof(cmd_close));
 		if (ret < 0)
 			ipio_err("Exit to ICE Mode failed !!\n");
@@ -247,10 +273,15 @@ out:
 	return ret;
 }
 
-int ilitek_tddi_ic_watch_dog_ctrl(bool enable)
+static int ilitek_tddi_ic_watch_dog_ctrl(bool enable)
 {
 	int timeout = 100, ret = 0;
 	u8 off_bit = 0x5A, on_bit = 0xA5;
+
+	if (!atomic_read(&idev->ice_stat)) {
+		ipio_err("ice mode wasn't enabled\n");
+		return -1;
+	}
 
 	if (idev->chip->wdt_addr <= 0 || idev->chip->id <= 0) {
 		ipio_err("WDT/CHIP ID is invalid\n");
@@ -347,39 +378,35 @@ int ilitek_tddi_ic_func_ctrl(const char *name, int ctrl)
 
 int ilitek_tddi_ic_code_reset(void)
 {
-	int ret = 0;
+	int ret;
 	bool ice = atomic_read(&idev->ice_stat);
 
 	if (!ice)
 		ilitek_ice_mode_ctrl(ENABLE, OFF);
 
-   ret = ilitek_ice_mode_write(0x40040, 0xAE, 1);
+	ret = ilitek_ice_mode_write(0x40040, 0xAE, 1);
 	if (ret < 0)
-		ipio_err("ic code reset failed, ret = %d\n", ret);
+		ipio_err("ic code reset failed\n");
 
 	if (!ice)
 		ilitek_ice_mode_ctrl(DISABLE, OFF);
-	return ret;
+
+   return ret;
 }
 
 int ilitek_tddi_ic_whole_reset(void)
 {
-	int ret = 0;
-	bool ice = atomic_read(&idev->ice_stat);
-	u32 key = idev->chip->reset_key;
-	u32 addr = idev->chip->reset_addr;
+	ipio_info("ic whole reset key = 0x%x, edge_delay = %d\n",
+			idev->chip->reset_key, idev->rst_edge_delay);
 
-	if (!ice)
-		ilitek_ice_mode_ctrl(ENABLE, OFF);
-
-	ipio_info("ic whole reset key = 0x%x, edge_delay = %d\n", key, idev->rst_edge_delay);
-
-	ret = ilitek_ice_mode_write(addr, key, sizeof(u32));
-	if (ret < 0)
-		ipio_err("ic whole reset failed, ret = %d\n", ret);
-
+	if (ilitek_ice_mode_write(idev->chip->reset_key,
+							idev->chip->reset_addr,
+							sizeof(u32)) < 0) {
+		ipio_err("ic whole reset failed\n");
+		return -1;
+	}
 	msleep(idev->rst_edge_delay);
-	return ret;
+	return 0;
 }
 
 static void ilitek_tddi_ic_wr_pack(int packet)
@@ -514,12 +541,6 @@ void ilitek_tddi_ic_check_otp_prog_mode(void)
 
 	if (retry <= 0)
 		ipio_err("OTP Program mode error!\n");
-
-	/*
-	 * Since OTP must be folloing with reset after leave out the func,
-	 * the stat of ice mode should be set as 0.
-	 */
-	atomic_set(&idev->ice_stat, DISABLE);
 }
 
 void ilitek_tddi_ic_spi_speed_ctrl(bool enable)

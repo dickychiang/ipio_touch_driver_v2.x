@@ -549,6 +549,13 @@ int ilitek_tddi_reset_ctrl(int mode)
 		break;
 	}
 
+	/*
+	 * Since OTP must be folloing with reset after leave out the func,
+	 * the stat of ice mode should be set as 0.
+	 */
+	if (mode != TP_IC_CODE_RST)
+		atomic_set(&idev->ice_stat, DISABLE);
+
 	atomic_set(&idev->tp_reset, END);
 	return ret;
 }

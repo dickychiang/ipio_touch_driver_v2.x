@@ -511,7 +511,10 @@ static ssize_t ilitek_proc_rw_tp_reg_read(struct file *pFile, char __user *buf, 
 		size = snprintf(g_user_buf, PAGE_SIZE, "WRITE:addr = 0x%06x, write = 0x%08x, len =%d byte\n", addr, write_data, write_len);
 	}
 
-	ilitek_ice_mode_ctrl(DISABLE, OFF);
+	if (stop_mcu == mcu_on)
+		ilitek_ice_mode_ctrl(DISABLE, ON);
+	else
+		ilitek_ice_mode_ctrl(DISABLE, OFF);
 
 	ret = copy_to_user(buf, g_user_buf, size);
 	if (ret < 0)
@@ -966,7 +969,6 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 	} else if (strcmp(cmd, "icwholereset") == 0) {
 		ilitek_ice_mode_ctrl(ENABLE, OFF);
 		ilitek_tddi_reset_ctrl(TP_IC_WHOLE_RST);
-		ilitek_ice_mode_ctrl(DISABLE, OFF);
 	} else if (strcmp(cmd, "iccodereset") == 0) {
 		ilitek_ice_mode_ctrl(ENABLE, OFF);
 		ilitek_tddi_reset_ctrl(TP_IC_CODE_RST);
