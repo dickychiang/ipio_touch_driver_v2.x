@@ -1054,10 +1054,10 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 
 		for (i = 0; i < r_len; i++)
 			ipio_info("read[%d] = %x\n", i, temp[i]);
-	} else if (strcmp(cmd, "getoneddiregdata") == 0) {
+	} else if (strcmp(cmd, "getddiregdata") == 0) {
 		ipio_info("Get ddi reg one page: page = %x, reg = %x\n", data[1], data[2]);
 		ilitek_tddi_ic_get_ddi_reg_onepage(data[1], data[2]);
-	} else if (strcmp(cmd, "setoneddiregdata") == 0) {
+	} else if (strcmp(cmd, "setddiregdata") == 0) {
 		ipio_info("Set ddi reg one page: page = %x, reg = %x, data = %x\n", data[1], data[2], data[3]);
 		ilitek_tddi_ic_set_ddi_reg_onepage(data[1], data[2], data[3]);
 	} else if (strcmp(cmd, "dumpflashdata") == 0) {
