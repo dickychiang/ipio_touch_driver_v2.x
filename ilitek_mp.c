@@ -1304,6 +1304,8 @@ static int allnode_key_cdc_data(int index)
 	cmd[1] = tItems[index].cmd;
 	cmd[2] = 0;
 
+	atomic_set(&idev->mp_int_check, ENABLE);
+
 	ret = idev->write(cmd, 3);
 	if (ret < 0) {
 		ipio_err("Write CDC command failed\n");
@@ -1318,6 +1320,8 @@ static int allnode_key_cdc_data(int index)
 		ret = ilitek_tddi_ic_check_int_stat();
 	else if (core_mp.busy_cdc == DELAY_CHECK)
 		mdelay(600);
+
+	atomic_set(&idev->mp_int_check, DISABLE);
 
 	if (ret < 0)
 		goto out;
@@ -1483,6 +1487,8 @@ static int allnode_open_cdc_data(int mode, int *buf)
 
 	ilitek_dump_data(cmd, 8, sizeof(cmd), 0, "Open SP command");
 
+	atomic_set(&idev->mp_int_check, ENABLE);
+
 	ret = idev->write(cmd, core_mp.cdc_len);
 	if (ret < 0) {
 		ipio_err("Write CDC command failed\n");
@@ -1497,6 +1503,8 @@ static int allnode_open_cdc_data(int mode, int *buf)
 		ret = ilitek_tddi_ic_check_int_stat();
 	else if (core_mp.busy_cdc == DELAY_CHECK)
 		mdelay(600);
+
+	atomic_set(&idev->mp_int_check, DISABLE);
 
 	if (ret < 0)
 		goto out;
@@ -1602,6 +1610,8 @@ static int allnode_mutual_cdc_data(int index)
 
 	ilitek_dump_data(cmd, 8, core_mp.cdc_len, 0, "Mutual CDC command");
 
+	atomic_set(&idev->mp_int_check, ENABLE);
+
 	ret = idev->write(cmd, core_mp.cdc_len);
 	if (ret < 0) {
 		ipio_err("Write CDC command failed\n");
@@ -1616,6 +1626,8 @@ static int allnode_mutual_cdc_data(int index)
 		ret = ilitek_tddi_ic_check_int_stat();
 	else if (core_mp.busy_cdc == DELAY_CHECK)
 		mdelay(600);
+
+	atomic_set(&idev->mp_int_check, DISABLE);
 
 	if (ret < 0)
 		goto out;
@@ -2783,7 +2795,7 @@ static void ilitek_tddi_mp_init_item(void)
 	core_mp.key_len = 0;
 	core_mp.st_len = 0;
 	core_mp.tdf = 240;
-	core_mp.busy_cdc = POLL_CHECK;
+	core_mp.busy_cdc = INT_CHECK;
 	core_mp.retry = false;
 	core_mp.final_result = MP_FAIL;
 

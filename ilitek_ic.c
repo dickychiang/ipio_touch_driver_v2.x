@@ -580,8 +580,6 @@ int ilitek_tddi_ic_check_int_stat(void)
 {
 	int timer = 5000;
 
-	atomic_set(&idev->mp_int_check, ENABLE);
-
 	/* From FW request, timeout should at least be 5 sec */
 	while (--timer > 0) {
 		if (atomic_read(&idev->mp_int_check) == DISABLE)
