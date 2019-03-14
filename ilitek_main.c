@@ -115,6 +115,20 @@ int ilitek_tddi_switch_mode(u8 *data)
 		ipio_info("Switch to Test mode\n");
 		ret = idev->mp_move_code();
 		break;
+	case P5_X_FW_DEMO_DEBUG_INFO_MODE:
+		ipio_info("Switch to debug info mode\n");
+		cmd[0] = P5_X_MODE_CONTROL;
+		cmd[1] = mode;
+		ret = idev->write(cmd, 2);
+		if (ret < 0)
+			ipio_err("Failed to switch debug info mode\n");
+		break;
+	case P5_X_FW_SOP_FLOW_MODE:
+		ipio_info("Not implemented SOP flow mode yet\n");
+		break;
+	case P5_X_FW_ESD_MODE:
+		ipio_info("Not implemented ESD mode yet\n");
+		break;
 	default:
 		ipio_err("Unknown TP mode: %x\n", mode);
 		ret = -1;
@@ -452,6 +466,10 @@ void ilitek_tddi_report_handler(void)
 		else
 			rlen = P5_X_GESTURE_NORMAL_LENGTH;
 		break;
+	case P5_X_FW_DEMO_DEBUG_INFO_MODE:
+		/*only suport SPI interface now, so defult use size 1024 buffer*/
+		rlen = 1024;
+		break;
 	default:
 		ipio_err("Unknown fw mode, %d\n", idev->actual_tp_mode);
 		rlen = 0;
@@ -485,6 +503,8 @@ void ilitek_tddi_report_handler(void)
 		}
 		goto out;
 	}
+
+	rlen = ret;
 
 	ilitek_dump_data(buf, 8, rlen, 0, "finger report");
 
