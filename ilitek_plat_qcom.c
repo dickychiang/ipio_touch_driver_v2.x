@@ -24,7 +24,7 @@
 
 #define DTS_INT_GPIO	"touch,irq-gpio"
 #define DTS_RESET_GPIO	"touch,reset-gpio"
-#define DTS_OF_NAME		"tchip,ilitek"
+#define DTS_OF_NAME	"tchip,ilitek"
 
 void ilitek_plat_tp_reset(void)
 {
@@ -462,4 +462,3 @@ module_init(ilitek_plat_dev_init);
 module_exit(ilitek_plat_dev_exit);
 MODULE_AUTHOR("ILITEK");
 MODULE_LICENSE("GPL");
-\ No newline at end of file

@@ -99,15 +99,15 @@
 
 /* Options */
 #define TDDI_INTERFACE			BUS_SPI /* BUS_I2C(0x18) or BUS_SPI(0x1C) */
-#define VDD_VOLTAGE				1800000
-#define VCC_VOLTAGE				1800000
-#define SPI_CLK					(10*M)
-#define SPI_RETRY				5
+#define VDD_VOLTAGE			1800000
+#define VCC_VOLTAGE			1800000
+#define SPI_CLK				(10*M)
+#define SPI_RETRY			5
 #define WQ_ESD_DELAY			4000
 #define WQ_BAT_DELAY			2000
-#define MT_B_TYPE				ENABLE
+#define MT_B_TYPE			ENABLE
 #define TDDI_RST_BIND			DISABLE
-#define MT_PRESSURE				DISABLE
+#define MT_PRESSURE			DISABLE
 #define ENABLE_WQ_ESD			ENABLE
 #define ENABLE_WQ_BAT			DISABLE
 #define ENABLE_GESTURE			ENABLE
@@ -118,8 +118,8 @@
 // #define CONFIG_PLAT_SPRD
 
 /* Path */
-#define DEBUG_DATA_FILE_SIZE	(10*K)
-#define DEBUG_DATA_FILE_PATH	"/sdcard/ILITEK_log.csv"
+#define DEBUG_DATA_FILE_SIZE		(10*K)
+#define DEBUG_DATA_FILE_PATH		"/sdcard/ILITEK_log.csv"
 #define CSV_LCM_ON_PATH			"/sdcard/ilitek_mp_lcm_on_log"
 #define CSV_LCM_OFF_PATH		"/sdcard/ilitek_mp_lcm_off_log"
 #define INI_NAME_PATH			"/sdcard/mp.ini"
@@ -147,32 +147,32 @@ enum {
 };
 
 extern s32 ipio_debug_level;
-#define ipio_info(fmt, arg...)										\
-({																	\
+#define ipio_info(fmt, arg...)						\
+({									\
 	pr_info("ILITEK: (%s, %d): " fmt, __func__, __LINE__, ##arg);	\
-})																	\
+})									\
 
-#define ipio_err(fmt, arg...)										\
-({																	\
+#define ipio_err(fmt, arg...)						\
+({									\
 	pr_err("ILITEK: (%s, %d): " fmt, __func__, __LINE__, ##arg);	\
-})																	\
+})									\
 
-#define ipio_debug(level, fmt, arg...)								\
-do {																\
-	if (level & ipio_debug_level)									\
+#define ipio_debug(level, fmt, arg...)					\
+do {									\
+	if (level & ipio_debug_level)					\
 	pr_info("ILITEK: (%s, %d): " fmt, __func__, __LINE__, ##arg);	\
 } while (0)
 
 #define ERR_ALLOC_MEM(X)	((IS_ERR(X) || X == NULL) ? 1 : 0)
-#define K					(1024)
-#define M					(K * K)
-#define ENABLE				1
-#define START				1
-#define ON					1
-#define DISABLE				0
-#define END					0
-#define OFF					0
-#define NONE				-1
+#define K			(1024)
+#define M			(K * K)
+#define ENABLE			1
+#define START			1
+#define ON			1
+#define DISABLE			0
+#define END			0
+#define OFF			0
+#define NONE			-1
 #define DO_SPI_RECOVER		-2
 
 enum TP_PLAT_TYPE {
@@ -237,7 +237,7 @@ enum TP_WQ_TYPE {
 };
 
 #define TDDI_I2C_ADDR				0x41
-#define TDDI_DEV_ID					"ILITEK_TDDI"
+#define TDDI_DEV_ID				"ILITEK_TDDI"
 
  /* define the width and heigth of a screen. */
 #define TOUCH_SCREEN_X_MIN			0
@@ -247,277 +247,277 @@ enum TP_WQ_TYPE {
 #define MAX_TOUCH_NUM				10
 
 /* define the range on panel */
-#define TPD_HEIGHT					2048
-#define TPD_WIDTH					2048
+#define TPD_HEIGHT				2048
+#define TPD_WIDTH				2048
 
 /* Firmware upgrade */
 #define MAX_HEX_FILE_SIZE			(160*K)
-#define MAX_FLASH_FIRMWARE_SIZE		(256*K)
-#define MAX_IRAM_FIRMWARE_SIZE		(60*K)
+#define MAX_FLASH_FIRMWARE_SIZE			(256*K)
+#define MAX_IRAM_FIRMWARE_SIZE			(60*K)
 #define ILI_FILE_HEADER				64
-#define MAX_AP_FIRMWARE_SIZE		(64*K)
-#define MAX_DLM_FIRMWARE_SIZE		(8*K)
-#define MAX_MP_FIRMWARE_SIZE		(64*K)
-#define MAX_GESTURE_FIRMWARE_SIZE	(8*K)
-#define MAX_TUNING_FIRMWARE_SIZE	(4*K)
-#define MAX_DDI_FIRMWARE_SIZE		(4*K)
+#define MAX_AP_FIRMWARE_SIZE			(64*K)
+#define MAX_DLM_FIRMWARE_SIZE			(8*K)
+#define MAX_MP_FIRMWARE_SIZE			(64*K)
+#define MAX_GESTURE_FIRMWARE_SIZE		(8*K)
+#define MAX_TUNING_FIRMWARE_SIZE		(4*K)
+#define MAX_DDI_FIRMWARE_SIZE			(4*K)
 #define DLM_START_ADDRESS			0x20610
 #define DLM_HEX_ADDRESS				0x10000
 #define MP_HEX_ADDRESS				0x13000
-#define RESERVE_BLOCK_START_ADDR	0x1D000
-#define RESERVE_BLOCK_END_ADDR		0x1DFFF
-#define FW_VER_ADDR					0xFFE0
+#define RESERVE_BLOCK_START_ADDR		0x1D000
+#define RESERVE_BLOCK_END_ADDR			0x1DFFF
+#define FW_VER_ADDR				0xFFE0
 #define SPI_UPGRADE_LEN				2048
 #define SPI_READ_LEN				2048
 #define FW_BLOCK_INFO_NUM			7
 
 /* DMA Control Registers */
-#define DMA_BASED_ADDR						0x72000
-#define DMA48_ADDR							(DMA_BASED_ADDR + 0xC0)
-#define DMA48_reg_dma_ch0_busy_flag			DMA48_ADDR
-#define DMA48_reserved_0					0xFFFE
+#define DMA_BASED_ADDR				0x72000
+#define DMA48_ADDR				(DMA_BASED_ADDR + 0xC0)
+#define DMA48_reg_dma_ch0_busy_flag		DMA48_ADDR
+#define DMA48_reserved_0			0xFFFE
 #define DMA48_reg_dma_ch0_trigger_sel		(BIT(16)|BIT(17)|BIT(18)|BIT(19))
-#define DMA48_reserved_1					(BIT(20)|BIT(21)|BIT(22)|BIT(23))
-#define DMA48_reg_dma_ch0_start_set			BIT(24)
+#define DMA48_reserved_1			(BIT(20)|BIT(21)|BIT(22)|BIT(23))
+#define DMA48_reg_dma_ch0_start_set		BIT(24)
 #define DMA48_reg_dma_ch0_start_clear		BIT(25)
 #define DMA48_reg_dma_ch0_trigger_src_mask	BIT(26)
-#define DMA48_reserved_2					BIT(27)
+#define DMA48_reserved_2			BIT(27)
 
-#define DMA49_ADDR							(DMA_BASED_ADDR + 0xC4)
-#define DMA49_reg_dma_ch0_src1_addr			DMA49_ADDR
-#define DMA49_reserved_0					BIT(20)
+#define DMA49_ADDR				(DMA_BASED_ADDR + 0xC4)
+#define DMA49_reg_dma_ch0_src1_addr		DMA49_ADDR
+#define DMA49_reserved_0			BIT(20)
 
-#define DMA50_ADDR							(DMA_BASED_ADDR + 0xC8)
+#define DMA50_ADDR				(DMA_BASED_ADDR + 0xC8)
 #define DMA50_reg_dma_ch0_src1_step_inc		DMA50_ADDR
-#define DMA50_reserved_0					(DMA50_ADDR + 0x01)
+#define DMA50_reserved_0			(DMA50_ADDR + 0x01)
 #define DMA50_reg_dma_ch0_src1_format		(BIT(24)|BIT(25))
-#define DMA50_reserved_1					(BIT(26)|BIT(27)|BIT(28)|BIT(29)|BIT(30))
-#define DMA50_reg_dma_ch0_src1_en			BIT(31)
+#define DMA50_reserved_1			(BIT(26)|BIT(27)|BIT(28)|BIT(29)|BIT(30))
+#define DMA50_reg_dma_ch0_src1_en		BIT(31)
 
-#define DMA52_ADDR							(DMA_BASED_ADDR + 0xD0)
+#define DMA52_ADDR				(DMA_BASED_ADDR + 0xD0)
 #define DMA52_reg_dma_ch0_src2_step_inc		DMA52_ADDR
-#define DMA52_reserved_0					(DMA52_ADDR + 0x01)
+#define DMA52_reserved_0			(DMA52_ADDR + 0x01)
 #define DMA52_reg_dma_ch0_src2_format		(BIT(24)|BIT(25))
-#define DMA52_reserved_1					(BIT(26)|BIT(27)|BIT(28)|BIT(29)|BIT(30))
-#define DMA52_reg_dma_ch0_src2_en			BIT(31) // [RESET] h0
+#define DMA52_reserved_1			(BIT(26)|BIT(27)|BIT(28)|BIT(29)|BIT(30))
+#define DMA52_reg_dma_ch0_src2_en		BIT(31)
 
-#define DMA53_ADDR							(DMA_BASED_ADDR + 0xD4)
-#define DMA53_reg_dma_ch0_dest_addr			DMA53_ADDR
-#define DMA53_reserved_0					BIT(20)
+#define DMA53_ADDR				(DMA_BASED_ADDR + 0xD4)
+#define DMA53_reg_dma_ch0_dest_addr		DMA53_ADDR
+#define DMA53_reserved_0			BIT(20)
 
-#define DMA54_ADDR							(DMA_BASED_ADDR + 0xD8)
+#define DMA54_ADDR				(DMA_BASED_ADDR + 0xD8)
 #define DMA54_reg_dma_ch0_dest_step_inc		DMA54_ADDR
-#define DMA54_reserved_0					(DMA54_ADDR + 0x01)
+#define DMA54_reserved_0			(DMA54_ADDR + 0x01)
 #define DMA54_reg_dma_ch0_dest_format		(BIT(24)|BIT(25))
-#define DMA54_reserved_1					(BIT(26)|BIT(27)|BIT(28)|BIT(29)|BIT(30))
-#define DMA54_reg_dma_ch0_dest_en			BIT(31)
+#define DMA54_reserved_1			(BIT(26)|BIT(27)|BIT(28)|BIT(29)|BIT(30))
+#define DMA54_reg_dma_ch0_dest_en		BIT(31)
 
-#define DMA55_ADDR							(DMA_BASED_ADDR + 0xDC)
+#define DMA55_ADDR				(DMA_BASED_ADDR + 0xDC)
 #define DMA55_reg_dma_ch0_trafer_counts		DMA55_ADDR
-#define DMA55_reserved_0					(BIT(17)|BIT(18)|BIT(19)|BIT(20)|BIT(21)|BIT(22)|BIT(23))
+#define DMA55_reserved_0			(BIT(17)|BIT(18)|BIT(19)|BIT(20)|BIT(21)|BIT(22)|BIT(23))
 #define DMA55_reg_dma_ch0_trafer_mode		(BIT(24)|BIT(25)|BIT(26)|BIT(27))
-#define DMA55_reserved_1					(BIT(28)|BIT(29)|BIT(30)|BIT(31))
+#define DMA55_reserved_1			(BIT(28)|BIT(29)|BIT(30)|BIT(31))
 
 /* INT Function Registers */
-#define INTR_BASED_ADDR							0x48000
-#define INTR1_ADDR								(INTR_BASED_ADDR + 0x4)
-#define INTR1_reg_uart_tx_int_flag				INTR1_ADDR
-#define INTR1_reserved_0						(BIT(1)|BIT(2)|BIT(3)|BIT(4)|BIT(5)|BIT(6)|BIT(7))
-#define INTR1_reg_wdt_alarm_int_flag			BIT(8)
-#define INTR1_reserved_1						(BIT(9)|BIT(10)|BIT(11)|BIT(12)|BIT(13)|BIT(14)|BIT(15))
-#define INTR1_reg_dma_ch1_int_flag				BIT(16)
-#define INTR1_reg_dma_ch0_int_flag				BIT(17)
-#define INTR1_reg_dma_frame_done_int_flag		BIT(18)
-#define INTR1_reg_dma_tdi_done_int_flag			BIT(19)
-#define INTR1_reserved_2						(BIT(20)|BIT(21)|BIT(22)|BIT(23))
-#define INTR1_reg_flash_error_flag				BIT(24)
-#define INTR1_reg_flash_int_flag				BIT(25)
-#define INTR1_reserved_3						BIT(26)
+#define INTR_BASED_ADDR				0x48000
+#define INTR1_ADDR				(INTR_BASED_ADDR + 0x4)
+#define INTR1_reg_uart_tx_int_flag		INTR1_ADDR
+#define INTR1_reserved_0			(BIT(1)|BIT(2)|BIT(3)|BIT(4)|BIT(5)|BIT(6)|BIT(7))
+#define INTR1_reg_wdt_alarm_int_flag		BIT(8)
+#define INTR1_reserved_1			(BIT(9)|BIT(10)|BIT(11)|BIT(12)|BIT(13)|BIT(14)|BIT(15))
+#define INTR1_reg_dma_ch1_int_flag		BIT(16)
+#define INTR1_reg_dma_ch0_int_flag		BIT(17)
+#define INTR1_reg_dma_frame_done_int_flag	BIT(18)
+#define INTR1_reg_dma_tdi_done_int_flag		BIT(19)
+#define INTR1_reserved_2			(BIT(20)|BIT(21)|BIT(22)|BIT(23))
+#define INTR1_reg_flash_error_flag		BIT(24)
+#define INTR1_reg_flash_int_flag		BIT(25)
+#define INTR1_reserved_3			BIT(26)
 
-#define INTR2_ADDR								   (INTR_BASED_ADDR + 0x8)
-#define INTR2_td_int_flag_clear					   INTR2_ADDR
-#define INTR2_td_timeout_int_flag_clear			   BIT(1)
-#define INTR2_td_debug_frame_done_int_flag_clear   BIT(2)
-#define INTR2_td_frame_start_scan_int_flag_clear   BIT(3)
-#define INTR2_log_int_flag_clear				   BIT(4)
-#define INTR2_d2t_crc_err_int_flag_clear		   BIT(8)
-#define INTR2_d2t_flash_req_int_flag_clear		   BIT(9)
-#define INTR2_d2t_ddi_int_flag_clear			   BIT(10)
-#define INTR2_wr_done_int_flag_clear			   BIT(16)
-#define INTR2_rd_done_int_flag_clear			   BIT(17)
-#define INTR2_tdi_err_int_flag_clear			   BIT(18)
-#define INTR2_d2t_slpout_rise_flag_clear		   BIT(24)
-#define INTR2_d2t_slpout_fall_flag_clear		   BIT(25)
-#define INTR2_d2t_dstby_flag_clear				   BIT(26)
-#define INTR2_ddi_pwr_rdy_flag_clear			   BIT(27)
+#define INTR2_ADDR					(INTR_BASED_ADDR + 0x8)
+#define INTR2_td_int_flag_clear				INTR2_ADDR
+#define INTR2_td_timeout_int_flag_clear			BIT(1)
+#define INTR2_td_debug_frame_done_int_flag_clear	BIT(2)
+#define INTR2_td_frame_start_scan_int_flag_clear	BIT(3)
+#define INTR2_log_int_flag_clear			BIT(4)
+#define INTR2_d2t_crc_err_int_flag_clear		BIT(8)
+#define INTR2_d2t_flash_req_int_flag_clear		BIT(9)
+#define INTR2_d2t_ddi_int_flag_clear			BIT(10)
+#define INTR2_wr_done_int_flag_clear			BIT(16)
+#define INTR2_rd_done_int_flag_clear			BIT(17)
+#define INTR2_tdi_err_int_flag_clear			BIT(18)
+#define INTR2_d2t_slpout_rise_flag_clear		BIT(24)
+#define INTR2_d2t_slpout_fall_flag_clear		BIT(25)
+#define INTR2_d2t_dstby_flag_clear			BIT(26)
+#define INTR2_ddi_pwr_rdy_flag_clear			BIT(27)
 
-#define INTR32_ADDR							  (INTR_BASED_ADDR + 0x80)
-#define INTR32_reg_ice_sw_int_en			  INTR32_ADDR
-#define INTR32_reg_ice_apb_conflict_int_en	  BIT(1)
-#define INTR32_reg_ice_ilm_conflict_int_en	  BIT(2)
-#define INTR32_reg_ice_dlm_conflict_int_en	  BIT(3)
-#define INTR32_reserved_0					  (BIT(4)|BIT(5)|BIT(6)|BIT(7))
-#define INTR32_reg_spi_sr_int_en			  BIT(8)
-#define INTR32_reg_spi_sp_int_en			  BIT(9)
-#define INTR32_reg_spi_trx_int_en			  BIT(10)
-#define INTR32_reg_spi_cmd_int_en			  BIT(11)
-#define INTR32_reg_spi_rw_int_en			  BIT(12)
-#define INTR32_reserved_1					  (BIT(13)|BIT(14)|BIT(15))
-#define INTR32_reg_i2c_start_int_en			  BIT(16)
-#define INTR32_reg_i2c_addr_match_int_en	  BIT(17)
-#define INTR32_reg_i2c_cmd_int_en			  BIT(18)
-#define INTR32_reg_i2c_sr_int_en			  BIT(19)
-#define INTR32_reg_i2c_trx_int_en			  BIT(20)
-#define INTR32_reg_i2c_rx_stop_int_en		  BIT(21)
-#define INTR32_reg_i2c_tx_stop_int_en		  BIT(22)
-#define INTR32_reserved_2					  BIT(23)
-#define INTR32_reg_t0_int_en				  BIT(24)
-#define INTR32_reg_t1_int_en				  BIT(25)
-#define INTR32_reserved_3					  (BIT(26)|BIT(27)|BIT(28)|BIT(29)|BIT(30)|BIT(31))
+#define INTR32_ADDR					(INTR_BASED_ADDR + 0x80)
+#define INTR32_reg_ice_sw_int_en			INTR32_ADDR
+#define INTR32_reg_ice_apb_conflict_int_en		BIT(1)
+#define INTR32_reg_ice_ilm_conflict_int_en		BIT(2)
+#define INTR32_reg_ice_dlm_conflict_int_en		BIT(3)
+#define INTR32_reserved_0				(BIT(4)|BIT(5)|BIT(6)|BIT(7))
+#define INTR32_reg_spi_sr_int_en			BIT(8)
+#define INTR32_reg_spi_sp_int_en			BIT(9)
+#define INTR32_reg_spi_trx_int_en			BIT(10)
+#define INTR32_reg_spi_cmd_int_en			BIT(11)
+#define INTR32_reg_spi_rw_int_en			BIT(12)
+#define INTR32_reserved_1				(BIT(13)|BIT(14)|BIT(15))
+#define INTR32_reg_i2c_start_int_en			BIT(16)
+#define INTR32_reg_i2c_addr_match_int_en		BIT(17)
+#define INTR32_reg_i2c_cmd_int_en			BIT(18)
+#define INTR32_reg_i2c_sr_int_en			BIT(19)
+#define INTR32_reg_i2c_trx_int_en			BIT(20)
+#define INTR32_reg_i2c_rx_stop_int_en			BIT(21)
+#define INTR32_reg_i2c_tx_stop_int_en			BIT(22)
+#define INTR32_reserved_2				BIT(23)
+#define INTR32_reg_t0_int_en				BIT(24)
+#define INTR32_reg_t1_int_en				BIT(25)
+#define INTR32_reserved_3				(BIT(26)|BIT(27)|BIT(28)|BIT(29)|BIT(30)|BIT(31))
 
-#define INTR33_ADDR							  (INTR_BASED_ADDR + 0x84)
-#define INTR33_reg_uart_tx_int_en			  INTR33_ADDR
-#define INTR33_reserved_0					  (BIT(1)|BIT(2)|BIT(3)|BIT(4)|BIT(5)|BIT(6)|BIT(7))
-#define INTR33_reg_wdt_alarm_int_en			  BIT(8)
-#define INTR33_reserved_1					  (BIT(9)|BIT(10)|BIT(11)|BIT(12)|BIT(13)|BIT(14)|BIT(15))
-#define INTR33_reg_dma_ch1_int_en			  BIT(16)
-#define INTR33_reg_dma_ch0_int_en			  BIT(17)
-#define INTR33_reg_dma_frame_done_int_en	  BIT(18)
-#define INTR33_reg_dma_tdi_done_int_en		  BIT(19)
-#define INTR33_reserved_2					  (BIT(20)|BIT(21)|BIT(22)|BIT(23))
-#define INTR33_reg_flash_error_en			  BIT(24)
-#define INTR33_reg_flash_int_en				  BIT(25)
-#define INTR33_reserved_3					  (BIT(26)|BIT(27)|BIT(28)|BIT(29)|BIT(30)|BIT(31))
+#define INTR33_ADDR					(INTR_BASED_ADDR + 0x84)
+#define INTR33_reg_uart_tx_int_en			INTR33_ADDR
+#define INTR33_reserved_0				(BIT(1)|BIT(2)|BIT(3)|BIT(4)|BIT(5)|BIT(6)|BIT(7))
+#define INTR33_reg_wdt_alarm_int_en			BIT(8)
+#define INTR33_reserved_1				(BIT(9)|BIT(10)|BIT(11)|BIT(12)|BIT(13)|BIT(14)|BIT(15))
+#define INTR33_reg_dma_ch1_int_en			BIT(16)
+#define INTR33_reg_dma_ch0_int_en			BIT(17)
+#define INTR33_reg_dma_frame_done_int_en		BIT(18)
+#define INTR33_reg_dma_tdi_done_int_en			BIT(19)
+#define INTR33_reserved_2				(BIT(20)|BIT(21)|BIT(22)|BIT(23))
+#define INTR33_reg_flash_error_en			BIT(24)
+#define INTR33_reg_flash_int_en				BIT(25)
+#define INTR33_reserved_3				(BIT(26)|BIT(27)|BIT(28)|BIT(29)|BIT(30)|BIT(31))
 
 /* Flash */
-#define FLASH_BASED_ADDR					0x41000
-#define FLASH0_ADDR							(FLASH_BASED_ADDR + 0x0)
+#define FLASH_BASED_ADDR				0x41000
+#define FLASH0_ADDR					(FLASH_BASED_ADDR + 0x0)
 #define FLASH0_reg_flash_csb				FLASH0_ADDR
-#define FLASH0_reserved_0					(BIT(8)|BIT(9)|BIT(10)|BIT(11)|BIT(12)|BIT(13)|BIT(14)|BIT(15))
+#define FLASH0_reserved_0				(BIT(8)|BIT(9)|BIT(10)|BIT(11)|BIT(12)|BIT(13)|BIT(14)|BIT(15))
 #define FLASH0_reg_preclk_sel				(BIT(16)|BIT(17)|BIT(18)|BIT(19)|BIT(20)|BIT(21)|BIT(22)|BIT(23))
-#define FLASH0_reg_rx_dual					BIT(24)
-#define FLASH0_reg_tx_dual					BIT(25)
-#define FLASH0_reserved_26					(BIT(26)|BIT(27)|BIT(28)|BIT(29)|BIT(30)|BIT(31))
-#define FLASH1_ADDR							(FLASH_BASED_ADDR + 0x4)
+#define FLASH0_reg_rx_dual				BIT(24)
+#define FLASH0_reg_tx_dual				BIT(25)
+#define FLASH0_reserved_26				(BIT(26)|BIT(27)|BIT(28)|BIT(29)|BIT(30)|BIT(31))
+#define FLASH1_ADDR					(FLASH_BASED_ADDR + 0x4)
 #define FLASH1_reg_flash_key1				FLASH1_ADDR
 #define FLASH1_reg_flash_key2				(FLASH1_ADDR + 0x01)
 #define FLASH1_reg_flash_key3				(FLASH1_ADDR + 0x02)
-#define FLASH1_reserved_0					(FLASH1_ADDR + 0x03)
-#define FLASH2_ADDR							(FLASH_BASED_ADDR + 0x8)
-#define FLASH2_reg_tx_data					FLASH2_ADDR
-#define FLASH3_ADDR							(FLASH_BASED_ADDR + 0xC)
-#define FLASH3_reg_rcv_cnt					FLASH3_ADDR
-#define FLASH4_ADDR							(FLASH_BASED_ADDR + 0x10)
-#define FLASH4_reg_rcv_data					FLASH4_ADDR
-#define FLASH4_reg_rcv_dly					BIT(8)
-#define FLASH4_reg_sutrg_en					BIT(9)
-#define FLASH4_reserved_1					(BIT(10)|BIT(11)|BIT(12)|BIT(13)|BIT(14)|BIT(15))
-#define FLASH4_reg_rcv_data_valid_state		BIT(16)
-#define FLASH4_reg_flash_rd_finish_state	BIT(17)
-#define FLASH4_reserved_2					(BIT(18)|BIT(19)|BIT(20)|BIT(21)|BIT(22)|BIT(23))
-#define FLASH4_reg_flash_dma_trigger_en		(BIT(24)|BIT(25)|BIT(26)|BIT(27)|BIT(28)|BIT(29)|BIT(30)|BIT(31))
+#define FLASH1_reserved_0				(FLASH1_ADDR + 0x03)
+#define FLASH2_ADDR					(FLASH_BASED_ADDR + 0x8)
+#define FLASH2_reg_tx_data				FLASH2_ADDR
+#define FLASH3_ADDR					(FLASH_BASED_ADDR + 0xC)
+#define FLASH3_reg_rcv_cnt				FLASH3_ADDR
+#define FLASH4_ADDR					(FLASH_BASED_ADDR + 0x10)
+#define FLASH4_reg_rcv_data				FLASH4_ADDR
+#define FLASH4_reg_rcv_dly				BIT(8)
+#define FLASH4_reg_sutrg_en				BIT(9)
+#define FLASH4_reserved_1				(BIT(10)|BIT(11)|BIT(12)|BIT(13)|BIT(14)|BIT(15))
+#define FLASH4_reg_rcv_data_valid_state			BIT(16)
+#define FLASH4_reg_flash_rd_finish_state		BIT(17)
+#define FLASH4_reserved_2				(BIT(18)|BIT(19)|BIT(20)|BIT(21)|BIT(22)|BIT(23))
+#define FLASH4_reg_flash_dma_trigger_en			(BIT(24)|BIT(25)|BIT(26)|BIT(27)|BIT(28)|BIT(29)|BIT(30)|BIT(31))
 
 /* The example for the gesture virtual keys */
-#define GESTURE_DOUBLECLICK				0x58
-#define GESTURE_UP						0x60
-#define GESTURE_DOWN					0x61
-#define GESTURE_LEFT					0x62
-#define GESTURE_RIGHT					0x63
-#define GESTURE_M						0x64
-#define GESTURE_W						0x65
-#define GESTURE_C						0x66
-#define GESTURE_E						0x67
-#define GESTURE_V						0x68
-#define GESTURE_O						0x69
-#define GESTURE_S						0x6A
-#define GESTURE_Z						0x6B
-#define KEY_GESTURE_POWER				KEY_POWER
-#define KEY_GESTURE_UP					KEY_UP
-#define KEY_GESTURE_DOWN				KEY_DOWN
-#define KEY_GESTURE_LEFT				KEY_LEFT
-#define KEY_GESTURE_RIGHT				KEY_RIGHT
-#define KEY_GESTURE_O					KEY_O
-#define KEY_GESTURE_E					KEY_E
-#define KEY_GESTURE_M					KEY_M
-#define KEY_GESTURE_W					KEY_W
-#define KEY_GESTURE_S					KEY_S
-#define KEY_GESTURE_V					KEY_V
-#define KEY_GESTURE_C					KEY_C
-#define KEY_GESTURE_Z					KEY_Z
-#define KEY_GESTURE_F					KEY_F
-#define GESTURE_CODE_V_DOWN				0x6C
-#define GESTURE_CODE_V_LEFT				0x6D
-#define GESTURE_CODE_V_RIGHT			0x6E
+#define GESTURE_DOUBLECLICK		0x58
+#define GESTURE_UP			0x60
+#define GESTURE_DOWN			0x61
+#define GESTURE_LEFT			0x62
+#define GESTURE_RIGHT			0x63
+#define GESTURE_M			0x64
+#define GESTURE_W			0x65
+#define GESTURE_C			0x66
+#define GESTURE_E			0x67
+#define GESTURE_V			0x68
+#define GESTURE_O			0x69
+#define GESTURE_S			0x6A
+#define GESTURE_Z			0x6B
+#define KEY_GESTURE_POWER		KEY_POWER
+#define KEY_GESTURE_UP			KEY_UP
+#define KEY_GESTURE_DOWN		KEY_DOWN
+#define KEY_GESTURE_LEFT		KEY_LEFT
+#define KEY_GESTURE_RIGHT		KEY_RIGHT
+#define KEY_GESTURE_O			KEY_O
+#define KEY_GESTURE_E			KEY_E
+#define KEY_GESTURE_M			KEY_M
+#define KEY_GESTURE_W			KEY_W
+#define KEY_GESTURE_S			KEY_S
+#define KEY_GESTURE_V			KEY_V
+#define KEY_GESTURE_C			KEY_C
+#define KEY_GESTURE_Z			KEY_Z
+#define KEY_GESTURE_F			KEY_F
+#define GESTURE_CODE_V_DOWN		0x6C
+#define GESTURE_CODE_V_LEFT		0x6D
+#define GESTURE_CODE_V_RIGHT		0x6E
 #define GESTURE_CODE_TWO_LINE_2_BOTTOM	0x6F
-#define GESTURE_F						0x70
-#define GESTURE_AT						0x71
-#define ESD_GESTURE_PWD					0xF38A94EF
-#define ESD_GESTURE_RUN					0x5B92E7F4
-#define ESD_GESTURE_PWD_ADDR			0x25FF8
+#define GESTURE_F			0x70
+#define GESTURE_AT			0x71
+#define ESD_GESTURE_PWD			0xF38A94EF
+#define ESD_GESTURE_RUN			0x5B92E7F4
+#define ESD_GESTURE_PWD_ADDR		0x25FF8
 
 /* Protocol */
-#define PROTOCOL_VER_500				0x050000
-#define PROTOCOL_VER_510				0x050100
-#define PROTOCOL_VER_520				0x050200
-#define PROTOCOL_VER_530				0x050300
-#define PROTOCOL_VER_540				0x050400
-#define PROTOCOL_VER_550				0x050500
-#define PROTOCOL_VER_560				0x050600
-#define P5_X_READ_DATA_CTRL				0xF6
-#define P5_X_GET_TP_INFORMATION			0x20
-#define P5_X_GET_KEY_INFORMATION		0x27
-#define P5_X_GET_PANEL_INFORMATION		0x29
-#define P5_X_GET_FW_VERSION				0x21
-#define P5_X_GET_PROTOCOL_VERSION		0x22
-#define P5_X_GET_CORE_VERSION			0x23
-#define P5_X_MODE_CONTROL				0xF0
-#define P5_X_SET_CDC_INIT				0xF1
-#define P5_X_GET_CDC_DATA				0xF2
-#define P5_X_CDC_BUSY_STATE				0xF3
-#define P5_X_MP_TEST_MODE_INFO			0xFE
-#define P5_X_I2C_UART					0x40
-#define P5_X_FW_UNKNOWN_MODE			0xFF
-#define P5_X_FW_DEMO_MODE				0x00
-#define P5_X_FW_TEST_MODE				0x01
-#define P5_X_FW_DEBUG_MODE				0x02
-#define P5_X_FW_GESTURE_NORMAL_MODE		0x01
-#define P5_X_FW_GESTURE_INFO_MODE		0x02
-#define P5_X_FW_I2CUART_MODE			0x03
-#define P5_X_FW_GESTURE_MODE			0x04
-#define P5_X_FW_DELTA_DATA_MODE			0x03
-#define P5_X_FW_RAW_DATA_MODE			0x08
+#define PROTOCOL_VER_500		0x050000
+#define PROTOCOL_VER_510		0x050100
+#define PROTOCOL_VER_520		0x050200
+#define PROTOCOL_VER_530		0x050300
+#define PROTOCOL_VER_540		0x050400
+#define PROTOCOL_VER_550		0x050500
+#define PROTOCOL_VER_560		0x050600
+#define P5_X_READ_DATA_CTRL		0xF6
+#define P5_X_GET_TP_INFORMATION		0x20
+#define P5_X_GET_KEY_INFORMATION	0x27
+#define P5_X_GET_PANEL_INFORMATION	0x29
+#define P5_X_GET_FW_VERSION		0x21
+#define P5_X_GET_PROTOCOL_VERSION	0x22
+#define P5_X_GET_CORE_VERSION		0x23
+#define P5_X_MODE_CONTROL		0xF0
+#define P5_X_SET_CDC_INIT		0xF1
+#define P5_X_GET_CDC_DATA		0xF2
+#define P5_X_CDC_BUSY_STATE		0xF3
+#define P5_X_MP_TEST_MODE_INFO		0xFE
+#define P5_X_I2C_UART			0x40
+#define P5_X_FW_UNKNOWN_MODE		0xFF
+#define P5_X_FW_DEMO_MODE		0x00
+#define P5_X_FW_TEST_MODE		0x01
+#define P5_X_FW_DEBUG_MODE		0x02
+#define P5_X_FW_GESTURE_NORMAL_MODE	0x01
+#define P5_X_FW_GESTURE_INFO_MODE	0x02
+#define P5_X_FW_I2CUART_MODE		0x03
+#define P5_X_FW_GESTURE_MODE		0x04
+#define P5_X_FW_DELTA_DATA_MODE		0x03
+#define P5_X_FW_RAW_DATA_MODE		0x08
 #define P5_X_DEMO_MODE_PACKET_LENGTH	43
 #define P5_X_DEBUG_MODE_PACKET_LENGTH	1280
 #define P5_X_TEST_MODE_PACKET_LENGTH	1180
-#define P5_X_GESTURE_NORMAL_LENGTH		8
-#define P5_X_GESTURE_INFO_LENGTH		170
-#define P5_X_DEMO_PACKET_ID				0x5A
-#define P5_X_DEBUG_PACKET_ID			0xA7
-#define P5_X_TEST_PACKET_ID				0xF2
-#define P5_X_GESTURE_PACKET_ID			0xAA
-#define P5_X_I2CUART_PACKET_ID			0x7A
-#define P5_X_EDGE_PLAM_CTRL_1			0x01
-#define P5_X_EDGE_PLAM_CTRL_2			0x12
-#define SPI_WRITE						0x82
-#define SPI_READ						0x83
-#define SPI_ACK							0xA3
+#define P5_X_GESTURE_NORMAL_LENGTH	8
+#define P5_X_GESTURE_INFO_LENGTH	170
+#define P5_X_DEMO_PACKET_ID		0x5A
+#define P5_X_DEBUG_PACKET_ID		0xA7
+#define P5_X_TEST_PACKET_ID		0xF2
+#define P5_X_GESTURE_PACKET_ID		0xAA
+#define P5_X_I2CUART_PACKET_ID		0x7A
+#define P5_X_EDGE_PLAM_CTRL_1		0x01
+#define P5_X_EDGE_PLAM_CTRL_2		0x12
+#define SPI_WRITE			0x82
+#define SPI_READ			0x83
+#define SPI_ACK				0xA3
 
 /* Chipes */
-#define TDDI_PID_ADDR					0x4009C
-#define TDDI_OTP_ID_ADDR				0x400A0
-#define TDDI_ANA_ID_ADDR				0x400A4
-#define TDDI_PC_COUNTER_ADDR			0x44008
-#define TDDI_WDT_ADDR					0x5100C
-#define TDDI_CHIP_RESET_ADDR			0x40050
-#define ILI9881_CHIP					0x9881
-#define ILI9881F_AA						0x98810F00
-#define ILI9881H_AD						0x98811103
-#define ILI9881H_AE						0x98811104
-#define ILI7807_CHIP					0x7807
-#define ILI7807G_AA						0x78071000
-#define ILI7807G_AB						0x78071001
-#define RAWDATA_NO_BK_SHIFT_9881H		8192
-#define RAWDATA_NO_BK_SHIFT_9881F		4096
+#define TDDI_PID_ADDR			0x4009C
+#define TDDI_OTP_ID_ADDR		0x400A0
+#define TDDI_ANA_ID_ADDR		0x400A4
+#define TDDI_PC_COUNTER_ADDR		0x44008
+#define TDDI_WDT_ADDR			0x5100C
+#define TDDI_CHIP_RESET_ADDR		0x40050
+#define ILI9881_CHIP			0x9881
+#define ILI9881F_AA			0x98810F00
+#define ILI9881H_AD			0x98811103
+#define ILI9881H_AE			0x98811104
+#define ILI7807_CHIP			0x7807
+#define ILI7807G_AA			0x78071000
+#define ILI7807G_AB			0x78071001
+#define RAWDATA_NO_BK_SHIFT_9881H	8192
+#define RAWDATA_NO_BK_SHIFT_9881F	4096
 
 struct ilitek_tddi_dev {
 	struct i2c_client *i2c;

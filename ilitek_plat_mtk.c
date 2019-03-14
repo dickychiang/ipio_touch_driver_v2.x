@@ -25,9 +25,9 @@
 
 #define DTS_INT_GPIO	"touch,irq-gpio"
 #define DTS_RESET_GPIO	"touch,reset-gpio"
-#define DTS_OF_NAME		"mediatek,cap_touch"
-#define MTK_RST_GPIO GTP_RST_PORT
-#define MTK_INT_GPIO GTP_INT_PORT
+#define DTS_OF_NAME	"mediatek,cap_touch"
+#define MTK_RST_GPIO	GTP_RST_PORT
+#define MTK_INT_GPIO	GTP_INT_PORT
 
 extern struct tpd_device *tpd;
 

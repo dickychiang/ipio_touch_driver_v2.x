@@ -26,9 +26,9 @@
 
 #define UPDATE_PASS		0
 #define UPDATE_FAIL		-1
-#define TIMEOUT_SECTOR	 500
-#define TIMEOUT_PAGE	 3500
-#define TIMEOUT_PROGRAM	 10
+#define TIMEOUT_SECTOR		500
+#define TIMEOUT_PAGE		3500
+#define TIMEOUT_PROGRAM		10
 
 struct touch_fw_data {
 	u8 block_number;

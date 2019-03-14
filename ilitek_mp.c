@@ -22,91 +22,90 @@
 
 #include "ilitek.h"
 
-#define MP_PASS				0
-#define MP_FAIL				-1
-#define VALUE				0
+#define MP_PASS			0
+#define MP_FAIL			-1
+#define VALUE			0
 
-#define RETRY_COUNT			3
+#define RETRY_COUNT		3
+#define INT_CHECK		0
+#define POLL_CHECK		1
+#define DELAY_CHECK		2
 
-#define INT_CHECK			0
-#define POLL_CHECK			1
-#define DELAY_CHECK			2
-
-#define BENCHMARK			1
-#define NODETYPE			1
+#define BENCHMARK		1
+#define NODETYPE		1
 
 #define TYPE_BENCHMARK		0
 #define TYPE_NO_JUGE		1
-#define TYPE_JUGE			2
+#define TYPE_JUGE		2
 
-#define NORMAL_CSV_PASS_NAME		"mp_pass"
-#define NORMAL_CSV_FAIL_NAME		"mp_fail"
-#define CSV_FILE_SIZE				(1 * M)
+#define NORMAL_CSV_PASS_NAME	"mp_pass"
+#define NORMAL_CSV_FAIL_NAME	"mp_fail"
+#define CSV_FILE_SIZE		(1 * M)
 
-#define PARSER_MAX_CFG_BUF			(512 * 3)
-#define PARSER_MAX_KEY_NUM			(600 * 3)
+#define PARSER_MAX_CFG_BUF		(512 * 3)
+#define PARSER_MAX_KEY_NUM		(600 * 3)
 #define PARSER_MAX_KEY_NAME_LEN		100
 #define PARSER_MAX_KEY_VALUE_LEN	2000
-#define BENCHMARK_KEY_NAME			"benchmark_data"
-#define NODE_TYPE_KEY_NAME			"node type"
-#define INI_ERR_OUT_OF_LINE			-1
+#define BENCHMARK_KEY_NAME		"benchmark_data"
+#define NODE_TYPE_KEY_NAME		"node type"
+#define INI_ERR_OUT_OF_LINE		-1
 
-#define CMD_MUTUAL_DAC				0x1
-#define CMD_MUTUAL_BG				0x2
-#define CMD_MUTUAL_SIGNAL			0x3
-#define CMD_MUTUAL_NO_BK			0x5
-#define CMD_MUTUAL_HAVE_BK			0x8
-#define CMD_MUTUAL_BK_DAC			0x10
-#define CMD_SELF_DAC				0xC
-#define CMD_SELF_BG					0xF
-#define CMD_SELF_SIGNAL				0xD
-#define CMD_SELF_NO_BK				0xE
-#define CMD_SELF_HAVE_BK			0xB
-#define CMD_SELF_BK_DAC				0x11
-#define CMD_KEY_DAC					0x14
-#define CMD_KEY_BG					0x16
-#define CMD_KEY_NO_BK				0x7
-#define CMD_KEY_HAVE_BK				0x15
-#define CMD_KEY_OPEN				0x12
-#define CMD_KEY_SHORT				0x13
-#define CMD_ST_DAC					0x1A
-#define CMD_ST_BG					0x1C
-#define CMD_ST_NO_BK				0x17
-#define CMD_ST_HAVE_BK				0x1B
-#define CMD_ST_OPEN					0x18
-#define CMD_TX_SHORT				0x19
-#define CMD_RX_SHORT				0x4
-#define CMD_RX_OPEN					0x6
-#define CMD_TX_RX_DELTA				0x1E
-#define CMD_CM_DATA					0x9
-#define CMD_CS_DATA					0xA
-#define CMD_TRCRQ_PIN				0x20
-#define CMD_RESX2_PIN				0x21
+#define CMD_MUTUAL_DAC			0x1
+#define CMD_MUTUAL_BG			0x2
+#define CMD_MUTUAL_SIGNAL		0x3
+#define CMD_MUTUAL_NO_BK		0x5
+#define CMD_MUTUAL_HAVE_BK		0x8
+#define CMD_MUTUAL_BK_DAC		0x10
+#define CMD_SELF_DAC			0xC
+#define CMD_SELF_BG			0xF
+#define CMD_SELF_SIGNAL			0xD
+#define CMD_SELF_NO_BK			0xE
+#define CMD_SELF_HAVE_BK		0xB
+#define CMD_SELF_BK_DAC			0x11
+#define CMD_KEY_DAC			0x14
+#define CMD_KEY_BG			0x16
+#define CMD_KEY_NO_BK			0x7
+#define CMD_KEY_HAVE_BK			0x15
+#define CMD_KEY_OPEN			0x12
+#define CMD_KEY_SHORT			0x13
+#define CMD_ST_DAC			0x1A
+#define CMD_ST_BG			0x1C
+#define CMD_ST_NO_BK			0x17
+#define CMD_ST_HAVE_BK			0x1B
+#define CMD_ST_OPEN			0x18
+#define CMD_TX_SHORT			0x19
+#define CMD_RX_SHORT			0x4
+#define CMD_RX_OPEN			0x6
+#define CMD_TX_RX_DELTA			0x1E
+#define CMD_CM_DATA			0x9
+#define CMD_CS_DATA			0xA
+#define CMD_TRCRQ_PIN			0x20
+#define CMD_RESX2_PIN			0x21
 #define CMD_MUTUAL_INTEGRA_TIME		0x22
 #define CMD_SELF_INTEGRA_TIME		0x23
 #define CMD_KEY_INTERGRA_TIME		0x24
 #define CMD_ST_INTERGRA_TIME		0x25
-#define CMD_PEAK_TO_PEAK			0x1D
-#define CMD_GET_TIMING_INFO			0x30
-#define CMD_DOZE_P2P				0x32
-#define CMD_DOZE_RAW				0x33
+#define CMD_PEAK_TO_PEAK		0x1D
+#define CMD_GET_TIMING_INFO		0x30
+#define CMD_DOZE_P2P			0x32
+#define CMD_DOZE_RAW			0x33
 
-#define Mathabs(x) ({						\
-		long ret;							\
+#define Mathabs(x) ({					\
+		long ret;				\
 		if (sizeof(x) == sizeof(long)) {	\
-		long __x = (x);						\
+		long __x = (x);				\
 		ret = (__x < 0) ? -__x : __x;		\
-		} else {							\
-		int __x = (x);						\
+		} else {				\
+		int __x = (x);				\
 		ret = (__x < 0) ? -__x : __x;		\
-		}									\
-		ret;								\
+		}					\
+		ret;					\
 	})
 
 #define DUMP(level, fmt, arg...)		\
-	do {								\
+	do {					\
 		if (level & ipio_debug_level)	\
-		pr_cont(fmt, ##arg);	\
+		pr_cont(fmt, ##arg);		\
 	} while (0)
 
 struct ini_file_data {
@@ -119,11 +118,11 @@ struct ini_file_data {
 } ilitek_ini_file_data[PARSER_MAX_KEY_NUM];
 
 enum open_test_node_type {
-	NO_COMPARE = 0x00,	/*Not A Area, No Compare  */
-	AA_Area = 0x01,		/*AA Area, Compare using Charge_AA	*/
-	Border_Area = 0x02, /*Border Area, Compare using Charge_Border	*/
-	Notch = 0x04,		/*Notch Area, Compare using Charge_Notch  */
-	Round_Corner = 0x08,/* Round Corner, No Compare */
+	NO_COMPARE = 0x00,	/* Not A Area, No Compare */
+	AA_Area = 0x01,		/* AA Area, Compare using Charge_AA */
+	Border_Area = 0x02, 	/* Border Area, Compare using Charge_Border */
+	Notch = 0x04,		/* Notch Area, Compare using Charge_Notch */
+	Round_Corner = 0x08,	/* Round Corner, No Compare */
 	Skip_Micro = 0x10	/* Skip_Micro, No Compare */
 };
 
