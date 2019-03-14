@@ -1019,7 +1019,7 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 	} else if (strcmp(cmd, "dbgflag") == 0) {
 		idev->debug_node_open = !idev->debug_node_open;
 		ipio_info("debug flag message = %d\n", idev->debug_node_open);
-	} else if (strcmp(cmd, "i2c_w") == 0) {
+	} else if (strcmp(cmd, "iow") == 0) {
 		int w_len = 0;
 		w_len = data[1];
 		ipio_info("w_len = %d\n", w_len);
@@ -1030,14 +1030,14 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 		}
 
 		idev->write(temp, w_len);
-	} else if (strcmp(cmd, "i2c_r") == 0) {
+	} else if (strcmp(cmd, "ior") == 0) {
 		int r_len = 0;
 		r_len = data[1];
 		ipio_info("r_len = %d\n", r_len);
 		idev->read(temp, r_len);
 		for (i = 0; i < r_len; i++)
 			ipio_info("read[%d] = %x\n", i, temp[i]);
-	} else if (strcmp(cmd, "i2c_w_r") == 0) {
+	} else if (strcmp(cmd, "iowr") == 0) {
 		int delay = 0;
 		int w_len = 0, r_len = 0;
 		w_len = data[1];
