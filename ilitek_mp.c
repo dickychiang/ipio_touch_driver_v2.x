@@ -1321,8 +1321,6 @@ static int allnode_key_cdc_data(int index)
 	else if (core_mp.busy_cdc == DELAY_CHECK)
 		mdelay(600);
 
-	atomic_set(&idev->mp_int_check, DISABLE);
-
 	if (ret < 0)
 		goto out;
 
@@ -1393,6 +1391,7 @@ static int allnode_key_cdc_data(int index)
 	ilitek_dump_data(key_buf, 32, core_mp.frame_len, core_mp.xch_len, "Key CDC combined data");
 
 out:
+	atomic_set(&idev->mp_int_check, DISABLE);
 	ipio_kfree((void **)&ori);
 	return ret;
 }
@@ -1504,8 +1503,6 @@ static int allnode_open_cdc_data(int mode, int *buf)
 	else if (core_mp.busy_cdc == DELAY_CHECK)
 		mdelay(600);
 
-	atomic_set(&idev->mp_int_check, DISABLE);
-
 	if (ret < 0)
 		goto out;
 
@@ -1576,6 +1573,7 @@ static int allnode_open_cdc_data(int mode, int *buf)
 	}
 	ilitek_dump_data(buf, 10, core_mp.frame_len,  core_mp.xch_len, "Open SP CDC combined");
 out:
+	atomic_set(&idev->mp_int_check, DISABLE);
 	ipio_kfree((void **)&ori);
 	return ret;
 }
@@ -1626,8 +1624,6 @@ static int allnode_mutual_cdc_data(int index)
 		ret = ilitek_tddi_ic_check_int_stat();
 	else if (core_mp.busy_cdc == DELAY_CHECK)
 		mdelay(600);
-
-	atomic_set(&idev->mp_int_check, DISABLE);
 
 	if (ret < 0)
 		goto out;
@@ -1713,6 +1709,7 @@ static int allnode_mutual_cdc_data(int index)
 	ilitek_dump_data(frame_buf, 32, core_mp.frame_len,	core_mp.xch_len, "Mutual CDC combined");
 
 out:
+	atomic_set(&idev->mp_int_check, DISABLE);
 	ipio_kfree((void **)&ori);
 	return ret;
 }
