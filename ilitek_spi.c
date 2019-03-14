@@ -348,29 +348,33 @@ static int core_spi_ice_mode_enable(void)
 
 static int core_spi_ice_mode_write(u8 *data, size_t len)
 {
+	int ret = 0;
 	if (core_spi_ice_mode_enable() < 0)
 		return -EIO;
 
 	/* send data and change lock status to 0x5AA5. */
-	if (core_spi_ice_mode_lock_write(data, len) < 0)
+	ret = core_spi_ice_mode_lock_write(data, len);
+	if (ret < 0)
 		goto out;
 
 	/*
 	 * Check FW if they already received the data we sent.
 	 * They change lock status from 0x5AA5 to 0x9881 if they did.
 	 */
-	if (core_tx_unlock_check() < 0)
+	ret = core_tx_unlock_check();
+	if (ret < 0)
 		goto out;
 
 out:
 	if (core_spi_ice_mode_disable() < 0)
 		return -EIO;
-	return 0;
+
+	return ret;
 }
 
 static int core_spi_ice_mode_read(u8 *data)
 {
-	int size = 0;
+	int size = 0, ret = 0;
 
 	if (core_spi_ice_mode_enable() < 0)
 		return -EIO;
@@ -379,17 +383,23 @@ static int core_spi_ice_mode_read(u8 *data)
 	 * Check FW if they already send their data to rxbuf.
 	 * They change lock status from 0x9881 to 0x5AA5 if they did.
 	 */
-	if (core_rx_lock_check(&size) < 0)
+	ret = core_rx_lock_check(&size);
+	if (ret < 0)
 		goto out;
 
 	/* receive data from rxbuf and change lock status to 0x9881. */
-	if (core_spi_ice_mode_unlock_read(data, size) < 0)
+	ret = core_spi_ice_mode_unlock_read(data, size);
+	if (ret < 0)
 		goto out;
 
 out:
 	if (core_spi_ice_mode_disable() < 0)
 		return -EIO;
-	return 0;
+
+	if (ret >= 0)
+		return size;
+
+	return ret;
 }
 
 static int core_spi_write(u8 *data, size_t len)
@@ -478,6 +488,7 @@ out:
 	return ret;
 }
 
+/*If ilitek_spi_read success ,this function will return read length */
 static int ilitek_spi_read(void *buf, size_t len)
 {
 	int ret = 0;
