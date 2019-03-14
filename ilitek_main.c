@@ -528,7 +528,8 @@ int ilitek_tddi_reset_ctrl(int mode)
 
 	atomic_set(&idev->tp_reset, START);
 
-	ilitek_tddi_ic_check_otp_prog_mode();
+	if (mode != TP_IC_CODE_RST)
+		ilitek_tddi_ic_check_otp_prog_mode();
 
 	switch (mode) {
 	case TP_IC_CODE_RST:
@@ -550,7 +551,7 @@ int ilitek_tddi_reset_ctrl(int mode)
 	}
 
 	/*
-	 * Since OTP must be folloing with reset after leave out the func,
+	 * Since OTP must be folloing with reset, except for code rest,
 	 * the stat of ice mode should be set as 0.
 	 */
 	if (mode != TP_IC_CODE_RST)

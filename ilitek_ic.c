@@ -65,8 +65,6 @@ static u32 ic_sup_list[CHIP_SUP_NUM] = {
 	[5] = ILI7807G_AB,
 };
 
-static int ilitek_tddi_ic_watch_dog_ctrl(bool enable);
-
 static int ilitek_tddi_ic_check_support(u32 pid, u16 id)
 {
 	int i = 0;
@@ -246,22 +244,10 @@ int ilitek_ice_mode_ctrl(bool enable, bool mcu)
 
 		/* Patch to resolve the issue of i2c nack after exit to ice mode */
 		ilitek_ice_mode_write(0x47002, 0x00, 1);
-
-		if (!mcu) {
-			if (ilitek_tddi_ic_watch_dog_ctrl(DISABLE) < 0) {
-				ipio_err("Disable wdt failed !!\n");
-				ret = -1;
-			}
-		}
 	} else {
 		if (!atomic_read(&idev->ice_stat)) {
 			ipio_info("ice mode already disabled\n");
 			return 0;
-		}
-
-		if (!mcu) {
-			if (ilitek_tddi_ic_watch_dog_ctrl(ENABLE) < 0)
-				ipio_err("Enable WDT failed !!\n");
 		}
 
 		ret = idev->write(cmd_close, sizeof(cmd_close));
@@ -273,10 +259,9 @@ out:
 	return ret;
 }
 
-static int ilitek_tddi_ic_watch_dog_ctrl(bool enable)
+int ilitek_tddi_ic_watch_dog_ctrl(bool write, bool enable)
 {
 	int timeout = 100, ret = 0;
-	u8 off_bit = 0x5A, on_bit = 0xA5;
 
 	if (!atomic_read(&idev->ice_stat)) {
 		ipio_err("ice mode wasn't enabled\n");
@@ -294,6 +279,12 @@ static int ilitek_tddi_ic_watch_dog_ctrl(bool enable)
 		return 0;
 	}
 
+	if (!write) {
+		ret = ilitek_ice_mode_read(idev->chip->wdt_addr, sizeof(u8));
+		ipio_info("Read WDT: %s\n", (ret ? "ON" : "OFF"));
+		return ret;
+	}
+
 	ipio_info("%s WDT, key = %x\n", (enable ? "Enable" : "Disable"), idev->chip->wtd_key);
 
 	if (enable) {
@@ -306,13 +297,13 @@ static int ilitek_tddi_ic_watch_dog_ctrl(bool enable)
 	}
 
 	while (timeout > 0) {
-		ret = ilitek_ice_mode_read(0x51018, sizeof(u8));
+		ret = ilitek_ice_mode_read(TDDI_WDT_ACTIVE_ADDR, sizeof(u8));
 		ipio_debug(DEBUG_IC, "ret = %x\n", ret);
 		if (enable) {
-			if (ret == on_bit)
+			if (ret == TDDI_WDT_ON)
 				break;
 		} else {
-			if (ret == off_bit)
+			if (ret == TDDI_WDT_OFF)
 				break;
 
 			/* If WDT can't be disabled, try to command and wait to see */
@@ -454,6 +445,7 @@ static u32 ilitek_tddi_ic_rd_pack(int packet)
 
 void ilitek_tddi_ic_set_ddi_reg_onepage(u8 page, u8 reg, u8 data)
 {
+	int wdt;
 	u32 setpage = 0x1FFFFF00 | page;
 	u32 setreg = 0x1F000100 | (reg << 16) | data;
 	bool ice = atomic_read(&idev->ice_stat);
@@ -461,7 +453,11 @@ void ilitek_tddi_ic_set_ddi_reg_onepage(u8 page, u8 reg, u8 data)
 	ipio_info("setpage =  0x%X setreg = 0x%X\n", setpage, setreg);
 
 	if (!ice)
-		ilitek_ice_mode_ctrl(ENABLE, ON);
+		ilitek_ice_mode_ctrl(ENABLE, OFF);
+
+	wdt = ilitek_tddi_ic_watch_dog_ctrl(ILI_READ, DISABLE);
+	if (wdt)
+		ilitek_tddi_ic_watch_dog_ctrl(ILI_WRITE, DISABLE);
 
 	/*TDI_WR_KEY*/
 	ilitek_tddi_ic_wr_pack(0x1FFF9527);
@@ -472,12 +468,16 @@ void ilitek_tddi_ic_set_ddi_reg_onepage(u8 page, u8 reg, u8 data)
 	/*TDI_WR_KEY OFF*/
 	ilitek_tddi_ic_wr_pack(0x1FFF9500);
 
+	if (wdt)
+		ilitek_tddi_ic_watch_dog_ctrl(ILI_WRITE, ENABLE);
+
 	if (!ice)
-		ilitek_ice_mode_ctrl(DISABLE, ON);
+		ilitek_ice_mode_ctrl(DISABLE, OFF);
 }
 
 void ilitek_tddi_ic_get_ddi_reg_onepage(u8 page, u8 reg)
 {
+	int wdt;
 	u32 reg_data = 0;
 	u32 setpage = 0x1FFFFF00 | page;
 	u32 setreg = 0x2F000100 | (reg << 16);
@@ -486,7 +486,11 @@ void ilitek_tddi_ic_get_ddi_reg_onepage(u8 page, u8 reg)
 	ipio_info("setpage = 0x%X setreg = 0x%X\n", setpage, setreg);
 
 	if (!ice)
-		ilitek_ice_mode_ctrl(ENABLE, ON);
+		ilitek_ice_mode_ctrl(ENABLE, OFF);
+
+	wdt = ilitek_tddi_ic_watch_dog_ctrl(ILI_READ, DISABLE);
+	if (wdt)
+		ilitek_tddi_ic_watch_dog_ctrl(ILI_WRITE, DISABLE);
 
 	/*TDI_WR_KEY*/
 	ilitek_tddi_ic_wr_pack(0x1FFF9527);
@@ -506,8 +510,11 @@ void ilitek_tddi_ic_get_ddi_reg_onepage(u8 page, u8 reg)
 	/*TDI_WR_KEY OFF*/
 	ilitek_tddi_ic_wr_pack(0x1FFF9500);
 
+	if (wdt)
+		ilitek_tddi_ic_watch_dog_ctrl(ILI_WRITE, ENABLE);
+
 	if (!ice)
-		ilitek_ice_mode_ctrl(DISABLE, ON);
+		ilitek_ice_mode_ctrl(DISABLE, OFF);
 }
 
 void ilitek_tddi_ic_check_otp_prog_mode(void)
@@ -519,6 +526,11 @@ void ilitek_tddi_ic_check_otp_prog_mode(void)
 
 	if (ilitek_ice_mode_ctrl(ENABLE, OFF) < 0) {
 		ipio_err("enter ice mode failed in otp\n");
+		return;
+	}
+
+	if (ilitek_tddi_ic_watch_dog_ctrl(ILI_WRITE, DISABLE) < 0) {
+		ipio_err("disable WDT failed in otp\n");
 		return;
 	}
 
@@ -892,12 +904,12 @@ static struct ilitek_ic_info chip;
 
 void ilitek_tddi_ic_init(void)
 {
-	chip.pid_addr =		   TDDI_PID_ADDR;
-	chip.wdt_addr =		   TDDI_WDT_ADDR;
-	chip.pc_counter_addr = TDDI_PC_COUNTER_ADDR;
-	chip.otp_addr =		   TDDI_OTP_ID_ADDR;
-	chip.ana_addr =		   TDDI_ANA_ID_ADDR;
-	chip.reset_addr =	   TDDI_CHIP_RESET_ADDR;
+	chip.pid_addr =		   	TDDI_PID_ADDR;
+	chip.wdt_addr =		   	TDDI_WDT_ADDR;
+	chip.pc_counter_addr = 		TDDI_PC_COUNTER_ADDR;
+	chip.otp_addr =		   	TDDI_OTP_ID_ADDR;
+	chip.ana_addr =		   	TDDI_ANA_ID_ADDR;
+	chip.reset_addr =	   	TDDI_CHIP_RESET_ADDR;
 
 	idev->protocol = &protocol_info[PROTOCL_VER_NUM - 1];
 	idev->chip = &chip;

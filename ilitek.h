@@ -169,6 +169,8 @@ do {									\
 #define ENABLE			1
 #define START			1
 #define ON			1
+#define ILI_WRITE		1
+#define ILI_READ		0
 #define DISABLE			0
 #define END			0
 #define OFF			0
@@ -501,6 +503,8 @@ enum TP_WQ_TYPE {
 #define SPI_WRITE			0x82
 #define SPI_READ			0x83
 #define SPI_ACK				0xA3
+#define TDDI_WDT_ON			0xA5
+#define TDDI_WDT_OFF			0x5A
 
 /* Chipes */
 #define TDDI_PID_ADDR			0x4009C
@@ -508,6 +512,7 @@ enum TP_WQ_TYPE {
 #define TDDI_ANA_ID_ADDR		0x400A4
 #define TDDI_PC_COUNTER_ADDR		0x44008
 #define TDDI_WDT_ADDR			0x5100C
+#define TDDI_WDT_ACTIVE_ADDR		0x51018
 #define TDDI_CHIP_RESET_ADDR		0x40050
 #define ILI9881_CHIP			0x9881
 #define ILI9881F_AA			0x98810F00
@@ -711,6 +716,7 @@ extern void ilitek_tddi_report_ap_mode(u8 *buf, size_t len);
 extern void ilitek_tddi_report_debug_mode(u8 *buf, size_t rlen);
 extern void ilitek_tddi_report_gesture_mode(u8 *buf, size_t rlen);
 extern void ilitek_tddi_report_i2cuart_mode(u8 *buf, size_t rlen);
+extern int ilitek_tddi_ic_watch_dog_ctrl(bool write, bool enable);
 extern void ilitek_tddi_ic_set_ddi_reg_onepage(u8 page, u8 reg, u8 data);
 extern void ilitek_tddi_ic_get_ddi_reg_onepage(u8 page, u8 reg);
 extern void ilitek_tddi_ic_spi_speed_ctrl(bool enable);

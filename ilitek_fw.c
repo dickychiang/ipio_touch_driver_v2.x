@@ -521,6 +521,10 @@ static int ilitek_tddi_fw_iram_upgrade(u8 *pfw)
 	if (ret < 0)
 		return ret;
 
+	ret = ilitek_tddi_ic_watch_dog_ctrl(ILI_WRITE, DISABLE);
+	if (ret < 0)
+		return ret;
+
 	fw_ptr = pfw;
 	if (idev->actual_tp_mode == P5_X_FW_TEST_MODE) {
 		mode = MP;
@@ -684,6 +688,10 @@ static int ilitek_tddi_fw_flash_upgrade(u8 *pfw)
 	ret = ilitek_ice_mode_ctrl(ENABLE, OFF);
 	if (ret < 0)
 		return UPDATE_FAIL;
+
+	ret = ilitek_tddi_ic_watch_dog_ctrl(ILI_WRITE, DISABLE);
+	if (ret < 0)
+		return ret;
 
 	ret = ilitek_tddi_fw_check_ver(pfw);
 	if (ret == UPDATE_PASS)
