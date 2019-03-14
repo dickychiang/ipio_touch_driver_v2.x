@@ -82,10 +82,7 @@ static int core_i2c_read(void *buf, size_t len)
 		 },
 	};
 
-	if (i2c_transfer(idev->i2c->adapter, msgs, 1) < 0)
-		return -EIO;
-
-	return 0;
+	return (i2c_transfer(idev->i2c->adapter, msgs, 1);
 }
 
 static int ilitek_i2c_write(void *buf, size_t len)
