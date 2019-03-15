@@ -95,7 +95,7 @@ static void dma_clear_reg_setting(void)
 	ilitek_tddi_flash_clear_dma();
 }
 
-static void dma_trigger_reg_setting(uint32_t reg_dest_addr, uint32_t flash_start_addr, uint32_t copy_size)
+static void dma_trigger_reg_setting(u32 reg_dest_addr, u32 flash_start_addr, u32 copy_size)
 {
 	ipio_info("set dma channel 0 clear\n");
 	ilitek_ice_mode_bit_mask_write(DMA48_ADDR, DMA48_reg_dma_ch0_start_clear, (1 << 25));

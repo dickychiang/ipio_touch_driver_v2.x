@@ -1284,8 +1284,8 @@ static int allnode_key_cdc_data(int index)
 {
 	int i, ret = 0, len = 0;
 	int inDACp = 0, inDACn = 0;
-	uint8_t cmd[3] = {0};
-	uint8_t *ori = NULL;
+	u8 cmd[3] = {0};
+	u8 *ori = NULL;
 
 	len = core_mp.key_len * 2;
 
@@ -1340,7 +1340,7 @@ static int allnode_key_cdc_data(int index)
 	}
 
 	/* Allocate a buffer for the original */
-	ori = kcalloc(len, sizeof(uint8_t), GFP_KERNEL);
+	ori = kcalloc(len, sizeof(u8), GFP_KERNEL);
 	if (ERR_ALLOC_MEM(ori)) {
 		ipio_err("Failed to allocate ori mem (%ld)\n", PTR_ERR(ori));
 		goto out;

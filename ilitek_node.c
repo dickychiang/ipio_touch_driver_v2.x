@@ -874,7 +874,7 @@ static ssize_t ilitek_node_fw_upgrade_read(struct file *filp, char __user *buff,
 static ssize_t ilitek_proc_debug_level_read(struct file *filp, char __user *buff, size_t size, loff_t *pPos)
 {
 	int ret = 0;
-	uint32_t len = 0;
+	u32 len = 0;
 
 	if (*pPos != 0)
 		return 0;
@@ -907,7 +907,7 @@ static ssize_t ilitek_proc_debug_level_read(struct file *filp, char __user *buff
 	len += snprintf(g_user_buf + len, PAGE_SIZE - len, "DEBUG_PLAT = %d\n", DEBUG_PLAT);
 	len += snprintf(g_user_buf + len, PAGE_SIZE - len, "DEBUG_ALL = %d\n", DEBUG_ALL);
 
-	ret = copy_to_user((uint32_t *) buff, g_user_buf, len);
+	ret = copy_to_user((u32 *) buff, g_user_buf, len);
 	if (ret < 0) {
 		ipio_err("Failed to copy data to user space\n");
 	}

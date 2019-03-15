@@ -29,12 +29,6 @@
 #define SPI_WRITE_BUFF_MAXSIZE		(1024 * DMA_TRANSFER_MAX_TIMES + 5)
 #define SPI_READ_BUFF_MAXSIZE		(1024 * DMA_TRANSFER_MAX_TIMES)
 
-/* Declare dma buffer as 4 byte alignment */
-__attribute__((section ("NONCACHEDRW"), aligned(4)))
-uint8_t dma_txbuf[SPI_WRITE_BUFF_MAXSIZE] = {0};
-__attribute__((section ("NONCACHEDRW"), aligned(4)))
-uint8_t dma_rxbuf[SPI_READ_BUFF_MAXSIZE] = {0};
-
 struct touch_bus_info {
 	struct spi_driver bus_driver;
 	struct ilitek_hwif_info *hwif;
@@ -56,9 +50,10 @@ static int core_mtk_spi_write_then_read(struct spi_device *spi,
 {
 	static DEFINE_MUTEX(lock);
 
-	int	status = -1;
+	int status = -1;
 	int xfercnt = 0, xferlen = 0, xferloop = 0;
-	uint8_t cmd, temp1[1] = {0}, temp2[1] = {0};
+	u8 *dma_txbuf = NULL, *dma_rxbuf = NULL;
+	u8 cmd, temp1[1] = {0}, temp2[1] = {0};
 	struct spi_message	message;
 	struct spi_transfer	xfer[DMA_TRANSFER_MAX_TIMES + 1];
 
@@ -68,6 +63,18 @@ static int core_mtk_spi_write_then_read(struct spi_device *spi,
 	}
 	if (n_rx > (SPI_READ_BUFF_MAXSIZE)) {
 		ipio_err("Exceeded length (%d) > %d\n", n_rx, SPI_READ_BUFF_MAXSIZE);
+		goto out;
+	}
+
+	dma_txbuf = kzalloc(SPI_WRITE_BUFF_MAXSIZE, GFP_KERNEL);
+	if (ERR_ALLOC_MEM(dma_txbuf)) {
+		ipio_err("Failed to allocate dma_txbuf, %ld\n", PTR_ERR(dma_txbuf));
+		goto out;
+	}
+
+	dma_rxbuf = kzalloc(SPI_READ_BUFF_MAXSIZE, GFP_KERNEL);
+	if (ERR_ALLOC_MEM(dma_rxbuf)) {
+		ipio_err("Failed to allocate dma_rxbuf, %ld\n", PTR_ERR(dma_rxbuf));
 		goto out;
 	}
 
@@ -140,6 +147,8 @@ static int core_mtk_spi_write_then_read(struct spi_device *spi,
 
 	mutex_unlock(&lock);
 out:
+	ipio_kfree((void **)&dma_txbuf);
+	ipio_kfree((void **)&dma_rxbuf);
 	return status;
 }
 #endif /* CONFIG_MTK_SPI */
@@ -218,7 +227,7 @@ out:
 static int core_spi_ice_mode_unlock_read(u8 *data, size_t size)
 {
 	int ret = 0;
-	uint8_t txbuf[64] = { 0 };
+	u8 txbuf[64] = { 0 };
 
 	/* set read address */
 	txbuf[0] = SPI_WRITE;
@@ -260,8 +269,8 @@ static int core_spi_ice_mode_lock_write(u8 *data, size_t size)
 {
 	int ret = 0;
 	int safe_size = size;
-	uint8_t check_sum = 0, wsize = 0;
-	uint8_t *txbuf = NULL;
+	u8 check_sum = 0, wsize = 0;
+	u8 *txbuf = NULL;
 
 	txbuf = kcalloc(size + 9, sizeof(u8), GFP_KERNEL);
 	if (ERR_ALLOC_MEM(txbuf)) {
