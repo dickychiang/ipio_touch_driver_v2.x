@@ -476,7 +476,7 @@ void ilitek_tddi_report_handler(void)
 		break;
 	}
 
-	ipio_debug(DEBUG_MAIN, "Packget length = %d\n", (int)rlen);
+	ipio_debug(DEBUG_MAIN, "Packget length = %ld\n", rlen);
 
 	if (!rlen) {
 		ipio_err("Length of packet is invaild\n");
@@ -503,6 +503,8 @@ void ilitek_tddi_report_handler(void)
 		}
 		goto out;
 	}
+
+	ipio_debug(DEBUG_MAIN, "Read length = %d\n", (ret));
 
 	rlen = ret;
 
