@@ -63,14 +63,12 @@ static int core_i2c_write(void *buf, size_t len)
 		}
 	}
 
-	if (i2c_transfer(idev->i2c->adapter, msgs, 1) < 0)
-		return -EIO;
-
-	return 0;
+	return i2c_transfer(idev->i2c->adapter, msgs, 1);
 }
 
 static int core_i2c_read(void *buf, size_t len)
 {
+	int ret;
 	u8 *rxbuf = (u8 *)buf;
 
 	struct i2c_msg msgs[] = {
@@ -82,7 +80,13 @@ static int core_i2c_read(void *buf, size_t len)
 		 },
 	};
 
-	return (i2c_transfer(idev->i2c->adapter, msgs, 1);
+	ret = i2c_transfer(idev->i2c->adapter, msgs, 1);
+
+	/*
+	 * If i2c_transfer is ok (must return 1 because only sends one msg),
+	 * return #bytes transferred, else error code.
+	 */
+	return (ret == 1) ? len : ret;
 }
 
 static int ilitek_i2c_write(void *buf, size_t len)

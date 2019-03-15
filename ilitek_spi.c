@@ -488,7 +488,7 @@ out:
 	return ret;
 }
 
-/*If ilitek_spi_read success ,this function will return read length */
+/* If ilitek_spi_read success ,this function will return read length */
 static int ilitek_spi_read(void *buf, size_t len)
 {
 	int ret = 0;
