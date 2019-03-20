@@ -29,7 +29,7 @@ struct touch_bus_info {
 
 struct ilitek_tddi_dev *idev;
 
-static int core_i2c_write(void *buf, size_t len)
+static int core_i2c_write(void *buf, int len)
 {
 	u8 *txbuf = (u8 *)buf;
 	u8 check_sum = 0;
@@ -66,7 +66,7 @@ static int core_i2c_write(void *buf, size_t len)
 	return i2c_transfer(idev->i2c->adapter, msgs, 1);
 }
 
-static int core_i2c_read(void *buf, size_t len)
+static int core_i2c_read(void *buf, int len)
 {
 	int ret;
 	u8 *rxbuf = (u8 *)buf;
@@ -89,7 +89,7 @@ static int core_i2c_read(void *buf, size_t len)
 	return (ret == 1) ? len : ret;
 }
 
-static int ilitek_i2c_write(void *buf, size_t len)
+static int ilitek_i2c_write(void *buf, int len)
 {
 	int ret = 0;
 
@@ -114,7 +114,7 @@ out:
 	return ret;
 }
 
-static int ilitek_i2c_read(void *buf, size_t len)
+static int ilitek_i2c_read(void *buf, int len)
 {
 	int ret = 0;
 

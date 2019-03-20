@@ -224,7 +224,7 @@ out:
 	return -EIO;
 }
 
-static int core_spi_ice_mode_unlock_read(u8 *data, size_t size)
+static int core_spi_ice_mode_unlock_read(u8 *data, int size)
 {
 	int ret = 0;
 	u8 txbuf[64] = { 0 };
@@ -265,7 +265,7 @@ static int core_spi_ice_mode_unlock_read(u8 *data, size_t size)
 	return ret;
 }
 
-static int core_spi_ice_mode_lock_write(u8 *data, size_t size)
+static int core_spi_ice_mode_lock_write(u8 *data, int size)
 {
 	int ret = 0;
 	int safe_size = size;
@@ -355,7 +355,7 @@ static int core_spi_ice_mode_enable(void)
 	return 0;
 }
 
-static int core_spi_ice_mode_write(u8 *data, size_t len)
+static int core_spi_ice_mode_write(u8 *data, int len)
 {
 	int ret = 0;
 	if (core_spi_ice_mode_enable() < 0)
@@ -411,11 +411,11 @@ out:
 	return ret;
 }
 
-static int core_spi_write(u8 *data, size_t len)
+static int core_spi_write(u8 *data, int len)
 {
 	int ret = 0, count = 5;
 	u8 *txbuf = NULL;
-	size_t safe_size = len;
+	int safe_size = len;
 
 	if (atomic_read(&idev->ice_stat) == DISABLE) {
 		do {
@@ -446,7 +446,7 @@ out:
 	return ret;
 }
 
-static int core_spi_read(u8 *rxbuf, size_t len)
+static int core_spi_read(u8 *rxbuf, int len)
 {
 	int ret = 0, count = 5;
 	u8 txbuf[1] = {0};
@@ -472,7 +472,7 @@ out:
 	return ret;
 }
 
-static int ilitek_spi_write(void *buf, size_t len)
+static int ilitek_spi_write(void *buf, int len)
 {
 	int ret = 0;
 
@@ -498,7 +498,7 @@ out:
 }
 
 /* If ilitek_spi_read success ,this function will return read length */
-static int ilitek_spi_read(void *buf, size_t len)
+static int ilitek_spi_read(void *buf, int len)
 {
 	int ret = 0;
 

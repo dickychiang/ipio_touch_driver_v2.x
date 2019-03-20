@@ -375,7 +375,7 @@ static int parser_get_ini_key_value(char *section, char *key, char *value)
 	return ret;
 }
 
-void parser_ini_nodetype(s32 *type_ptr, char *desp, size_t frame_len)
+void parser_ini_nodetype(s32 *type_ptr, char *desp, int frame_len)
 {
 	int i = 0, j = 0, index1 = 0, temp, count = 0;
 	char str[512] = {0}, record = ',';
@@ -409,7 +409,7 @@ void parser_ini_nodetype(s32 *type_ptr, char *desp, size_t frame_len)
 	}
 }
 
-void parser_ini_benchmark(s32 *max_ptr, s32 *min_ptr, int8_t type, char *desp, size_t frame_len)
+void parser_ini_benchmark(s32 *max_ptr, s32 *min_ptr, int8_t type, char *desp, int frame_len)
 {
 	int i = 0, j = 0, index1 = 0, temp, count = 0;
 	char str[512] = {0}, record = ',';
@@ -496,7 +496,7 @@ static int parser_get_tdf_value(char *str, int catalog)
 	return ans;
 }
 
-static int parser_get_u8_array(char *key, u8 *buf, u16 base, size_t len)
+static int parser_get_u8_array(char *key, u8 *buf, u16 base, int len)
 {
 	char *s = key;
 	char *pToken;

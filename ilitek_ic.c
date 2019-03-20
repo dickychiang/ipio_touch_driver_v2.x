@@ -129,7 +129,7 @@ int ilitek_ice_mode_bit_mask_write(u32 addr, u32 mask, u32 value)
 	return ret;
 }
 
-int ilitek_ice_mode_write(u32 addr, u32 data, size_t len)
+int ilitek_ice_mode_write(u32 addr, u32 data, int len)
 {
 	int ret = 0, i;
 	u8 txbuf[64] = {0};
@@ -154,7 +154,7 @@ int ilitek_ice_mode_write(u32 addr, u32 data, size_t len)
 	return ret;
 }
 
-u32 ilitek_ice_mode_read(u32 addr, size_t len)
+u32 ilitek_ice_mode_read(u32 addr, int len)
 {
 	u32 ret = 0;
 	u8 *rxbuf = NULL;
@@ -647,7 +647,7 @@ int ilitek_tddi_ic_check_busy(int count, int delay)
 	return -1;
 }
 
-int ilitek_tddi_ic_get_project_id(u8 *pdata, size_t size)
+int ilitek_tddi_ic_get_project_id(u8 *pdata, int size)
 {
 	int i;
 
@@ -656,7 +656,7 @@ int ilitek_tddi_ic_get_project_id(u8 *pdata, size_t size)
 		return -ENOMEM;
 	}
 
-	ipio_info("Read size = %ld\n", size);
+	ipio_info("Read size = %d\n", size);
 
 	if (ilitek_ice_mode_ctrl(ENABLE, OFF) < 0)
 		return -1;

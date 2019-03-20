@@ -435,7 +435,7 @@ void ilitek_tddi_report_handler(void)
 {
 	int ret = 0, pid = 0;
 	u8 *buf = NULL, checksum = 0;
-	size_t rlen = 0;
+	int rlen = 0;
 	u16 self_key = 2;
 
 	/* Just in case these stats couldn't be blocked in top half context */
@@ -476,7 +476,7 @@ void ilitek_tddi_report_handler(void)
 		break;
 	}
 
-	ipio_debug(DEBUG_MAIN, "Packget length = %ld\n", rlen);
+	ipio_debug(DEBUG_MAIN, "Packget length = %d\n", rlen);
 
 	if (!rlen) {
 		ipio_err("Length of packet is invaild\n");

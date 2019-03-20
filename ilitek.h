@@ -618,13 +618,13 @@ struct ilitek_tddi_dev {
 	atomic_t mp_int_check;
 	atomic_t esd_stat;
 
-	int (*write)(void *, size_t);
-	int (*read)(void *, size_t);
-	int (*spi_write_then_read)(struct spi_device *, const void *, unsigned intint, void *, unsigned);
+	int (*write)(void *data, int len);
+	int (*read)(void *data, int len);
+	int (*spi_write_then_read)(struct spi_device *spi, const void *txbuf, unsigned n_tx , void *rxbuf, unsigned n_rx);
 	int (*mp_move_code)(void);
-	int (*gesture_move_code)(int);
+	int (*gesture_move_code)(int mode);
 	int (*esd_recover)(void);
-	void (*spi_speed)(bool);
+	void (*spi_speed)(bool enable);
 	void (*ges_recover)(void);
 };
 extern struct ilitek_tddi_dev *idev;
@@ -698,7 +698,7 @@ extern void ilitek_tddi_flash_dma_write(u32 start, u32 end, u32 len);
 extern void ilitek_tddi_flash_clear_dma(void);
 extern void ilitek_tddi_fw_read_flash_info(bool mode);
 extern u32 ilitek_tddi_fw_read_hw_crc(u32 start, u32 end);
-extern int ilitek_tddi_fw_read_flash(u32 start, u32 end, u8 *data, size_t len);
+extern int ilitek_tddi_fw_read_flash(u32 start, u32 end, u8 *data, int len);
 extern int ilitek_tddi_fw_dump_flash_data(u32 start, u32 end, bool user);
 extern int ilitek_tddi_fw_upgrade(int upgrade_type, int file_type, int open_file_method);
 
@@ -715,10 +715,10 @@ extern int ilitek_tddi_move_mp_code_iram(void);
 extern void ilitek_tddi_touch_press(u16 x, u16 y, u16 pressure, u16 id);
 extern void ilitek_tddi_touch_release(u16 x, u16 y, u16 id);
 extern void ilitek_tddi_touch_release_all_point(void);
-extern void ilitek_tddi_report_ap_mode(u8 *buf, size_t len);
-extern void ilitek_tddi_report_debug_mode(u8 *buf, size_t rlen);
-extern void ilitek_tddi_report_gesture_mode(u8 *buf, size_t rlen);
-extern void ilitek_tddi_report_i2cuart_mode(u8 *buf, size_t rlen);
+extern void ilitek_tddi_report_ap_mode(u8 *buf, int len);
+extern void ilitek_tddi_report_debug_mode(u8 *buf, int rlen);
+extern void ilitek_tddi_report_gesture_mode(u8 *buf, int rlen);
+extern void ilitek_tddi_report_i2cuart_mode(u8 *buf, int rlen);
 extern int ilitek_tddi_ic_watch_dog_ctrl(bool write, bool enable);
 extern void ilitek_tddi_ic_set_ddi_reg_onepage(u8 page, u8 reg, u8 data);
 extern void ilitek_tddi_ic_get_ddi_reg_onepage(u8 page, u8 reg);
@@ -729,7 +729,7 @@ extern int ilitek_tddi_ic_func_ctrl(const char *name, int ctrl);
 extern u32 ilitek_tddi_ic_get_pc_counter(void);
 extern int ilitek_tddi_ic_check_int_stat(void);
 extern int ilitek_tddi_ic_check_busy(int count, int delay);
-extern int ilitek_tddi_ic_get_project_id(u8 *pdata, size_t size);
+extern int ilitek_tddi_ic_get_project_id(u8 *pdata, int size);
 extern int ilitek_tddi_ic_get_panel_info(void);
 extern int ilitek_tddi_ic_get_tp_info(void);
 extern int ilitek_tddi_ic_get_core_ver(void);
@@ -737,8 +737,8 @@ extern int ilitek_tddi_ic_get_protocl_ver(void);
 extern int ilitek_tddi_ic_get_fw_ver(void);
 extern int ilitek_tddi_ic_get_info(void);
 extern int ilitek_ice_mode_bit_mask_write(u32 addr, u32 mask, u32 value);
-extern int ilitek_ice_mode_write(u32 addr, u32 data, size_t len);
-extern u32 ilitek_ice_mode_read(u32 addr, size_t len);
+extern int ilitek_ice_mode_write(u32 addr, u32 data, int len);
+extern u32 ilitek_ice_mode_read(u32 addr, int len);
 extern int ilitek_ice_mode_ctrl(bool enable, bool mcu);
 extern void ilitek_tddi_ic_init(void);
 extern int ilitek_tddi_edge_palm_ctrl(u8 type);
@@ -770,7 +770,7 @@ extern void ilitek_plat_tp_reset(void);
 /* Prototypes for miscs */
 extern void ilitek_tddi_node_init(void);
 extern void ilitek_dump_data(void *data, int type, int len, int row_len, const char *name);
-extern u8 ilitek_calc_packet_checksum(u8 *packet, size_t len);
+extern u8 ilitek_calc_packet_checksum(u8 *packet, int len);
 extern void netlink_reply_msg(void *raw, int size);
 extern int katoi(char *str);
 
@@ -790,7 +790,7 @@ static inline void ipio_vfree(void **mem)
 	}
 }
 
-static inline void *ipio_memcpy(void *dest, const void *src, size_t n, size_t dest_size)
+static inline void *ipio_memcpy(void *dest, const void *src, int n, int dest_size)
 {
 	if (n > dest_size)
 		 n = dest_size;

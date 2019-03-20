@@ -338,12 +338,12 @@ u32 ilitek_tddi_fw_read_hw_crc(u32 start, u32 end)
 	return iram_check;
 }
 
-int ilitek_tddi_fw_read_flash_data(u32 start, u32 end, u8 *data, size_t len)
+int ilitek_tddi_fw_read_flash_data(u32 start, u32 end, u8 *data, int len)
 {
 	u32 i, index = 0, precent;
 
 	if (end - start > len) {
-		ipio_err("the length (%d) reading crc is over than len(%d)\n", end - start, (int)len);
+		ipio_err("the length (%d) reading crc is over than len(%d)\n", end - start, len);
 		return -1;
 	}
 
@@ -855,7 +855,7 @@ out:
 	tfd.end_addr = (sizeof(CTPM_FW) - ILI_FILE_HEADER);
 }
 
-static int ilitek_tddi_fw_hex_convert(u8 *phex, size_t size, u8 *pfw)
+static int ilitek_tddi_fw_hex_convert(u8 *phex, int size, u8 *pfw)
 {
 	int block = 0;
 	u32 i = 0, j = 0, k = 0, num = 0;

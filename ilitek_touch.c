@@ -300,7 +300,7 @@ int ilitek_tddi_move_gesture_code_iram(int mode)
 	return 0;
 }
 
-u8 ilitek_calc_packet_checksum(u8 *packet, size_t len)
+u8 ilitek_calc_packet_checksum(u8 *packet, int len)
 {
 	int i;
 	s32 sum = 0;
@@ -388,7 +388,7 @@ void ilitek_tddi_touch_esd_gesture_iram(void)
 	idev->gesture_move_code(idev->gesture_mode);
 }
 
-static void ilitek_tddi_touch_send_debug_data(u8 *buf, size_t len)
+static void ilitek_tddi_touch_send_debug_data(u8 *buf, int len)
 {
 	if (!idev->netlink && !idev->debug_node_open)
 		return;
@@ -477,7 +477,7 @@ void ilitek_tddi_touch_release_all_point(void)
 
 static struct ilitek_touch_info touch_info[MAX_TOUCH_NUM];
 
-void ilitek_tddi_report_ap_mode(u8 *buf, size_t len)
+void ilitek_tddi_report_ap_mode(u8 *buf, int len)
 {
 	int i = 0;
 	u32 xop = 0, yop = 0;
@@ -551,7 +551,7 @@ void ilitek_tddi_report_ap_mode(u8 *buf, size_t len)
 	}
 }
 
-void ilitek_tddi_report_debug_mode(u8 *buf, size_t rlen)
+void ilitek_tddi_report_debug_mode(u8 *buf, int rlen)
 {
 	int i = 0;
 	u32 xop = 0, yop = 0;
@@ -626,7 +626,7 @@ void ilitek_tddi_report_debug_mode(u8 *buf, size_t rlen)
 	ilitek_tddi_touch_send_debug_data(buf, rlen);
 }
 
-void ilitek_tddi_report_gesture_mode(u8 *buf, size_t len)
+void ilitek_tddi_report_gesture_mode(u8 *buf, int len)
 {
 	ipio_info("gesture code = 0x%x\n", buf[1]);
 
@@ -669,12 +669,12 @@ void ilitek_tddi_report_gesture_mode(u8 *buf, size_t len)
 	}
 }
 
-void ilitek_tddi_report_i2cuart_mode(u8 *buf, size_t len)
+void ilitek_tddi_report_i2cuart_mode(u8 *buf, int len)
 {
 	int type = buf[3] & 0x0F;
 	int need_read_len = 0, one_data_bytes = 0;
 	int actual_len = len - 5;
-	size_t uart_len;
+	int uart_len;
 	u8 *uart_buf, *total_buf;
 
 	ipio_debug(DEBUG_TOUCH, "data[3] = %x, type = %x, actual_len = %d\n",
@@ -695,7 +695,7 @@ void ilitek_tddi_report_i2cuart_mode(u8 *buf, size_t len)
 
 	if (need_read_len > actual_len) {
 		uart_len = need_read_len - actual_len;
-		ipio_debug(DEBUG_TOUCH, "uart len = %ld\n", uart_len);
+		ipio_debug(DEBUG_TOUCH, "uart len = %d\n", uart_len);
 
 		uart_buf = kcalloc(uart_len, sizeof(u8), GFP_KERNEL);
 		if (ERR_ALLOC_MEM(uart_buf)) {

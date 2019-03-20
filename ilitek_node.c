@@ -580,7 +580,7 @@ static ssize_t ilitek_proc_debug_message_read(struct file *filp, char __user *bu
 	unsigned int count = size;
 	int i = 0;
 	int send_data_len = 0;
-	size_t ret = 0;
+	int ret = 0;
 	int data_count = 0;
 	int one_data_bytes = 0;
 	int need_read_data_len = 0;
