@@ -998,6 +998,12 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 	} else if (strcmp(cmd, "gesture") == 0) {
 		idev->gesture = !idev->gesture;
 		ipio_info("gesture = %d\n", idev->gesture);
+	} else if (strcmp(cmd, "iceflag") == 0) {
+		if (data[1] == ENABLE)
+			atomic_set(&idev->ice_stat, ENABLE);
+		else
+			atomic_set(&idev->ice_stat, DISABLE);
+		ipio_info("ice mode flag = %d\n", atomic_read(&idev->ice_stat));
 	} else if (strcmp(cmd, "gesturenormal") == 0) {
 		idev->gesture_mode = P5_X_FW_GESTURE_NORMAL_MODE;
 		ipio_info("gesture mode = %d\n", idev->gesture_mode);
