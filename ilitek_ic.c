@@ -22,7 +22,6 @@
 
 #include "ilitek.h"
 
-
 #define PROTOCL_VER_NUM		7
 static struct ilitek_protocol_info protocol_info[PROTOCL_VER_NUM] = {
 	/* length -> fw, protocol, tp, key, panel, core, func, window, cdc, mp_info */
@@ -646,6 +645,43 @@ int ilitek_tddi_ic_check_busy(int count, int delay)
 	ipio_err("Check busy (0x%x) timeout ! pc = 0x%x\n", busy,
 		ilitek_tddi_ic_get_pc_counter());
 	return -1;
+}
+
+int ilitek_tddi_ic_get_project_id(u8 *pdata, size_t size)
+{
+	int i;
+
+	if (!pdata) {
+		ipio_err("pdata is null\n");
+		return -ENOMEM;
+	}
+
+	ipio_info("Read size = %ld\n", size);
+
+	if (ilitek_ice_mode_ctrl(ENABLE, OFF) < 0)
+		return -1;
+
+	ilitek_ice_mode_write(0x041000, 0x0, 1);   /* CS low */
+	ilitek_ice_mode_write(0x041004, 0x66aa55, 3);  /* Key */
+
+	ilitek_ice_mode_write(0x041008, 0x03, 1);
+
+	ilitek_ice_mode_write(0x041008, (RESERVE_BLOCK_START_ADDR & 0xFF0000) >> 16, 1);
+	ilitek_ice_mode_write(0x041008, (RESERVE_BLOCK_START_ADDR & 0x00FF00) >> 8, 1);
+	ilitek_ice_mode_write(0x041008, (RESERVE_BLOCK_START_ADDR & 0x0000FF), 1);
+
+	for (i = 0; i < size; i++) {
+		ilitek_ice_mode_write(0x041008, 0xFF, 1);
+		pdata[i] = ilitek_ice_mode_read(0x41010, sizeof(u8));
+		ipio_info("project_id[%d] = 0x%x\n", i, pdata[i]);
+	}
+
+	ilitek_tddi_flash_clear_dma();
+
+	ilitek_ice_mode_write(0x041000, 0x1, 1);   /* CS high */
+
+	ilitek_ice_mode_ctrl(DISABLE, OFF);
+	return 0;
 }
 
 int ilitek_tddi_ic_get_core_ver(void)

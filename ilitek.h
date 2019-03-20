@@ -729,6 +729,7 @@ extern int ilitek_tddi_ic_func_ctrl(const char *name, int ctrl);
 extern u32 ilitek_tddi_ic_get_pc_counter(void);
 extern int ilitek_tddi_ic_check_int_stat(void);
 extern int ilitek_tddi_ic_check_busy(int count, int delay);
+extern int ilitek_tddi_ic_get_project_id(u8 *pdata, size_t size);
 extern int ilitek_tddi_ic_get_panel_info(void);
 extern int ilitek_tddi_ic_get_tp_info(void);
 extern int ilitek_tddi_ic_get_core_ver(void);
