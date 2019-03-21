@@ -380,18 +380,17 @@ int ilitek_tddi_ic_code_reset(void)
 
 	if (!ice)
 		ilitek_ice_mode_ctrl(DISABLE, OFF);
-
-   return ret;
+	return ret;
 }
 
 int ilitek_tddi_ic_whole_reset(void)
 {
 	ipio_info("ic whole reset key = 0x%x, edge_delay = %d\n",
-			idev->chip->reset_key, idev->rst_edge_delay);
+		idev->chip->reset_key, idev->rst_edge_delay);
 
 	if (ilitek_ice_mode_write(idev->chip->reset_key,
-							idev->chip->reset_addr,
-							sizeof(u32)) < 0) {
+				idev->chip->reset_addr,
+				sizeof(u32)) < 0) {
 		ipio_err("ic whole reset failed\n");
 		return -1;
 	}

@@ -22,7 +22,7 @@
 #include "ilitek.h"
 
 /* Debug level */
-s32 ipio_debug_level = DEBUG_ALL;
+s32 ipio_debug_level = DEBUG_OUTPUT;
 EXPORT_SYMBOL(ipio_debug_level);
 
 static struct workqueue_struct *esd_wq;
@@ -169,14 +169,16 @@ int ilitek_tddi_wq_esd_spi_check(void)
 
 	idev->spi_write_then_read(idev->spi, &tx, 1, &rx, 1);
 	ipio_debug(DEBUG_MAIN, "spi esd check = 0x%x\n", rx);
-	if (rx != SPI_ACK)
+	if (rx != SPI_ACK) {
+		ipio_err("rx = 0x%x\n", rx);
 		return -1;
+	}
 	return 0;
 }
 
 int ilitek_tddi_wq_esd_i2c_check(void)
 {
-	ipio_info();
+	ipio_debug(DEBUG_MAIN, "");
 	return 0;
 }
 
@@ -437,6 +439,7 @@ void ilitek_tddi_report_handler(void)
 	u8 *buf = NULL, checksum = 0;
 	int rlen = 0;
 	u16 self_key = 2;
+	int tmp = ipio_debug_level;
 
 	/* Just in case these stats couldn't be blocked in top half context */
 	if (!idev->report || atomic_read(&idev->tp_reset) ||
@@ -513,6 +516,9 @@ void ilitek_tddi_report_handler(void)
 	checksum = ilitek_calc_packet_checksum(buf, rlen - 1);
 	if (checksum != buf[rlen-1]) {
 		ipio_err("Wrong checksum, checksum = %x, buf = %x\n", checksum, buf[rlen-1]);
+		ipio_debug_level = DEBUG_ALL;
+		ilitek_dump_data(buf, 8, rlen, 0, "finger report");
+		ipio_debug_level = tmp;
 		goto out;
 	}
 

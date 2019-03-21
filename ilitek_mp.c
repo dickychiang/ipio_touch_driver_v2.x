@@ -761,6 +761,7 @@ static int ilitek_tddi_mp_ini_parser(const char *path)
 	loff_t pos = 0;
 
 	ipio_info("ini file path = %s\n", path);
+
 	f = filp_open(path, O_RDONLY, 644);
 	if (ERR_ALLOC_MEM(f)) {
 		ipio_err("Failed to open ini file at %ld.\n", PTR_ERR(f));
@@ -1076,8 +1077,8 @@ static void mp_print_csv_cdc_cmd(char *csv, int *csv_len, int index)
 }
 
 static void mp_compare_cdc_show_result(int index, s32 *tmp, char *csv,
-									int *csv_len, int type, s32 *max_ts,
-									s32 *min_ts, const char *desp)
+				int *csv_len, int type, s32 *max_ts,
+				s32 *min_ts, const char *desp)
 {
 	int x, y, tmp_len = *csv_len;
 	int mp_result = MP_PASS;
@@ -1161,7 +1162,7 @@ out:
 #define ADDR(x, y) ((y * core_mp.xch_len) + (x))
 
 int compare_charge(s32 *charge_rate, int x, int y, s32 *inNodeType,
-				int Charge_AA, int Charge_Border, int Charge_Notch)
+		int Charge_AA, int Charge_Border, int Charge_Notch)
 {
 	int OpenThreadhold, tempY, tempX, ret, k;
 	int sx[8] = {-1, 0, 1, -1, 1, -1, 0, 1};
@@ -1312,7 +1313,6 @@ static int allnode_key_cdc_data(int index)
 	}
 
 	/* Check busy */
-	ipio_info("Check busy method = %d\n", core_mp.busy_cdc);
 	if (core_mp.busy_cdc == POLL_CHECK)
 		ret = ilitek_tddi_ic_check_busy(50, 50);
 	else if (core_mp.busy_cdc == INT_CHECK)
@@ -1459,13 +1459,12 @@ static int allnode_open_cdc_data(int mode, int *buf)
 	char str[128] = {0};
 	char tmp[128] = {0};
 	char *key[] = {"open dac", "open raw1", "open raw2", "open raw3",
-					"open cap1 dac", "open cap1 raw"};
+			"open cap1 dac", "open cap1 raw"};
 
 	/* Multipling by 2 is due to the 16 bit in each node */
 	len = (core_mp.xch_len * core_mp.ych_len * 2) + 2;
 
-	ipio_debug(DEBUG_MP, "Read X/Y Channel length = %d\n", len);
-	ipio_debug(DEBUG_MP, "core_mp.frame_len = %d, mode= %d\n", core_mp.frame_len, mode);
+	ipio_debug(DEBUG_MP, "Read X/Y Channel length = %d, mode = %d\n", len, mode);
 
 	if (len <= 2) {
 		ipio_err("Length is invalid\n");
@@ -1494,7 +1493,6 @@ static int allnode_open_cdc_data(int mode, int *buf)
 	}
 
 	/* Check busy */
-	ipio_info("Check busy method = %d\n", core_mp.busy_cdc);
 	if (core_mp.busy_cdc == POLL_CHECK)
 		ret = ilitek_tddi_ic_check_busy(50, 50);
 	else if (core_mp.busy_cdc == INT_CHECK)
@@ -1588,7 +1586,6 @@ static int allnode_mutual_cdc_data(int index)
 	len = (core_mp.xch_len * core_mp.ych_len * 2) + 2;
 
 	ipio_debug(DEBUG_MP, "Read X/Y Channel length = %d\n", len);
-	ipio_debug(DEBUG_MP, "core_mp.frame_len = %d\n", core_mp.frame_len);
 
 	if (len <= 2) {
 		ipio_err("Length is invalid\n");
@@ -1616,7 +1613,6 @@ static int allnode_mutual_cdc_data(int index)
 	}
 
 	/* Check busy */
-	ipio_info("Check busy method = %d\n", core_mp.busy_cdc);
 	if (core_mp.busy_cdc == POLL_CHECK)
 		ret = ilitek_tddi_ic_check_busy(50, 50);
 	else if (core_mp.busy_cdc == INT_CHECK)
@@ -2360,7 +2356,7 @@ static int mp_test_data_sort_average(s32 *oringin_data, int index, s32 *avg_resu
 
 	if (ERR_ALLOC_MEM(oringin_data)) {
 		ipio_err("Input wrong address\n");
-			return -ENOMEM;
+		return -ENOMEM;
 	}
 
 	u32data_buff = kcalloc(core_mp.frame_len * tItems[index].frame_count, sizeof(s32), GFP_KERNEL);
@@ -2376,7 +2372,7 @@ static int mp_test_data_sort_average(s32 *oringin_data, int index, s32 *avg_resu
 
 	u32up_frame = tItems[index].frame_count * tItems[index].highest_percentage / 100;
 	u32down_frame = tItems[index].frame_count * tItems[index].lowest_percentage / 100;
-	ipio_debug(DEBUG_MP, "Up=%d,Down=%d -%s\n", u32up_frame, u32down_frame, tItems[index].desp);
+	ipio_debug(DEBUG_MP, "Up=%d, Down=%d -%s\n", u32up_frame, u32down_frame, tItems[index].desp);
 
 	if (ipio_debug_level & DEBUG_MP) {
 		pr_cont("\n[Show Original frist%d and last%d node data]\n", len, len);
@@ -2774,8 +2770,6 @@ static void ilitek_tddi_mp_init_item(void)
 {
 	int i = 0;
 
-	ipio_info();
-
 	memset(&core_mp, 0, sizeof(core_mp));
 
 	core_mp.chip_pid = idev->chip->pid;
@@ -2794,6 +2788,15 @@ static void ilitek_tddi_mp_init_item(void)
 	core_mp.busy_cdc = INT_CHECK;
 	core_mp.retry = false;
 	core_mp.final_result = MP_FAIL;
+
+	ipio_info("CHIP = 0x%x\n", core_mp.chip_pid);
+	ipio_info("Firmware version = %x\n", core_mp.fw_ver);
+	ipio_info("Protocol version = %x\n", core_mp.protocol_ver);
+	ipio_info("Protocol version = %x\n", core_mp.protocol_ver);
+	ipio_info("Read CDC Length = %d\n", core_mp.cdc_len);
+	ipio_info("X length = %d, Y length = %d\n", core_mp.xch_len, core_mp.ych_len);
+	ipio_info("Frame length = %d\n", core_mp.frame_len);
+	ipio_info("Check busy method = %d\n", core_mp.busy_cdc);
 
 	for (i = 0; i < MP_TEST_ITEM; i++) {
 		tItems[i].spec_option = 0;

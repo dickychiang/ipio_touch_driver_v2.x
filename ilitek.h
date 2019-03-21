@@ -113,6 +113,7 @@
 #define ENABLE_GESTURE			ENABLE
 #define REGULATOR_POWER			DISABLE
 #define TP_SUSPEND_PRIO			ENABLE
+#define DEBUG_OUTPUT			DEBUG_NONE /* or DEBUG_NONE */
 
 /* Plaform compatibility */
 // #define CONFIG_PLAT_SPRD
@@ -127,7 +128,7 @@
 #define POWER_STATUS_PATH		"/sys/class/power_supply/battery/status"
 #define DUMP_FLASH_PATH			"/sdcard/flash_dump"
 
-/*	Debug messages */
+/* Debug messages */
 #ifdef BIT
 #undef BIT
 #endif

@@ -324,7 +324,7 @@ void ilitek_tddi_touch_esd_gesture_flash(void)
 
 	/* write a special password to inform FW go back into gesture mode */
 	if (ilitek_ice_mode_write(I2C_ESD_GESTURE_PWD_ADDR, ESD_GESTURE_PWD, 4) < 0)
-		ipio_err("esd gesture: write password failed\n");
+		ipio_err("write password failed\n");
 
 	/* HW reset gives effect to FW receives password successed */
 	ilitek_tddi_switch_mode(&tp_mode);
@@ -344,9 +344,9 @@ void ilitek_tddi_touch_esd_gesture_flash(void)
 	} while (answer != I2C_ESD_GESTURE_RUN && retry > 0);
 
 	if (retry <= 0)
-		ipio_err("re-enter gesture failed\n");
+		ipio_err("Enter gesture failed\n");
 	else
-		ipio_info("re-enter gesture successfully\n");
+		ipio_info("Enter gesture successfully\n");
 
 	ilitek_ice_mode_ctrl(DISABLE, ON);
 
@@ -369,7 +369,7 @@ void ilitek_tddi_touch_esd_gesture_iram(void)
 
 	/* write a special password to inform FW go back into gesture mode */
 	if (ilitek_ice_mode_write(SPI_ESD_GESTURE_PWD_ADDR, ESD_GESTURE_PWD, 4) < 0)
-		ipio_err("esd gesture: write password failed\n");
+		ipio_err("write password failed\n");
 
 	/* Host download gives effect to FW receives password successed */
 	ilitek_tddi_fw_upgrade_handler(NULL);
@@ -388,9 +388,9 @@ void ilitek_tddi_touch_esd_gesture_iram(void)
 	} while (answer != SPI_ESD_GESTURE_RUN && --retry > 0);
 
 	if (retry <= 0)
-		ipio_err("re-enter gesture failed\n");
+		ipio_err("Enter gesture failed\n");
 	else
-		ipio_info("re-enter gesture successfully\n");
+		ipio_info("Enter gesture successfully\n");
 
 	ilitek_ice_mode_ctrl(DISABLE, ON);
 
@@ -558,9 +558,10 @@ void ilitek_tddi_report_ap_mode(u8 *buf, int len)
 			idev->last_touch = 0;
 		}
 	}
+	ilitek_tddi_touch_send_debug_data(buf, len);
 }
 
-void ilitek_tddi_report_debug_mode(u8 *buf, int rlen)
+void ilitek_tddi_report_debug_mode(u8 *buf, int len)
 {
 	int i = 0;
 	u32 xop = 0, yop = 0;
@@ -632,7 +633,7 @@ void ilitek_tddi_report_debug_mode(u8 *buf, int rlen)
 			idev->last_touch = 0;
 		}
 	}
-	ilitek_tddi_touch_send_debug_data(buf, rlen);
+	ilitek_tddi_touch_send_debug_data(buf, len);
 }
 
 void ilitek_tddi_report_gesture_mode(u8 *buf, int len)
