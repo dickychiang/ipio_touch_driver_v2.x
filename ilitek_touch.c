@@ -317,17 +317,17 @@ void ilitek_tddi_touch_esd_gesture_flash(void)
 	u32 answer = 0;
 	u8 tp_mode = P5_X_FW_DEMO_MODE;
 
-	/* start to download AP code with HW reset */
-	ilitek_tddi_switch_mode(&tp_mode);
-
 	ilitek_ice_mode_ctrl(ENABLE, OFF);
 
+	ipio_info("ESD Gesture PWD Addr = 0x%x, Answer = 0x%x\n",
+		I2C_ESD_GESTURE_PWD_ADDR, I2C_ESD_GESTURE_RUN);
+
 	/* write a special password to inform FW go back into gesture mode */
-	if (ilitek_ice_mode_write(ESD_GESTURE_PWD_ADDR, ESD_GESTURE_PWD, 4) < 0)
+	if (ilitek_ice_mode_write(I2C_ESD_GESTURE_PWD_ADDR, ESD_GESTURE_PWD, 4) < 0)
 		ipio_err("esd gesture: write password failed\n");
 
 	/* HW reset gives effect to FW receives password successed */
-	ilitek_tddi_reset_ctrl(idev->reset);
+	ilitek_tddi_switch_mode(&tp_mode);
 
 	/* waiting for FW reloading code */
 	msleep(100);
@@ -336,14 +336,17 @@ void ilitek_tddi_touch_esd_gesture_flash(void)
 
 	/* polling another specific register to see if gesutre is enabled properly */
 	do {
-		answer = ilitek_ice_mode_read(ESD_GESTURE_PWD_ADDR, sizeof(u32));
-		ipio_info("answer = 0x%x\n", answer);
+		answer = ilitek_ice_mode_read(I2C_ESD_GESTURE_PWD_ADDR, sizeof(u32));
+		if (answer != I2C_ESD_GESTURE_RUN)
+			ipio_info("answer = 0x%x != (0x%x)\n", answer, I2C_ESD_GESTURE_RUN);
 		msleep(10);
 		retry--;
-	} while (answer != ESD_GESTURE_RUN && retry > 0);
+	} while (answer != I2C_ESD_GESTURE_RUN && retry > 0);
 
 	if (retry <= 0)
 		ipio_err("re-enter gesture failed\n");
+	else
+		ipio_info("re-enter gesture successfully\n");
 
 	ilitek_ice_mode_ctrl(DISABLE, ON);
 
@@ -361,8 +364,11 @@ void ilitek_tddi_touch_esd_gesture_iram(void)
 
 	ilitek_ice_mode_ctrl(ENABLE, OFF);
 
+	ipio_info("ESD Gesture PWD Addr = 0x%x, Answer = 0x%x\n",
+		SPI_ESD_GESTURE_PWD_ADDR, SPI_ESD_GESTURE_RUN);
+
 	/* write a special password to inform FW go back into gesture mode */
-	if (ilitek_ice_mode_write(ESD_GESTURE_PWD_ADDR, ESD_GESTURE_PWD, 4) < 0)
+	if (ilitek_ice_mode_write(SPI_ESD_GESTURE_PWD_ADDR, ESD_GESTURE_PWD, 4) < 0)
 		ipio_err("esd gesture: write password failed\n");
 
 	/* Host download gives effect to FW receives password successed */
@@ -375,13 +381,16 @@ void ilitek_tddi_touch_esd_gesture_iram(void)
 
 	/* polling another specific register to see if gesutre is enabled properly */
 	do {
-		answer = ilitek_ice_mode_read(ESD_GESTURE_PWD_ADDR, sizeof(u32));
-		ipio_info("answer = 0x%x\n", answer);
+		answer = ilitek_ice_mode_read(SPI_ESD_GESTURE_PWD_ADDR, sizeof(u32));
+		if (answer != SPI_ESD_GESTURE_RUN)
+			ipio_info("answer = 0x%x != (0x%x)\n", answer, SPI_ESD_GESTURE_RUN);
 		msleep(10);
-	} while (answer != ESD_GESTURE_RUN && --retry > 0);
+	} while (answer != SPI_ESD_GESTURE_RUN && --retry > 0);
 
 	if (retry <= 0)
 		ipio_err("re-enter gesture failed\n");
+	else
+		ipio_info("re-enter gesture successfully\n");
 
 	ilitek_ice_mode_ctrl(DISABLE, ON);
 
