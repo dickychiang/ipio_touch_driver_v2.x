@@ -861,7 +861,7 @@ static int ilitek_tddi_fw_hex_convert(u8 *phex, int size, u8 *pfw)
 	u32 i = 0, j = 0, k = 0, num = 0;
 	u32 len = 0, addr = 0, type = 0;
 	u32 start_addr = 0x0, end_addr = 0x0, ex_addr = 0;
-	u32 offset;
+	u32 offset, hex_crc, data_crc;
 
 	memset(fbi, 0x0, sizeof(fbi));
 
@@ -920,6 +920,22 @@ static int ilitek_tddi_fw_hex_convert(u8 *phex, int size, u8 *pfw)
 		i += 1 + 2 + 4 + 2 + (len * 2) + 2 + offset;
 	}
 
+	/* Check the content of hex file by comparsing parsed data to the crc at last 4 bytes */
+	for (i = 0; i < ARRAY_SIZE(fbi); i++) {
+		if (fbi[i].end == 0)
+			continue;
+		ex_addr = fbi[i].end;
+		data_crc = CalculateCRC32(fbi[i].start, fbi[i].len - 4, pfw);
+		hex_crc = pfw[ex_addr - 3] << 24 | pfw[ex_addr - 2] << 16 | pfw[ex_addr - 1] << 8 | pfw[ex_addr];
+		ipio_debug(DEBUG_FW, "data crc = %x, hex crc = %x\n", data_crc, hex_crc);
+		if (data_crc != hex_crc) {
+			ipio_err("Content of hex file is broken. (%d, %x, %x)\n",
+				i, data_crc, hex_crc);
+			return -1;
+		}
+	}
+
+	ipio_info("Contect of hex file is correct\n");
 	tfd.start_addr = start_addr;
 	tfd.end_addr = end_addr;
 	tfd.block_number = block;
@@ -998,8 +1014,13 @@ static int ilitek_tdd_fw_hex_open(u8 open_file_method, u8 *pfw)
 		ipio_err("Unknown open file method, %d\n", open_file_method);
 		break;
 	}
+
 	/* Convert hex and copy data from hex_buffer to pfw */
-	ilitek_tddi_fw_hex_convert(hex_buffer, fsize, pfw);
+	if (ilitek_tddi_fw_hex_convert(hex_buffer, fsize, pfw) < 0) {
+		ipio_err("Convert hex file failed\n");
+		ipio_vfree((void **)&hex_buffer);
+		return -1;
+	}
 	ipio_vfree((void **)&hex_buffer);
 	return 0;
 }
