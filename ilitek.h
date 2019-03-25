@@ -108,9 +108,9 @@
 #define MT_B_TYPE			ENABLE
 #define TDDI_RST_BIND			DISABLE
 #define MT_PRESSURE			DISABLE
-#define ENABLE_WQ_ESD			ENABLE
+#define ENABLE_WQ_ESD			DISABLE
 #define ENABLE_WQ_BAT			DISABLE
-#define ENABLE_GESTURE			ENABLE
+#define ENABLE_GESTURE			DISABLE
 #define REGULATOR_POWER			DISABLE
 #define TP_SUSPEND_PRIO			ENABLE
 #define DEBUG_OUTPUT			DEBUG_NONE /* or DEBUG_NONE */
@@ -820,7 +820,7 @@ static inline s32 open_c_formula(int dac, int raw, int tvch, int gain)
 static inline void firmware_hd_dma_crc_off_ili9881(void)
 {
 	/* crc off */
-	ilitek_ice_mode_write(0x041014, 0x00000000, 4);
+	ilitek_ice_mode_write(0x041016, 0x00, 1);
 	/* dma crc */
 	ilitek_ice_mode_write(0x041048, 0x00000001, 4);
 }

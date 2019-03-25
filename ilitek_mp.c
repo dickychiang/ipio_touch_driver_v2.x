@@ -2792,7 +2792,6 @@ static void ilitek_tddi_mp_init_item(void)
 	ipio_info("CHIP = 0x%x\n", core_mp.chip_pid);
 	ipio_info("Firmware version = %x\n", core_mp.fw_ver);
 	ipio_info("Protocol version = %x\n", core_mp.protocol_ver);
-	ipio_info("Protocol version = %x\n", core_mp.protocol_ver);
 	ipio_info("Read CDC Length = %d\n", core_mp.cdc_len);
 	ipio_info("X length = %d, Y length = %d\n", core_mp.xch_len, core_mp.ych_len);
 	ipio_info("Frame length = %d\n", core_mp.frame_len);
