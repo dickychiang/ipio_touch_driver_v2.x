@@ -381,7 +381,7 @@ out:
 	return ret;
 }
 
-static int core_spi_ice_mode_read(u8 *data)
+static int core_spi_ice_mode_read(u8 *data, int len)
 {
 	int size = 0, ret = 0;
 
@@ -395,6 +395,11 @@ static int core_spi_ice_mode_read(u8 *data)
 	ret = core_rx_lock_check(&size);
 	if (ret < 0)
 		goto out;
+
+	if (len < size) {
+		ipio_info("WARRING! size(%d) > len(%d), use len to get data\n", size, len);
+		size = len;
+	}
 
 	/* receive data from rxbuf and change lock status to 0x9881. */
 	ret = core_spi_ice_mode_unlock_read(data, size);
@@ -455,7 +460,7 @@ static int core_spi_read(u8 *rxbuf, int len)
 
 	if (atomic_read(&idev->ice_stat) == DISABLE) {
 		do {
-			ret = core_spi_ice_mode_read(rxbuf);
+			ret = core_spi_ice_mode_read(rxbuf, len);
 			if (ret >= 0)
 				break;
 		} while (--count > 0);
