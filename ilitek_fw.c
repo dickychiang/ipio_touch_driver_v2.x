@@ -136,6 +136,82 @@ static int host_download_dma_check(u32 start_addr, u32 block_size)
 	return ilitek_ice_mode_read(0x04101C, sizeof(u32));
 }
 
+int ilitek_tddi_fw_dump_iram_data(u32 start, u32 end)
+{
+	struct file *f = NULL;
+	u8 *buf = NULL, cmd[4] = {0};
+	mm_segment_t old_fs;
+	loff_t pos = 0;
+	int ret, wdt, addr, i;
+	int len, r_len = SPI_UPGRADE_LEN;
+
+	f = filp_open(DUMP_IRAM_PATH, O_WRONLY | O_CREAT | O_TRUNC, 644);
+	if (ERR_ALLOC_MEM(f)) {
+		ipio_err("Failed to open the file at %ld.\n", PTR_ERR(f));
+		return -1;
+	}
+
+	ret = ilitek_ice_mode_ctrl(ENABLE, OFF);
+	if (ret < 0)
+		return ret;
+
+	wdt = ilitek_tddi_ic_watch_dog_ctrl(ILI_READ, DISABLE);
+	if (wdt)
+		ilitek_tddi_ic_watch_dog_ctrl(ILI_WRITE, DISABLE);
+
+	len = end - start + 1;
+
+	buf = vmalloc(len * sizeof(u8));
+	if (ERR_ALLOC_MEM(buf)) {
+		ipio_err("Failed to allocate buf memory, %ld\n", PTR_ERR(buf));
+		filp_close(f, NULL);
+		ret = ENOMEM;
+		goto out;
+	}
+
+	for (i = 0; i < len; i++)
+		buf[i] = 0xFF;
+
+	for (addr = start, i = 0; addr < end; i += r_len, addr += r_len) {
+		if ((addr + r_len) > end)
+			r_len = end % r_len;
+
+		cmd[0] = 0x25;
+		cmd[3] = (char)((addr & 0x00FF0000) >> 16);
+		cmd[2] = (char)((addr & 0x0000FF00) >> 8);
+		cmd[1] = (char)((addr & 0x000000FF));
+
+		if (idev->write(cmd, 4)) {
+			ipio_err("Failed to write data\n");
+			ret = -EIO;
+			goto out;
+		}
+
+		if (idev->read(buf + i, r_len)) {
+			ipio_err("Failed to Read data\n");
+			ret = -EIO;
+			goto out;
+		}
+	}
+
+	old_fs = get_fs();
+	set_fs(get_ds());
+	set_fs(KERNEL_DS);
+	pos = 0;
+	vfs_write(f, buf, len, &pos);
+	set_fs(old_fs);
+
+out:
+	if (wdt)
+		ilitek_tddi_ic_watch_dog_ctrl(ILI_WRITE, ENABLE);
+
+	ilitek_ice_mode_ctrl(DISABLE, OFF);
+	filp_close(f, NULL);
+	ipio_vfree((void **)&buf);
+	ipio_info("dump iram data success\n");
+	return 0;
+}
+
 static int ilitek_tddi_fw_iram_program(u32 start, u32 size, u8 *w_buf, u32 w_len)
 {
 	int addr = 0, i = 0, j = 0;
@@ -369,7 +445,7 @@ int ilitek_tddi_fw_read_flash_data(u32 start, u32 end, u8 *data, int len)
 int ilitek_tddi_fw_dump_flash_data(u32 start, u32 end, bool user)
 {
 	struct file *f = NULL;
-	u8 *hex_buffer = NULL;
+	u8 *buf = NULL;
 	mm_segment_t old_fs;
 	loff_t pos = 0;
 	u32 start_addr, end_addr;
@@ -396,24 +472,24 @@ int ilitek_tddi_fw_dump_flash_data(u32 start, u32 end, bool user)
 	length = end_addr - start_addr + 1;
 	ipio_info("len = %d\n", length);
 
-	hex_buffer = vmalloc(length * sizeof(u8));
-	if (ERR_ALLOC_MEM(hex_buffer)) {
-		ipio_err("Failed to allocate hex_buffer memory, %ld\n", PTR_ERR(hex_buffer));
+	buf = vmalloc(length * sizeof(u8));
+	if (ERR_ALLOC_MEM(buf)) {
+		ipio_err("Failed to allocate buf memory, %ld\n", PTR_ERR(buf));
 		filp_close(f, NULL);
 		ilitek_ice_mode_ctrl(DISABLE, OFF);
 		return -1;
 	}
 
-	ilitek_tddi_fw_read_flash_data(start_addr, end_addr, hex_buffer, length);
+	ilitek_tddi_fw_read_flash_data(start_addr, end_addr, buf, length);
 
 	old_fs = get_fs();
 	set_fs(get_ds());
 	set_fs(KERNEL_DS);
 	pos = 0;
-	vfs_write(f, hex_buffer, length, &pos);
+	vfs_write(f, buf, length, &pos);
 	set_fs(old_fs);
 	filp_close(f, NULL);
-	ipio_vfree((void **)&hex_buffer);
+	ipio_vfree((void **)&buf);
 	ilitek_ice_mode_ctrl(DISABLE, OFF);
 	ipio_info("dump flash success\n");
 	return 0;
