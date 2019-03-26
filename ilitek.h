@@ -624,7 +624,7 @@ struct ilitek_tddi_dev {
 
 	int (*write)(void *data, int len);
 	int (*read)(void *data, int len);
-	int (*spi_write_then_read)(struct spi_device *spi, const void *txbuf, unsigned n_tx , void *rxbuf, unsigned n_rx);
+	int (*spi_write_then_read)(struct spi_device *spi, const void *txbuf, unsigned n_tx, void *rxbuf, unsigned n_rx);
 	int (*mp_move_code)(void);
 	int (*gesture_move_code)(int mode);
 	int (*esd_recover)(void);
