@@ -152,8 +152,10 @@ int ilitek_tddi_fw_dump_iram_data(u32 start, u32 end)
 	}
 
 	ret = ilitek_ice_mode_ctrl(ENABLE, OFF);
-	if (ret < 0)
+	if (ret < 0) {
+		filp_close(f, NULL);
 		return ret;
+	}
 
 	wdt = ilitek_tddi_ic_watch_dog_ctrl(ILI_READ, DISABLE);
 	if (wdt)
