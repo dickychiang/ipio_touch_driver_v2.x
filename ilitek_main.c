@@ -615,14 +615,13 @@ int ilitek_tddi_init(void)
 	ilitek_tddi_wq_init();
 	ilitek_tddi_node_init();
 
-	if (idev->reset == TP_IC_WHOLE_RST)
-		idev->do_otp_check = ENABLE;
-
 	/* Must do hw reset once in first time for work normally if tp reset is avaliable */
 	if (!TDDI_RST_BIND)
 		ilitek_tddi_reset_ctrl(idev->reset);
 
 	idev->do_otp_check = ENABLE;
+
+	ilitek_ice_mode_ctrl(ENABLE, OFF);
 
 	if (ilitek_tddi_ic_get_info() < 0) {
 		ipio_err("Not found ilitek chipes\n");

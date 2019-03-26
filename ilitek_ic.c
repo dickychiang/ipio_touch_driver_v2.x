@@ -90,8 +90,10 @@ static int ilitek_tddi_ic_check_support(u32 pid, u16 id)
 		 * Since spi speed has been enabled previsouly whenever enter to ICE mode,
 		 * we have to disable if find out the ic is ili9881.
 		 */
-		if (idev->spi_speed != NULL)
+		if (idev->spi_speed != NULL && idev->chip->spi_speed_ctrl) {
 			idev->spi_speed(OFF);
+			idev->chip->spi_speed_ctrl = DISABLE;
+		}
 
 		if (pid == ILI9881F_AA)
 			idev->chip->no_bk_shift = RAWDATA_NO_BK_SHIFT_9881F;
@@ -223,7 +225,7 @@ int ilitek_ice_mode_ctrl(bool enable, bool mcu)
 			if (ret < 0)
 				continue;
 
-			if (idev->spi_speed != NULL)
+			if (idev->spi_speed != NULL && idev->chip->spi_speed_ctrl)
 				idev->spi_speed(ON);
 
 			mdelay(25);
@@ -905,10 +907,11 @@ int ilitek_tddi_ic_get_protocl_ver(void)
 int ilitek_tddi_ic_get_info(void)
 {
 	int ret = 0;
-	bool ice = atomic_read(&idev->ice_stat);
 
-	if (!ice)
-		ilitek_ice_mode_ctrl(ENABLE, OFF);
+	if (!atomic_read(&idev->ice_stat)) {
+		ipio_err("ice mode doesn't enable\n");
+		return -1;
+	}
 
 	idev->chip->pid = ilitek_ice_mode_read(idev->chip->pid_addr, sizeof(u32));
 	idev->chip->id = idev->chip->pid >> 16;
@@ -928,10 +931,6 @@ int ilitek_tddi_ic_get_info(void)
 		idev->chip->ana_id);
 
 	ret = ilitek_tddi_ic_check_support(idev->chip->pid, idev->chip->id);
-
-	if (!ice)
-		ilitek_ice_mode_ctrl(DISABLE, OFF);
-
 	return ret;
 }
 
@@ -945,6 +944,7 @@ void ilitek_tddi_ic_init(void)
 	chip.otp_addr =		   	TDDI_OTP_ID_ADDR;
 	chip.ana_addr =		   	TDDI_ANA_ID_ADDR;
 	chip.reset_addr =	   	TDDI_CHIP_RESET_ADDR;
+	chip.spi_speed_ctrl =		ENABLE;
 
 	idev->protocol = &protocol_info[PROTOCL_VER_NUM - 1];
 	idev->chip = &chip;

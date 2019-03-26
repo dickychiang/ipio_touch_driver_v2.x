@@ -974,7 +974,9 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 		ilitek_tddi_reset_ctrl(TP_IC_CODE_RST);
 		ilitek_ice_mode_ctrl(DISABLE, OFF);
 	} else if (strcmp(cmd, "getinfo") == 0) {
+		ilitek_ice_mode_ctrl(ENABLE, OFF);
 		ilitek_tddi_ic_get_info();
+		ilitek_ice_mode_ctrl(DISABLE, OFF);
 		ilitek_tddi_ic_get_protocl_ver();
 		ilitek_tddi_ic_get_fw_ver();
 		ilitek_tddi_ic_get_core_ver();
@@ -1246,6 +1248,7 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 		break;
 	case ILITEK_IOCTL_TP_CHIP_ID:
 		ipio_info("ioctl: get chip id\n");
+		ilitek_ice_mode_ctrl(ENABLE, OFF);
 		ret = ilitek_tddi_ic_get_info();
 		if (ret < 0) {
 			ipio_err("Failed to get chip id\n");
@@ -1257,6 +1260,7 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 		ret = copy_to_user((u32 *) arg, id_to_user, sizeof(id_to_user));
 		if (ret < 0)
 			ipio_err("Failed to copy chip id to user space\n");
+		ilitek_ice_mode_ctrl(DISABLE, OFF);
 		break;
 	case ILITEK_IOCTL_TP_NETLINK_CTRL:
 		ret = copy_from_user(szBuf, (u8 *) arg, 1);
