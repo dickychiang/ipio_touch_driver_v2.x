@@ -491,7 +491,7 @@ void ilitek_tddi_report_ap_mode(u8 *buf, int len)
 	int i = 0;
 	u32 xop = 0, yop = 0;
 
-	memset(touch_info, 0x0, sizeof(touch_info) * MAX_TOUCH_NUM);
+	memset(touch_info, 0x0, sizeof(touch_info));
 
 	idev->finger = 0;
 
@@ -506,14 +506,14 @@ void ilitek_tddi_report_ap_mode(u8 *buf, int len)
 		xop = (((buf[(4 * i) + 1] & 0xF0) << 4) | (buf[(4 * i) + 2]));
 		yop = (((buf[(4 * i) + 1] & 0x0F) << 8) | (buf[(4 * i) + 3]));
 
-		touch_info[i].x = xop * idev->panel_wid / TPD_WIDTH;
-		touch_info[i].y = yop * idev->panel_hei / TPD_HEIGHT;
-		touch_info[i].id = i;
+		touch_info[idev->finger].x = xop * idev->panel_wid / TPD_WIDTH;
+		touch_info[idev->finger].y = yop * idev->panel_hei / TPD_HEIGHT;
+		touch_info[idev->finger].id = i;
 
 		if (MT_PRESSURE)
-			touch_info[i].pressure = buf[(4 * i) + 4];
+			touch_info[idev->finger].pressure = buf[(4 * i) + 4];
 		else
-			touch_info[i].pressure = 1;
+			touch_info[idev->finger].pressure = 1;
 
 		ipio_debug(DEBUG_TOUCH, "original x = %d, y = %d\n", xop, yop);
 		idev->finger++;
@@ -566,7 +566,7 @@ void ilitek_tddi_report_debug_mode(u8 *buf, int len)
 	int i = 0;
 	u32 xop = 0, yop = 0;
 
-	memset(touch_info, 0x0, sizeof(touch_info) * MAX_TOUCH_NUM);
+	memset(touch_info, 0x0, sizeof(touch_info));
 
 	idev->finger = 0;
 
@@ -581,14 +581,14 @@ void ilitek_tddi_report_debug_mode(u8 *buf, int len)
 		xop = (((buf[(3 * i) + 5] & 0xF0) << 4) | (buf[(3 * i) + 6]));
 		yop = (((buf[(3 * i) + 5] & 0x0F) << 8) | (buf[(3 * i) + 7]));
 
-		touch_info[i].x = xop * idev->panel_wid / TPD_WIDTH;
-		touch_info[i].y = yop * idev->panel_hei / TPD_HEIGHT;
-		touch_info[i].id = i;
+		touch_info[idev->finger].x = xop * idev->panel_wid / TPD_WIDTH;
+		touch_info[idev->finger].y = yop * idev->panel_hei / TPD_HEIGHT;
+		touch_info[idev->finger].id = i;
 
 		if (MT_PRESSURE)
-			touch_info[i].pressure = buf[(4 * i) + 4];
+			touch_info[idev->finger].pressure = buf[(4 * i) + 4];
 		else
-			touch_info[i].pressure = 1;
+			touch_info[idev->finger].pressure = 1;
 
 		ipio_debug(DEBUG_TOUCH, "original x = %d, y = %d\n", xop, yop);
 		idev->finger++;

@@ -63,6 +63,7 @@ static int core_i2c_write(void *buf, int len)
 		}
 	}
 
+	ipio_kfree((void **)&mpbuf);
 	return i2c_transfer(idev->i2c->adapter, msgs, 1);
 }
 
