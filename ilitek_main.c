@@ -595,7 +595,6 @@ int ilitek_tddi_init(void)
 
 	ipio_info("ilitek tddi main init\n");
 
-	mutex_init(&idev->io_mutex);
 	mutex_init(&idev->touch_mutex);
 	mutex_init(&idev->debug_mutex);
 	mutex_init(&idev->debug_read_mutex);

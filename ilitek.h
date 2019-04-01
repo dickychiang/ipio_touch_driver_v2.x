@@ -108,9 +108,9 @@
 #define MT_B_TYPE			ENABLE
 #define TDDI_RST_BIND			DISABLE
 #define MT_PRESSURE			DISABLE
-#define ENABLE_WQ_ESD			DISABLE
+#define ENABLE_WQ_ESD			ENABLE
 #define ENABLE_WQ_BAT			DISABLE
-#define ENABLE_GESTURE			DISABLE
+#define ENABLE_GESTURE			ENABLE
 #define REGULATOR_POWER			DISABLE
 #define TP_SUSPEND_PRIO			ENABLE
 #define DEBUG_OUTPUT			DEBUG_NONE /* DEBUG_ALL or DEBUG_NONE */
@@ -551,7 +551,6 @@ struct ilitek_tddi_dev {
 #endif
 
 	struct mutex touch_mutex;
-	struct mutex io_mutex;
 	struct mutex debug_mutex;
 	struct mutex debug_read_mutex;
 	spinlock_t irq_spin;

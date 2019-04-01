@@ -486,8 +486,6 @@ static int ilitek_spi_write(void *buf, int len)
 		return -EINVAL;
 	}
 
-	mutex_lock(&idev->io_mutex);
-
 	ret = core_spi_write(buf, len);
 	if (ret < 0) {
 		if (atomic_read(&idev->tp_reset) == START) {
@@ -498,7 +496,6 @@ static int ilitek_spi_write(void *buf, int len)
 	}
 
 out:
-	mutex_unlock(&idev->io_mutex);
 	return ret;
 }
 
@@ -512,8 +509,6 @@ static int ilitek_spi_read(void *buf, int len)
 		return -EINVAL;
 	}
 
-	mutex_lock(&idev->io_mutex);
-
 	ret = core_spi_read(buf, len);
 	if (ret < 0) {
 		if (atomic_read(&idev->tp_reset) == START) {
@@ -524,7 +519,6 @@ static int ilitek_spi_read(void *buf, int len)
 	}
 
 out:
-	mutex_unlock(&idev->io_mutex);
 	return ret;
 }
 
