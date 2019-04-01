@@ -228,14 +228,12 @@ int ilitek_ice_mode_ctrl(bool enable, bool mcu)
 			if (idev->spi_speed != NULL && idev->chip->spi_speed_ctrl)
 				idev->spi_speed(ON);
 
-			mdelay(25);
-
 			/* Read chip id to ensure that ice mode is enabled successfully */
 			pid = ilitek_ice_mode_read(idev->chip->pid_addr, sizeof(u32));
 			ret = ilitek_tddi_ic_check_support(pid, pid >> 16);
 			if (ret == 0)
 				break;
-			} while (--retry > 0);
+		} while (--retry > 0);
 
 		if (ret != 0) {
 			ipio_err("Enter to ICE Mode failed !!\n");
