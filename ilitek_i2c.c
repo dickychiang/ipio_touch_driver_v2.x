@@ -207,13 +207,8 @@ static int ilitek_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id *
 
 static int ilitek_i2c_remove(struct i2c_client *i2c)
 {
-	struct touch_bus_info *info =
-		container_of(to_i2c_driver(i2c->dev.driver),
-			struct touch_bus_info, bus_driver);
-
 	ipio_info();
-	i2c_del_driver(&info->bus_driver);
-	return info->hwif->plat_remove();
+	return 0;
 }
 
 static const struct i2c_device_id tp_i2c_id[] = {
@@ -231,7 +226,7 @@ int ilitek_tddi_interface_dev_init(struct ilitek_hwif_info *hwif)
 	}
 
 	if (hwif->bus_type != BUS_I2C) {
-		ipio_err("incorrect interface\n");
+		ipio_err("Not I2C dev\n");
 		return -EINVAL;
 	}
 
@@ -247,4 +242,13 @@ int ilitek_tddi_interface_dev_init(struct ilitek_hwif_info *hwif)
 
 	info->hwif = hwif;
 	return i2c_add_driver(&info->bus_driver);
+}
+
+void ilitek_tddi_interface_dev_exit(struct ilitek_hwif_info *hwif)
+{
+	struct touch_bus_info *info = (struct touch_bus_info *)hwif->info;
+
+	ipio_info("remove i2c dev\n");
+	i2c_del_driver(&info->bus_driver);
+	ipio_kfree((void **)&info);
 }

@@ -423,7 +423,7 @@ static int ilitek_plat_probe(void)
 
 static int ilitek_plat_remove(void)
 {
-	ipio_info();
+	ipio_info("remove plat dev\n");
 	ilitek_tddi_dev_remove();
 	return 0;
 }
@@ -455,7 +455,8 @@ static int __init ilitek_plat_dev_init(void)
 
 static void __exit ilitek_plat_dev_exit(void)
 {
-	ipio_info("ilitek driver has been removed\n");
+	ipio_info("remove plat dev\n");
+	ilitek_tddi_dev_remove();
 }
 
 module_init(ilitek_plat_dev_init);

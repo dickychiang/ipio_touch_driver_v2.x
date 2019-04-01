@@ -646,13 +646,8 @@ static int ilitek_spi_probe(struct spi_device *spi)
 
 static int ilitek_spi_remove(struct spi_device *spi)
 {
-	struct touch_bus_info *info =
-	container_of(to_spi_driver(spi->dev.driver),
-		struct touch_bus_info, bus_driver);
-
 	ipio_info();
-	spi_unregister_driver(&info->bus_driver);
-	return info->hwif->plat_remove();
+	return 0;
 }
 
 static struct spi_device_id tp_spi_id[] = {
@@ -670,7 +665,7 @@ int ilitek_tddi_interface_dev_init(struct ilitek_hwif_info *hwif)
 	}
 
 	if (hwif->bus_type != BUS_SPI) {
-		ipio_err("incorrect interface\n");
+		ipio_err("Not SPI dev\n");
 		return -EINVAL;
 	}
 
@@ -686,4 +681,13 @@ int ilitek_tddi_interface_dev_init(struct ilitek_hwif_info *hwif)
 
 	info->hwif = hwif;
 	return spi_register_driver(&info->bus_driver);
+}
+
+void ilitek_tddi_interface_dev_exit(struct ilitek_hwif_info *hwif)
+{
+	struct touch_bus_info *info = (struct touch_bus_info *)hwif->info;
+
+	ipio_info("remove spi dev\n");
+	spi_unregister_driver(&info->bus_driver);
+	ipio_kfree((void **)&info);
 }

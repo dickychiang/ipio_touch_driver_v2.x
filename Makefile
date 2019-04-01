@@ -7,8 +7,9 @@ ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/
 
 ccflags-y += -Wall
 
-BUILD_INFAE := spi
-BUILD_PLATFORM := mtk
+BUILD_INFAE := i2c
+BUILD_PLATFORM := qcom
+BUILD_MODULE := n
 
 ifeq ($(BUILD_PLATFORM),mtk)
 platform=ilitek_plat_mtk
@@ -26,6 +27,7 @@ ifeq ($(BUILD_INFAE),spi)
 interface=ilitek_spi
 endif
 
+ifeq ($(BUILD_MODULE),n)
 obj-y += ilitek_main.o \
 	$(interface).o \
 	$(platform).o \
@@ -34,3 +36,20 @@ obj-y += ilitek_main.o \
 	ilitek_mp.o \
 	ilitek_fw.o \
 	ilitek_node.o
+else
+	obj-m += ilitek.o
+	ilitek-y := ilitek_main.o \
+		$(interface).o \
+		$(platform).o \
+		ilitek_ic.o \
+		ilitek_touch.o \
+		ilitek_mp.o \
+		ilitek_fw.o \
+		ilitek_node.o
+
+KERNEL_DIR= /home/likewise-open/ILI/1061279/workplace/rk3288_sdk/kernel
+all:
+	$(MAKE) -C $(KERNEL_DIR) M=$(PWD) modules
+clean:
+	$(MAKE) -C $(KERNEL_DIR) M=$(PWD) clean
+endif

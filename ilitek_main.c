@@ -624,7 +624,7 @@ int ilitek_tddi_init(void)
 	ilitek_ice_mode_ctrl(ENABLE, OFF);
 
 	if (ilitek_tddi_ic_get_info() < 0) {
-		ipio_err("Not found ilitek chipes\n");
+		ipio_err("Not found ilitek chips\n");
 		return -ENODEV;
 	}
 
@@ -669,6 +669,7 @@ void ilitek_tddi_dev_remove(void)
 		flush_workqueue(esd_gesture_wq);
 		destroy_workqueue(esd_gesture_wq);
 	}
+	ilitek_tddi_interface_dev_exit(idev->hwif);
 }
 
 int ilitek_tddi_dev_init(struct ilitek_hwif_info *hwif)
