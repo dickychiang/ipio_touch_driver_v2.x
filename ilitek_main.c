@@ -63,8 +63,12 @@ int ilitek_tddi_mp_test_handler(char *apk, bool lcm_on)
 	ret = ilitek_tddi_mp_test_main(apk, lcm_on);
 
 out:
-	tp_mode = P5_X_FW_DEMO_MODE;
-	ilitek_tddi_switch_mode(&tp_mode);
+	/* Set tp as demo mode and reload code if it's iram. */
+	idev->actual_tp_mode = P5_X_FW_DEMO_MODE;
+	if (idev->fw_upgrade_mode == UPGRADE_IRAM)
+		ilitek_tddi_fw_upgrade_handler(NULL);
+	else
+		ilitek_tddi_reset_ctrl(idev->reset);
 
 	atomic_set(&idev->mp_stat, DISABLE);
 	mutex_unlock(&idev->touch_mutex);
@@ -94,15 +98,21 @@ int ilitek_tddi_switch_mode(u8 *data)
 		break;
 	case P5_X_FW_DEMO_MODE:
 		ipio_info("Switch to Demo mode\n");
-		if (idev->fw_upgrade_mode == UPGRADE_IRAM)
-			ilitek_tddi_fw_upgrade_handler(NULL);
-		else
-			ilitek_tddi_reset_ctrl(idev->reset);
-		break;
-	case P5_X_FW_DEBUG_MODE:
 		cmd[0] = P5_X_MODE_CONTROL;
 		cmd[1] = mode;
+		ret = idev->write(cmd, 2);
+		if (ret < 0) {
+			ipio_err("Failed to switch demo mode, do reset/reload instead\n");
+			if (idev->fw_upgrade_mode == UPGRADE_IRAM)
+				ilitek_tddi_fw_upgrade_handler(NULL);
+			else
+				ilitek_tddi_reset_ctrl(idev->reset);
+		}
+		break;
+	case P5_X_FW_DEBUG_MODE:
 		ipio_info("Switch to Debug mode\n");
+		cmd[0] = P5_X_MODE_CONTROL;
+		cmd[1] = mode;
 		ret = idev->write(cmd, 2);
 		if (ret < 0)
 			ipio_err("Failed to switch Debug mode\n");
@@ -116,7 +126,7 @@ int ilitek_tddi_switch_mode(u8 *data)
 		ret = idev->mp_move_code();
 		break;
 	case P5_X_FW_DEMO_DEBUG_INFO_MODE:
-		ipio_info("Switch to debug info mode\n");
+		ipio_info("Switch to demo debug info mode\n");
 		cmd[0] = P5_X_MODE_CONTROL;
 		cmd[1] = mode;
 		ret = idev->write(cmd, 2);
@@ -328,7 +338,6 @@ static void ilitek_tddi_wq_init(void)
 
 int ilitek_tddi_sleep_handler(int mode)
 {
-	u8 tp_mode = P5_X_FW_DEMO_MODE;
 	int ret = 0;
 
 	mutex_lock(&idev->touch_mutex);
@@ -374,7 +383,12 @@ int ilitek_tddi_sleep_handler(int mode)
 		if (idev->gesture)
 			disable_irq_wake(idev->irq_num);
 
-		ilitek_tddi_switch_mode(&tp_mode);
+		/* Set tp as demo mode and reload code if it's iram. */
+		idev->actual_tp_mode = P5_X_FW_DEMO_MODE;
+		if (idev->fw_upgrade_mode == UPGRADE_IRAM)
+			ilitek_tddi_fw_upgrade_handler(NULL);
+		else
+			ilitek_tddi_reset_ctrl(idev->reset);
 		ilitek_plat_irq_enable();
 		ipio_info("TP resume end\n");
 		ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);

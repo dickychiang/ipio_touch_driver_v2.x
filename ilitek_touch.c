@@ -315,7 +315,6 @@ void ilitek_tddi_touch_esd_gesture_flash(void)
 {
 	int retry = 100;
 	u32 answer = 0;
-	u8 tp_mode = P5_X_FW_DEMO_MODE;
 
 	ilitek_ice_mode_ctrl(ENABLE, OFF);
 
@@ -327,7 +326,8 @@ void ilitek_tddi_touch_esd_gesture_flash(void)
 		ipio_err("write password failed\n");
 
 	/* HW reset gives effect to FW receives password successed */
-	ilitek_tddi_switch_mode(&tp_mode);
+	idev->actual_tp_mode = P5_X_FW_DEMO_MODE;
+	ilitek_tddi_reset_ctrl(idev->reset);
 
 	/* waiting for FW reloading code */
 	msleep(100);
@@ -357,10 +357,10 @@ void ilitek_tddi_touch_esd_gesture_iram(void)
 {
 	int retry = 100;
 	u32 answer = 0;
-	u8 tp_mode = P5_X_FW_DEMO_MODE;
 
 	/* start to download AP code with host download */
-	ilitek_tddi_switch_mode(&tp_mode);
+	idev->actual_tp_mode = P5_X_FW_DEMO_MODE;
+	ilitek_tddi_fw_upgrade_handler(NULL);
 
 	ilitek_ice_mode_ctrl(ENABLE, OFF);
 
