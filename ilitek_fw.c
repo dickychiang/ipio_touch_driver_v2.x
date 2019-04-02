@@ -616,16 +616,19 @@ static int ilitek_tddi_fw_iram_upgrade(u8 *pfw)
 	/* Program data to iram acorrding to each block */
 	for (i = 0; i < ARRAY_SIZE(fbi); i++) {
 		if (fbi[i].mode == mode && fbi[i].len != 0) {
-			ipio_info("Download %s code from hex 0x%x to IRAN 0x%x len = 0x%x\n", fbi[i].name, fbi[i].start, fbi[i].mem_start, fbi[i].len);
+			ipio_info("Download %s code from hex 0x%x to IRAM 0x%x, len = 0x%x\n",
+					fbi[i].name, fbi[i].start, fbi[i].mem_start, fbi[i].len);
+
 			ilitek_tddi_fw_iram_program(fbi[i].mem_start, fbi[i].len, (fw_ptr + fbi[i].start), SPI_UPGRADE_LEN);
 
 			crc = CalculateCRC32(fbi[i].start, fbi[i].len - 4, fw_ptr);
 			dma = host_download_dma_check(fbi[i].mem_start, fbi[i].len - 4);
 
-			ipio_info("%s CRC is %s (%x) : (%x)\n", fbi[i].name, (crc != dma ? "Invalid !" : "Correct !"), crc, dma);
+			ipio_info("%s CRC is %s (%x) : (%x)\n",
+				fbi[i].name, (crc != dma ? "Invalid !" : "Correct !"), crc, dma);
 
 			if (crc != dma)
-				ret = UPDATE_FAIL;
+				return UPDATE_FAIL;
 		}
 	}
 
@@ -1163,6 +1166,8 @@ int ilitek_tddi_fw_upgrade(int upgrade_type, int file_type, int open_file_method
 
 		if (ret == UPDATE_PASS)
 			break;
+
+		ipio_err("Upgrade failed, do retry!\n");
 	} while (--retry > 0);
 
 	if (ret != UPDATE_PASS) {
