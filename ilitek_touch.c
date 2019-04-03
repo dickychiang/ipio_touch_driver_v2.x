@@ -496,7 +496,7 @@ void ilitek_tddi_report_ap_mode(u8 *buf, int len)
 	idev->finger = 0;
 
 	for (i = 0; i < MAX_TOUCH_NUM; i++) {
-		if ((buf[(4 * i) + 1] == 0xFF) && (buf[(4 * i) + 2] && 0xFF)
+		if ((buf[(4 * i) + 1] == 0xFF) && (buf[(4 * i) + 2] == 0xFF)
 			&& (buf[(4 * i) + 3] == 0xFF)) {
 			if (MT_B_TYPE)
 				idev->curt_touch[i] = 0;
@@ -571,7 +571,7 @@ void ilitek_tddi_report_debug_mode(u8 *buf, int len)
 	idev->finger = 0;
 
 	for (i = 0; i < MAX_TOUCH_NUM; i++) {
-		if ((buf[(3 * i) + 5] == 0xFF) && (buf[(3 * i) + 6] && 0xFF)
+		if ((buf[(3 * i) + 5] == 0xFF) && (buf[(3 * i) + 6] == 0xFF)
 			&& (buf[(3 * i) + 7] == 0xFF)) {
 			if (MT_B_TYPE)
 				idev->curt_touch[i] = 0;
