@@ -220,14 +220,14 @@ static int ilitek_tddi_fw_iram_program(u32 start, u32 size, u8 *w_buf, u32 w_len
 	u32 end = start + size;
 	u8 *buf = NULL;
 
-	buf = (u8 *)kmalloc(sizeof(u8) * size + 4, GFP_KERNEL);
-
+	buf = kzalloc(w_len + 4, GFP_KERNEL);
 	if (ERR_ALLOC_MEM(buf)) {
 		ipio_err("Failed to allocate a buffer to be read, %ld\n", PTR_ERR(buf));
 		return -ENOMEM;
 	}
 
-	memset(buf, 0xFF, (int)sizeof(u8) * size + 4);
+	for (i = 0; i < w_len + 4; i++)
+		buf[i] = 0xFF;
 
 	for (addr = start, i = 0; addr < end; addr += w_len, i += w_len) {
 		if ((addr + w_len) > end)
