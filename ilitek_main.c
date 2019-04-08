@@ -63,7 +63,17 @@ int ilitek_tddi_mp_test_handler(char *apk, bool lcm_on)
 	ret = ilitek_tddi_mp_test_main(apk, lcm_on);
 
 out:
-	/* Set tp as demo mode and reload code if it's iram. */
+	/*
+	 * If there's running mp test with lcm off, we suspose that
+	 * users will soon call resume from suspend. TP mode will be changed
+	 * from MP to AP mode until resume finished.
+	 */
+	if (!lcm_on) {
+		atomic_set(&idev->mp_stat, DISABLE);
+		mutex_unlock(&idev->touch_mutex);
+		return ret;
+	}
+
 	idev->actual_tp_mode = P5_X_FW_DEMO_MODE;
 	if (idev->fw_upgrade_mode == UPGRADE_IRAM)
 		ilitek_tddi_fw_upgrade_handler(NULL);
