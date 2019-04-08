@@ -136,14 +136,74 @@ static int host_download_dma_check(u32 start_addr, u32 block_size)
 	return ilitek_ice_mode_read(0x04101C, sizeof(u32));
 }
 
+static int ilitek_tddi_fw_iram_read(u8 *buf, u32 start, u32 end)
+{
+	int i;
+	int addr = 0, r_len = SPI_UPGRADE_LEN;
+	u8 cmd[4] = {0};
+
+	if (!buf) {
+		ipio_err("buf in null\n");
+		return -ENOMEM;
+	}
+
+	for (addr = start, i = 0; addr < end; i += r_len, addr += r_len) {
+		if ((addr + r_len) > end)
+			r_len = end % r_len;
+
+		cmd[0] = 0x25;
+		cmd[3] = (char)((addr & 0x00FF0000) >> 16);
+		cmd[2] = (char)((addr & 0x0000FF00) >> 8);
+		cmd[1] = (char)((addr & 0x000000FF));
+
+		if (idev->write(cmd, 4)) {
+			ipio_err("Failed to write iram data\n");
+			return -ENODEV;
+		}
+
+		if (idev->read(buf + i, r_len)) {
+			ipio_err("Failed to Read iram data\n");
+			return -ENODEV;
+		}
+	}
+	return 0;
+}
+
+static void ilitek_tddi_fw_print_iram_data(void)
+{
+	int i, len;
+	int tmp = ipio_debug_level;
+	u8 *buf = NULL;
+	u32 start = 0, end = 0xFFFF;
+
+	len = end - start + 1;
+
+	buf = vmalloc(len * sizeof(u8));
+	if (ERR_ALLOC_MEM(buf)) {
+		ipio_err("Failed to allocate buf memory, %ld\n", PTR_ERR(buf));
+		return;
+	}
+
+	for (i = 0; i < len; i++)
+		buf[i] = 0xFF;
+
+	if (ilitek_tddi_fw_iram_read(buf, start, end) < 0)
+		ipio_err("Read IRAM data failed\n");
+
+	ipio_debug_level = DEBUG_ALL;
+	ilitek_dump_data(buf, 8, len, 0, "IRAM");
+	ipio_debug_level = tmp;
+	ipio_vfree((void **)&buf);
+}
+
 int ilitek_tddi_fw_dump_iram_data(u32 start, u32 end)
 {
 	struct file *f = NULL;
-	u8 *buf = NULL, cmd[4] = {0};
+	u8 *buf = NULL;
 	mm_segment_t old_fs;
 	loff_t pos = 0;
-	int ret, wdt, addr, i;
-	int len, r_len = SPI_UPGRADE_LEN;
+	int ret, wdt, i;
+	int len;
 
 	f = filp_open(DUMP_IRAM_PATH, O_WRONLY | O_CREAT | O_TRUNC, 644);
 	if (ERR_ALLOC_MEM(f)) {
@@ -174,27 +234,8 @@ int ilitek_tddi_fw_dump_iram_data(u32 start, u32 end)
 	for (i = 0; i < len; i++)
 		buf[i] = 0xFF;
 
-	for (addr = start, i = 0; addr < end; i += r_len, addr += r_len) {
-		if ((addr + r_len) > end)
-			r_len = end % r_len;
-
-		cmd[0] = 0x25;
-		cmd[3] = (char)((addr & 0x00FF0000) >> 16);
-		cmd[2] = (char)((addr & 0x0000FF00) >> 8);
-		cmd[1] = (char)((addr & 0x000000FF));
-
-		if (idev->write(cmd, 4)) {
-			ipio_err("Failed to write data\n");
-			ret = -EIO;
-			goto out;
-		}
-
-		if (idev->read(buf + i, r_len)) {
-			ipio_err("Failed to Read data\n");
-			ret = -EIO;
-			goto out;
-		}
-	}
+	if (ilitek_tddi_fw_iram_read(buf, start, end) < 0)
+		ipio_err("Read IRAM data failed\n");
 
 	old_fs = get_fs();
 	set_fs(get_ds());
@@ -627,8 +668,11 @@ static int ilitek_tddi_fw_iram_upgrade(u8 *pfw)
 			ipio_info("%s CRC is %s (%x) : (%x)\n",
 				fbi[i].name, (crc != dma ? "Invalid !" : "Correct !"), crc, dma);
 
-			if (crc != dma)
+			if (crc != dma) {
+				ipio_err("CRC Failed! print iram 64k bytes for debug\n");
+				ilitek_tddi_fw_print_iram_data();
 				return UPDATE_FAIL;
+			}
 		}
 	}
 
