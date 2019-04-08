@@ -157,6 +157,7 @@ static void ilitek_tddi_wq_ges_recover(struct work_struct *work)
 {
 	mutex_lock(&idev->touch_mutex);
 	atomic_set(&idev->esd_stat, START);
+	ipio_info("Doing gesture recovery\n");
 	idev->ges_recover();
 	atomic_set(&idev->esd_stat, END);
 	mutex_unlock(&idev->touch_mutex);
@@ -167,6 +168,7 @@ static void ilitek_tddi_wq_spi_recover(struct work_struct *work)
 	ilitek_tddi_wq_ctrl(WQ_ESD, DISABLE);
 	mutex_lock(&idev->touch_mutex);
 	atomic_set(&idev->esd_stat, START);
+	ipio_info("Doing spi recovery\n");
 	ilitek_tddi_fw_upgrade_handler(NULL);
 	atomic_set(&idev->esd_stat, END);
 	mutex_unlock(&idev->touch_mutex);
@@ -531,7 +533,7 @@ void ilitek_tddi_report_handler(void)
 	if (checksum != buf[rlen-1]) {
 		ipio_err("Wrong checksum, checksum = %x, buf = %x\n", checksum, buf[rlen-1]);
 		ipio_debug_level = DEBUG_ALL;
-		ilitek_dump_data(buf, 8, rlen, 0, "finger report");
+		ilitek_dump_data(buf, 8, rlen, 0, "finger report with wrong");
 		ipio_debug_level = tmp;
 		goto out;
 	}
@@ -558,8 +560,10 @@ void ilitek_tddi_report_handler(void)
 	}
 
 out:
-	ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
-	ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
+	if (!idev->actual_tp_mode == P5_X_FW_GESTURE_MODE) {
+		ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
+		ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
+	}
 recover:
 	ipio_kfree((void **)&buf);
 }

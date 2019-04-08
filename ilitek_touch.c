@@ -250,6 +250,7 @@ int ilitek_tddi_move_gesture_code_flash(int mode)
 int ilitek_tddi_move_gesture_code_iram(int mode)
 {
 	int i;
+	int timeout = 10;
 	u8 tp_mode = P5_X_FW_GESTURE_MODE;
 	u8 cmd[3] = {0};
 
@@ -260,14 +261,14 @@ int ilitek_tddi_move_gesture_code_iram(int mode)
 
 	ilitek_tddi_switch_mode(&tp_mode);
 
-	for (i = 0; i < 20; i++) {
+	for (i = 0; i < timeout; i++) {
 		/* Prepare Check Ready */
 		cmd[0] = P5_X_READ_DATA_CTRL;
 		cmd[1] = 0xA;
 		cmd[2] = 0x5;
 		idev->write(cmd, 2);
 
-		mdelay(i * 50);
+		mdelay(10);
 
 		/* Check ready for load code */
 		cmd[0] = 0x1;
@@ -286,8 +287,11 @@ int ilitek_tddi_move_gesture_code_iram(int mode)
 		}
 	}
 
-	if (i >= 20)
-		ipio_err("Gesture is not ready, 0x%x\n", cmd[0]);
+	if (i >= timeout) {
+		ipio_err("Gesture is not ready (0x%x), try to run its recovery\n", cmd[0]);
+		ilitek_tddi_wq_ctrl(WQ_GES_RECOVER, ENABLE);
+		return 0;
+	}
 
 	ilitek_tddi_fw_upgrade_handler(NULL);
 
@@ -357,6 +361,7 @@ void ilitek_tddi_touch_esd_gesture_iram(void)
 {
 	int retry = 100;
 	u32 answer = 0;
+	u8 cmd[3] = {0};
 
 	/* start to download AP code with host download */
 	idev->actual_tp_mode = P5_X_FW_DEMO_MODE;
@@ -394,7 +399,16 @@ void ilitek_tddi_touch_esd_gesture_iram(void)
 
 	ilitek_ice_mode_ctrl(DISABLE, ON);
 
-	idev->gesture_move_code(idev->gesture_mode);
+	idev->actual_tp_mode = P5_X_FW_GESTURE_MODE;
+	ilitek_tddi_fw_upgrade_handler(NULL);
+
+	/* FW star run gestrue code cmd */
+	cmd[0] = 0x1;
+	cmd[1] = 0xA;
+	cmd[2] = 0x6;
+	if ((idev->write(cmd, sizeof(cmd))) < 0)
+		ipio_err("write 0x1,0xA,0x6 error");
+
 }
 
 static void ilitek_tddi_touch_send_debug_data(u8 *buf, int len)
