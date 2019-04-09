@@ -438,12 +438,26 @@ int ilitek_tddi_fw_upgrade_handler(void *data)
 		ipio_info("get touch lock\n");
 	}
 
+	if (idev->fw_upgrade_mode == UPGRADE_FLASH) {
+		ipio_info("Get current fw/protocol ver before upgrade fw\n");
+		ilitek_tddi_ic_get_protocl_ver();
+		ilitek_tddi_ic_get_fw_ver();
+	}
+
 	idev->fw_update_stat = 0;
 	ret = ilitek_tddi_fw_upgrade(idev->fw_upgrade_mode, HEX_FILE, idev->fw_open);
 	if (ret != 0)
 		idev->fw_update_stat = -1;
 	else
 		idev->fw_update_stat = 100;
+
+	ipio_info("Flash FW completed ... update TP/FW info\n");
+	ilitek_tddi_ic_get_protocl_ver();
+	ilitek_tddi_ic_get_fw_ver();
+	ilitek_tddi_ic_get_core_ver();
+	ilitek_tddi_ic_get_tp_info();
+	ilitek_tddi_ic_get_panel_info();
+	ilitek_plat_input_register();
 
 	if (get_lock)
 		mutex_unlock(&idev->touch_mutex);
@@ -520,7 +534,7 @@ void ilitek_tddi_report_handler(void)
 
 	ret = idev->read(buf, rlen);
 	if (ret < 0) {
-		ipio_err("Read report packet failed\n");
+		ipio_err("Read report packet failed, ret = %d\n", ret);
 		if (idev->actual_tp_mode == P5_X_FW_GESTURE_MODE && idev->gesture) {
 			ipio_err("Gesture failed, doing gesture recovery\n");
 			ilitek_tddi_wq_ctrl(WQ_GES_RECOVER, ENABLE);

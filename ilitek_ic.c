@@ -330,7 +330,14 @@ int ilitek_tddi_ic_watch_dog_ctrl(bool write, bool enable)
 
 int ilitek_tddi_ic_func_ctrl(const char *name, int ctrl)
 {
-	int i = 0;
+	int i = 0, ret;
+	bool lock = true;
+
+	if (atomic_read(&idev->tp_sleep))
+		lock = false;
+
+	if (lock)
+		mutex_lock(&idev->touch_mutex);
 
 	for (i = 0; i < FUNC_CTRL_NUM; i++) {
 		if (strncmp(name, func_ctrl[i].name, strlen(name)) == 0) {
@@ -342,19 +349,22 @@ int ilitek_tddi_ic_func_ctrl(const char *name, int ctrl)
 
 	if (i >= FUNC_CTRL_NUM) {
 		ipio_err("Not found function ctrl, %s\n", name);
-		return -1;
+		ret = -1;
+		goto out;
 	}
 
 	if (idev->protocol->ver == PROTOCOL_VER_500) {
 		ipio_err("Non support function ctrl with protocol v5.0\n");
-		return -1;
+		ret = -1;
+		goto out;
 	}
 
 	if (idev->protocol->ver >= PROTOCOL_VER_560) {
 		if (strncmp(func_ctrl[i].name, "gesture", strlen("gesture")) == 0 ||
 			strncmp(func_ctrl[i].name, "phone_cover_window", strlen("phone_cover_window")) == 0) {
 			ipio_info("Non support %s function ctrl\n", func_ctrl[i].name);
-			return -1;
+			ret = -1;
+			goto out;
 		}
 	}
 
@@ -363,7 +373,15 @@ int ilitek_tddi_ic_func_ctrl(const char *name, int ctrl)
 	ipio_info("func = %s, len = %d, cmd = 0x%x, 0%x, 0x%x\n", func_ctrl[i].name, func_ctrl[i].len,
 		func_ctrl[i].cmd[0], func_ctrl[i].cmd[1], func_ctrl[i].cmd[2]);
 
-	return idev->write(func_ctrl[i].cmd, func_ctrl[i].len);;
+	ret = idev->write(func_ctrl[i].cmd, func_ctrl[i].len);
+	if (ret < 0)
+		ipio_err("Write TP function failed\n");
+
+out:
+	if (lock)
+		mutex_unlock(&idev->touch_mutex);
+
+	return ret;
 }
 
 int ilitek_tddi_ic_code_reset(void)
@@ -448,6 +466,10 @@ void ilitek_tddi_ic_set_ddi_reg_onepage(u8 page, u8 reg, u8 data)
 	u32 setreg = 0x1F000100 | (reg << 16) | data;
 	bool ice = atomic_read(&idev->ice_stat);
 
+	ilitek_tddi_wq_ctrl(WQ_ESD, DISABLE);
+	ilitek_tddi_wq_ctrl(WQ_BAT, DISABLE);
+	mutex_lock(&idev->touch_mutex);
+
 	ipio_info("setpage =  0x%X setreg = 0x%X\n", setpage, setreg);
 
 	if (!ice)
@@ -471,6 +493,10 @@ void ilitek_tddi_ic_set_ddi_reg_onepage(u8 page, u8 reg, u8 data)
 
 	if (!ice)
 		ilitek_ice_mode_ctrl(DISABLE, OFF);
+
+	mutex_unlock(&idev->touch_mutex);
+	ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
+	ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
 }
 
 void ilitek_tddi_ic_get_ddi_reg_onepage(u8 page, u8 reg)
@@ -480,6 +506,10 @@ void ilitek_tddi_ic_get_ddi_reg_onepage(u8 page, u8 reg)
 	u32 setpage = 0x1FFFFF00 | page;
 	u32 setreg = 0x2F000100 | (reg << 16);
 	bool ice = atomic_read(&idev->ice_stat);
+
+	ilitek_tddi_wq_ctrl(WQ_ESD, DISABLE);
+	ilitek_tddi_wq_ctrl(WQ_BAT, DISABLE);
+	mutex_lock(&idev->touch_mutex);
 
 	ipio_info("setpage = 0x%X setreg = 0x%X\n", setpage, setreg);
 
@@ -513,6 +543,10 @@ void ilitek_tddi_ic_get_ddi_reg_onepage(u8 page, u8 reg)
 
 	if (!ice)
 		ilitek_ice_mode_ctrl(DISABLE, OFF);
+
+	mutex_unlock(&idev->touch_mutex);
+	ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
+	ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
 }
 
 void ilitek_tddi_ic_check_otp_prog_mode(void)
@@ -648,17 +682,20 @@ int ilitek_tddi_ic_check_busy(int count, int delay)
 
 int ilitek_tddi_ic_get_project_id(u8 *pdata, int size)
 {
-	int i;
+	int i, ret;
 
 	if (!pdata) {
 		ipio_err("pdata is null\n");
 		return -ENOMEM;
 	}
 
+	mutex_lock(&idev->touch_mutex);
+
 	ipio_info("Read size = %d\n", size);
 
-	if (ilitek_ice_mode_ctrl(ENABLE, OFF) < 0)
-		return -1;
+	ret = ilitek_ice_mode_ctrl(ENABLE, OFF);
+	if (ret < 0)
+		goto out;
 
 	ilitek_ice_mode_write(0x041000, 0x0, 1);   /* CS low */
 	ilitek_ice_mode_write(0x041004, 0x66aa55, 3);  /* Key */
@@ -680,73 +717,106 @@ int ilitek_tddi_ic_get_project_id(u8 *pdata, int size)
 	ilitek_ice_mode_write(0x041000, 0x1, 1);   /* CS high */
 
 	ilitek_ice_mode_ctrl(DISABLE, OFF);
-	return 0;
+
+out:
+	mutex_unlock(&idev->touch_mutex);
+	return ret;
 }
 
 int ilitek_tddi_ic_get_core_ver(void)
 {
+	int ret = 0;
 	u8 cmd[2] = {0};
 	u8 buf[10] = {0};
+	bool lock = true;
+
+	if (atomic_read(&idev->fw_stat))
+		lock = false;
+
+	if (lock)
+		mutex_unlock(&idev->touch_mutex);
 
 	cmd[0] = P5_X_READ_DATA_CTRL;
 	cmd[1] = P5_X_GET_CORE_VERSION;
 
 	if (idev->write(cmd, sizeof(cmd)) < 0) {
 		ipio_err("write core ver err\n");
-		return -1;
+		ret = -1;
+		goto out;
 	}
 
 	if (idev->write(&cmd[1], sizeof(u8)) < 0) {
 		ipio_err("write core ver err\n");
-		return -1;
+		ret = -1;
+		goto out;
 	}
 
 	if (idev->read(buf, idev->protocol->core_ver_len) < 0) {
 		ipio_err("i2c/spi read core ver err\n");
-		return -1;
+		ret = -1;
+		goto out;
 	}
 
 	if (buf[0] != P5_X_GET_CORE_VERSION) {
 		ipio_err("Invalid core ver\n");
-		return -EINVAL;
+		ret = -1;
 	}
 
+out:
 	ipio_info("Core version = %d.%d.%d.%d\n", buf[1], buf[2], buf[3], buf[4]);
 	idev->chip->core_ver = buf[1] << 24 | buf[2] << 16 | buf[3] << 8 | buf[4];
-	return 0;
+
+	if (lock)
+		mutex_unlock(&idev->touch_mutex);
+
+	return ret;
 }
 
 int ilitek_tddi_ic_get_fw_ver(void)
 {
+	int ret = 0;
 	u8 cmd[2] = {0};
 	u8 buf[10] = {0};
+	bool lock = true;
+
+	if (atomic_read(&idev->fw_stat))
+		lock = false;
+
+	if (lock)
+		mutex_lock(&idev->touch_mutex);
 
 	cmd[0] = P5_X_READ_DATA_CTRL;
 	cmd[1] = P5_X_GET_FW_VERSION;
 
 	if (idev->write(cmd, sizeof(cmd)) < 0) {
 		ipio_err("write firmware ver err\n");
-		return -1;
+		ret = -1;
+		goto out;
 	}
 
 	if (idev->write(&cmd[1], sizeof(u8)) < 0) {
 		ipio_err("write firmware ver err\n");
-		return -1;
+		ret = -1;
+		goto out;
 	}
 
 	if (idev->read(buf, idev->protocol->fw_ver_len) < 0) {
 		ipio_err("i2c/spi read firmware ver err\n");
-		return -1;
+		ret = -1;
+		goto out;
 	}
 
 	if (buf[0] != P5_X_GET_FW_VERSION) {
 		ipio_err("Invalid firmware ver\n");
-		return -EINVAL;
+		ret = -1;
 	}
 
+out:
 	ipio_info("Firmware version = %d.%d.%d.%d\n", buf[1], buf[2], buf[3], buf[4]);
 	idev->chip->fw_ver = buf[1] << 24 | buf[2] << 16 | buf[3] << 8 | buf[4];
-	return 0;
+
+	mutex_unlock(&idev->touch_mutex);
+	return ret;
 }
 
 int ilitek_tddi_ic_get_panel_info(void)
@@ -754,6 +824,13 @@ int ilitek_tddi_ic_get_panel_info(void)
 	int ret = 0;
 	u8 cmd = P5_X_GET_PANEL_INFORMATION;
 	u8 buf[10] = {0};
+	bool lock = true;
+
+	if (atomic_read(&idev->fw_stat))
+		lock = false;
+
+	if (lock)
+		mutex_lock(&idev->touch_mutex);
 
 	ret = idev->write(&cmd, sizeof(u8));
 	if (ret < 0) {
@@ -775,37 +852,54 @@ out:
 	}
 
 	ipio_info("Panel info: width = %d, height = %d\n", idev->panel_wid, idev->panel_hei);
+
+	if (lock)
+		mutex_unlock(&idev->touch_mutex);
+
 	return ret;
 }
 
 int ilitek_tddi_ic_get_tp_info(void)
 {
+	int ret = 0;
 	u8 cmd[2] = {0};
 	u8 buf[20] = {0};
+	bool lock = true;
+
+	if (atomic_read(&idev->fw_stat))
+		lock = false;
+
+	if (lock)
+		mutex_lock(&idev->touch_mutex);
 
 	cmd[0] = P5_X_READ_DATA_CTRL;
 	cmd[1] = P5_X_GET_TP_INFORMATION;
 
 	if (idev->write(cmd, sizeof(cmd)) < 0) {
 		ipio_err("Write tp info error\n");
-		return -1;
+		ret = -1;
+		goto out;
 	}
 
 	if (idev->write(&cmd[1], sizeof(u8)) < 0) {
 		ipio_err("Write tp info error\n");
-		return -1;
+		ret = -1;
+		goto out;
 	}
 
 	if (idev->read(buf, idev->protocol->tp_info_len) < 0) {
 		ipio_err("Read tp info error\n");
-		return -1;
+		ret = -1;
+		goto out;
 	}
 
 	if (buf[0] != P5_X_GET_TP_INFORMATION) {
 		ipio_err("Invalid tp info\n");
-		return -EINVAL;
+		ret = -1;
+		goto out;
 	}
 
+out:
 	idev->min_x = buf[1];
 	idev->min_y = buf[2];
 	idev->max_x = buf[4] << 8 | buf[3];
@@ -817,7 +911,11 @@ int ilitek_tddi_ic_get_tp_info(void)
 
 	ipio_info("TP Info: min_x = %d, min_y = %d, max_x = %d, max_y = %d\n", idev->min_x, idev->min_y, idev->max_x, idev->max_y);
 	ipio_info("TP Info: xch = %d, ych = %d, stx = %d, srx = %d\n", idev->xch_num, idev->ych_num, idev->stx, idev->srx);
-	return 0;
+
+	if (lock)
+		mutex_unlock(&idev->touch_mutex);
+
+	return ret;
 }
 
 static void ilitek_tddi_ic_check_protocol_ver(u32 pver)
@@ -843,7 +941,10 @@ static void ilitek_tddi_ic_check_protocol_ver(u32 pver)
 
 int ilitek_tddi_edge_palm_ctrl(u8 type)
 {
-	u8 cmd[4] = { 0 };
+	int ret = 0;
+	u8 cmd[4] = {0};
+
+	mutex_lock(&idev->touch_mutex);
 
 	ipio_info("edge palm ctrl, type = %d\n", type);
 
@@ -854,52 +955,74 @@ int ilitek_tddi_edge_palm_ctrl(u8 type)
 
 	if (idev->write(cmd, sizeof(cmd)) < 0) {
 		ipio_err("Write edge plam ctrl error\n");
-		return -1;
+		ret = -1;
+		goto out;
 	}
 
 	if (idev->write(&cmd[1], (sizeof(cmd) - 1)) < 0) {
 		ipio_err("Write edge plam ctrl error\n");
-		return -1;
+		ret = -1;
+		goto out;
 	}
-	return 0;
+
+out:
+	mutex_unlock(&idev->touch_mutex);
+	return ret;
 }
 
 int ilitek_tddi_ic_get_protocl_ver(void)
 {
+	int ret = 0;
 	u8 cmd[2] = {0};
 	u8 buf[10] = {0};
 	u32 ver;
+	bool lock = true;
+
+	if (atomic_read(&idev->fw_stat))
+		lock = false;
+
+	if (lock)
+		mutex_lock(&idev->touch_mutex);
 
 	cmd[0] = P5_X_READ_DATA_CTRL;
 	cmd[1] = P5_X_GET_PROTOCOL_VERSION;
 
 	if (idev->write(cmd, sizeof(cmd)) < 0) {
 		ipio_err("Write protocol version error\n");
-		return -1;
+		ret = -1;
+		goto out;
 	}
 
 	if (idev->write(&cmd[1], sizeof(u8)) < 0) {
 		ipio_err("Write protocol version error\n");
-		return -1;
+		ret = -1;
+		goto out;
 	}
 
 	if (idev->read(buf, idev->protocol->pro_ver_len) < 0) {
 		ipio_err("Read protocol version error\n");
-		return -1;
+		ret = -1;
+		goto out;
 	}
 
 	if (buf[0] != P5_X_GET_PROTOCOL_VERSION) {
 		ipio_err("Invalid protocol ver\n");
-		return -EINVAL;
+		ret = -1;
+		goto out;
 	}
 
+out:
 	ver = buf[1] << 16 | buf[2] << 8 | buf[3];
 
 	ilitek_tddi_ic_check_protocol_ver(ver);
 
 	ipio_info("Protocol version = %d.%d.%d\n", idev->protocol->ver >> 16,
 		(idev->protocol->ver >> 8) & 0xFF, idev->protocol->ver & 0xFF);
-	return 0;
+
+	if (lock)
+		mutex_unlock(&idev->touch_mutex);
+
+	return ret;
 }
 
 int ilitek_tddi_ic_get_info(void)

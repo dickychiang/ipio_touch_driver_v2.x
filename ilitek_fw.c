@@ -581,10 +581,6 @@ static int ilitek_tddi_fw_check_ver(u8 *pfw)
 	u32 start_addr = 0, end_addr = 0;
 	u32 block_crc, flash_crc_cb;
 
-	/* Get current firmware/protocol version */
-	ilitek_tddi_ic_get_protocl_ver();
-	ilitek_tddi_ic_get_fw_ver();
-
 	/* Check FW version */
 	ipio_info("New FW ver = 0x%x, Current FW ver = 0x%x\n", tfd.new_fw_cb, idev->chip->fw_ver);
 	if (tfd.new_fw_cb != idev->chip->fw_ver) {
@@ -1170,12 +1166,6 @@ static void ilitek_tddi_fw_update_tp_info(int ret)
 		}
 		return;
 	}
-	ilitek_tddi_ic_get_protocl_ver();
-	ilitek_tddi_ic_get_fw_ver();
-	ilitek_tddi_ic_get_core_ver();
-	ilitek_tddi_ic_get_tp_info();
-	ilitek_tddi_ic_get_panel_info();
-	ilitek_plat_input_register();
 }
 
 int ilitek_tddi_fw_upgrade(int upgrade_type, int file_type, int open_file_method)

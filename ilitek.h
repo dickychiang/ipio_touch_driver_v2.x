@@ -513,7 +513,7 @@ enum TP_WQ_TYPE {
 #define TDDI_WDT_ON			0xA5
 #define TDDI_WDT_OFF			0x5A
 
-/* Chipes */
+/* Chips */
 #define TDDI_PID_ADDR			0x4009C
 #define TDDI_OTP_ID_ADDR		0x400A0
 #define TDDI_ANA_ID_ADDR		0x400A4
@@ -623,7 +623,8 @@ struct ilitek_tddi_dev {
 
 	int (*write)(void *data, int len);
 	int (*read)(void *data, int len);
-	int (*spi_write_then_read)(struct spi_device *spi, const void *txbuf, unsigned n_tx, void *rxbuf, unsigned n_rx);
+	int (*spi_write_then_read)(struct spi_device *spi, const void *txbuf,
+				unsigned n_tx, void *rxbuf, unsigned n_rx);
 	int (*mp_move_code)(void);
 	int (*gesture_move_code)(int mode);
 	int (*esd_recover)(void);
