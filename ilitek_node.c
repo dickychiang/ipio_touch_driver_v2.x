@@ -577,7 +577,6 @@ static ssize_t ilitek_proc_debug_switch_read(struct file *pFile, char __user *bu
 static ssize_t ilitek_proc_debug_message_read(struct file *filp, char __user *buff, size_t size, loff_t *pos)
 {
 	unsigned long p = *pos;
-	unsigned int count = size;
 	int i = 0;
 	int send_data_len = 0;
 	int ret = 0;
@@ -626,33 +625,29 @@ static ssize_t ilitek_proc_debug_message_read(struct file *filp, char __user *bu
 		} else if (idev->debug_buf[0][0] == P5_X_DEBUG_PACKET_ID) {
 			send_data_len = 0;	/* idev->debug_buf[0][1] - 2; */
 			need_read_data_len = 2040;
-			if (need_read_data_len <= 0) {
-				ipio_err("parse data err data len = %d\n", need_read_data_len);
-				send_data_len +=
-					sprintf(tmpbuf + send_data_len, "parse data err data len = %d\n",
-						need_read_data_len);
-			} else {
-				for (i = 0; i < need_read_data_len; i++) {
-					send_data_len += sprintf(tmpbuf + send_data_len, "%02X", idev->debug_buf[0][i]);
-					if (send_data_len >= 4096) {
-						ipio_err("send_data_len = %d set 4096 i = %d\n", send_data_len, i);
-						send_data_len = 4096;
-						break;
-					}
-				}
-			}
-			send_data_len += sprintf(tmpbuf + send_data_len, "\n\n");
+		}
 
-			if (p == 5 || size == 4096 || size == 2048) {
-				idev->debug_data_frame--;
-				if (idev->debug_data_frame < 0) {
-					idev->debug_data_frame = 0;
-				}
-
-				for (i = 1; i <= idev->debug_data_frame; i++)
-					memcpy(idev->debug_buf[i - 1], idev->debug_buf[i], 2048);
+		for (i = 0; i < need_read_data_len; i++) {
+			send_data_len += sprintf(tmpbuf + send_data_len, "%02X", idev->debug_buf[0][i]);
+			if (send_data_len >= 4096) {
+				ipio_err("send_data_len = %d set 4096 i = %d\n", send_data_len, i);
+				send_data_len = 4096;
+				break;
 			}
 		}
+
+		send_data_len += sprintf(tmpbuf + send_data_len, "\n\n");
+
+		if (p == 5 || size == 4096 || size == 2048) {
+			idev->debug_data_frame--;
+
+			if (idev->debug_data_frame < 0)
+				idev->debug_data_frame = 0;
+
+			for (i = 1; i <= idev->debug_data_frame; i++)
+				memcpy(idev->debug_buf[i - 1], idev->debug_buf[i], 2048);
+		}
+
 	} else {
 		ipio_err("no data send\n");
 		send_data_len += sprintf(tmpbuf + send_data_len, "no data send\n");
@@ -664,21 +659,22 @@ static ssize_t ilitek_proc_debug_message_read(struct file *filp, char __user *bu
 	else
 		ret = copy_to_user(buff, tmpbuf + p, send_data_len - p);
 
+	/* ipio_err("send_data_len = %d\n", send_data_len); */
+	if (send_data_len <= 0 || send_data_len > 4096) {
+		ipio_err("send_data_len = %d set 4096\n", send_data_len);
+		send_data_len = 4096;
+	}
+
 	if (ret) {
 		ipio_err("copy_to_user err\n");
 		ret = -EFAULT;
 	} else {
-		*pos += count;
-		ret = count;
-		ipio_debug(DEBUG_TOUCH, "Read %d bytes(s) from %ld\n", count, p);
+		*pos += send_data_len;
+		ret = send_data_len;
+		ipio_debug(DEBUG_TOUCH, "Read %d bytes(s) from %ld\n", send_data_len, p);
 	}
 
 out:
-	/* ipio_err("send_data_len = %d\n", send_data_len); */
-	if (send_data_len <= 0 || send_data_len > 4096) {
-		ipio_err("send_data_len = %d set 2048\n", send_data_len);
-		send_data_len = 4096;
-	}
 
 	mutex_unlock(&idev->debug_mutex);
 	mutex_unlock(&idev->debug_read_mutex);
@@ -1080,6 +1076,20 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 		ilitek_tddi_fw_dump_iram_data(data[1], data[2]);
 	} else if (strcmp(cmd, "edge_plam_ctrl") == 0) {
 		ilitek_tddi_edge_palm_ctrl(data[1]);
+	} else if (strcmp(cmd, "uart_mode_ctrl") == 0) {
+		if (data[1] > 1) {
+			ipio_info("Unknow cmd, Disable UART mdoe\n");
+			data[1] = 0;
+		} else {
+			ipio_info("UART mode %s\n", data[1] ? "Enable" : "Disable");
+		}
+		temp[0] = P5_X_I2C_UART;
+		temp[1] = 0x3;
+		temp[2] = 0;
+		temp[3] = data[1];
+		idev->write(temp, 4);
+
+		idev->uart_enable = data[1] ? ENABLE : DISABLE;
 	} else {
 		ipio_err("Unknown command\n");
 	}

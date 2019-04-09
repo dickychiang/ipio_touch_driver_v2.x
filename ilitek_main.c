@@ -103,9 +103,6 @@ int ilitek_tddi_switch_mode(u8 *data)
 	idev->actual_tp_mode = mode;
 
 	switch (idev->actual_tp_mode) {
-	case P5_X_FW_I2CUART_MODE:
-		ipio_info("Not implemented yet\n");
-		break;
 	case P5_X_FW_DEMO_MODE:
 		ipio_info("Switch to Demo mode\n");
 		cmd[0] = P5_X_MODE_CONTROL;
@@ -477,7 +474,7 @@ void ilitek_tddi_report_handler(void)
 {
 	int ret = 0, pid = 0;
 	u8 *buf = NULL, checksum = 0;
-	int rlen = 0;
+	int rlen = 0, buf_size = 0;
 	u16 self_key = 2;
 	int tmp = ipio_debug_level;
 
@@ -499,9 +496,6 @@ void ilitek_tddi_report_handler(void)
 	case P5_X_FW_DEBUG_MODE:
 		rlen = (2 * idev->xch_num * idev->ych_num) + (idev->stx * 2) + (idev->srx * 2);
 		rlen += 2 * self_key + (8 * 2) + 1 + 35;
-		break;
-	case P5_X_FW_I2CUART_MODE:
-		rlen = P5_X_DEMO_MODE_PACKET_LENGTH;
 		break;
 	case P5_X_FW_GESTURE_MODE:
 		if (idev->gesture_mode == P5_X_FW_GESTURE_INFO_MODE)
@@ -526,7 +520,9 @@ void ilitek_tddi_report_handler(void)
 		goto out;
 	}
 
-	buf = kcalloc(rlen, sizeof(u8), GFP_ATOMIC);
+	buf_size = (idev->uart_enable == DISABLE)? rlen : 2048;
+
+	buf = kcalloc(buf_size, sizeof(u8), GFP_ATOMIC);
 	if (ERR_ALLOC_MEM(buf)) {
 		ipio_err("Failed to allocate packet memory, %ld\n", PTR_ERR(buf));
 		return;
@@ -554,7 +550,8 @@ void ilitek_tddi_report_handler(void)
 	ilitek_dump_data(buf, 8, rlen, 0, "finger report");
 
 	checksum = ilitek_calc_packet_checksum(buf, rlen - 1);
-	if (checksum != buf[rlen-1]) {
+
+	if (checksum != buf[rlen-1] && idev->uart_enable == DISABLE) {
 		ipio_err("Wrong checksum, checksum = %x, buf = %x\n", checksum, buf[rlen-1]);
 		ipio_debug_level = DEBUG_ALL;
 		ilitek_dump_data(buf, 8, rlen, 0, "finger report with wrong");
@@ -626,7 +623,7 @@ int ilitek_tddi_reset_ctrl(int mode)
 	 */
 	if (mode != TP_IC_CODE_RST)
 		atomic_set(&idev->ice_stat, DISABLE);
-
+	idev->uart_enable = DISABLE;
 	atomic_set(&idev->tp_reset, END);
 	return ret;
 }
@@ -661,6 +658,7 @@ int ilitek_tddi_init(void)
 		ilitek_tddi_reset_ctrl(idev->reset);
 
 	idev->do_otp_check = ENABLE;
+	idev->uart_enable = DISABLE;
 
 	ilitek_ice_mode_ctrl(ENABLE, OFF);
 
