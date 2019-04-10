@@ -25,7 +25,7 @@
 #define USER_STR_BUFF		PAGE_SIZE
 #define IOCTL_I2C_BUFF		PAGE_SIZE
 #define ILITEK_IOCTL_MAGIC	100
-#define ILITEK_IOCTL_MAXNR	22
+#define ILITEK_IOCTL_MAXNR	21
 
 #define ILITEK_IOCTL_I2C_WRITE_DATA		_IOWR(ILITEK_IOCTL_MAGIC, 0, u8*)
 #define ILITEK_IOCTL_I2C_SET_WRITE_LENGTH	_IOWR(ILITEK_IOCTL_MAGIC, 1, int)
@@ -55,7 +55,6 @@
 
 #define ILITEK_IOCTL_TP_INTERFACE_TYPE		_IOWR(ILITEK_IOCTL_MAGIC, 20, u8*)
 #define ILITEK_IOCTL_TP_DUMP_FLASH		_IOWR(ILITEK_IOCTL_MAGIC, 21, int)
-#define ILITEK_IOCTL_NEWEST_PL_VER		_IOWR(ILITEK_IOCTL_MAGIC, 22, u8*)
 
 unsigned char g_user_buf[USER_STR_BUFF] = {0};
 
@@ -1342,15 +1341,6 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 		if (ret < 0) {
 			ipio_err("ioctl: Failed to dump flash data\n");
 		}
-		break;
-	case ILITEK_IOCTL_NEWEST_PL_VER:
-		szBuf[2] = idev->newest_protocol->ver & 0xFF;
-		szBuf[1] = (idev->newest_protocol->ver >> 8) & 0xFF;
-		szBuf[0] = idev->newest_protocol->ver >> 16;
-		ipio_info("ioctl: get driver support newest protocol version = %d.%d.%d\n", szBuf[0], szBuf[1], szBuf[2]);
-		ret = copy_to_user((u8 *) arg, szBuf, 3);
-		if (ret < 0)
-			ipio_err("Failed to copy protocol version to user space\n");
 		break;
 	default:
 		ret = -ENOTTY;

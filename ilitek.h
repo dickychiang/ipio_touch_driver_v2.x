@@ -539,7 +539,6 @@ struct ilitek_tddi_dev {
 	struct ilitek_hwif_info *hwif;
 	struct ilitek_ic_info *chip;
 	struct ilitek_protocol_info *protocol;
-	struct ilitek_protocol_info *newest_protocol;
 
 	struct regulator *vdd;
 	struct regulator *vcc;

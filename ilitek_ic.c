@@ -951,7 +951,6 @@ static void ilitek_tddi_ic_check_protocol_ver(u32 pver)
 		return;
 	}
 
-	idev->newest_protocol = &protocol_info[PROTOCL_VER_NUM - 1];
 	for (i = 0; i < PROTOCL_VER_NUM - 1; i++) {
 		if (protocol_info[i].ver == pver) {
 			idev->protocol = &protocol_info[i];
