@@ -681,6 +681,11 @@ static int ilitek_tddi_fw_check_ver(u8 *pfw)
 		memset(flash_crc, 0, sizeof(flash_crc));
 	}
 
+	if (idev->force_fw_update == ENABLE) {
+		ipio_info("update by node, force update\n");
+		return UPDATE_FAIL;
+	}
+
 	ipio_info("Both are the same, no need to update\n");
 	return UPDATE_PASS;
 }

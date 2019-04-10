@@ -486,7 +486,6 @@ enum TP_WQ_TYPE {
 #define P5_X_FW_DEMO_MODE		0x00
 #define P5_X_FW_TEST_MODE		0x01
 #define P5_X_FW_DEBUG_MODE		0x02
-#define P5_X_FW_I2CUART_MODE		0x03
 #define P5_X_FW_DEMO_DEBUG_INFO_MODE	0x04
 #define P5_X_FW_SOP_FLOW_MODE		0xE0
 #define P5_X_FW_ESD_MODE		0xFA
@@ -540,6 +539,7 @@ struct ilitek_tddi_dev {
 	struct ilitek_hwif_info *hwif;
 	struct ilitek_ic_info *chip;
 	struct ilitek_protocol_info *protocol;
+	struct ilitek_protocol_info *newest_protocol;
 
 	struct regulator *vdd;
 	struct regulator *vcc;
@@ -610,6 +610,8 @@ struct ilitek_tddi_dev {
 	int fw_upgrade_mode;
 	bool wtd_ctrl;
 	bool do_otp_check;
+	bool fw_uart_en;
+	bool force_fw_update;
 
 	atomic_t irq_stat;
 	atomic_t tp_reset;

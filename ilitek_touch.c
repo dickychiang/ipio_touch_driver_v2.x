@@ -717,7 +717,7 @@ void ilitek_tddi_report_i2cuart_mode(u8 *buf, int len)
 		one_data_bytes = 4;
 	}
 
-	need_read_len *=  one_data_bytes + 1;
+	need_read_len =  need_read_len * one_data_bytes + 1;
 	ipio_debug(DEBUG_TOUCH, "need_read_len = %d  one_data_bytes = %d\n", need_read_len, one_data_bytes);
 
 	if (need_read_len > actual_len) {

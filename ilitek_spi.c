@@ -396,7 +396,7 @@ static int core_spi_ice_mode_read(u8 *data, int len)
 	if (ret < 0)
 		goto out;
 
-	if (len < size) {
+	if (len < size && idev->fw_uart_en == DISABLE) {
 		ipio_info("WARRING! size(%d) > len(%d), use len to get data\n", size, len);
 		size = len;
 	}
