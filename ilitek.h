@@ -539,6 +539,7 @@ struct ilitek_tddi_dev {
 	struct ilitek_hwif_info *hwif;
 	struct ilitek_ic_info *chip;
 	struct ilitek_protocol_info *protocol;
+	struct ilitek_protocol_info *newest_protocol;
 
 	struct regulator *vdd;
 	struct regulator *vcc;
@@ -609,7 +610,8 @@ struct ilitek_tddi_dev {
 	int fw_upgrade_mode;
 	bool wtd_ctrl;
 	bool do_otp_check;
-	bool uart_enable;
+	bool fw_uart_en;
+	bool force_fw_update;
 
 	atomic_t irq_stat;
 	atomic_t tp_reset;

@@ -520,7 +520,7 @@ void ilitek_tddi_report_handler(void)
 		goto out;
 	}
 
-	buf_size = (idev->uart_enable == DISABLE)? rlen : 2048;
+	buf_size = (idev->fw_uart_en == DISABLE)? rlen : 2048;
 
 	buf = kcalloc(buf_size, sizeof(u8), GFP_ATOMIC);
 	if (ERR_ALLOC_MEM(buf)) {
@@ -551,7 +551,7 @@ void ilitek_tddi_report_handler(void)
 
 	checksum = ilitek_calc_packet_checksum(buf, rlen - 1);
 
-	if (checksum != buf[rlen-1] && idev->uart_enable == DISABLE) {
+	if (checksum != buf[rlen-1] && idev->fw_uart_en == DISABLE) {
 		ipio_err("Wrong checksum, checksum = %x, buf = %x\n", checksum, buf[rlen-1]);
 		ipio_debug_level = DEBUG_ALL;
 		ilitek_dump_data(buf, 8, rlen, 0, "finger report with wrong");
@@ -623,7 +623,7 @@ int ilitek_tddi_reset_ctrl(int mode)
 	 */
 	if (mode != TP_IC_CODE_RST)
 		atomic_set(&idev->ice_stat, DISABLE);
-	idev->uart_enable = DISABLE;
+	idev->fw_uart_en = DISABLE;
 	atomic_set(&idev->tp_reset, END);
 	return ret;
 }
@@ -658,7 +658,8 @@ int ilitek_tddi_init(void)
 		ilitek_tddi_reset_ctrl(idev->reset);
 
 	idev->do_otp_check = ENABLE;
-	idev->uart_enable = DISABLE;
+	idev->fw_uart_en = DISABLE;
+	idev->force_fw_update = DISABLE;
 
 	ilitek_ice_mode_ctrl(ENABLE, OFF);
 
