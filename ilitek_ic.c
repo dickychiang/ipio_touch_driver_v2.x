@@ -839,7 +839,9 @@ out:
 	ipio_info("Firmware version = %d.%d.%d.%d\n", buf[1], buf[2], buf[3], buf[4]);
 	idev->chip->fw_ver = buf[1] << 24 | buf[2] << 16 | buf[3] << 8 | buf[4];
 
-	mutex_unlock(&idev->touch_mutex);
+	if (lock)
+		mutex_unlock(&idev->touch_mutex);
+
 	return ret;
 }
 
