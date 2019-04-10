@@ -117,7 +117,10 @@ int ilitek_ice_mode_bit_mask_write(u32 addr, u32 mask, u32 value)
 	int ret = 0;
 	u32 data = 0;
 
-	data = ilitek_ice_mode_read(addr, sizeof(u32));
+	if (ilitek_ice_mode_read(addr, &data, sizeof(u32)) < 0) {
+		ipio_err("Read data error\n");
+		return -1;
+	}
 
 	data &= (~mask);
 	data |= (value & mask);
@@ -156,9 +159,9 @@ int ilitek_ice_mode_write(u32 addr, u32 data, int len)
 	return ret;
 }
 
-u32 ilitek_ice_mode_read(u32 addr, int len)
+int ilitek_ice_mode_read(u32 addr, u32 *data, int len)
 {
-	u32 ret = 0;
+	int ret = 0;
 	u8 *rxbuf = NULL;
 	u8 txbuf[4] = {0};
 
@@ -188,9 +191,9 @@ u32 ilitek_ice_mode_read(u32 addr, int len)
 		goto out;
 
 	if (len == sizeof(u8))
-		ret = rxbuf[0];
+		*data = rxbuf[0];
 	else
-		ret = (rxbuf[0] | rxbuf[1] << 8 | rxbuf[2] << 16 | rxbuf[3] << 24);
+		*data = (rxbuf[0] | rxbuf[1] << 8 | rxbuf[2] << 16 | rxbuf[3] << 24);
 
 out:
 	if (ret < 0)
@@ -221,23 +224,24 @@ int ilitek_ice_mode_ctrl(bool enable, bool mcu)
 		atomic_set(&idev->ice_stat, ENABLE);
 
 		do {
-			ret = idev->write(cmd_open, sizeof(cmd_open));
-			if (ret < 0)
-				continue;
+			if (idev->write(cmd_open, sizeof(cmd_open)) < 0)
+				ipio_err("write ice mode cmd error\n");
 
 			if (idev->spi_speed != NULL && idev->chip->spi_speed_ctrl)
 				idev->spi_speed(ON);
 
 			/* Read chip id to ensure that ice mode is enabled successfully */
-			pid = ilitek_ice_mode_read(idev->chip->pid_addr, sizeof(u32));
-			ret = ilitek_tddi_ic_check_support(pid, pid >> 16);
-			if (ret == 0)
+			if (ilitek_ice_mode_read(idev->chip->pid_addr, &pid, sizeof(u32)) < 0)
+				ipio_err("Read pid error\n");
+
+			if (ilitek_tddi_ic_check_support(pid, pid >> 16) == 0)
 				break;
 		} while (--retry > 0);
 
-		if (ret != 0) {
+		if (retry <= 0) {
 			ipio_err("Enter to ICE Mode failed !!\n");
 			atomic_set(&idev->ice_stat, DISABLE);
+			ret = -1;
 			goto out;
 		}
 
@@ -279,7 +283,10 @@ int ilitek_tddi_ic_watch_dog_ctrl(bool write, bool enable)
 	}
 
 	if (!write) {
-		ret = ilitek_ice_mode_read(idev->chip->wdt_addr, sizeof(u8));
+		if (ilitek_ice_mode_read(idev->chip->wdt_addr, &ret, sizeof(u8)) < 0) {
+			ipio_err("Read wdt error\n");
+			return -1;
+		}
 		ipio_info("Read WDT: %s\n", (ret ? "ON" : "OFF"));
 		return ret;
 	}
@@ -296,7 +303,9 @@ int ilitek_tddi_ic_watch_dog_ctrl(bool write, bool enable)
 	}
 
 	while (timeout > 0) {
-		ret = ilitek_ice_mode_read(TDDI_WDT_ACTIVE_ADDR, sizeof(u8));
+		if (ilitek_ice_mode_read(TDDI_WDT_ACTIVE_ADDR, &ret, sizeof(u8)) < 0)
+			ipio_err("Read wdt active error\n");
+
 		ipio_debug(DEBUG_IC, "ret = %x\n", ret);
 		if (enable) {
 			if (ret == TDDI_WDT_ON)
@@ -422,7 +431,9 @@ static void ilitek_tddi_ic_wr_pack(int packet)
 	u32 reg_data = 0;
 
 	while (retry--) {
-		reg_data = ilitek_ice_mode_read(0x73010, sizeof(u8));
+		if (ilitek_ice_mode_read(0x73010, &reg_data, sizeof(u8)) < 0)
+			ipio_err("Read 0x73010 error\n");
+
 		if ((reg_data & 0x02) == 0) {
 			ipio_info("check ok 0x73010 read 0x%X retry = %d\n", reg_data, retry);
 			break;
@@ -444,7 +455,9 @@ static u32 ilitek_tddi_ic_rd_pack(int packet)
 	ilitek_tddi_ic_wr_pack(packet);
 
 	while (retry--) {
-		reg_data = ilitek_ice_mode_read(0x4800A, sizeof(u8));
+		if (ilitek_ice_mode_read(0x4800A, &reg_data, sizeof(u8)) < 0)
+			ipio_err("Read 0x4800A error\n");
+
 		if ((reg_data & 0x02) == 0x02) {
 			ipio_info("check  ok 0x4800A read 0x%X retry = %d\n", reg_data, retry);
 			break;
@@ -455,7 +468,10 @@ static u32 ilitek_tddi_ic_rd_pack(int packet)
 		ipio_info("check 0x4800A error read 0x%X\n", reg_data);
 
 	ilitek_ice_mode_write(0x4800A, 0x02, 1);
-	reg_data = ilitek_ice_mode_read(0x73016, sizeof(u32));
+
+	if (ilitek_ice_mode_read(0x73016, &reg_data, sizeof(u8)) < 0)
+		ipio_err("Read 0x73016 error\n");
+
 	return reg_data;
 }
 
@@ -551,7 +567,8 @@ void ilitek_tddi_ic_get_ddi_reg_onepage(u8 page, u8 reg)
 
 void ilitek_tddi_ic_check_otp_prog_mode(void)
 {
-	int prog_mode, prog_done, retry = 5;
+	int retry = 5;
+	u32 prog_mode, prog_done;
 
 	if (!idev->do_otp_check)
 		return;
@@ -575,10 +592,13 @@ void ilitek_tddi_ic_check_otp_prog_mode(void)
 
 		ilitek_ice_mode_write(0x4300C, 0x4, 1);
 
-		prog_done = ilitek_ice_mode_read(0x43030, sizeof(u8));
-		prog_mode = ilitek_ice_mode_read(0x43008, sizeof(u8));
-		ipio_info("otp prog_mode = 0x%x, prog_done = 0x%x\n", prog_mode, prog_done);
+		if (ilitek_ice_mode_read(0x43030, &prog_done, sizeof(u8)) < 0)
+			ipio_err("Read prog_done error\n");
 
+		if (ilitek_ice_mode_read(0x43008, &prog_mode, sizeof(u8)) < 0)
+			ipio_err("Read prog_mode error\n");
+
+		ipio_info("otp prog_mode = 0x%x, prog_done = 0x%x\n", prog_mode, prog_done);
 		if (prog_done == 0x0 && prog_mode == 0x80)
 			break;
 	} while (--retry > 0);
@@ -610,7 +630,8 @@ u32 ilitek_tddi_ic_get_pc_counter(void)
 	if (!ice)
 		ilitek_ice_mode_ctrl(ENABLE, OFF);
 
-	pc = ilitek_ice_mode_read(idev->chip->pc_counter_addr, sizeof(u32));
+	if (ilitek_ice_mode_read(idev->chip->pc_counter_addr, &pc, sizeof(u32)) < 0)
+		ipio_err("Read pc conter error\n");
 
 	ipio_info("pc counter = 0x%x\n", pc);
 
@@ -683,6 +704,7 @@ int ilitek_tddi_ic_check_busy(int count, int delay)
 int ilitek_tddi_ic_get_project_id(u8 *pdata, int size)
 {
 	int i, ret;
+	u32 tmp;
 
 	if (!pdata) {
 		ipio_err("pdata is null\n");
@@ -708,7 +730,9 @@ int ilitek_tddi_ic_get_project_id(u8 *pdata, int size)
 
 	for (i = 0; i < size; i++) {
 		ilitek_ice_mode_write(0x041008, 0xFF, 1);
-		pdata[i] = ilitek_ice_mode_read(0x41010, sizeof(u8));
+		if (ilitek_ice_mode_read(0x41010, &tmp, sizeof(u8)) < 0)
+			ipio_err("Read project id error\n");
+		pdata[i] = tmp;
 		ipio_info("project_id[%d] = 0x%x\n", i, pdata[i]);
 	}
 
@@ -1034,13 +1058,18 @@ int ilitek_tddi_ic_get_info(void)
 		return -1;
 	}
 
-	idev->chip->pid = ilitek_ice_mode_read(idev->chip->pid_addr, sizeof(u32));
+	if (ilitek_ice_mode_read(idev->chip->pid_addr, &idev->chip->pid, sizeof(u32)) < 0)
+		ipio_err("Read chip pid error\n");
+
 	idev->chip->id = idev->chip->pid >> 16;
 	idev->chip->type_hi = idev->chip->pid & 0x0000FF00;
 	idev->chip->type_low = idev->chip->pid	& 0xFF;
 
-	idev->chip->otp_id = ilitek_ice_mode_read(idev->chip->otp_addr, sizeof(u32));
-	idev->chip->ana_id = ilitek_ice_mode_read(idev->chip->ana_addr, sizeof(u32));
+	if (ilitek_ice_mode_read(idev->chip->otp_addr, &idev->chip->otp_id, sizeof(u32)) < 0)
+		ipio_err("Read otp id error\n");
+	if (ilitek_ice_mode_read(idev->chip->ana_addr, &idev->chip->ana_id, sizeof(u32)) < 0)
+		ipio_err("Read ana id error\n");
+
 	idev->chip->otp_id &= 0xFF;
 	idev->chip->ana_id &= 0xFF;
 

@@ -340,7 +340,8 @@ void ilitek_tddi_touch_esd_gesture_flash(void)
 
 	/* polling another specific register to see if gesutre is enabled properly */
 	do {
-		answer = ilitek_ice_mode_read(I2C_ESD_GESTURE_PWD_ADDR, sizeof(u32));
+		if (ilitek_ice_mode_read(I2C_ESD_GESTURE_PWD_ADDR, &answer, sizeof(u32)) < 0)
+			ipio_err("Read gesture answer error\n");
 		if (answer != I2C_ESD_GESTURE_RUN)
 			ipio_info("answer = 0x%x != (0x%x)\n", answer, I2C_ESD_GESTURE_RUN);
 		msleep(10);
@@ -386,7 +387,9 @@ void ilitek_tddi_touch_esd_gesture_iram(void)
 
 	/* polling another specific register to see if gesutre is enabled properly */
 	do {
-		answer = ilitek_ice_mode_read(SPI_ESD_GESTURE_PWD_ADDR, sizeof(u32));
+		if (ilitek_ice_mode_read(SPI_ESD_GESTURE_PWD_ADDR, &answer, sizeof(u32)) < 0)
+			ipio_err("Read gesture answer error\n");
+
 		if (answer != SPI_ESD_GESTURE_RUN)
 			ipio_info("answer = 0x%x != (0x%x)\n", answer, SPI_ESD_GESTURE_RUN);
 		msleep(10);

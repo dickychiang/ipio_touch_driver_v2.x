@@ -743,7 +743,7 @@ extern int ilitek_tddi_ic_get_fw_ver(void);
 extern int ilitek_tddi_ic_get_info(void);
 extern int ilitek_ice_mode_bit_mask_write(u32 addr, u32 mask, u32 value);
 extern int ilitek_ice_mode_write(u32 addr, u32 data, int len);
-extern u32 ilitek_ice_mode_read(u32 addr, int len);
+extern int ilitek_ice_mode_read(u32 addr, u32 *data, int len);
 extern int ilitek_ice_mode_ctrl(bool enable, bool mcu);
 extern void ilitek_tddi_ic_init(void);
 extern int ilitek_tddi_edge_palm_ctrl(u8 type);

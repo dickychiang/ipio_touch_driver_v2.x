@@ -502,7 +502,8 @@ static ssize_t ilitek_proc_rw_tp_reg_read(struct file *pFile, char __user *buf, 
 	}
 
 	if (type == read) {
-		read_data = ilitek_ice_mode_read(addr, sizeof(u32));
+		if (ilitek_ice_mode_read(addr, &read_data, sizeof(u32)) < 0)
+			ipio_err("Read data error\n");
 		ipio_info("READ:addr = 0x%06x, read = 0x%08x\n", addr, read_data);
 		size = snprintf(g_user_buf, PAGE_SIZE, "READ:addr = 0x%06x, read = 0x%08x\n", addr, read_data);
 	} else {
