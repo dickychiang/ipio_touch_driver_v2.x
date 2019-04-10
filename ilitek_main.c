@@ -22,7 +22,7 @@
 #include "ilitek.h"
 
 /* Debug level */
-s32 ipio_debug_level = DEBUG_OUTPUT;
+bool ipio_debug_level = DEBUG_OUTPUT;
 EXPORT_SYMBOL(ipio_debug_level);
 
 static struct workqueue_struct *esd_wq;
@@ -155,7 +155,7 @@ int ilitek_tddi_switch_mode(u8 *data)
 	if (ret < 0)
 		ipio_err("Switch mode failed\n");
 
-	ipio_debug(DEBUG_MAIN, "Actual TP mode = %d\n", idev->actual_tp_mode);
+	ipio_debug("Actual TP mode = %d\n", idev->actual_tp_mode);
 	atomic_set(&idev->tp_sw_mode, END);
 	return ret;
 }
@@ -187,7 +187,7 @@ int ilitek_tddi_wq_esd_spi_check(void)
 	u8 tx = SPI_WRITE, rx = 0;
 
 	idev->spi_write_then_read(idev->spi, &tx, 1, &rx, 1);
-	ipio_debug(DEBUG_MAIN, "spi esd check = 0x%x\n", rx);
+	ipio_debug("spi esd check = 0x%x\n", rx);
 	if (rx != SPI_ACK) {
 		ipio_err("rx = 0x%x\n", rx);
 		return -1;
@@ -197,7 +197,7 @@ int ilitek_tddi_wq_esd_spi_check(void)
 
 int ilitek_tddi_wq_esd_i2c_check(void)
 {
-	ipio_debug(DEBUG_MAIN, "");
+	ipio_debug("");
 	return 0;
 }
 
@@ -229,7 +229,7 @@ static int read_power_status(u8 *buf)
 	f->f_op->llseek(f, 0, SEEK_SET);
 	byte = f->f_op->read(f, buf, 20, &f->f_pos);
 
-	ipio_debug(DEBUG_MAIN, "Read %d bytes\n", (int)byte);
+	ipio_debug("Read %d bytes\n", (int)byte);
 
 	set_fs(old_fs);
 	filp_close(f, NULL);
@@ -242,18 +242,18 @@ static void ilitek_tddi_wq_bat_check(struct work_struct *work)
 	static int charge_mode;
 
 	read_power_status(str);
-	ipio_debug(DEBUG_MAIN, "Batter Status: %s\n", str);
+	ipio_debug("Batter Status: %s\n", str);
 
 	if (strstr(str, "Charging") != NULL || strstr(str, "Full") != NULL
 		|| strstr(str, "Fully charged") != NULL) {
 		if (charge_mode != 1) {
-			ipio_debug(DEBUG_MAIN, "Charging mode\n");
+			ipio_debug("Charging mode\n");
 			ilitek_tddi_ic_func_ctrl("plug", DISABLE);// plug in
 			charge_mode = 1;
 		}
 	} else {
 		if (charge_mode != 2) {
-			ipio_debug(DEBUG_MAIN, "Not charging mode\n");
+			ipio_debug("Not charging mode\n");
 			ilitek_tddi_ic_func_ctrl("plug", ENABLE);// plug out
 			charge_mode = 2;
 		}
@@ -272,13 +272,13 @@ void ilitek_tddi_wq_ctrl(int type, int ctrl)
 			}
 			idev->wq_esd_ctrl = ctrl;
 			if (ctrl == ENABLE) {
-				ipio_debug(DEBUG_MAIN, "execute esd check\n");
+				ipio_debug("execute esd check\n");
 				if (!queue_delayed_work(esd_wq, &esd_work, msecs_to_jiffies(WQ_ESD_DELAY)))
-					ipio_debug(DEBUG_MAIN, "esd check was already on queue\n");
+					ipio_debug("esd check was already on queue\n");
 			} else {
 				cancel_delayed_work_sync(&esd_work);
 				flush_workqueue(esd_wq);
-				ipio_debug(DEBUG_MAIN, "cancel esd wq\n");
+				ipio_debug("cancel esd wq\n");
 			}
 		}
 		break;
@@ -290,13 +290,13 @@ void ilitek_tddi_wq_ctrl(int type, int ctrl)
 			}
 			idev->wq_bat_ctrl = ctrl;
 			if (ctrl == ENABLE) {
-				ipio_debug(DEBUG_MAIN, "execute bat check\n");
+				ipio_debug("execute bat check\n");
 				if (!queue_delayed_work(bat_wq, &bat_work, msecs_to_jiffies(WQ_BAT_DELAY)))
-					ipio_debug(DEBUG_MAIN, "bat check was already on queue\n");
+					ipio_debug("bat check was already on queue\n");
 			} else {
 				cancel_delayed_work_sync(&bat_work);
 				flush_workqueue(bat_wq);
-				ipio_debug(DEBUG_MAIN, "cancel bat wq\n");
+				ipio_debug("cancel bat wq\n");
 			}
 		}
 		break;
@@ -513,7 +513,7 @@ void ilitek_tddi_report_handler(void)
 		break;
 	}
 
-	ipio_debug(DEBUG_MAIN, "Packget length = %d\n", rlen);
+	ipio_debug("Packget length = %d\n", rlen);
 
 	if (!rlen) {
 		ipio_err("Length of packet is invaild\n");
@@ -543,7 +543,7 @@ void ilitek_tddi_report_handler(void)
 		goto out;
 	}
 
-	ipio_debug(DEBUG_MAIN, "Read length = %d\n", (ret));
+	ipio_debug("Read length = %d\n", (ret));
 
 	rlen = ret;
 
@@ -560,7 +560,7 @@ void ilitek_tddi_report_handler(void)
 	}
 
 	pid = buf[0];
-	ipio_debug(DEBUG_MAIN, "Packet ID = %x\n", pid);
+	ipio_debug("Packet ID = %x\n", pid);
 
 	switch (pid) {
 	case P5_X_DEMO_PACKET_ID:

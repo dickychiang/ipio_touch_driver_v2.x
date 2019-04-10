@@ -124,7 +124,7 @@ static int host_download_dma_check(u32 start_addr, u32 block_size)
 		mdelay(1);
 		if (ilitek_ice_mode_read(0x048006, &busy, sizeof(u8)) < 0)
 			ipio_err("Read busy error\n");
-		ipio_debug(DEBUG_FW, "busy = %x\n", busy);
+		ipio_debug("busy = %x\n", busy);
 		if ((busy & 0x01) == 1)
 			break;
 		count--;
@@ -383,7 +383,7 @@ int ilitek_tddi_flash_read_int_flag(void)
 		if (ilitek_ice_mode_read(INTR1_ADDR & BIT(25), &data, sizeof(u32) < 0))
 			ipio_err("Read flash int flag error\n");
 
-		ipio_debug(DEBUG_FW, "int flag = %x\n", data);
+		ipio_debug("int flag = %x\n", data);
 		if (data)
 			break;
 	} while (--retry >= 0);
@@ -492,7 +492,7 @@ u32 ilitek_tddi_fw_read_hw_crc(u32 start, u32 end)
 		if (ilitek_ice_mode_read(0x048007, &busy, sizeof(u8)) < 0)
 			ipio_err("Read busy error\n");
 
-		ipio_debug(DEBUG_FW, "busy = %x\n", busy);
+		ipio_debug("busy = %x\n", busy);
 		if (((busy >> 1) & 0x01) == 0x01)
 			break;
 	} while (--retry >= 0);
@@ -540,7 +540,7 @@ int ilitek_tddi_fw_read_flash_data(u32 start, u32 end, u8 *data, int len)
 		data[index] = tmp;
 		index++;
 		precent = (i * 100) / end;
-		ipio_debug(DEBUG_FW, "Reading flash data .... %d%c", precent, '%');
+		ipio_debug("Reading flash data .... %d%c", precent, '%');
 	}
 
 	ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x1, 1); /* CS high */
@@ -1115,7 +1115,7 @@ static int ilitek_tddi_fw_hex_convert(u8 *phex, int size, u8 *pfw)
 		ex_addr = fbi[i].end;
 		data_crc = CalculateCRC32(fbi[i].start, fbi[i].len - 4, pfw);
 		hex_crc = pfw[ex_addr - 3] << 24 | pfw[ex_addr - 2] << 16 | pfw[ex_addr - 1] << 8 | pfw[ex_addr];
-		ipio_debug(DEBUG_FW, "data crc = %x, hex crc = %x\n", data_crc, hex_crc);
+		ipio_debug("data crc = %x, hex crc = %x\n", data_crc, hex_crc);
 		if (data_crc != hex_crc) {
 			ipio_err("Content of hex file is broken. (%d, %x, %x)\n",
 				i, data_crc, hex_crc);

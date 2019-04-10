@@ -113,7 +113,6 @@
 #define ENABLE_GESTURE			ENABLE
 #define REGULATOR_POWER			DISABLE
 #define TP_SUSPEND_PRIO			ENABLE
-#define DEBUG_OUTPUT			DEBUG_NONE /* DEBUG_ALL or DEBUG_NONE */
 
 /* Plaform compatibility */
 // #define CONFIG_PLAT_SPRD
@@ -130,25 +129,10 @@
 #define DUMP_IRAM_PATH			"/sdcard/iram_dump"
 
 /* Debug messages */
-#ifdef BIT
-#undef BIT
-#endif
-#define BIT(x)	(1 << (x))
+#define DEBUG_NONE	0
+#define DEBUG_ALL	1
+#define DEBUG_OUTPUT	DEBUG_NONE
 
-enum {
-	DEBUG_NONE = 0,
-	DEBUG_MAIN = BIT(0),
-	DEBUG_TOUCH = BIT(1),
-	DEBUG_IC = BIT(2),
-	DEBUG_FW = BIT(3),
-	DEBUG_MP = BIT(4),
-	DEBUG_I2C = BIT(5),
-	DEBUG_SPI = BIT(6),
-	DEBUG_PLAT = BIT(7),
-	DEBUG_ALL = ~0,
-};
-
-extern s32 ipio_debug_level;
 #define ipio_info(fmt, arg...)						\
 ({									\
 	pr_info("ILITEK: (%s, %d): " fmt, __func__, __LINE__, ##arg);	\
@@ -159,9 +143,10 @@ extern s32 ipio_debug_level;
 	pr_err("ILITEK: (%s, %d): " fmt, __func__, __LINE__, ##arg);	\
 })									\
 
-#define ipio_debug(level, fmt, arg...)					\
+extern bool ipio_debug_level;
+#define ipio_debug(fmt, arg...)						\
 do {									\
-	if (level & ipio_debug_level)					\
+	if (ipio_debug_level)						\
 	pr_info("ILITEK: (%s, %d): " fmt, __func__, __LINE__, ##arg);	\
 } while (0)
 

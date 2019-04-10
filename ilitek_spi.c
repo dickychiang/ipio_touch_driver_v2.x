@@ -176,7 +176,7 @@ static int core_rx_lock_check(int *ret_size)
 		status = (rxbuf[2] << 8) + rxbuf[3];
 		*ret_size = (rxbuf[0] << 8) + rxbuf[1];
 
-		ipio_debug(DEBUG_SPI, "Rx lock = 0x%x, size = %d\n", status, *ret_size);
+		ipio_debug("Rx lock = 0x%x, size = %d\n", status, *ret_size);
 
 		if (status == lock)
 			return 0;
@@ -211,7 +211,7 @@ static int core_tx_unlock_check(void)
 
 		status = (rxbuf[2] << 8) + rxbuf[3];
 
-		ipio_debug(DEBUG_SPI, "Tx unlock = 0x%x\n", status);
+		ipio_debug("Tx unlock = 0x%x\n", status);
 
 		if (status == unlock)
 			return 0;
@@ -625,7 +625,7 @@ static int ilitek_spi_probe(struct spi_device *spi)
 	idev->gesture_move_code = ilitek_tddi_move_gesture_code_iram;
 	idev->esd_recover = ilitek_tddi_wq_esd_spi_check;
 	idev->ges_recover = ilitek_tddi_touch_esd_gesture_iram;
-	idev->gesture_mode = P5_X_FW_GESTURE_NORMAL_MODE;
+	idev->gesture_mode = P5_X_FW_GESTURE_INFO_MODE;
 	idev->wtd_ctrl = ON;
 	idev->report = ENABLE;
 	idev->netlink = DISABLE;

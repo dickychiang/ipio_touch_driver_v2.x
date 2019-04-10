@@ -125,7 +125,7 @@ int ilitek_ice_mode_bit_mask_write(u32 addr, u32 mask, u32 value)
 	data &= (~mask);
 	data |= (value & mask);
 
-	ipio_debug(DEBUG_IC, "mask value data = %x\n", data);
+	ipio_debug("mask value data = %x\n", data);
 
 	ret = ilitek_ice_mode_write(addr, data, sizeof(u32));
 	if (ret < 0)
@@ -306,7 +306,7 @@ int ilitek_tddi_ic_watch_dog_ctrl(bool write, bool enable)
 		if (ilitek_ice_mode_read(TDDI_WDT_ACTIVE_ADDR, &ret, sizeof(u8)) < 0)
 			ipio_err("Read wdt active error\n");
 
-		ipio_debug(DEBUG_IC, "ret = %x\n", ret);
+		ipio_debug("ret = %x\n", ret);
 		if (enable) {
 			if (ret == TDDI_WDT_ON)
 				break;
@@ -686,7 +686,7 @@ int ilitek_tddi_ic_check_busy(int count, int delay)
 		idev->write(&cmd[1], sizeof(u8));
 		idev->read(&busy, sizeof(u8));
 
-		ipio_debug(DEBUG_IC, "busy = 0x%x\n", busy);
+		ipio_debug("busy = 0x%x\n", busy);
 
 		if (busy == rby) {
 			ipio_info("Check busy free\n");

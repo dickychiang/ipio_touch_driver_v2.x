@@ -102,10 +102,10 @@
 		ret;					\
 	})
 
-#define DUMP(level, fmt, arg...)		\
-	do {					\
-		if (level & ipio_debug_level)	\
-		pr_cont(fmt, ##arg);		\
+#define DUMP(fmt, arg...)		\
+	do {				\
+		if (ipio_debug_level)	\
+		pr_cont(fmt, ##arg);	\
 	} while (0)
 
 struct ini_file_data {
@@ -320,7 +320,7 @@ static void dump_benchmark_data(s32 *max_ptr, s32 *min_ptr)
 {
 	int i;
 
-	if (ipio_debug_level & DEBUG_MP) {
+	if (ipio_debug_level) {
 		ipio_info("Dump Benchmark Max\n");
 
 		for (i = 0; i < core_mp.frame_len; i++) {
@@ -343,7 +343,7 @@ void dump_node_type_buffer(s32 *node_ptr, u8 *name)
 {
 	int i;
 
-	if (ipio_debug_level & DEBUG_MP) {
+	if (ipio_debug_level) {
 		ipio_info("Dump NodeType\n");
 		for (i = 0; i < core_mp.frame_len; i++) {
 			pr_cont("%d, ", node_ptr[i]);
@@ -367,7 +367,7 @@ static int parser_get_ini_key_value(char *section, char *key, char *value)
 
 		if (strcmp(key, ilitek_ini_file_data[i].pKeyName) == 0) {
 			ipio_memcpy(value, ilitek_ini_file_data[i].pKeyValue, ilitek_ini_file_data[i].iKeyValueLen, PARSER_MAX_KEY_VALUE_LEN);
-			ipio_debug(DEBUG_MP, " value:%s , pKeyValue: %s\n", value, ilitek_ini_file_data[i].pKeyValue);
+			ipio_debug(" value:%s , pKeyValue: %s\n", value, ilitek_ini_file_data[i].pKeyValue);
 			ret = 0;
 			break;
 		}
@@ -673,7 +673,7 @@ static int parser_get_ini_phy_data(char *data, int fsize)
 				strcpy((char *)tmpSectionName, ini_buf + 1);
 				banchmark_flag = 0;
 				nodetype_flag = 0;
-				ipio_debug(DEBUG_MP, "Section Name: %s, Len: %d, offset = %d\n", tmpSectionName, n - 2, offset);
+				ipio_debug("Section Name: %s, Len: %d, offset = %d\n", tmpSectionName, n - 2, offset);
 				continue;
 			}
 		}
@@ -740,7 +740,7 @@ static int parser_get_ini_phy_data(char *data, int fsize)
 		ipio_memcpy(ilitek_ini_file_data[g_ini_items].pKeyValue,
 			   ini_buf + isEqualSign + 1, ilitek_ini_file_data[g_ini_items].iKeyValueLen, PARSER_MAX_KEY_VALUE_LEN);
 
-		ipio_debug(DEBUG_MP, "%s = %s\n", ilitek_ini_file_data[g_ini_items].pKeyName,
+		ipio_debug("%s = %s\n", ilitek_ini_file_data[g_ini_items].pKeyName,
 			ilitek_ini_file_data[g_ini_items].pKeyValue);
 
 		g_ini_items++;
@@ -1092,18 +1092,18 @@ static void mp_compare_cdc_show_result(int index, s32 *tmp, char *csv,
 	/* print X raw only */
 	for (x = 0; x < core_mp.xch_len; x++) {
 		if (x == 0) {
-			DUMP(DEBUG_MP, "\n %s ", desp);
+			DUMP("\n %s ", desp);
 			tmp_len += sprintf(csv + tmp_len, "\n	   %s ,", desp);
 		}
-		DUMP(DEBUG_MP, "  X_%d	,", (x+1));
+		DUMP("  X_%d	,", (x+1));
 		tmp_len += sprintf(csv + tmp_len, "	 X_%d  ,", (x+1));
 	}
 
-	DUMP(DEBUG_MP, "\n");
+	DUMP("\n");
 	tmp_len += sprintf(csv + tmp_len, "\n");
 
 	for (y = 0; y < core_mp.ych_len; y++) {
-		DUMP(DEBUG_MP, "  Y_%d	,", (y+1));
+		DUMP("  Y_%d	,", (y+1));
 		tmp_len += sprintf(csv + tmp_len, "	 Y_%d  ,", (y+1));
 
 		for (x = 0; x < core_mp.xch_len; x++) {
@@ -1112,11 +1112,11 @@ static void mp_compare_cdc_show_result(int index, s32 *tmp, char *csv,
 			/* In Short teset, we only identify if its value is low than min threshold. */
 			if (tItems[index].catalog == SHORT_TEST) {
 				if (tmp[shift] < min_ts[shift]) {
-					DUMP(DEBUG_MP, " #%7d ", tmp[shift]);
+					DUMP(" #%7d ", tmp[shift]);
 					tmp_len += sprintf(csv + tmp_len, "#%7d,", tmp[shift]);
 					mp_result = MP_FAIL;
 				} else {
-					DUMP(DEBUG_MP, " %7d ", tmp[shift]);
+					DUMP(" %7d ", tmp[shift]);
 					tmp_len += sprintf(csv + tmp_len, " %7d, ", tmp[shift]);
 				}
 				continue;
@@ -1124,24 +1124,24 @@ static void mp_compare_cdc_show_result(int index, s32 *tmp, char *csv,
 
 			if ((tmp[shift] <= max_ts[shift] && tmp[shift] >= min_ts[shift]) || (type != TYPE_JUGE)) {
 				if ((tmp[shift] == INT_MAX || tmp[shift] == INT_MIN) && (type == TYPE_BENCHMARK)) {
-					DUMP(DEBUG_MP, "%s", "BYPASS,");
+					DUMP("%s", "BYPASS,");
 					tmp_len += sprintf(csv + tmp_len, "BYPASS,");
 				} else {
-					DUMP(DEBUG_MP, " %7d ", tmp[shift]);
+					DUMP(" %7d ", tmp[shift]);
 					tmp_len += sprintf(csv + tmp_len, " %7d, ", tmp[shift]);
 				}
 			} else {
 				if (tmp[shift] > max_ts[shift]) {
-					DUMP(DEBUG_MP, " *%7d ", tmp[shift]);
+					DUMP(" *%7d ", tmp[shift]);
 					tmp_len += sprintf(csv + tmp_len, "*%7d,", tmp[shift]);
 				} else {
-					DUMP(DEBUG_MP, " #%7d ", tmp[shift]);
+					DUMP(" #%7d ", tmp[shift]);
 					tmp_len += sprintf(csv + tmp_len, "#%7d,", tmp[shift]);
 				}
 				mp_result = MP_FAIL;
 			}
 		}
-		DUMP(DEBUG_MP, "\n");
+		DUMP("\n");
 		tmp_len += sprintf(csv + tmp_len, "\n");
 	}
 
@@ -1290,8 +1290,8 @@ static int allnode_key_cdc_data(int index)
 
 	len = core_mp.key_len * 2;
 
-	ipio_debug(DEBUG_MP, "Read key's length = %d\n", len);
-	ipio_debug(DEBUG_MP, "core_mp.key_len = %d\n", core_mp.key_len);
+	ipio_debug("Read key's length = %d\n", len);
+	ipio_debug("core_mp.key_len = %d\n", core_mp.key_len);
 
 	if (len <= 0) {
 		ipio_err("Length is invalid\n");
@@ -1443,7 +1443,7 @@ static int mp_cdc_init_cmd_common(u8 *cmd, int len, int index)
 		if (strcmp(tItems[index].name, "noise_peak_to_peak_cut") == 0)
 			cmd[4] = 0x1;
 
-		ipio_debug(DEBUG_MP, "P2P CMD: %d,%d,%d,%d,%d\n",
+		ipio_debug("P2P CMD: %d,%d,%d,%d,%d\n",
 				cmd[0], cmd[1], cmd[2], cmd[3], cmd[4]);
 	}
 
@@ -1464,7 +1464,7 @@ static int allnode_open_cdc_data(int mode, int *buf)
 	/* Multipling by 2 is due to the 16 bit in each node */
 	len = (core_mp.xch_len * core_mp.ych_len * 2) + 2;
 
-	ipio_debug(DEBUG_MP, "Read X/Y Channel length = %d, mode = %d\n", len, mode);
+	ipio_debug("Read X/Y Channel length = %d, mode = %d\n", len, mode);
 
 	if (len <= 2) {
 		ipio_err("Length is invalid\n");
@@ -1585,7 +1585,7 @@ static int allnode_mutual_cdc_data(int index)
 	/* Multipling by 2 is due to the 16 bit in each node */
 	len = (core_mp.xch_len * core_mp.ych_len * 2) + 2;
 
-	ipio_debug(DEBUG_MP, "Read X/Y Channel length = %d\n", len);
+	ipio_debug("Read X/Y Channel length = %d\n", len);
 
 	if (len <= 2) {
 		ipio_err("Length is invalid\n");
@@ -1746,7 +1746,7 @@ static void compare_MaxMin_result(int index, s32 *data)
 
 static int create_mp_test_frame_buffer(int index, int frame_count)
 {
-	ipio_debug(DEBUG_MP, "Create MP frame buffers (index = %d), count = %d\n",
+	ipio_debug("Create MP frame buffers (index = %d), count = %d\n",
 			index, frame_count);
 
 	if (tItems[index].catalog == TX_RX_DELTA) {
@@ -1866,7 +1866,7 @@ static int mutual_test(int index)
 {
 	int i = 0, j = 0, x = 0, y = 0, ret = 0, get_frame_cont = 1;
 
-	ipio_debug(DEBUG_MP, "index = %d, name = %s, CMD = 0x%x, Frame Count = %d\n",
+	ipio_debug("index = %d, name = %s, CMD = 0x%x, Frame Count = %d\n",
 		index, tItems[index].name, tItems[index].cmd, tItems[index].frame_count);
 
 	/*
@@ -1903,8 +1903,7 @@ static int mutual_test(int index)
 	if (tItems[index].spec_option == BENCHMARK) {
 		parser_ini_benchmark(tItems[index].bench_mark_max, tItems[index].bench_mark_min,
 								tItems[index].type_option, tItems[index].desp, core_mp.frame_len);
-		if (ipio_debug_level && DEBUG_MP > 0)
-			dump_benchmark_data(tItems[index].bench_mark_max, tItems[index].bench_mark_min);
+		dump_benchmark_data(tItems[index].bench_mark_max, tItems[index].bench_mark_min);
 	}
 
 	for (i = 0; i < get_frame_cont; i++) {
@@ -1948,7 +1947,7 @@ static int open_test_sp(int index)
 	int Charge_AA = 0, Charge_Border = 0, Charge_Notch = 0, full_open_rate = 0;
 	char str[512] = {0};
 
-	ipio_debug(DEBUG_MP, "index = %d, name = %s, CMD = 0x%x, Frame Count = %d\n",
+	ipio_debug("index = %d, name = %s, CMD = 0x%x, Frame Count = %d\n",
 		index, tItems[index].name, tItems[index].cmd, tItems[index].frame_count);
 
 	/*
@@ -2014,13 +2013,11 @@ static int open_test_sp(int index)
 	if (tItems[index].spec_option == BENCHMARK) {
 		parser_ini_benchmark(tItems[index].bench_mark_max, tItems[index].bench_mark_min,
 							tItems[index].type_option, tItems[index].desp, core_mp.frame_len);
-		if (ipio_debug_level && DEBUG_MP > 0)
-			dump_benchmark_data(tItems[index].bench_mark_max, tItems[index].bench_mark_min);
+		dump_benchmark_data(tItems[index].bench_mark_max, tItems[index].bench_mark_min);
 	}
 
 	parser_ini_nodetype(tItems[index].node_type, NODE_TYPE_KEY_NAME, core_mp.frame_len);
-	if (ipio_debug_level && DEBUG_MP > 0)
-		dump_node_type_buffer(tItems[index].node_type, "node type");
+	dump_node_type_buffer(tItems[index].node_type, "node type");
 
 	ret = parser_get_int_data(tItems[index].desp, "charge_aa", str);
 	if (ret || ret == 0)
@@ -2043,7 +2040,7 @@ static int open_test_sp(int index)
 		goto out;
 	}
 
-	ipio_debug(DEBUG_MP, "open_test_sp: frame_cont %d, AA %d, Border %d, Notch %d, full_open_rate %d\n",
+	ipio_debug("open_test_sp: frame_cont %d, AA %d, Border %d, Notch %d, full_open_rate %d\n",
 			tItems[index].frame_count, Charge_AA, Charge_Border, Charge_Notch, full_open_rate);
 
 	for (i = 0; i < tItems[index].frame_count; i++) {
@@ -2104,10 +2101,8 @@ static int open_test_sp(int index)
 			}
 		}
 
-		if (ipio_debug_level & DEBUG_MP) {
-			ilitek_dump_data(open[i].charg_rate, 10, core_mp.frame_len, core_mp.xch_len, "origin charge rate");
-			ilitek_dump_data(open[i].full_Open, 10, core_mp.frame_len, core_mp.xch_len, "origin full open");
-		}
+		ilitek_dump_data(open[i].charg_rate, 10, core_mp.frame_len, core_mp.xch_len, "origin charge rate");
+		ilitek_dump_data(open[i].full_Open, 10, core_mp.frame_len, core_mp.xch_len, "origin full open");
 
 		addr = 0;
 		for (y = 0; y < core_mp.ych_len; y++) {
@@ -2120,8 +2115,7 @@ static int open_test_sp(int index)
 			}
 		}
 
-		if (ipio_debug_level & DEBUG_MP)
-			ilitek_dump_data(&tItems[index].buf[(i * core_mp.frame_len)], 10, core_mp.frame_len, core_mp.xch_len, "after full_open_rate_compare");
+		ilitek_dump_data(&tItems[index].buf[(i * core_mp.frame_len)], 10, core_mp.frame_len, core_mp.xch_len, "after full_open_rate_compare");
 
 		addr = 0;
 		for (y = 0; y < core_mp.ych_len; y++) {
@@ -2131,8 +2125,7 @@ static int open_test_sp(int index)
 			}
 		}
 
-		if (ipio_debug_level & DEBUG_MP)
-			ilitek_dump_data(&tItems[index].buf[(i * core_mp.frame_len)], 10, core_mp.frame_len, core_mp.xch_len, "after compare charge rate");
+		ilitek_dump_data(&tItems[index].buf[(i * core_mp.frame_len)], 10, core_mp.frame_len, core_mp.xch_len, "after compare charge rate");
 
 		compare_MaxMin_result(index, &tItems[index].buf[(i * core_mp.frame_len)]);
 	}
@@ -2201,8 +2194,7 @@ static int open_test_cap(int index)
 	if (tItems[index].spec_option == BENCHMARK) {
 		parser_ini_benchmark(tItems[index].bench_mark_max, tItems[index].bench_mark_min,
 							tItems[index].type_option, tItems[index].desp, core_mp.frame_len);
-		if (ipio_debug_level && DEBUG_MP > 0)
-			dump_benchmark_data(tItems[index].bench_mark_max, tItems[index].bench_mark_min);
+		dump_benchmark_data(tItems[index].bench_mark_max, tItems[index].bench_mark_min);
 	}
 
 	ret = parser_get_int_data(tItems[index].desp, "gain", str);
@@ -2222,7 +2214,7 @@ static int open_test_cap(int index)
 		goto out;
 	}
 
-	ipio_debug(DEBUG_MP, "open_test_c: frame_cont = %d, gain = %d, tvch = %d, tvcl = %d\n",
+	ipio_debug("open_test_c: frame_cont = %d, gain = %d, tvch = %d, tvcl = %d\n",
 			tItems[index].frame_count, open_c_spec.gain, open_c_spec.tvch, open_c_spec.tvcl);
 
 	for (i = 0; i < tItems[index].frame_count; i++) {
@@ -2277,7 +2269,7 @@ static int key_test(int index)
 {
 	int i, j = 0, ret = 0;
 
-	ipio_debug(DEBUG_MP, "Item = %s, CMD = 0x%x, Frame Count = %d\n",
+	ipio_debug("Item = %s, CMD = 0x%x, Frame Count = %d\n",
 		tItems[index].name, tItems[index].cmd, tItems[index].frame_count);
 
 	if (tItems[index].frame_count == 0) {
@@ -2372,9 +2364,9 @@ static int mp_test_data_sort_average(s32 *oringin_data, int index, s32 *avg_resu
 
 	u32up_frame = tItems[index].frame_count * tItems[index].highest_percentage / 100;
 	u32down_frame = tItems[index].frame_count * tItems[index].lowest_percentage / 100;
-	ipio_debug(DEBUG_MP, "Up=%d, Down=%d -%s\n", u32up_frame, u32down_frame, tItems[index].desp);
+	ipio_debug("Up=%d, Down=%d -%s\n", u32up_frame, u32down_frame, tItems[index].desp);
 
-	if (ipio_debug_level & DEBUG_MP) {
+	if (ipio_debug_level) {
 		pr_cont("\n[Show Original frist%d and last%d node data]\n", len, len);
 		for (i = 0; i < core_mp.frame_len; i++) {
 			for (j = 0 ; j < tItems[index].frame_count ; j++) {
@@ -2400,7 +2392,7 @@ static int mp_test_data_sort_average(s32 *oringin_data, int index, s32 *avg_resu
 		}
 	}
 
-	if (ipio_debug_level & DEBUG_MP) {
+	if (ipio_debug_level) {
 		pr_cont("\n[After sorting frist%d and last%d node data]\n", len, len);
 		for (i = 0; i < core_mp.frame_len; i++) {
 			for (j = u32down_frame; j < tItems[index].frame_count - u32up_frame; j++) {
@@ -2420,7 +2412,7 @@ static int mp_test_data_sort_average(s32 *oringin_data, int index, s32 *avg_resu
 		avg_result[i] = u32sum_raw_data[i] / (tItems[index].frame_count - u32down_frame - u32up_frame);
 	}
 
-	if (ipio_debug_level & DEBUG_MP) {
+	if (ipio_debug_level) {
 		pr_cont("\n[Average result frist%d and last%d node data]\n", len, len);
 		for (i = 0; i < core_mp.frame_len; i++) {
 			if ((i < len) || (i >= (core_mp.frame_len-len)))
@@ -2660,19 +2652,19 @@ static void mp_show_result(const char *csv_path)
 		/* Show test result as below */
 		if (tItems[i].catalog == KEY_TEST) {
 			for (x = 0; x < core_mp.key_len; x++) {
-				DUMP(DEBUG_MP, "KEY_%02d ", x);
+				DUMP("KEY_%02d ", x);
 				csv_len += sprintf(csv + csv_len, "KEY_%02d,", x);
 			}
 
-			DUMP(DEBUG_MP, "\n");
+			DUMP("\n");
 			csv_len += sprintf(csv + csv_len, "\n");
 
 			for (y = 0; y < core_mp.key_len; y++) {
-				DUMP(DEBUG_MP, " %3d   ", tItems[i].buf[y]);
+				DUMP(" %3d   ", tItems[i].buf[y]);
 				csv_len += sprintf(csv + csv_len, " %3d, ", tItems[i].buf[y]);
 			}
 
-			DUMP(DEBUG_MP, "\n");
+			DUMP("\n");
 			csv_len += sprintf(csv + csv_len, "\n");
 		} else if (tItems[i].catalog == TX_RX_DELTA) {
 			for (j = 0; j < core_mp.frame_len; j++) {
@@ -2901,7 +2893,7 @@ static void mp_test_run(char *item)
 		return;
 	}
 
-	ipio_debug(DEBUG_MP, "Test item = %s\n", item);
+	ipio_debug("Test item = %s\n", item);
 
 	for (i = 0; i < MP_TEST_ITEM; i++) {
 		if (strncmp(item, tItems[i].desp, strlen(item)) == 0) {
@@ -2951,7 +2943,7 @@ static void mp_test_run(char *item)
 				core_mp.RxDeltaMax = katoi(str);
 				parser_get_int_data(item, "rx min", str);
 				core_mp.RxDeltaMin = katoi(str);
-				ipio_debug(DEBUG_MP, "%s: Tx Max = %d, Tx Min = %d, Rx Max = %d,  Rx Min = %d\n",
+				ipio_debug("%s: Tx Max = %d, Tx Min = %d, Rx Max = %d,  Rx Min = %d\n",
 						tItems[i].desp, core_mp.TxDeltaMax, core_mp.TxDeltaMin,
 						core_mp.RxDeltaMax, core_mp.RxDeltaMin);
 			} else {
@@ -2964,10 +2956,10 @@ static void mp_test_run(char *item)
 			parser_get_int_data(item, "frame count", str);
 			tItems[i].frame_count = katoi(str);
 
-			ipio_debug(DEBUG_MP, "%s: run = %d, max = %d, min = %d, frame_count = %d\n", tItems[i].desp,
+			ipio_debug("%s: run = %d, max = %d, min = %d, frame_count = %d\n", tItems[i].desp,
 					tItems[i].run, tItems[i].max, tItems[i].min, tItems[i].frame_count);
 
-			ipio_debug(DEBUG_MP, "v_tdf_1 = %d, v_tdf_2 = %d, h_tdf_1 = %d, h_tdf_2 = %d\n", tItems[i].v_tdf_1,
+			ipio_debug("v_tdf_1 = %d, v_tdf_2 = %d, h_tdf_1 = %d, h_tdf_2 = %d\n", tItems[i].v_tdf_1,
 					tItems[i].v_tdf_2, tItems[i].h_tdf_1, tItems[i].h_tdf_2);
 
 			if (!tItems[i].run)
