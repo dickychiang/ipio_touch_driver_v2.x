@@ -584,7 +584,7 @@ struct ilitek_tddi_dev {
 	bool debug_node_open;
 	int debug_data_frame;
 	wait_queue_head_t inq;
-	unsigned char debug_buf[1024][2048];
+	unsigned char **debug_buf;
 	int raw_count;
 	int delta_count;
 	int bg_count;

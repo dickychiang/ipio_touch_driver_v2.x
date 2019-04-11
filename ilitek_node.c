@@ -676,7 +676,6 @@ static ssize_t ilitek_proc_debug_message_read(struct file *filp, char __user *bu
 	}
 
 out:
-
 	mutex_unlock(&idev->debug_mutex);
 	mutex_unlock(&idev->debug_read_mutex);
 	ipio_vfree((void **)&tmpbuf);
