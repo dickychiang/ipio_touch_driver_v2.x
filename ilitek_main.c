@@ -668,6 +668,8 @@ int ilitek_tddi_init(void)
 		return -ENODEV;
 	}
 
+	ilitek_ice_mode_ctrl(DISABLE, OFF);
+
 	ilitek_tddi_fw_read_flash_info(idev->fw_upgrade_mode);
 
 	fw_boot_th = kthread_run(ilitek_tddi_fw_upgrade_handler, NULL, "ili_fw_boot");
