@@ -35,7 +35,7 @@ void ilitek_plat_tp_reset(void)
 {
 	ipio_info("edge delay = %d\n", idev->rst_edge_delay);
 	tpd_gpio_output(idev->tp_rst, 1);
-	mdelay(10);
+	mdelay(1);
 	tpd_gpio_output(idev->tp_rst, 0);
 	mdelay(5);
 	tpd_gpio_output(idev->tp_rst, 1);
