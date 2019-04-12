@@ -28,38 +28,39 @@ void ilitek_dump_data(void *data, int type, int len, int row_len, const char *na
 	u8 *p8 = NULL;
 	s32 *p32 = NULL;
 
+	if (!ipio_debug_level)
+		return;
+
 	if (row_len > 0)
 		row = row_len;
 
-	if (ipio_debug_level & DEBUG_ALL) {
-		if (data == NULL) {
-			ipio_err("The data going to dump is NULL\n");
-			return;
-		}
-
-		pr_cont("\n\n");
-		pr_cont("ILITEK: Dump %s data\n", name);
-		pr_cont("ILITEK: ");
-
-		if (type == 8)
-			p8 = (u8 *) data;
-		if (type == 32 || type == 10)
-			p32 = (s32 *) data;
-
-		for (i = 0; i < len; i++) {
-			if (type == 8)
-				pr_cont(" %4x ", p8[i]);
-			else if (type == 32)
-				pr_cont(" %4x ", p32[i]);
-			else if (type == 10)
-				pr_cont(" %4d ", p32[i]);
-			if ((i % row) == row - 1) {
-				pr_cont("\n");
-				pr_cont("ILITEK: ");
-			}
-		}
-		pr_cont("\n\n");
+	if (data == NULL) {
+		ipio_err("The data going to dump is NULL\n");
+		return;
 	}
+
+	pr_cont("\n\n");
+	pr_cont("ILITEK: Dump %s data\n", name);
+	pr_cont("ILITEK: ");
+
+	if (type == 8)
+		p8 = (u8 *) data;
+	if (type == 32 || type == 10)
+		p32 = (s32 *) data;
+
+	for (i = 0; i < len; i++) {
+		if (type == 8)
+			pr_cont(" %4x ", p8[i]);
+		else if (type == 32)
+			pr_cont(" %4x ", p32[i]);
+		else if (type == 10)
+			pr_cont(" %4d ", p32[i]);
+		if ((i % row) == row - 1) {
+			pr_cont("\n");
+			pr_cont("ILITEK: ");
+		}
+	}
+	pr_cont("\n\n");
 }
 
 static void dma_clear_reg_setting(void)
@@ -280,7 +281,7 @@ int ilitek_tddi_move_gesture_code_iram(int mode)
 		if ((idev->read(cmd, 1)) < 0)
 			ipio_err("read gesture ready byte error\n");
 
-		ipio_debug(DEBUG_TOUCH, "gesture ready byte = 0x%x\n", cmd[0]);
+		ipio_debug("gesture ready byte = 0x%x\n", cmd[0]);
 		if (cmd[0] == 0x91) {
 			ipio_info("Gesture check fw ready\n");
 			break;
@@ -340,7 +341,8 @@ void ilitek_tddi_touch_esd_gesture_flash(void)
 
 	/* polling another specific register to see if gesutre is enabled properly */
 	do {
-		answer = ilitek_ice_mode_read(I2C_ESD_GESTURE_PWD_ADDR, sizeof(u32));
+		if (ilitek_ice_mode_read(I2C_ESD_GESTURE_PWD_ADDR, &answer, sizeof(u32)) < 0)
+			ipio_err("Read gesture answer error\n");
 		if (answer != I2C_ESD_GESTURE_RUN)
 			ipio_info("answer = 0x%x != (0x%x)\n", answer, I2C_ESD_GESTURE_RUN);
 		msleep(10);
@@ -386,7 +388,9 @@ void ilitek_tddi_touch_esd_gesture_iram(void)
 
 	/* polling another specific register to see if gesutre is enabled properly */
 	do {
-		answer = ilitek_ice_mode_read(SPI_ESD_GESTURE_PWD_ADDR, sizeof(u32));
+		if (ilitek_ice_mode_read(SPI_ESD_GESTURE_PWD_ADDR, &answer, sizeof(u32)) < 0)
+			ipio_err("Read gesture answer error\n");
+
 		if (answer != SPI_ESD_GESTURE_RUN)
 			ipio_info("answer = 0x%x != (0x%x)\n", answer, SPI_ESD_GESTURE_RUN);
 		msleep(10);
@@ -411,12 +415,61 @@ void ilitek_tddi_touch_esd_gesture_iram(void)
 
 }
 
+int ilitek_tddi_debug_report_alloc(void)
+{
+	int i, ret = 0;
+	int row_size = 1 * K + 1, col_size = 2 * K + 1;
+
+	if (!idev->debug_node_open && !idev->debug_buf)
+		return ret;
+
+	if (!idev->debug_node_open && idev->debug_buf != NULL)
+		goto out;
+
+	if (idev->debug_node_open && !idev->debug_buf) {
+		idev->debug_buf = (unsigned char **)kzalloc(row_size * sizeof(unsigned char *), GFP_KERNEL);
+		if (ERR_ALLOC_MEM(idev->debug_buf)) {
+			ipio_err("Failed to allocate debug_buf mem, %ld\n", PTR_ERR(idev->debug_buf));
+			ret = -ENOMEM;
+			goto out;
+		}
+
+		for (i = 0; i < row_size; i++) {
+			idev->debug_buf[i] = (unsigned char *)kzalloc(col_size * sizeof(unsigned char), GFP_KERNEL);
+			if (ERR_ALLOC_MEM(idev->debug_buf[i])) {
+				ipio_err("Failed to allocate debug_buf[%d] mem, %ld\n", i, PTR_ERR(idev->debug_buf[i]));
+				ret = -ENOMEM;
+				goto out;
+			}
+		}
+	}
+	return ret;
+
+out:
+	/* Note that it might be freed by next touch event */
+	if (idev->debug_buf != NULL) {
+		idev->debug_data_frame = 0;
+		for (i = 0; i < row_size; i++) {
+			if (idev->debug_buf[i] != NULL) {
+				kfree(idev->debug_buf[i]);
+				idev->debug_buf[i] = NULL;
+			}
+		}
+		kfree(idev->debug_buf);
+		idev->debug_buf = NULL;
+	}
+	return ret;
+}
+
 static void ilitek_tddi_touch_send_debug_data(u8 *buf, int len)
 {
-	if (!idev->netlink && !idev->debug_node_open)
-		return;
-
 	mutex_lock(&idev->debug_mutex);
+
+	if (ilitek_tddi_debug_report_alloc() < 0)
+		goto out;
+
+	if (!idev->netlink && !idev->debug_node_open)
+		goto out;
 
 	/* Send data to netlink */
 	if (idev->netlink) {
@@ -430,7 +483,7 @@ static void ilitek_tddi_touch_send_debug_data(u8 *buf, int len)
 		ipio_memcpy(idev->debug_buf[idev->debug_data_frame], buf, len, 2048);
 		idev->debug_data_frame++;
 		if (idev->debug_data_frame > 1)
-			ipio_debug(DEBUG_TOUCH, "idev->debug_data_frame = %d\n", idev->debug_data_frame);
+			ipio_debug("idev->debug_data_frame = %d\n", idev->debug_data_frame);
 		if (idev->debug_data_frame > 1023) {
 			ipio_err("idev->debug_data_frame = %d > 1024\n",
 				idev->debug_data_frame);
@@ -446,7 +499,7 @@ out:
 
 void ilitek_tddi_touch_press(u16 x, u16 y, u16 pressure, u16 id)
 {
-	ipio_debug(DEBUG_TOUCH, "Touch Press: id = %d, x = %d, y = %d, p = %d\n", id, x, y, pressure);
+	ipio_debug("Touch Press: id = %d, x = %d, y = %d, p = %d\n", id, x, y, pressure);
 
 	if (MT_B_TYPE) {
 		input_mt_slot(idev->input, id);
@@ -471,7 +524,7 @@ void ilitek_tddi_touch_press(u16 x, u16 y, u16 pressure, u16 id)
 
 void ilitek_tddi_touch_release(u16 x, u16 y, u16 id)
 {
-	ipio_debug(DEBUG_TOUCH, "Touch Release: id = %d, x = %d, y = %d\n", id, x, y);
+	ipio_debug("Touch Release: id = %d, x = %d, y = %d\n", id, x, y);
 
 	if (MT_B_TYPE) {
 		input_mt_slot(idev->input, id);
@@ -529,13 +582,13 @@ void ilitek_tddi_report_ap_mode(u8 *buf, int len)
 		else
 			touch_info[idev->finger].pressure = 1;
 
-		ipio_debug(DEBUG_TOUCH, "original x = %d, y = %d\n", xop, yop);
+		ipio_debug("original x = %d, y = %d\n", xop, yop);
 		idev->finger++;
 		if (MT_B_TYPE)
 			idev->curt_touch[i] = 1;
 	}
 
-	ipio_debug(DEBUG_TOUCH, "figner number = %d, LastTouch = %d\n", idev->finger, idev->last_touch);
+	ipio_debug("figner number = %d, LastTouch = %d\n", idev->finger, idev->last_touch);
 
 	if (idev->finger) {
 		if (MT_B_TYPE) {
@@ -604,13 +657,13 @@ void ilitek_tddi_report_debug_mode(u8 *buf, int len)
 		else
 			touch_info[idev->finger].pressure = 1;
 
-		ipio_debug(DEBUG_TOUCH, "original x = %d, y = %d\n", xop, yop);
+		ipio_debug("original x = %d, y = %d\n", xop, yop);
 		idev->finger++;
 		if (MT_B_TYPE)
 			idev->curt_touch[i] = 1;
 	}
 
-	ipio_debug(DEBUG_TOUCH, "figner number = %d, LastTouch = %d\n", idev->finger, idev->last_touch);
+	ipio_debug("figner number = %d, LastTouch = %d\n", idev->finger, idev->last_touch);
 
 	if (idev->finger) {
 		if (MT_B_TYPE) {
@@ -691,6 +744,7 @@ void ilitek_tddi_report_gesture_mode(u8 *buf, int len)
 	default:
 		break;
 	}
+	ilitek_tddi_touch_send_debug_data(buf, len);
 }
 
 void ilitek_tddi_report_i2cuart_mode(u8 *buf, int len)
@@ -701,7 +755,7 @@ void ilitek_tddi_report_i2cuart_mode(u8 *buf, int len)
 	int uart_len;
 	u8 *uart_buf, *total_buf;
 
-	ipio_debug(DEBUG_TOUCH, "data[3] = %x, type = %x, actual_len = %d\n",
+	ipio_debug("data[3] = %x, type = %x, actual_len = %d\n",
 					buf[3], type, actual_len);
 
 	need_read_len = buf[1] * buf[2];
@@ -714,12 +768,12 @@ void ilitek_tddi_report_i2cuart_mode(u8 *buf, int len)
 		one_data_bytes = 4;
 	}
 
-	need_read_len *=  one_data_bytes + 1;
-	ipio_debug(DEBUG_TOUCH, "need_read_len = %d  one_data_bytes = %d\n", need_read_len, one_data_bytes);
+	need_read_len =  need_read_len * one_data_bytes + 1;
+	ipio_debug("need_read_len = %d  one_data_bytes = %d\n", need_read_len, one_data_bytes);
 
 	if (need_read_len > actual_len) {
 		uart_len = need_read_len - actual_len;
-		ipio_debug(DEBUG_TOUCH, "uart len = %d\n", uart_len);
+		ipio_debug("uart len = %d\n", uart_len);
 
 		uart_buf = kcalloc(uart_len, sizeof(u8), GFP_KERNEL);
 		if (ERR_ALLOC_MEM(uart_buf)) {

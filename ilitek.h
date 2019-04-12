@@ -113,7 +113,6 @@
 #define ENABLE_GESTURE			ENABLE
 #define REGULATOR_POWER			DISABLE
 #define TP_SUSPEND_PRIO			ENABLE
-#define DEBUG_OUTPUT			DEBUG_NONE /* DEBUG_ALL or DEBUG_NONE */
 
 /* Plaform compatibility */
 // #define CONFIG_PLAT_SPRD
@@ -130,25 +129,10 @@
 #define DUMP_IRAM_PATH			"/sdcard/iram_dump"
 
 /* Debug messages */
-#ifdef BIT
-#undef BIT
-#endif
-#define BIT(x)	(1 << (x))
+#define DEBUG_NONE	0
+#define DEBUG_ALL	1
+#define DEBUG_OUTPUT	DEBUG_NONE
 
-enum {
-	DEBUG_NONE = 0,
-	DEBUG_MAIN = BIT(0),
-	DEBUG_TOUCH = BIT(1),
-	DEBUG_IC = BIT(2),
-	DEBUG_FW = BIT(3),
-	DEBUG_MP = BIT(4),
-	DEBUG_I2C = BIT(5),
-	DEBUG_SPI = BIT(6),
-	DEBUG_PLAT = BIT(7),
-	DEBUG_ALL = ~0,
-};
-
-extern s32 ipio_debug_level;
 #define ipio_info(fmt, arg...)						\
 ({									\
 	pr_info("ILITEK: (%s, %d): " fmt, __func__, __LINE__, ##arg);	\
@@ -159,9 +143,10 @@ extern s32 ipio_debug_level;
 	pr_err("ILITEK: (%s, %d): " fmt, __func__, __LINE__, ##arg);	\
 })									\
 
-#define ipio_debug(level, fmt, arg...)					\
+extern bool ipio_debug_level;
+#define ipio_debug(fmt, arg...)						\
 do {									\
-	if (level & ipio_debug_level)					\
+	if (ipio_debug_level)						\
 	pr_info("ILITEK: (%s, %d): " fmt, __func__, __LINE__, ##arg);	\
 } while (0)
 
@@ -486,7 +471,6 @@ enum TP_WQ_TYPE {
 #define P5_X_FW_DEMO_MODE		0x00
 #define P5_X_FW_TEST_MODE		0x01
 #define P5_X_FW_DEBUG_MODE		0x02
-#define P5_X_FW_I2CUART_MODE		0x03
 #define P5_X_FW_DEMO_DEBUG_INFO_MODE	0x04
 #define P5_X_FW_SOP_FLOW_MODE		0xE0
 #define P5_X_FW_ESD_MODE		0xFA
@@ -513,7 +497,7 @@ enum TP_WQ_TYPE {
 #define TDDI_WDT_ON			0xA5
 #define TDDI_WDT_OFF			0x5A
 
-/* Chipes */
+/* Chips */
 #define TDDI_PID_ADDR			0x4009C
 #define TDDI_OTP_ID_ADDR		0x400A0
 #define TDDI_ANA_ID_ADDR		0x400A4
@@ -610,6 +594,8 @@ struct ilitek_tddi_dev {
 	int fw_upgrade_mode;
 	bool wtd_ctrl;
 	bool do_otp_check;
+	bool fw_uart_en;
+	bool force_fw_update;
 
 	atomic_t irq_stat;
 	atomic_t tp_reset;
@@ -623,7 +609,8 @@ struct ilitek_tddi_dev {
 
 	int (*write)(void *data, int len);
 	int (*read)(void *data, int len);
-	int (*spi_write_then_read)(struct spi_device *spi, const void *txbuf, unsigned n_tx, void *rxbuf, unsigned n_rx);
+	int (*spi_write_then_read)(struct spi_device *spi, const void *txbuf,
+				unsigned n_tx, void *rxbuf, unsigned n_rx);
 	int (*mp_move_code)(void);
 	int (*gesture_move_code)(int mode);
 	int (*esd_recover)(void);
@@ -742,7 +729,7 @@ extern int ilitek_tddi_ic_get_fw_ver(void);
 extern int ilitek_tddi_ic_get_info(void);
 extern int ilitek_ice_mode_bit_mask_write(u32 addr, u32 mask, u32 value);
 extern int ilitek_ice_mode_write(u32 addr, u32 data, int len);
-extern u32 ilitek_ice_mode_read(u32 addr, int len);
+extern int ilitek_ice_mode_read(u32 addr, u32 *data, int len);
 extern int ilitek_ice_mode_ctrl(bool enable, bool mcu);
 extern void ilitek_tddi_ic_init(void);
 extern int ilitek_tddi_edge_palm_ctrl(u8 type);

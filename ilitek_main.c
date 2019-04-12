@@ -22,7 +22,7 @@
 #include "ilitek.h"
 
 /* Debug level */
-s32 ipio_debug_level = DEBUG_OUTPUT;
+bool ipio_debug_level = DEBUG_OUTPUT;
 EXPORT_SYMBOL(ipio_debug_level);
 
 static struct workqueue_struct *esd_wq;
@@ -63,7 +63,17 @@ int ilitek_tddi_mp_test_handler(char *apk, bool lcm_on)
 	ret = ilitek_tddi_mp_test_main(apk, lcm_on);
 
 out:
-	/* Set tp as demo mode and reload code if it's iram. */
+	/*
+	 * If there's running mp test with lcm off, we suspose that
+	 * users will soon call resume from suspend. TP mode will be changed
+	 * from MP to AP mode until resume finished.
+	 */
+	if (!lcm_on) {
+		atomic_set(&idev->mp_stat, DISABLE);
+		mutex_unlock(&idev->touch_mutex);
+		return ret;
+	}
+
 	idev->actual_tp_mode = P5_X_FW_DEMO_MODE;
 	if (idev->fw_upgrade_mode == UPGRADE_IRAM)
 		ilitek_tddi_fw_upgrade_handler(NULL);
@@ -93,9 +103,6 @@ int ilitek_tddi_switch_mode(u8 *data)
 	idev->actual_tp_mode = mode;
 
 	switch (idev->actual_tp_mode) {
-	case P5_X_FW_I2CUART_MODE:
-		ipio_info("Not implemented yet\n");
-		break;
 	case P5_X_FW_DEMO_MODE:
 		ipio_info("Switch to Demo mode\n");
 		cmd[0] = P5_X_MODE_CONTROL;
@@ -148,7 +155,7 @@ int ilitek_tddi_switch_mode(u8 *data)
 	if (ret < 0)
 		ipio_err("Switch mode failed\n");
 
-	ipio_debug(DEBUG_MAIN, "Actual TP mode = %d\n", idev->actual_tp_mode);
+	ipio_debug("Actual TP mode = %d\n", idev->actual_tp_mode);
 	atomic_set(&idev->tp_sw_mode, END);
 	return ret;
 }
@@ -180,7 +187,7 @@ int ilitek_tddi_wq_esd_spi_check(void)
 	u8 tx = SPI_WRITE, rx = 0;
 
 	idev->spi_write_then_read(idev->spi, &tx, 1, &rx, 1);
-	ipio_debug(DEBUG_MAIN, "spi esd check = 0x%x\n", rx);
+	ipio_debug("spi esd check = 0x%x\n", rx);
 	if (rx != SPI_ACK) {
 		ipio_err("rx = 0x%x\n", rx);
 		return -1;
@@ -190,7 +197,7 @@ int ilitek_tddi_wq_esd_spi_check(void)
 
 int ilitek_tddi_wq_esd_i2c_check(void)
 {
-	ipio_debug(DEBUG_MAIN, "");
+	ipio_debug("");
 	return 0;
 }
 
@@ -222,7 +229,7 @@ static int read_power_status(u8 *buf)
 	f->f_op->llseek(f, 0, SEEK_SET);
 	byte = f->f_op->read(f, buf, 20, &f->f_pos);
 
-	ipio_debug(DEBUG_MAIN, "Read %d bytes\n", (int)byte);
+	ipio_debug("Read %d bytes\n", (int)byte);
 
 	set_fs(old_fs);
 	filp_close(f, NULL);
@@ -235,18 +242,18 @@ static void ilitek_tddi_wq_bat_check(struct work_struct *work)
 	static int charge_mode;
 
 	read_power_status(str);
-	ipio_debug(DEBUG_MAIN, "Batter Status: %s\n", str);
+	ipio_debug("Batter Status: %s\n", str);
 
 	if (strstr(str, "Charging") != NULL || strstr(str, "Full") != NULL
 		|| strstr(str, "Fully charged") != NULL) {
 		if (charge_mode != 1) {
-			ipio_debug(DEBUG_MAIN, "Charging mode\n");
+			ipio_debug("Charging mode\n");
 			ilitek_tddi_ic_func_ctrl("plug", DISABLE);// plug in
 			charge_mode = 1;
 		}
 	} else {
 		if (charge_mode != 2) {
-			ipio_debug(DEBUG_MAIN, "Not charging mode\n");
+			ipio_debug("Not charging mode\n");
 			ilitek_tddi_ic_func_ctrl("plug", ENABLE);// plug out
 			charge_mode = 2;
 		}
@@ -265,13 +272,13 @@ void ilitek_tddi_wq_ctrl(int type, int ctrl)
 			}
 			idev->wq_esd_ctrl = ctrl;
 			if (ctrl == ENABLE) {
-				ipio_debug(DEBUG_MAIN, "execute esd check\n");
+				ipio_debug("execute esd check\n");
 				if (!queue_delayed_work(esd_wq, &esd_work, msecs_to_jiffies(WQ_ESD_DELAY)))
-					ipio_debug(DEBUG_MAIN, "esd check was already on queue\n");
+					ipio_debug("esd check was already on queue\n");
 			} else {
 				cancel_delayed_work_sync(&esd_work);
 				flush_workqueue(esd_wq);
-				ipio_debug(DEBUG_MAIN, "cancel esd wq\n");
+				ipio_debug("cancel esd wq\n");
 			}
 		}
 		break;
@@ -283,13 +290,13 @@ void ilitek_tddi_wq_ctrl(int type, int ctrl)
 			}
 			idev->wq_bat_ctrl = ctrl;
 			if (ctrl == ENABLE) {
-				ipio_debug(DEBUG_MAIN, "execute bat check\n");
+				ipio_debug("execute bat check\n");
 				if (!queue_delayed_work(bat_wq, &bat_work, msecs_to_jiffies(WQ_BAT_DELAY)))
-					ipio_debug(DEBUG_MAIN, "bat check was already on queue\n");
+					ipio_debug("bat check was already on queue\n");
 			} else {
 				cancel_delayed_work_sync(&bat_work);
 				flush_workqueue(bat_wq);
-				ipio_debug(DEBUG_MAIN, "cancel bat wq\n");
+				ipio_debug("cancel bat wq\n");
 			}
 		}
 		break;
@@ -428,12 +435,26 @@ int ilitek_tddi_fw_upgrade_handler(void *data)
 		ipio_info("get touch lock\n");
 	}
 
+	if (idev->fw_upgrade_mode == UPGRADE_FLASH) {
+		ipio_info("Get current fw/protocol ver before upgrade fw\n");
+		ilitek_tddi_ic_get_protocl_ver();
+		ilitek_tddi_ic_get_fw_ver();
+	}
+
 	idev->fw_update_stat = 0;
 	ret = ilitek_tddi_fw_upgrade(idev->fw_upgrade_mode, HEX_FILE, idev->fw_open);
 	if (ret != 0)
 		idev->fw_update_stat = -1;
 	else
 		idev->fw_update_stat = 100;
+
+	ipio_info("Flash FW completed ... update TP/FW info\n");
+	ilitek_tddi_ic_get_protocl_ver();
+	ilitek_tddi_ic_get_fw_ver();
+	ilitek_tddi_ic_get_core_ver();
+	ilitek_tddi_ic_get_tp_info();
+	ilitek_tddi_ic_get_panel_info();
+	ilitek_plat_input_register();
 
 	if (get_lock)
 		mutex_unlock(&idev->touch_mutex);
@@ -453,7 +474,7 @@ void ilitek_tddi_report_handler(void)
 {
 	int ret = 0, pid = 0;
 	u8 *buf = NULL, checksum = 0;
-	int rlen = 0;
+	int rlen = 0, buf_size = 0;
 	u16 self_key = 2;
 	int tmp = ipio_debug_level;
 
@@ -476,9 +497,6 @@ void ilitek_tddi_report_handler(void)
 		rlen = (2 * idev->xch_num * idev->ych_num) + (idev->stx * 2) + (idev->srx * 2);
 		rlen += 2 * self_key + (8 * 2) + 1 + 35;
 		break;
-	case P5_X_FW_I2CUART_MODE:
-		rlen = P5_X_DEMO_MODE_PACKET_LENGTH;
-		break;
 	case P5_X_FW_GESTURE_MODE:
 		if (idev->gesture_mode == P5_X_FW_GESTURE_INFO_MODE)
 			rlen = P5_X_GESTURE_INFO_LENGTH;
@@ -495,14 +513,16 @@ void ilitek_tddi_report_handler(void)
 		break;
 	}
 
-	ipio_debug(DEBUG_MAIN, "Packget length = %d\n", rlen);
+	ipio_debug("Packget length = %d\n", rlen);
 
 	if (!rlen) {
 		ipio_err("Length of packet is invaild\n");
 		goto out;
 	}
 
-	buf = kcalloc(rlen, sizeof(u8), GFP_ATOMIC);
+	buf_size = (idev->fw_uart_en == DISABLE)? rlen : 2048;
+
+	buf = kcalloc(buf_size, sizeof(u8), GFP_ATOMIC);
 	if (ERR_ALLOC_MEM(buf)) {
 		ipio_err("Failed to allocate packet memory, %ld\n", PTR_ERR(buf));
 		return;
@@ -510,7 +530,7 @@ void ilitek_tddi_report_handler(void)
 
 	ret = idev->read(buf, rlen);
 	if (ret < 0) {
-		ipio_err("Read report packet failed\n");
+		ipio_err("Read report packet failed, ret = %d\n", ret);
 		if (idev->actual_tp_mode == P5_X_FW_GESTURE_MODE && idev->gesture) {
 			ipio_err("Gesture failed, doing gesture recovery\n");
 			ilitek_tddi_wq_ctrl(WQ_GES_RECOVER, ENABLE);
@@ -523,14 +543,15 @@ void ilitek_tddi_report_handler(void)
 		goto out;
 	}
 
-	ipio_debug(DEBUG_MAIN, "Read length = %d\n", (ret));
+	ipio_debug("Read length = %d\n", (ret));
 
 	rlen = ret;
 
 	ilitek_dump_data(buf, 8, rlen, 0, "finger report");
 
 	checksum = ilitek_calc_packet_checksum(buf, rlen - 1);
-	if (checksum != buf[rlen-1]) {
+
+	if (checksum != buf[rlen-1] && idev->fw_uart_en == DISABLE) {
 		ipio_err("Wrong checksum, checksum = %x, buf = %x\n", checksum, buf[rlen-1]);
 		ipio_debug_level = DEBUG_ALL;
 		ilitek_dump_data(buf, 8, rlen, 0, "finger report with wrong");
@@ -539,7 +560,7 @@ void ilitek_tddi_report_handler(void)
 	}
 
 	pid = buf[0];
-	ipio_debug(DEBUG_MAIN, "Packet ID = %x\n", pid);
+	ipio_debug("Packet ID = %x\n", pid);
 
 	switch (pid) {
 	case P5_X_DEMO_PACKET_ID:
@@ -602,7 +623,7 @@ int ilitek_tddi_reset_ctrl(int mode)
 	 */
 	if (mode != TP_IC_CODE_RST)
 		atomic_set(&idev->ice_stat, DISABLE);
-
+	idev->fw_uart_en = DISABLE;
 	atomic_set(&idev->tp_reset, END);
 	return ret;
 }
@@ -637,6 +658,8 @@ int ilitek_tddi_init(void)
 		ilitek_tddi_reset_ctrl(idev->reset);
 
 	idev->do_otp_check = ENABLE;
+	idev->fw_uart_en = DISABLE;
+	idev->force_fw_update = DISABLE;
 
 	ilitek_ice_mode_ctrl(ENABLE, OFF);
 
@@ -644,6 +667,8 @@ int ilitek_tddi_init(void)
 		ipio_err("Not found ilitek chips\n");
 		return -ENODEV;
 	}
+
+	ilitek_ice_mode_ctrl(DISABLE, OFF);
 
 	ilitek_tddi_fw_read_flash_info(idev->fw_upgrade_mode);
 

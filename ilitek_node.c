@@ -537,7 +537,8 @@ static ssize_t ilitek_proc_rw_tp_reg_read(struct file *pFile, char __user *buf, 
 	}
 
 	if (type == read) {
-		read_data = ilitek_ice_mode_read(addr, sizeof(u32));
+		if (ilitek_ice_mode_read(addr, &read_data, sizeof(u32)) < 0)
+			ipio_err("Read data error\n");
 		ipio_info("READ:addr = 0x%06x, read = 0x%08x\n", addr, read_data);
 		size = snprintf(g_user_buf, PAGE_SIZE, "READ:addr = 0x%06x, read = 0x%08x\n", addr, read_data);
 	} else {
@@ -614,7 +615,6 @@ static ssize_t ilitek_proc_debug_switch_read(struct file *pFile, char __user *bu
 static ssize_t ilitek_proc_debug_message_read(struct file *filp, char __user *buff, size_t size, loff_t *pos)
 {
 	unsigned long p = *pos;
-	unsigned int count = size;
 	int i = 0;
 	int send_data_len = 0;
 	int ret = 0;
@@ -663,33 +663,29 @@ static ssize_t ilitek_proc_debug_message_read(struct file *filp, char __user *bu
 		} else if (idev->debug_buf[0][0] == P5_X_DEBUG_PACKET_ID) {
 			send_data_len = 0;	/* idev->debug_buf[0][1] - 2; */
 			need_read_data_len = 2040;
-			if (need_read_data_len <= 0) {
-				ipio_err("parse data err data len = %d\n", need_read_data_len);
-				send_data_len +=
-					sprintf(tmpbuf + send_data_len, "parse data err data len = %d\n",
-						need_read_data_len);
-			} else {
-				for (i = 0; i < need_read_data_len; i++) {
-					send_data_len += sprintf(tmpbuf + send_data_len, "%02X", idev->debug_buf[0][i]);
-					if (send_data_len >= 4096) {
-						ipio_err("send_data_len = %d set 4096 i = %d\n", send_data_len, i);
-						send_data_len = 4096;
-						break;
-					}
-				}
-			}
-			send_data_len += sprintf(tmpbuf + send_data_len, "\n\n");
+		}
 
-			if (p == 5 || size == 4096 || size == 2048) {
-				idev->debug_data_frame--;
-				if (idev->debug_data_frame < 0) {
-					idev->debug_data_frame = 0;
-				}
-
-				for (i = 1; i <= idev->debug_data_frame; i++)
-					memcpy(idev->debug_buf[i - 1], idev->debug_buf[i], 2048);
+		for (i = 0; i < need_read_data_len; i++) {
+			send_data_len += sprintf(tmpbuf + send_data_len, "%02X", idev->debug_buf[0][i]);
+			if (send_data_len >= 4096) {
+				ipio_err("send_data_len = %d set 4096 i = %d\n", send_data_len, i);
+				send_data_len = 4096;
+				break;
 			}
 		}
+
+		send_data_len += sprintf(tmpbuf + send_data_len, "\n\n");
+
+		if (p == 5 || size == 4096 || size == 2048) {
+			idev->debug_data_frame--;
+
+			if (idev->debug_data_frame < 0)
+				idev->debug_data_frame = 0;
+
+			for (i = 1; i <= idev->debug_data_frame; i++)
+				memcpy(idev->debug_buf[i - 1], idev->debug_buf[i], 2048);
+		}
+
 	} else {
 		ipio_err("no data send\n");
 		send_data_len += sprintf(tmpbuf + send_data_len, "no data send\n");
@@ -701,22 +697,22 @@ static ssize_t ilitek_proc_debug_message_read(struct file *filp, char __user *bu
 	else
 		ret = copy_to_user(buff, tmpbuf + p, send_data_len - p);
 
+	/* ipio_err("send_data_len = %d\n", send_data_len); */
+	if (send_data_len <= 0 || send_data_len > 4096) {
+		ipio_err("send_data_len = %d set 4096\n", send_data_len);
+		send_data_len = 4096;
+	}
+
 	if (ret) {
 		ipio_err("copy_to_user err\n");
 		ret = -EFAULT;
 	} else {
-		*pos += count;
-		ret = count;
-		ipio_debug(DEBUG_TOUCH, "Read %d bytes(s) from %ld\n", count, p);
+		*pos += send_data_len;
+		ret = send_data_len;
+		ipio_debug("Read %d bytes(s) from %ld\n", send_data_len, p);
 	}
 
 out:
-	/* ipio_err("send_data_len = %d\n", send_data_len); */
-	if (send_data_len <= 0 || send_data_len > 4096) {
-		ipio_err("send_data_len = %d set 2048\n", send_data_len);
-		send_data_len = 4096;
-	}
-
 	mutex_unlock(&idev->debug_mutex);
 	mutex_unlock(&idev->debug_read_mutex);
 	ipio_vfree((void **)&tmpbuf);
@@ -897,10 +893,10 @@ static ssize_t ilitek_node_fw_upgrade_read(struct file *filp, char __user *buff,
 		return 0;
 
 	memset(g_user_buf, 0, USER_STR_BUFF * sizeof(unsigned char));
-
+	idev->force_fw_update = ENABLE;
 	ret = ilitek_tddi_fw_upgrade_handler(NULL);
 	len = sprintf(g_user_buf, "upgrade firwmare %s\n", (ret != 0) ? "failed" : "succeed");
-
+	idev->force_fw_update = DISABLE;
 	ret = copy_to_user((u32 *) buff, g_user_buf, len);
 	if (ret < 0)
 		ipio_err("Failed to copy data to user space\n");
@@ -908,65 +904,27 @@ static ssize_t ilitek_node_fw_upgrade_read(struct file *filp, char __user *buff,
 	return 0;
 }
 
-static ssize_t ilitek_proc_debug_level_read(struct file *filp, char __user *buff, size_t size, loff_t *pPos)
+static ssize_t ilitek_proc_debug_level_read(struct file *filp, char __user *buff, size_t size, loff_t *pos)
 {
 	int ret = 0;
-	u32 len = 0;
 
-	if (*pPos != 0)
+	if (*pos != 0)
 		return 0;
 
 	memset(g_user_buf, 0, USER_STR_BUFF * sizeof(unsigned char));
 
-	ipio_info("Current DEBUG Level = %d\n", ipio_debug_level);
-	ipio_info("You can set one of levels for debug as below:\n");
-	ipio_info("DEBUG_NONE = %d\n", DEBUG_NONE);
-	ipio_info("DEBUG_MAIN = %d\n", DEBUG_MAIN);
-	ipio_info("DEBUG_TOUCH = %d\n", DEBUG_TOUCH);
-	ipio_info("DEBUG_IC = %d\n", DEBUG_IC);
-	ipio_info("DEBUG_FW = %d\n", DEBUG_FW);
-	ipio_info("DEBUG_MP = %d\n", DEBUG_MP);
-	ipio_info("DEBUG_I2C = %d\n", DEBUG_I2C);
-	ipio_info("DEBUG_SPI = %d\n", DEBUG_SPI);
-	ipio_info("DEBUG_PLAT = %d\n", DEBUG_PLAT);
-	ipio_info("DEBUG_ALL = %d\n", DEBUG_ALL);
+	ipio_debug_level = !ipio_debug_level;
 
-	len = snprintf(g_user_buf, PAGE_SIZE, "Current DEBUG Level = %d\n", ipio_debug_level);
-	len += snprintf(g_user_buf + len, PAGE_SIZE - len, "You can set one of levels for debug as below:\n");
-	len += snprintf(g_user_buf + len, PAGE_SIZE - len, "DEBUG_NONE = %d\n", DEBUG_NONE);
-	len += snprintf(g_user_buf + len, PAGE_SIZE - len, "DEBUG_MAIN = %d\n", DEBUG_MAIN);
-	len += snprintf(g_user_buf + len, PAGE_SIZE - len, "DEBUG_TOUCH = %d\n", DEBUG_TOUCH);
-	len += snprintf(g_user_buf + len, PAGE_SIZE - len, "DEBUG_IC = %d\n", DEBUG_IC);
-	len += snprintf(g_user_buf + len, PAGE_SIZE - len, "DEBUG_FW = %d\n", DEBUG_FW);
-	len += snprintf(g_user_buf + len, PAGE_SIZE - len, "DEBUG_MP = %d\n", DEBUG_MP);
-	len += snprintf(g_user_buf + len, PAGE_SIZE - len, "DEBUG_I2C = %d\n", DEBUG_I2C);
-	len += snprintf(g_user_buf + len, PAGE_SIZE - len, "DEBUG_SPI = %d\n", DEBUG_SPI);
-	len += snprintf(g_user_buf + len, PAGE_SIZE - len, "DEBUG_PLAT = %d\n", DEBUG_PLAT);
-	len += snprintf(g_user_buf + len, PAGE_SIZE - len, "DEBUG_ALL = %d\n", DEBUG_ALL);
+	ipio_info(" %s debug level = %x\n", ipio_debug_level ? "Enable" : "Disable", ipio_debug_level);
 
-	ret = copy_to_user((u32 *) buff, g_user_buf, len);
-	if (ret < 0) {
+	size = sprintf(g_user_buf, "debug level : %s\n", ipio_debug_level ? "Enable" : "Disable");
+
+	*pos += size;
+
+	ret = copy_to_user((u32 *) buff, g_user_buf, size);
+	if (ret < 0)
 		ipio_err("Failed to copy data to user space\n");
-	}
 
-	*pPos += len;
-	return len;
-}
-
-static ssize_t ilitek_proc_debug_level_write(struct file *filp, const char *buff, size_t size, loff_t *pPos)
-{
-	int ret = 0;
-	char cmd[10] = { 0 };
-
-	if (buff != NULL) {
-		ret = copy_from_user(cmd, buff, size - 1);
-		if (ret < 0) {
-			ipio_info("copy data from user space, failed\n");
-			return -1;
-		}
-	}
-	ipio_debug_level = katoi(cmd);
-	ipio_info("ipio_debug_level = %d\n", ipio_debug_level);
 	return size;
 }
 
@@ -1117,6 +1075,20 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 		ilitek_tddi_fw_dump_iram_data(data[1], data[2]);
 	} else if (strcmp(cmd, "edge_plam_ctrl") == 0) {
 		ilitek_tddi_edge_palm_ctrl(data[1]);
+	} else if (strcmp(cmd, "uart_mode_ctrl") == 0) {
+		if (data[1] > 1) {
+			ipio_info("Unknow cmd, Disable UART mdoe\n");
+			data[1] = 0;
+		} else {
+			ipio_info("UART mode %s\n", data[1] ? "Enable" : "Disable");
+		}
+		temp[0] = P5_X_I2C_UART;
+		temp[1] = 0x3;
+		temp[2] = 0;
+		temp[3] = data[1];
+		idev->write(temp, 4);
+
+		idev->fw_uart_en = data[1] ? ENABLE : DISABLE;
 	} else {
 		ipio_err("Unknown command\n");
 	}
@@ -1216,7 +1188,7 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 			ipio_err("Failed to copy data from user space\n");
 			break;
 		}
-		ipio_debug_level = katoi(dbg);
+		ipio_debug_level = !ipio_debug_level;
 		ipio_info("ipio_debug_level = %d", ipio_debug_level);
 		break;
 	case ILITEK_IOCTL_TP_FUNC_MODE:
@@ -1278,7 +1250,7 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 	case ILITEK_IOCTL_TP_DRV_VER:
 		ipio_info("ioctl: get driver version\n");
 		length = sprintf(szBuf, "%s", DRIVER_VERSION);
-	ret = copy_to_user((u8 *) arg, szBuf, length);
+		ret = copy_to_user((u8 *) arg, szBuf, length);
 		if (ret < 0) {
 			ipio_err("Failed to copy driver ver to user space\n");
 		}
@@ -1438,7 +1410,6 @@ struct file_operations proc_get_debug_mode_data_fops = {
 };
 
 struct file_operations proc_debug_level_fops = {
-	.write = ilitek_proc_debug_level_write,
 	.read = ilitek_proc_debug_level_read,
 };
 

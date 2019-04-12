@@ -73,11 +73,11 @@ static u32 HexToDec(char *phex, s32 len)
 	return ret;
 }
 
-static u32 CalculateCRC32(u32 start_addr, u32 len, u8 *pfw)
+static int CalculateCRC32(u32 start_addr, u32 len, u8 *pfw)
 {
-	u32 i = 0, j = 0;
-	u32 crc_poly = 0x04C11DB7;
-	u32 tmp_crc = 0xFFFFFFFF;
+	int i = 0, j = 0;
+	int crc_poly = 0x04C11DB7;
+	int tmp_crc = 0xFFFFFFFF;
 
 	for (i = start_addr; i < start_addr + len; i++) {
 		tmp_crc ^= (pfw[i] << 24);
@@ -122,8 +122,9 @@ static int host_download_dma_check(u32 start_addr, u32 block_size)
 	/* Polling BIT0 */
 	while (count > 0) {
 		mdelay(1);
-		busy = ilitek_ice_mode_read(0x048006, sizeof(u8));
-		ipio_debug(DEBUG_FW, "busy = %x\n", busy);
+		if (ilitek_ice_mode_read(0x048006, &busy, sizeof(u8)) < 0)
+			ipio_err("Read busy error\n");
+		ipio_debug("busy = %x\n", busy);
 		if ((busy & 0x01) == 1)
 			break;
 		count--;
@@ -133,17 +134,82 @@ static int host_download_dma_check(u32 start_addr, u32 block_size)
 		ipio_err("BIT0 is busy\n");
 		return -1;
 	}
-	return ilitek_ice_mode_read(0x04101C, sizeof(u32));
+
+	if (ilitek_ice_mode_read(0x04101C, &busy, sizeof(u32)) < 0) {
+		ipio_err("Read dma crc error\n");
+		return -1;
+	}
+	return busy;
+}
+
+static int ilitek_tddi_fw_iram_read(u8 *buf, u32 start, u32 end)
+{
+	int i;
+	int addr = 0, r_len = SPI_UPGRADE_LEN;
+	u8 cmd[4] = {0};
+
+	if (!buf) {
+		ipio_err("buf in null\n");
+		return -ENOMEM;
+	}
+
+	for (addr = start, i = 0; addr < end; i += r_len, addr += r_len) {
+		if ((addr + r_len) > end)
+			r_len = end % r_len;
+
+		cmd[0] = 0x25;
+		cmd[3] = (char)((addr & 0x00FF0000) >> 16);
+		cmd[2] = (char)((addr & 0x0000FF00) >> 8);
+		cmd[1] = (char)((addr & 0x000000FF));
+
+		if (idev->write(cmd, 4)) {
+			ipio_err("Failed to write iram data\n");
+			return -ENODEV;
+		}
+
+		if (idev->read(buf + i, r_len)) {
+			ipio_err("Failed to Read iram data\n");
+			return -ENODEV;
+		}
+	}
+	return 0;
+}
+
+static void ilitek_tddi_fw_print_iram_data(void)
+{
+	int i, len;
+	int tmp = ipio_debug_level;
+	u8 *buf = NULL;
+	u32 start = 0, end = 0xFFFF;
+
+	len = end - start + 1;
+
+	buf = vmalloc(len * sizeof(u8));
+	if (ERR_ALLOC_MEM(buf)) {
+		ipio_err("Failed to allocate buf memory, %ld\n", PTR_ERR(buf));
+		return;
+	}
+
+	for (i = 0; i < len; i++)
+		buf[i] = 0xFF;
+
+	if (ilitek_tddi_fw_iram_read(buf, start, end) < 0)
+		ipio_err("Read IRAM data failed\n");
+
+	ipio_debug_level = DEBUG_ALL;
+	ilitek_dump_data(buf, 8, len, 0, "IRAM");
+	ipio_debug_level = tmp;
+	ipio_vfree((void **)&buf);
 }
 
 int ilitek_tddi_fw_dump_iram_data(u32 start, u32 end)
 {
 	struct file *f = NULL;
-	u8 *buf = NULL, cmd[4] = {0};
+	u8 *buf = NULL;
 	mm_segment_t old_fs;
 	loff_t pos = 0;
-	int ret, wdt, addr, i;
-	int len, r_len = SPI_UPGRADE_LEN;
+	int ret, wdt, i;
+	int len;
 
 	f = filp_open(DUMP_IRAM_PATH, O_WRONLY | O_CREAT | O_TRUNC, 644);
 	if (ERR_ALLOC_MEM(f)) {
@@ -174,27 +240,8 @@ int ilitek_tddi_fw_dump_iram_data(u32 start, u32 end)
 	for (i = 0; i < len; i++)
 		buf[i] = 0xFF;
 
-	for (addr = start, i = 0; addr < end; i += r_len, addr += r_len) {
-		if ((addr + r_len) > end)
-			r_len = end % r_len;
-
-		cmd[0] = 0x25;
-		cmd[3] = (char)((addr & 0x00FF0000) >> 16);
-		cmd[2] = (char)((addr & 0x0000FF00) >> 8);
-		cmd[1] = (char)((addr & 0x000000FF));
-
-		if (idev->write(cmd, 4)) {
-			ipio_err("Failed to write data\n");
-			ret = -EIO;
-			goto out;
-		}
-
-		if (idev->read(buf + i, r_len)) {
-			ipio_err("Failed to Read data\n");
-			ret = -EIO;
-			goto out;
-		}
-	}
+	if (ilitek_tddi_fw_iram_read(buf, start, end) < 0)
+		ipio_err("Read IRAM data failed\n");
 
 	old_fs = get_fs();
 	set_fs(get_ds());
@@ -286,7 +333,8 @@ static int ilitek_tddi_fw_check_hex_hw_crc(u8 *pfw)
 static int ilitek_tddi_flash_poll_busy(int timer)
 {
 	int ret = UPDATE_PASS, retry = timer;
-	u8 cmd = 0x5, temp = 0;
+	u8 cmd = 0x5;
+	u32 temp = 0;
 
 	ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x0, 1); /* CS low */
 	ilitek_ice_mode_write(FLASH1_ADDR, 0x66aa55, 3); /* Key */
@@ -295,7 +343,9 @@ static int ilitek_tddi_flash_poll_busy(int timer)
 	do {
 		ilitek_ice_mode_write(FLASH2_ADDR, 0xFF, 1); /* Dummy */
 		mdelay(1);
-		temp = ilitek_ice_mode_read(FLASH4_ADDR, sizeof(u8));
+		if (ilitek_ice_mode_read(FLASH4_ADDR, &temp, sizeof(u8)) < 0)
+			ipio_err("Read flash busy error\n");
+
 		if ((temp & 0x3) == 0)
 			break;
 	} while (--retry >= 0);
@@ -324,6 +374,27 @@ void ilitek_tddi_flash_clear_dma(void)
 	ilitek_ice_mode_write(FLASH4_reg_rcv_data, 0xFF, 1);
 }
 
+int ilitek_tddi_flash_read_int_flag(void)
+{
+	int retry = 500;
+	u32 data = 0;
+
+	do {
+		if (ilitek_ice_mode_read(INTR1_ADDR & BIT(25), &data, sizeof(u32) < 0))
+			ipio_err("Read flash int flag error\n");
+
+		ipio_debug("int flag = %x\n", data);
+		if (data)
+			break;
+	} while (--retry >= 0);
+
+	if (retry <= 0) {
+		ipio_err("Read Flash INT flag timeout !, flag = 0x%x\n", data);
+		return -1;
+	}
+	return 0;
+}
+
 void ilitek_tddi_flash_dma_write(u32 start, u32 end, u32 len)
 {
 	ilitek_ice_mode_bit_mask_write(FLASH0_ADDR, FLASH0_reg_preclk_sel, 1 << 16);
@@ -332,30 +403,50 @@ void ilitek_tddi_flash_dma_write(u32 start, u32 end, u32 len)
 	ilitek_ice_mode_write(FLASH1_reg_flash_key1, 0x66aa55, 3);	/* Key */
 
 	ilitek_ice_mode_write(FLASH2_reg_tx_data, 0x0b, 1);
-	while (!(ilitek_ice_mode_read(INTR1_ADDR & BIT(25), sizeof(u32))))
-			continue;
+
+	if (ilitek_tddi_flash_read_int_flag() < 0) {
+		ipio_err("Write 0xb timeout \n");
+		return;
+	}
+
 	ilitek_ice_mode_bit_mask_write(INTR1_ADDR, INTR1_reg_flash_int_flag, (1 << 25));
 
 	ilitek_ice_mode_write(FLASH2_reg_tx_data, (start & 0xFF0000) >> 16, 1);
-	while (!(ilitek_ice_mode_read(INTR1_ADDR & BIT(25), sizeof(u32))))
-			continue;
+
+	if (ilitek_tddi_flash_read_int_flag() < 0) {
+		ipio_err("Write addr1 timeout\n");
+		return;
+	}
+
 	ilitek_ice_mode_bit_mask_write(INTR1_ADDR, INTR1_reg_flash_int_flag, (1 << 25));
 
 	ilitek_ice_mode_write(FLASH2_reg_tx_data, (start & 0x00FF00) >> 8, 1);
-	while (!(ilitek_ice_mode_read(INTR1_ADDR & BIT(25), sizeof(u32))))
-			continue;
+
+	if (ilitek_tddi_flash_read_int_flag() < 0) {
+		ipio_err("Write addr2 timeout\n");
+		return;
+	}
+
 	ilitek_ice_mode_bit_mask_write(INTR1_ADDR, INTR1_reg_flash_int_flag, (1 << 25));
 
 	ilitek_ice_mode_write(FLASH2_reg_tx_data, (start & 0x0000FF), 1);
-	while (!(ilitek_ice_mode_read(INTR1_ADDR & BIT(25), sizeof(u32))))
-			continue;
+
+	if (ilitek_tddi_flash_read_int_flag() < 0) {
+		ipio_err("Write addr3 timeout\n");
+		return;
+	}
+
 	ilitek_ice_mode_bit_mask_write(INTR1_ADDR, INTR1_reg_flash_int_flag, (1 << 25));
 
 	ilitek_ice_mode_bit_mask_write(FLASH0_ADDR, FLASH0_reg_rx_dual, 0 << 24);
 
 	ilitek_ice_mode_write(FLASH2_reg_tx_data, 0x00, 1);	/* Dummy */
-	while (!(ilitek_ice_mode_read(INTR1_ADDR & BIT(25), sizeof(u32))))
-		continue;
+
+	if (ilitek_tddi_flash_read_int_flag() < 0) {
+		ipio_err("Write dummy timeout\n");
+		return;
+	}
+
 	ilitek_ice_mode_bit_mask_write(INTR1_ADDR, INTR1_reg_flash_int_flag, (1 << 25));
 
 	ilitek_ice_mode_write(FLASH3_reg_rcv_cnt, len, 4);	/* Write Length */
@@ -372,7 +463,7 @@ static void ilitek_tddi_flash_write_enable(void)
 u32 ilitek_tddi_fw_read_hw_crc(u32 start, u32 end)
 {
 	int retry = 500;
-	u8 busy = 0;
+	u32 busy = 0;
 	u32 write_len = end;
 	u32 iram_check = 0;
 
@@ -398,8 +489,10 @@ u32 ilitek_tddi_fw_read_hw_crc(u32 start, u32 end)
 	ilitek_ice_mode_write(FLASH4_ADDR, 0xFF, 1); /* Start to receive */
 
 	do {
-		busy = ilitek_ice_mode_read(0x048007, sizeof(u8));
-		ipio_debug(DEBUG_FW, "busy = %x\n", busy);
+		if (ilitek_ice_mode_read(0x048007, &busy, sizeof(u8)) < 0)
+			ipio_err("Read busy error\n");
+
+		ipio_debug("busy = %x\n", busy);
 		if (((busy >> 1) & 0x01) == 0x01)
 			break;
 	} while (--retry >= 0);
@@ -412,13 +505,19 @@ u32 ilitek_tddi_fw_read_hw_crc(u32 start, u32 end)
 	}
 
 	ilitek_ice_mode_write(0x041003, 0x0, 1); /* Disable dio_Rx_dual */
-	iram_check = ilitek_ice_mode_read(0x04101C, sizeof(u32));
+
+	if (ilitek_ice_mode_read(0x04101C, &iram_check, sizeof(u32)) < 0) {
+		ipio_err("Read hw crc error\n");
+		return -1;
+	}
+
 	return iram_check;
 }
 
 int ilitek_tddi_fw_read_flash_data(u32 start, u32 end, u8 *data, int len)
 {
 	u32 i, index = 0, precent;
+	u32 tmp;
 
 	if (end - start > len) {
 		ipio_err("the length (%d) reading crc is over than len(%d)\n", end - start, len);
@@ -434,10 +533,14 @@ int ilitek_tddi_fw_read_flash_data(u32 start, u32 end, u8 *data, int len)
 
 	for (i = start; i <= end; i++) {
 		ilitek_ice_mode_write(FLASH2_ADDR, 0xFF, 1); /* Dummy */
-		data[index] = ilitek_ice_mode_read(FLASH4_ADDR, sizeof(u8));
+
+		if (ilitek_ice_mode_read(FLASH4_ADDR, &tmp, sizeof(u8)) < 0)
+			ipio_err("Read flash data error!\n");
+
+		data[index] = tmp;
 		index++;
 		precent = (i * 100) / end;
-		ipio_debug(DEBUG_FW, "Reading flash data .... %d%c", precent, '%');
+		ipio_debug("Reading flash data .... %d%c", precent, '%');
 	}
 
 	ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x1, 1); /* CS high */
@@ -540,10 +643,6 @@ static int ilitek_tddi_fw_check_ver(u8 *pfw)
 	u32 start_addr = 0, end_addr = 0;
 	u32 block_crc, flash_crc_cb;
 
-	/* Get current firmware/protocol version */
-	ilitek_tddi_ic_get_protocl_ver();
-	ilitek_tddi_ic_get_fw_ver();
-
 	/* Check FW version */
 	ipio_info("New FW ver = 0x%x, Current FW ver = 0x%x\n", tfd.new_fw_cb, idev->chip->fw_ver);
 	if (tfd.new_fw_cb != idev->chip->fw_ver) {
@@ -580,6 +679,11 @@ static int ilitek_tddi_fw_check_ver(u8 *pfw)
 			return UPDATE_FAIL;
 		}
 		memset(flash_crc, 0, sizeof(flash_crc));
+	}
+
+	if (idev->force_fw_update == ENABLE) {
+		ipio_info("update by node, force update\n");
+		return UPDATE_FAIL;
 	}
 
 	ipio_info("Both are the same, no need to update\n");
@@ -627,8 +731,11 @@ static int ilitek_tddi_fw_iram_upgrade(u8 *pfw)
 			ipio_info("%s CRC is %s (%x) : (%x)\n",
 				fbi[i].name, (crc != dma ? "Invalid !" : "Correct !"), crc, dma);
 
-			if (crc != dma)
+			if (crc != dma) {
+				ipio_err("CRC Failed! print iram 64k bytes for debug\n");
+				ilitek_tddi_fw_print_iram_data();
 				return UPDATE_FAIL;
+			}
 		}
 	}
 
@@ -1008,7 +1115,7 @@ static int ilitek_tddi_fw_hex_convert(u8 *phex, int size, u8 *pfw)
 		ex_addr = fbi[i].end;
 		data_crc = CalculateCRC32(fbi[i].start, fbi[i].len - 4, pfw);
 		hex_crc = pfw[ex_addr - 3] << 24 | pfw[ex_addr - 2] << 16 | pfw[ex_addr - 1] << 8 | pfw[ex_addr];
-		ipio_debug(DEBUG_FW, "data crc = %x, hex crc = %x\n", data_crc, hex_crc);
+		ipio_debug("data crc = %x, hex crc = %x\n", data_crc, hex_crc);
 		if (data_crc != hex_crc) {
 			ipio_err("Content of hex file is broken. (%d, %x, %x)\n",
 				i, data_crc, hex_crc);
@@ -1126,12 +1233,6 @@ static void ilitek_tddi_fw_update_tp_info(int ret)
 		}
 		return;
 	}
-	ilitek_tddi_ic_get_protocl_ver();
-	ilitek_tddi_ic_get_fw_ver();
-	ilitek_tddi_ic_get_core_ver();
-	ilitek_tddi_ic_get_tp_info();
-	ilitek_tddi_ic_get_panel_info();
-	ilitek_plat_input_register();
 }
 
 int ilitek_tddi_fw_upgrade(int upgrade_type, int file_type, int open_file_method)
@@ -1203,6 +1304,7 @@ void ilitek_tddi_fw_read_flash_info(bool mode)
 	int i = 0;
 	u8 buf[4] = {0};
 	u8 cmd = 0x9F;
+	u32 tmp = 0;
 	u16 flash_id = 0, flash_mid = 0;
 
 	if (mode == UPGRADE_IRAM)
@@ -1216,7 +1318,9 @@ void ilitek_tddi_fw_read_flash_info(bool mode)
 
 	for (i = 0; i < ARRAY_SIZE(buf); i++) {
 		ilitek_ice_mode_write(FLASH2_ADDR, 0xFF, 1);
-		buf[i] = ilitek_ice_mode_read(FLASH4_ADDR, sizeof(u8));
+		if (ilitek_ice_mode_read(FLASH4_ADDR, &tmp, sizeof(u8)) < 0)
+			ipio_err("Read flash info error\n");
+		buf[i] = tmp;
 	}
 
 	ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x1, 1); /* CS high */
