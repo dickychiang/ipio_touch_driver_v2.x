@@ -31,9 +31,11 @@ struct ilitek_tddi_dev *idev;
 
 static int core_i2c_write(void *buf, int len)
 {
+	int ret = 0;
 	u8 *txbuf = (u8 *)buf;
 	u8 check_sum = 0;
 	u8 *mpbuf = NULL;
+	bool tmp = ipio_debug_level;
 
 	struct i2c_msg msgs[] = {
 		{
@@ -59,12 +61,18 @@ static int core_i2c_write(void *buf, int len)
 			ipio_memcpy(mpbuf, txbuf, len, msgs[0].len);
 			mpbuf[len] = check_sum;
 			msgs[0].buf = mpbuf;
+			ipio_debug_level = DEBUG_ALL;
+			ilitek_dump_data(mpbuf, 8, len+1, 0, "mp cdc cmd");
+			ipio_debug_level = tmp;
 			msgs[0].len = len + 1;
 		}
 	}
 
+	if (i2c_transfer(idev->i2c->adapter, msgs, 1) != 1)
+		ret = -1;
+
 	ipio_kfree((void **)&mpbuf);
-	return i2c_transfer(idev->i2c->adapter, msgs, 1);
+	return ret;
 }
 
 static int core_i2c_read(void *buf, int len)
