@@ -264,7 +264,7 @@ out:
 
 int ilitek_tddi_ic_watch_dog_ctrl(bool write, bool enable)
 {
-	int timeout = 100, ret = 0;
+	int timeout = 50, ret = 0;
 
 	if (!atomic_read(&idev->ice_stat)) {
 		ipio_err("ice mode wasn't enabled\n");
@@ -319,7 +319,7 @@ int ilitek_tddi_ic_watch_dog_ctrl(bool write, bool enable)
 			ilitek_ice_mode_write(idev->chip->wdt_addr, 0x98, 1);
 		}
 		timeout--;
-		mdelay(10);
+		mdelay(5);
 	}
 
 	if (timeout <= 0) {
