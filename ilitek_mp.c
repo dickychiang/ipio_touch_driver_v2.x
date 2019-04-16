@@ -2551,7 +2551,7 @@ static void mp_do_retry(int index, int count)
 		return mp_do_retry(index, count - 1);
 }
 
-static void mp_show_result(const char *csv_path)
+static void mp_show_result(bool lcm_on)
 {
 	int i, x, y, j, csv_len = 0, pass_item_count = 0, line_count = 0, get_frame_cont = 1;
 	s32 *max_threshold = NULL, *min_threshold = NULL;
@@ -2720,10 +2720,16 @@ static void mp_show_result(const char *csv_path)
 
 	if (pass_item_count == 0) {
 		core_mp.final_result = MP_FAIL;
-		sprintf(csv_name, "%s/%s_%s.csv", csv_path, get_date_time_str(), ret_fail_name);
+		if (lcm_on)
+			sprintf(csv_name, "%s/%s_%s.csv", CSV_LCM_ON_PATH, get_date_time_str(), ret_fail_name);
+		else
+			sprintf(csv_name, "%s/%s_%s.csv", CSV_LCM_OFF_PATH, get_date_time_str(), ret_fail_name);
 	} else {
 		core_mp.final_result = MP_PASS;
-		sprintf(csv_name, "%s/%s_%s.csv", csv_path, get_date_time_str(), ret_pass_name);
+		if (lcm_on)
+			sprintf(csv_name, "%s/%s_%s.csv", CSV_LCM_ON_PATH, get_date_time_str(), ret_pass_name);
+		else
+			sprintf(csv_name, "%s/%s_%s.csv", CSV_LCM_OFF_PATH, get_date_time_str(), ret_pass_name);
 	}
 
 	ipio_info("Open CSV : %s\n", csv_name);
@@ -3047,7 +3053,6 @@ static void mp_copy_ret_to_apk(char *buf)
 int ilitek_tddi_mp_test_main(char *apk, bool lcm_on)
 {
 	int ret = 0;
-	const char *csv_path = NULL;
 
 	ilitek_tddi_mp_init_item();
 
@@ -3067,7 +3072,6 @@ int ilitek_tddi_mp_test_main(char *apk, bool lcm_on)
 	/* Do not chang the sequence of test */
 	if (idev->protocol->ver >= PROTOCOL_VER_540) {
 		if (lcm_on) {
-			csv_path = CSV_LCM_ON_PATH;
 			mp_test_run("noise peak to peak(with panel)");
 			mp_test_run("noise peak to peak(ic only)");
 			mp_test_run("short test -ili9881"); //compatible with old ini version.
@@ -3081,7 +3085,6 @@ int ilitek_tddi_mp_test_main(char *apk, bool lcm_on)
 			mp_test_run("open test_c");
 			mp_test_run("touch deltac");
 		} else {
-			csv_path = CSV_LCM_OFF_PATH;
 			mp_test_run("raw data(have bk) (lcm off)");
 			mp_test_run("raw data(no bk) (lcm off)");
 			mp_test_run("noise peak to peak(with panel) (lcm off)");
@@ -3098,7 +3101,7 @@ int ilitek_tddi_mp_test_main(char *apk, bool lcm_on)
 		mp_test_run("pixel raw (have bk)");
 	}
 
-	mp_show_result(csv_path);
+	mp_show_result(lcm_on);
 	mp_copy_ret_to_apk(apk);
 	mp_test_free();
 

@@ -155,7 +155,7 @@ out:
 
 static int core_rx_lock_check(int *ret_size)
 {
-	int i, count = 10;
+	int i, count = 100;
 	u8 txbuf[5] = {SPI_WRITE, 0x25, 0x94, 0x0, 0x2};
 	u8 rxbuf[4] = {0};
 	u16 status = 0, lock = 0x5AA5;
@@ -191,7 +191,7 @@ out:
 
 static int core_tx_unlock_check(void)
 {
-	int i, count = 10;
+	int i, count = 100;
 	u8 txbuf[5] = {SPI_WRITE, 0x25, 0x0, 0x0, 0x2};
 	u8 rxbuf[4] = {0};
 	u16 status = 0, unlock = 0x9881;
