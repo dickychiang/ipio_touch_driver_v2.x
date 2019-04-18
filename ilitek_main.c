@@ -678,6 +678,7 @@ int ilitek_tddi_init(void)
 		WARN_ON(!fw_boot_th);
 		ipio_err("Failed to create fw upgrade thread\n");
 	}
+
 	return 0;
 }
 

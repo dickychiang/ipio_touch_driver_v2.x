@@ -98,7 +98,7 @@
 #define DRIVER_VERSION			"2.0.0.0"
 
 /* Options */
-#define TDDI_INTERFACE			BUS_SPI /* BUS_I2C(0x18) or BUS_SPI(0x1C) */
+#define TDDI_INTERFACE			BUS_I2C /* BUS_I2C(0x18) or BUS_SPI(0x1C) */
 #define VDD_VOLTAGE			1800000
 #define VCC_VOLTAGE			1800000
 #define SPI_CLK				(10*M)
@@ -108,7 +108,7 @@
 #define MT_B_TYPE			ENABLE
 #define TDDI_RST_BIND			DISABLE
 #define MT_PRESSURE			DISABLE
-#define ENABLE_WQ_ESD			ENABLE
+#define ENABLE_WQ_ESD			DISABLE
 #define ENABLE_WQ_BAT			DISABLE
 #define ENABLE_GESTURE			ENABLE
 #define REGULATOR_POWER			DISABLE
@@ -131,7 +131,7 @@
 /* Debug messages */
 #define DEBUG_NONE	0
 #define DEBUG_ALL	1
-#define DEBUG_OUTPUT	DEBUG_NONE
+#define DEBUG_OUTPUT	DEBUG_ALL
 
 #define ipio_info(fmt, arg...)						\
 ({									\
