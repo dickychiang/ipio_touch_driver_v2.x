@@ -380,7 +380,7 @@ int ilitek_tddi_flash_read_int_flag(void)
 	u32 data = 0;
 
 	do {
-		if (ilitek_ice_mode_read(INTR1_ADDR & BIT(25), &data, sizeof(u32) < 0))
+		if (ilitek_ice_mode_read(INTR1_ADDR & BIT(25), &data, sizeof(u32)) < 0)
 			ipio_err("Read flash int flag error\n");
 
 		ipio_debug("int flag = %x\n", data);
