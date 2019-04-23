@@ -758,7 +758,7 @@ int ilitek_tddi_ic_get_core_ver(void)
 		lock = false;
 
 	if (lock)
-		mutex_unlock(&idev->touch_mutex);
+		mutex_lock(&idev->touch_mutex);
 
 	cmd[0] = P5_X_READ_DATA_CTRL;
 	cmd[1] = P5_X_GET_CORE_VERSION;
