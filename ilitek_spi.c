@@ -358,8 +358,9 @@ static int core_spi_ice_mode_enable(void)
 static int core_spi_ice_mode_write(u8 *data, int len)
 {
 	int ret = 0;
-	if (core_spi_ice_mode_enable() < 0)
-		return -EIO;
+	ret = core_spi_ice_mode_enable();
+	if (ret < 0)
+		return ret;
 
 	/* send data and change lock status to 0x5AA5. */
 	ret = core_spi_ice_mode_lock_write(data, len);
@@ -385,8 +386,9 @@ static int core_spi_ice_mode_read(u8 *data, int len)
 {
 	int size = 0, ret = 0;
 
-	if (core_spi_ice_mode_enable() < 0)
-		return -EIO;
+	ret = core_spi_ice_mode_enable();
+	if (ret < 0)
+		return ret;
 
 	/*
 	 * Check FW if they already send their data to rxbuf.
@@ -407,8 +409,7 @@ static int core_spi_ice_mode_read(u8 *data, int len)
 		goto out;
 
 out:
-	if (core_spi_ice_mode_disable() < 0)
-		return -EIO;
+	ret = core_spi_ice_mode_disable();
 
 	if (ret >= 0)
 		return size;
