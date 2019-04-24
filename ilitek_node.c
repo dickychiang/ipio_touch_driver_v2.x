@@ -56,6 +56,37 @@
 #define ILITEK_IOCTL_TP_INTERFACE_TYPE		_IOWR(ILITEK_IOCTL_MAGIC, 20, u8*)
 #define ILITEK_IOCTL_TP_DUMP_FLASH		_IOWR(ILITEK_IOCTL_MAGIC, 21, int)
 
+#ifdef CONFIG_COMPAT
+#define ILITEK_COMPAT_IOCTL_I2C_WRITE_DATA		_IOWR(ILITEK_IOCTL_MAGIC, 0, compat_uptr_t)
+#define ILITEK_COMPAT_IOCTL_I2C_SET_WRITE_LENGTH	_IOWR(ILITEK_IOCTL_MAGIC, 1, compat_uptr_t)
+#define ILITEK_COMPAT_IOCTL_I2C_READ_DATA		_IOWR(ILITEK_IOCTL_MAGIC, 2, compat_uptr_t)
+#define ILITEK_COMPAT_IOCTL_I2C_SET_READ_LENGTH		_IOWR(ILITEK_IOCTL_MAGIC, 3, compat_uptr_t)
+
+#define ILITEK_COMPAT_IOCTL_TP_HW_RESET			_IOWR(ILITEK_IOCTL_MAGIC, 4, compat_uptr_t)
+#define ILITEK_COMPAT_IOCTL_TP_POWER_SWITCH		_IOWR(ILITEK_IOCTL_MAGIC, 5, compat_uptr_t)
+#define ILITEK_COMPAT_IOCTL_TP_REPORT_SWITCH		_IOWR(ILITEK_IOCTL_MAGIC, 6, compat_uptr_t)
+#define ILITEK_COMPAT_IOCTL_TP_IRQ_SWITCH		_IOWR(ILITEK_IOCTL_MAGIC, 7, compat_uptr_t)
+
+#define ILITEK_COMPAT_IOCTL_TP_DEBUG_LEVEL		_IOWR(ILITEK_IOCTL_MAGIC, 8, compat_uptr_t)
+#define ILITEK_COMPAT_IOCTL_TP_FUNC_MODE		_IOWR(ILITEK_IOCTL_MAGIC, 9, compat_uptr_t)
+
+#define ILITEK_COMPAT_IOCTL_TP_FW_VER			_IOWR(ILITEK_IOCTL_MAGIC, 10, compat_uptr_t)
+#define ILITEK_COMPAT_IOCTL_TP_PL_VER			_IOWR(ILITEK_IOCTL_MAGIC, 11, compat_uptr_t)
+#define ILITEK_COMPAT_IOCTL_TP_CORE_VER			_IOWR(ILITEK_IOCTL_MAGIC, 12, compat_uptr_t)
+#define ILITEK_COMPAT_IOCTL_TP_DRV_VER			_IOWR(ILITEK_IOCTL_MAGIC, 13, compat_uptr_t)
+#define ILITEK_COMPAT_IOCTL_TP_CHIP_ID			_IOWR(ILITEK_IOCTL_MAGIC, 14, compat_uptr_t)
+
+#define ILITEK_COMPAT_IOCTL_TP_NETLINK_CTRL		_IOWR(ILITEK_IOCTL_MAGIC, 15, compat_uptr_t)
+#define ILITEK_COMPAT_IOCTL_TP_NETLINK_STATUS		_IOWR(ILITEK_IOCTL_MAGIC, 16, compat_uptr_t)
+
+#define ILITEK_COMPAT_IOCTL_TP_MODE_CTRL		_IOWR(ILITEK_IOCTL_MAGIC, 17, compat_uptr_t)
+#define ILITEK_COMPAT_IOCTL_TP_MODE_STATUS		_IOWR(ILITEK_IOCTL_MAGIC, 18, compat_uptr_t)
+#define ILITEK_COMPAT_IOCTL_ICE_MODE_SWITCH		_IOWR(ILITEK_IOCTL_MAGIC, 19, compat_uptr_t)
+
+#define ILITEK_COMPAT_IOCTL_TP_INTERFACE_TYPE		_IOWR(ILITEK_IOCTL_MAGIC, 20, compat_uptr_t)
+#define ILITEK_COMPAT_IOCTL_TP_DUMP_FLASH		_IOWR(ILITEK_IOCTL_MAGIC, 21, compat_uptr_t)
+#endif
+
 unsigned char g_user_buf[USER_STR_BUFF] = {0};
 
 static int str2hex(char *str)
@@ -1097,6 +1128,114 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 	return size;
 }
 
+#ifdef CONFIG_COMPAT
+static long ilitek_node_compat_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+{
+	long ret = 0;
+
+	if (!filp->f_op || !filp->f_op->unlocked_ioctl) {
+		ipio_err("There's no unlocked_ioctl defined in file\n");
+		return -ENOTTY;
+	}
+
+	ipio_info("cmd = %d\n", _IOC_NR(cmd));
+
+	switch(cmd) {
+	case ILITEK_COMPAT_IOCTL_I2C_WRITE_DATA:
+		ipio_info("compat_ioctl: convert i2c/spi write\n");
+		ret = filp->f_op->unlocked_ioctl(filp, ILITEK_IOCTL_I2C_WRITE_DATA, (unsigned long)compat_ptr(arg));
+		return ret;
+	case ILITEK_COMPAT_IOCTL_I2C_READ_DATA:
+		ipio_info("compat_ioctl: convert i2c/spi read\n");
+		ret = filp->f_op->unlocked_ioctl(filp, ILITEK_IOCTL_I2C_READ_DATA, (unsigned long)compat_ptr(arg));
+		return ret;
+	case ILITEK_COMPAT_IOCTL_I2C_SET_WRITE_LENGTH:
+		ipio_info("compat_ioctl: convert set write length\n");
+		ret = filp->f_op->unlocked_ioctl(filp, ILITEK_IOCTL_I2C_SET_WRITE_LENGTH, (unsigned long)compat_ptr(arg));
+		return ret;
+	case ILITEK_COMPAT_IOCTL_I2C_SET_READ_LENGTH:
+		ipio_info("compat_ioctl: convert set read length\n");
+		ret = filp->f_op->unlocked_ioctl(filp, ILITEK_IOCTL_I2C_SET_READ_LENGTH, (unsigned long)compat_ptr(arg));
+		return ret;
+	case ILITEK_COMPAT_IOCTL_TP_HW_RESET:
+		ipio_info("compat_ioctl: convert hw reset\n");
+		ret = filp->f_op->unlocked_ioctl(filp, ILITEK_IOCTL_TP_HW_RESET, (unsigned long)compat_ptr(arg));
+		return ret;
+	case ILITEK_COMPAT_IOCTL_TP_POWER_SWITCH:
+		ipio_info("compat_ioctl: convert power switch\n");
+		ret = filp->f_op->unlocked_ioctl(filp, ILITEK_IOCTL_TP_POWER_SWITCH, (unsigned long)compat_ptr(arg));
+		return ret;
+	case ILITEK_COMPAT_IOCTL_TP_REPORT_SWITCH:
+		ipio_info("compat_ioctl: convert report switch\n");
+		ret = filp->f_op->unlocked_ioctl(filp, ILITEK_IOCTL_TP_REPORT_SWITCH, (unsigned long)compat_ptr(arg));
+		return ret;
+	case ILITEK_COMPAT_IOCTL_TP_IRQ_SWITCH:
+		ipio_info("compat_ioctl: convert irq switch\n");
+		ret = filp->f_op->unlocked_ioctl(filp, ILITEK_IOCTL_TP_IRQ_SWITCH, (unsigned long)compat_ptr(arg));
+		return ret;
+	case ILITEK_COMPAT_IOCTL_TP_DEBUG_LEVEL:
+		ipio_info("compat_ioctl: convert debug level\n");
+		ret = filp->f_op->unlocked_ioctl(filp, ILITEK_IOCTL_TP_DEBUG_LEVEL, (unsigned long)compat_ptr(arg));
+		return ret;
+	case ILITEK_COMPAT_IOCTL_TP_FUNC_MODE:
+		ipio_info("compat_ioctl: convert function mode\n");
+		ret = filp->f_op->unlocked_ioctl(filp, ILITEK_IOCTL_TP_FUNC_MODE, (unsigned long)compat_ptr(arg));
+		return ret;
+	case ILITEK_COMPAT_IOCTL_TP_FW_VER:
+		ipio_info("compat_ioctl: convert set read length\n");
+		ret = filp->f_op->unlocked_ioctl(filp, ILITEK_IOCTL_TP_FW_VER, (unsigned long)compat_ptr(arg));
+		return ret;
+	case ILITEK_COMPAT_IOCTL_TP_PL_VER:
+		ipio_info("compat_ioctl: convert fw version\n");
+		ret = filp->f_op->unlocked_ioctl(filp, ILITEK_IOCTL_TP_PL_VER, (unsigned long)compat_ptr(arg));
+		return ret;
+	case ILITEK_COMPAT_IOCTL_TP_CORE_VER:
+		ipio_info("compat_ioctl: convert core version\n");
+		ret = filp->f_op->unlocked_ioctl(filp, ILITEK_IOCTL_TP_CORE_VER, (unsigned long)compat_ptr(arg));
+		return ret;
+	case ILITEK_COMPAT_IOCTL_TP_DRV_VER:
+		ipio_info("compat_ioctl: convert driver version\n");
+		ret = filp->f_op->unlocked_ioctl(filp, ILITEK_IOCTL_TP_DRV_VER, (unsigned long)compat_ptr(arg));
+		return ret;
+	case ILITEK_COMPAT_IOCTL_TP_CHIP_ID:
+		ipio_info("compat_ioctl: convert chip id\n");
+		ret = filp->f_op->unlocked_ioctl(filp, ILITEK_IOCTL_TP_CHIP_ID, (unsigned long)compat_ptr(arg));
+		return ret;
+	case ILITEK_COMPAT_IOCTL_TP_NETLINK_CTRL:
+		ipio_info("compat_ioctl: convert netlink ctrl\n");
+		ret = filp->f_op->unlocked_ioctl(filp, ILITEK_IOCTL_TP_NETLINK_CTRL, (unsigned long)compat_ptr(arg));
+		return ret;
+	case ILITEK_COMPAT_IOCTL_TP_NETLINK_STATUS:
+		ipio_info("compat_ioctl: convert netlink status\n");
+		ret = filp->f_op->unlocked_ioctl(filp, ILITEK_IOCTL_TP_NETLINK_STATUS, (unsigned long)compat_ptr(arg));
+		return ret;
+	case ILITEK_COMPAT_IOCTL_TP_MODE_CTRL:
+		ipio_info("compat_ioctl: convert tp mode ctrl\n");
+		ret = filp->f_op->unlocked_ioctl(filp, ILITEK_IOCTL_TP_MODE_CTRL, (unsigned long)compat_ptr(arg));
+		return ret;
+	case ILITEK_COMPAT_IOCTL_TP_MODE_STATUS:
+		ipio_info("compat_ioctl: convert tp mode status\n");
+		ret = filp->f_op->unlocked_ioctl(filp, ILITEK_IOCTL_TP_MODE_STATUS, (unsigned long)compat_ptr(arg));
+		return ret;
+	case ILITEK_COMPAT_IOCTL_ICE_MODE_SWITCH:
+		ipio_info("compat_ioctl: convert tp mode switch\n");
+		ret = filp->f_op->unlocked_ioctl(filp, ILITEK_IOCTL_ICE_MODE_SWITCH, (unsigned long)compat_ptr(arg));
+		return ret;
+	case ILITEK_COMPAT_IOCTL_TP_INTERFACE_TYPE:
+		ipio_info("compat_ioctl: convert interface type\n");
+		ret = filp->f_op->unlocked_ioctl(filp, ILITEK_IOCTL_TP_INTERFACE_TYPE, (unsigned long)compat_ptr(arg));
+		return ret;
+	case ILITEK_COMPAT_IOCTL_TP_DUMP_FLASH:
+		ipio_info("compat_ioctl: convert dump flash\n");
+		ret = filp->f_op->unlocked_ioctl(filp, ILITEK_IOCTL_TP_DUMP_FLASH, (unsigned long)compat_ptr(arg));
+		return ret;
+	default:
+		ipio_err("no ioctl cmd, return ilitek_node_ioctl\n");
+		return -ENOIOCTLCMD;
+	}
+}
+#endif
+
 static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	int ret = 0, length = 0;
@@ -1114,6 +1253,8 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 		ipio_err("The number of ioctl doesn't match\n");
 		return -ENOTTY;
 	}
+
+	ipio_info("cmd = %d\n", _IOC_NR(cmd));
 
 	szBuf = kcalloc(IOCTL_I2C_BUFF, sizeof(u8), GFP_KERNEL);
 	if (ERR_ALLOC_MEM(szBuf)) {
@@ -1376,6 +1517,9 @@ struct file_operations proc_debug_message_switch_fops = {
 
 struct file_operations proc_ioctl_fops = {
 	.unlocked_ioctl = ilitek_node_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl = ilitek_node_compat_ioctl,
+#endif
 	.write = ilitek_node_ioctl_write,
 };
 

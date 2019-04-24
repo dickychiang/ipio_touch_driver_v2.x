@@ -380,7 +380,7 @@ int ilitek_tddi_flash_read_int_flag(void)
 	u32 data = 0;
 
 	do {
-		if (ilitek_ice_mode_read(INTR1_ADDR & BIT(25), &data, sizeof(u32) < 0))
+		if (ilitek_ice_mode_read(INTR1_ADDR & BIT(25), &data, sizeof(u32)) < 0)
 			ipio_err("Read flash int flag error\n");
 
 		ipio_debug("int flag = %x\n", data);
@@ -933,6 +933,7 @@ static void ilitek_tddi_fw_update_block_info(u8 *pfw, u8 type)
 			ges_fw_end = fbi[GESTURE].end;
 			fbi[GESTURE].start = 0;
 		} else {
+			memset(fbi, 0x0, sizeof(fbi));
 			fbi[AP].start = 0;
 			fbi[AP].mem_start = 0;
 			fbi[AP].len = MAX_AP_FIRMWARE_SIZE;
@@ -946,11 +947,12 @@ static void ilitek_tddi_fw_update_block_info(u8 *pfw, u8 type)
 			fbi[MP].len = MAX_MP_FIRMWARE_SIZE;
 
 			/* Parsing gesture info form AP code */
-			ges_area_section = (pfw[0xFFCF] << 24) + (pfw[0xFFCE] << 16) + (pfw[0xFFCD] << 8) + pfw[0xFFCC];
-			fbi[GESTURE].mem_start = (pfw[0xFFD3] << 24) + (pfw[0xFFD2] << 16) + (pfw[0xFFD1] << 8) + pfw[0xFFD0];;
+			ges_info_addr = (MAX_AP_FIRMWARE_SIZE - 60);
+			ges_area_section = (pfw[ges_info_addr + 3] << 24) + (pfw[ges_info_addr + 2] << 16) + (pfw[ges_info_addr + 1] << 8) + pfw[ges_info_addr];
+			fbi[GESTURE].mem_start = (pfw[ges_info_addr + 7] << 24) + (pfw[ges_info_addr + 6] << 16) + (pfw[ges_info_addr + 5] << 8) + pfw[ges_info_addr + 4];
 			fbi[GESTURE].len = MAX_GESTURE_FIRMWARE_SIZE;
-			ges_fw_start = (pfw[0xFFDB] << 24) + (pfw[0xFFDA] << 16) + (pfw[0xFFD9] << 8) + pfw[0xFFD8];
-			ges_fw_end = (pfw[0xFFDB] << 24) + (pfw[0xFFDA] << 16) + (pfw[0xFFD9] << 8) + pfw[0xFFD8];
+			ges_fw_start = (pfw[ges_info_addr + 15] << 24) + (pfw[ges_info_addr + 14] << 16) + (pfw[ges_info_addr + 13] << 8) + pfw[ges_info_addr + 12];
+			ges_fw_end = ges_fw_start + MAX_GESTURE_FIRMWARE_SIZE;
 			fbi[GESTURE].start = 0;
 		}
 

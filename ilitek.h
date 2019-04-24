@@ -42,6 +42,9 @@
 #include <linux/regulator/consumer.h>
 #include <linux/power_supply.h>
 #include <linux/fs.h>
+#ifdef CONFIG_COMPAT
+#include <linux/compat.h>
+#endif
 #include <linux/uaccess.h>
 
 #include <linux/cdev.h>
