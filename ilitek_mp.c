@@ -115,7 +115,7 @@ struct ini_file_data {
 	int iSectionNameLen;
 	int iKeyNameLen;
 	int iKeyValueLen;
-} ilitek_ini_file_data[PARSER_MAX_KEY_NUM];
+} *ilitek_ini_file_data;
 
 enum open_test_node_type {
 	NO_COMPARE = 0x00,	/* Not A Area, No Compare */
@@ -3054,6 +3054,12 @@ int ilitek_tddi_mp_test_main(char *apk, bool lcm_on)
 {
 	int ret = 0;
 
+	ilitek_ini_file_data = (struct ini_file_data *)vmalloc(sizeof(struct ini_file_data) * PARSER_MAX_KEY_NUM);
+	if (ERR_ALLOC_MEM(ilitek_ini_file_data)) {
+		ipio_info("Failed to malloc ilitek_ini_file_data\n");
+		goto out;
+	}
+
 	ilitek_tddi_mp_init_item();
 
 	ret = ilitek_tddi_mp_ini_parser(INI_NAME_PATH);
@@ -3106,5 +3112,6 @@ int ilitek_tddi_mp_test_main(char *apk, bool lcm_on)
 	mp_test_free();
 
 out:
+	ipio_vfree((void **)&ilitek_ini_file_data);
 	return ret;
 };
