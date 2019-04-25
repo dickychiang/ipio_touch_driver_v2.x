@@ -1067,8 +1067,8 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 	} else if (strcmp(cmd, "dumpiramdata") == 0) {
 		ipio_info("Start = 0x%x, End = 0x%x, Dump IRAM path = %s\n", data[1], data[2], DUMP_IRAM_PATH);
 		ilitek_tddi_fw_dump_iram_data(data[1], data[2]);
-	} else if (strcmp(cmd, "edge_plam_ctrl") == 0) {
-		ilitek_tddi_edge_palm_ctrl(data[1]);
+	} else if (strcmp(cmd, "edge_palm_ctrl") == 0) {
+		ilitek_tddi_ic_func_ctrl("edge_palm", data[1]);
 	} else if (strcmp(cmd, "uart_mode_ctrl") == 0) {
 		if (data[1] > 1) {
 			ipio_info("Unknow cmd, Disable UART mdoe\n");

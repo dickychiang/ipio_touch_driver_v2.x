@@ -34,7 +34,7 @@ static struct ilitek_protocol_info protocol_info[PROTOCL_VER_NUM] = {
 	[6] = {PROTOCOL_VER_560, 9, 4, 14, 30, 5, 5, 3, 8, 15, 14},
 };
 
-#define FUNC_CTRL_NUM	15
+#define FUNC_CTRL_NUM	16
 static struct ilitek_ic_func_ctrl func_ctrl[FUNC_CTRL_NUM] = {
 	/* cmd[3] = cmd, func, ctrl */
 	[0] = {"sense", {0x1, 0x1, 0x0}, 3},
@@ -52,6 +52,7 @@ static struct ilitek_ic_func_ctrl func_ctrl[FUNC_CTRL_NUM] = {
 	[12] = {"edge_palm", {0x1, 0x12, 0x0}, 3},
 	[13] = {"lock_point", {0x1, 0x13, 0x0}, 3},
 	[14] = {"active", {0x1, 0x14, 0x0}, 3},
+	[15] = {"idle", {0x1, 0x19, 0x0}, 3},
 };
 
 #define CHIP_SUP_NUM		6
@@ -963,37 +964,6 @@ static void ilitek_tddi_ic_check_protocol_ver(u32 pver)
 
 	ipio_info("Not found a correct protocol version in list, use newest version\n");
 	idev->protocol = &protocol_info[PROTOCL_VER_NUM - 1];
-}
-
-int ilitek_tddi_edge_palm_ctrl(u8 type)
-{
-	int ret = 0;
-	u8 cmd[4] = {0};
-
-	mutex_lock(&idev->touch_mutex);
-
-	ipio_info("edge palm ctrl, type = %d\n", type);
-
-	cmd[0] = P5_X_READ_DATA_CTRL;
-	cmd[1] = P5_X_EDGE_PLAM_CTRL_1;
-	cmd[2] = P5_X_EDGE_PLAM_CTRL_2;
-	cmd[3] = type;
-
-	if (idev->write(cmd, sizeof(cmd)) < 0) {
-		ipio_err("Write edge plam ctrl error\n");
-		ret = -1;
-		goto out;
-	}
-
-	if (idev->write(&cmd[1], (sizeof(cmd) - 1)) < 0) {
-		ipio_err("Write edge plam ctrl error\n");
-		ret = -1;
-		goto out;
-	}
-
-out:
-	mutex_unlock(&idev->touch_mutex);
-	return ret;
 }
 
 int ilitek_tddi_ic_get_protocl_ver(void)
