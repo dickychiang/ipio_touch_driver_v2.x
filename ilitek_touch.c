@@ -210,6 +210,8 @@ int ilitek_tddi_move_mp_code_flash(void)
 
 		ipio_info("[Move MP.TEXT to DRAM]\n");
 		dma_trigger_reg_setting(overlay_end_addr, (mp_flash_addr + overlay_start_addr), mp_text_size);
+
+		dma_clear_reg_setting();
 	} else {
 		/* DMA Trigger */
 		ilitek_ice_mode_write(FLASH4_reg_rcv_data, 0xFF, 1);
