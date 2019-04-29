@@ -144,8 +144,7 @@ static int host_download_dma_check(u32 start_addr, u32 block_size)
 
 static int ilitek_tddi_fw_iram_read(u8 *buf, u32 start, u32 end)
 {
-	int i;
-	int addr = 0, r_len = SPI_UPGRADE_LEN;
+	int r_len = end + 1;
 	u8 cmd[4] = {0};
 
 	if (!buf) {
@@ -153,24 +152,19 @@ static int ilitek_tddi_fw_iram_read(u8 *buf, u32 start, u32 end)
 		return -ENOMEM;
 	}
 
-	for (addr = start, i = 0; addr < end; i += r_len, addr += r_len) {
-		if ((addr + r_len) > end)
-			r_len = end % r_len;
+	cmd[0] = 0x25;
+	cmd[3] = (char)((start & 0x00FF0000) >> 16);
+	cmd[2] = (char)((start & 0x0000FF00) >> 8);
+	cmd[1] = (char)((start & 0x000000FF));
 
-		cmd[0] = 0x25;
-		cmd[3] = (char)((addr & 0x00FF0000) >> 16);
-		cmd[2] = (char)((addr & 0x0000FF00) >> 8);
-		cmd[1] = (char)((addr & 0x000000FF));
+	if (idev->write(cmd, 4)) {
+		ipio_err("Failed to write iram data\n");
+		return -ENODEV;
+	}
 
-		if (idev->write(cmd, 4)) {
-			ipio_err("Failed to write iram data\n");
-			return -ENODEV;
-		}
-
-		if (idev->read(buf + i, r_len)) {
-			ipio_err("Failed to Read iram data\n");
-			return -ENODEV;
-		}
+	if (idev->read(buf, r_len)) {
+		ipio_err("Failed to Read iram data\n");
+		return -ENODEV;
 	}
 	return 0;
 }
@@ -261,11 +255,15 @@ out:
 	return 0;
 }
 
-static int ilitek_tddi_fw_iram_program(u32 start, u32 size, u8 *w_buf, u32 w_len)
+static int ilitek_tddi_fw_iram_program(u32 start, u8 *w_buf, u32 w_len)
 {
-	int addr = 0, i = 0, j = 0;
-	u32 end = start + size;
+	int i = 0;
 	u8 *buf = NULL;
+
+	if (!w_buf) {
+		ipio_err("fw buffer is null\n");
+		return -ENOMEM;
+	}
 
 	buf = kzalloc(w_len + 4, GFP_KERNEL);
 	if (ERR_ALLOC_MEM(buf)) {
@@ -276,28 +274,18 @@ static int ilitek_tddi_fw_iram_program(u32 start, u32 size, u8 *w_buf, u32 w_len
 	for (i = 0; i < w_len + 4; i++)
 		buf[i] = 0xFF;
 
-	for (addr = start, i = 0; addr < end; addr += w_len, i += w_len) {
-		if ((addr + w_len) > end)
-			w_len = end % w_len;
+	buf[0] = 0x25;
+	buf[3] = (char)((start & 0x00FF0000) >> 16);
+	buf[2] = (char)((start & 0x0000FF00) >> 8);
+	buf[1] = (char)((start & 0x000000FF));
 
-		buf[0] = 0x25;
-		buf[3] = (char)((addr & 0x00FF0000) >> 16);
-		buf[2] = (char)((addr & 0x0000FF00) >> 8);
-		buf[1] = (char)((addr & 0x000000FF));
+	for (i = 0; i < w_len; i++)
+		buf[i + 4] = w_buf[i];
 
-		for (j = 0; j < w_len; j++)
-			buf[4 + j] = w_buf[i + j];
-
-		if (idev->write(buf, w_len + 4)) {
-			ipio_err("Failed to write data via SPI in host download (%x)\n", w_len);
-			ipio_kfree((void **)&buf);
-			return -EIO;
-		}
-
-		/* holding the status until finish this upgrade. */
-		idev->fw_update_stat = (addr * 101) / end;
-		if (idev->fw_update_stat > 90)
-			idev->fw_update_stat = 90;
+	if (idev->write(buf, w_len + 4)) {
+		ipio_err("Failed to write data via SPI in host download (%x)\n", w_len + 4);
+		ipio_kfree((void **)&buf);
+		return -EIO;
 	}
 
 	ipio_kfree((void **)&buf);
@@ -723,7 +711,7 @@ static int ilitek_tddi_fw_iram_upgrade(u8 *pfw)
 			ipio_info("Download %s code from hex 0x%x to IRAM 0x%x, len = 0x%x\n",
 					fbi[i].name, fbi[i].start, fbi[i].mem_start, fbi[i].len);
 
-			ilitek_tddi_fw_iram_program(fbi[i].mem_start, fbi[i].len, (fw_ptr + fbi[i].start), SPI_UPGRADE_LEN);
+			ilitek_tddi_fw_iram_program(fbi[i].mem_start, (fw_ptr + fbi[i].start), fbi[i].len);
 
 			crc = CalculateCRC32(fbi[i].start, fbi[i].len - 4, fw_ptr);
 			dma = host_download_dma_check(fbi[i].mem_start, fbi[i].len - 4);

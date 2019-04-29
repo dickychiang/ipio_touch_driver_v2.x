@@ -259,8 +259,6 @@ enum TP_WQ_TYPE {
 #define RESERVE_BLOCK_START_ADDR		0x1D000
 #define RESERVE_BLOCK_END_ADDR			0x1DFFF
 #define FW_VER_ADDR				0xFFE0
-#define SPI_UPGRADE_LEN				2048
-#define SPI_READ_LEN				2048
 #define FW_BLOCK_INFO_NUM			7
 
 /* DMA Control Registers */
