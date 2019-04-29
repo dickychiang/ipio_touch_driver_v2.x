@@ -453,7 +453,7 @@ u32 ilitek_tddi_fw_read_hw_crc(u32 start, u32 end)
 	int retry = 500;
 	u32 busy = 0;
 	u32 write_len = end;
-	u32 iram_check = 0;
+	u32 flash_crc = 0;
 
 	if (write_len > idev->chip->max_count) {
 		ipio_err("The length (%x) written into firmware is greater than max count (%x)\n",
@@ -494,12 +494,12 @@ u32 ilitek_tddi_fw_read_hw_crc(u32 start, u32 end)
 
 	ilitek_ice_mode_write(0x041003, 0x0, 1); /* Disable dio_Rx_dual */
 
-	if (ilitek_ice_mode_read(0x04101C, &iram_check, sizeof(u32)) < 0) {
+	if (ilitek_ice_mode_read(0x04101C, &flash_crc, sizeof(u32)) < 0) {
 		ipio_err("Read hw crc error\n");
 		return -1;
 	}
 
-	return iram_check;
+	return flash_crc;
 }
 
 int ilitek_tddi_fw_read_flash_data(u32 start, u32 end, u8 *data, int len)
