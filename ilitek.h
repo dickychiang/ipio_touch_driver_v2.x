@@ -259,8 +259,6 @@ enum TP_WQ_TYPE {
 #define RESERVE_BLOCK_START_ADDR		0x1D000
 #define RESERVE_BLOCK_END_ADDR			0x1DFFF
 #define FW_VER_ADDR				0xFFE0
-#define SPI_UPGRADE_LEN				2048
-#define SPI_READ_LEN				2048
 #define FW_BLOCK_INFO_NUM			7
 
 /* DMA Control Registers */
@@ -735,7 +733,6 @@ extern int ilitek_ice_mode_write(u32 addr, u32 data, int len);
 extern int ilitek_ice_mode_read(u32 addr, u32 *data, int len);
 extern int ilitek_ice_mode_ctrl(bool enable, bool mcu);
 extern void ilitek_tddi_ic_init(void);
-extern int ilitek_tddi_edge_palm_ctrl(u8 type);
 
 /* Prototypes for tddi events */
 extern int ilitek_tddi_switch_mode(u8 *data);

@@ -990,6 +990,8 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 
 	ipio_info("cmd = %s\n", cmd);
 
+	mutex_lock(&idev->touch_mutex);
+
 	if (strcmp(cmd, "hwreset") == 0) {
 		ilitek_tddi_reset_ctrl(TP_HW_RST_ONLY);
 	} else if (strcmp(cmd, "icwholereset") == 0) {
@@ -1008,6 +1010,7 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 		ilitek_tddi_ic_get_core_ver();
 		ilitek_tddi_ic_get_tp_info();
 		ilitek_tddi_ic_get_panel_info();
+		ipio_info("Driver version = %s\n", DRIVER_VERSION);
 	} else if (strcmp(cmd, "enableicemode") == 0) {
 		if (data[1] == ON)
 			ilitek_ice_mode_ctrl(ENABLE, ON);
@@ -1104,8 +1107,8 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 	} else if (strcmp(cmd, "dumpiramdata") == 0) {
 		ipio_info("Start = 0x%x, End = 0x%x, Dump IRAM path = %s\n", data[1], data[2], DUMP_IRAM_PATH);
 		ilitek_tddi_fw_dump_iram_data(data[1], data[2]);
-	} else if (strcmp(cmd, "edge_plam_ctrl") == 0) {
-		ilitek_tddi_edge_palm_ctrl(data[1]);
+	} else if (strcmp(cmd, "edge_palm_ctrl") == 0) {
+		ilitek_tddi_ic_func_ctrl("edge_palm", data[1]);
 	} else if (strcmp(cmd, "uart_mode_ctrl") == 0) {
 		if (data[1] > 1) {
 			ipio_info("Unknow cmd, Disable UART mdoe\n");
@@ -1125,6 +1128,7 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 	}
 
 	ipio_kfree((void **)&data);
+	mutex_unlock(&idev->touch_mutex);
 	return size;
 }
 
@@ -1261,6 +1265,8 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 		ipio_err("Failed to allocate mem\n");
 		return -ENOMEM;
 	}
+
+	mutex_lock(&idev->touch_mutex);
 
 	switch (cmd) {
 	case ILITEK_IOCTL_I2C_WRITE_DATA:
@@ -1487,6 +1493,7 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 	}
 
 	ipio_kfree((void **)&szBuf);
+	mutex_unlock(&idev->touch_mutex);
 	return ret;
 }
 

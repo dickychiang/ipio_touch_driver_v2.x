@@ -22,13 +22,6 @@
 
 #include "ilitek.h"
 
-#define DMA_TRANSFER_MAX_TIMES		2
-#define DMA_TRANSFER_MAX_SIZE		1024
-
-/* plus 5 for IC Mode :(Head + Address) 0x82,0x25,Addr_L,Addr_M,Addr_H */
-#define SPI_WRITE_BUFF_MAXSIZE		(1024 * DMA_TRANSFER_MAX_TIMES + 5)
-#define SPI_READ_BUFF_MAXSIZE		(1024 * DMA_TRANSFER_MAX_TIMES)
-
 struct touch_bus_info {
 	struct spi_driver bus_driver;
 	struct ilitek_hwif_info *hwif;
@@ -37,13 +30,25 @@ struct touch_bus_info {
 struct ilitek_tddi_dev *idev;
 
 /*
- * As spi_write_then_read() in kernel can't guarante the data we
- * want to send to or read from is always 4 bytes aligned via DMA transimission.
+ * Since our MTK platform limits the length that must be a multiple of 1024, currently
+ * the function only works for 64k bytes in transferring once.
  *
- * This function works for that and limits the buffer of DMA is at 1024byte. You
- * can change it by request.
+ * You should of course change the values of two macros to increase/decrease the number of
+ * transferred data. But if a platform doesn't have such a limitation, please mark the macro
+ * of DMA_TRANSFER_LIMIT to promise the speed of transferring data.
  */
 #ifdef CONFIG_MTK_SPI
+
+#define DMA_TRANSFER_LIMIT
+
+#ifdef DMA_TRANSFER_LIMIT
+#define DMA_TRANSFER_MAX_CHUNK		64   // number of chunks to be transferred.
+#define DMA_TRANSFER_MAX_LEN		1024 // length of a chunk.
+struct spi_transfer	xfer[DMA_TRANSFER_MAX_CHUNK + 1];
+#else
+struct spi_transfer	xfer[2];
+#endif
+
 static int core_mtk_spi_write_then_read(struct spi_device *spi,
 		const void *txbuf, unsigned n_tx,
 		void *rxbuf, unsigned n_rx)
@@ -55,24 +60,14 @@ static int core_mtk_spi_write_then_read(struct spi_device *spi,
 	u8 *dma_txbuf = NULL, *dma_rxbuf = NULL;
 	u8 cmd, temp1[1] = {0}, temp2[1] = {0};
 	struct spi_message	message;
-	struct spi_transfer	xfer[DMA_TRANSFER_MAX_TIMES + 1];
 
-	if (n_tx > (SPI_WRITE_BUFF_MAXSIZE)) {
-		ipio_err("Exceeded length (%d) > %d\n", n_tx, SPI_WRITE_BUFF_MAXSIZE);
-		goto out;
-	}
-	if (n_rx > (SPI_READ_BUFF_MAXSIZE)) {
-		ipio_err("Exceeded length (%d) > %d\n", n_rx, SPI_READ_BUFF_MAXSIZE);
-		goto out;
-	}
-
-	dma_txbuf = kzalloc(SPI_WRITE_BUFF_MAXSIZE, GFP_KERNEL);
+	dma_txbuf = kzalloc(n_tx, GFP_KERNEL);
 	if (ERR_ALLOC_MEM(dma_txbuf)) {
 		ipio_err("Failed to allocate dma_txbuf, %ld\n", PTR_ERR(dma_txbuf));
 		goto out;
 	}
 
-	dma_rxbuf = kzalloc(SPI_READ_BUFF_MAXSIZE, GFP_KERNEL);
+	dma_rxbuf = kzalloc(n_rx, GFP_KERNEL);
 	if (ERR_ALLOC_MEM(dma_rxbuf)) {
 		ipio_err("Failed to allocate dma_rxbuf, %ld\n", PTR_ERR(dma_rxbuf));
 		goto out;
@@ -90,24 +85,29 @@ static int core_mtk_spi_write_then_read(struct spi_device *spi,
 
 	switch (cmd) {
 	case SPI_WRITE:
-		if (n_tx % DMA_TRANSFER_MAX_SIZE)
-			xferloop = (n_tx / DMA_TRANSFER_MAX_SIZE) + 1;
+#ifdef DMA_TRANSFER_LIMIT
+		if (n_tx % DMA_TRANSFER_MAX_LEN)
+			xferloop = (n_tx / DMA_TRANSFER_MAX_LEN) + 1;
 		else
-			xferloop = n_tx / DMA_TRANSFER_MAX_SIZE;
+			xferloop = n_tx / DMA_TRANSFER_MAX_LEN;
 
 		xferlen = n_tx;
 		memcpy(dma_txbuf, (u8 *)txbuf, xferlen);
 
 		for (xfercnt = 0; xfercnt < xferloop; xfercnt++) {
-			if (xferlen > DMA_TRANSFER_MAX_SIZE)
-				xferlen = DMA_TRANSFER_MAX_SIZE;
+			if (xferlen > DMA_TRANSFER_MAX_LEN)
+				xferlen = DMA_TRANSFER_MAX_LEN;
 
 			xfer[xfercnt].len = xferlen;
-			xfer[xfercnt].tx_buf = dma_txbuf + xfercnt * DMA_TRANSFER_MAX_SIZE;
+			xfer[xfercnt].tx_buf = dma_txbuf + xfercnt * DMA_TRANSFER_MAX_LEN;
 			spi_message_add_tail(&xfer[xfercnt], &message);
-
-			xferlen = n_tx - (xfercnt+1) * DMA_TRANSFER_MAX_SIZE;
+			xferlen = n_tx - (xfercnt+1) * DMA_TRANSFER_MAX_LEN;
 		}
+#else
+                xfer[0].len = n_tx;
+                xfer[0].tx_buf = txbuf;
+                spi_message_add_tail(&xfer[0], &message);
+#endif
 		status = spi_sync(spi, &message);
 		break;
 	case SPI_READ:
@@ -118,24 +118,30 @@ static int core_mtk_spi_write_then_read(struct spi_device *spi,
 		xfer[0].rx_buf = temp1;
 		spi_message_add_tail(&xfer[0], &message);
 
+#ifdef DMA_TRANSFER_LIMIT
 		/* for read data */
-		if (n_rx % DMA_TRANSFER_MAX_SIZE)
-			xferloop = (n_rx / DMA_TRANSFER_MAX_SIZE) + 1;
+		if (n_rx % DMA_TRANSFER_MAX_LEN)
+			xferloop = (n_rx / DMA_TRANSFER_MAX_LEN) + 1;
 		else
-			xferloop = n_rx / DMA_TRANSFER_MAX_SIZE;
+			xferloop = n_rx / DMA_TRANSFER_MAX_LEN;
 
 		xferlen = n_rx;
 		for (xfercnt = 0; xfercnt < xferloop; xfercnt++) {
-			if (xferlen > DMA_TRANSFER_MAX_SIZE)
-				xferlen = DMA_TRANSFER_MAX_SIZE;
+			if (xferlen > DMA_TRANSFER_MAX_LEN)
+				xferlen = DMA_TRANSFER_MAX_LEN;
 
 			xfer[xfercnt+1].len = xferlen;
 			xfer[xfercnt+1].tx_buf = temp2;
-			xfer[xfercnt+1].rx_buf = dma_rxbuf + xfercnt * DMA_TRANSFER_MAX_SIZE;
+			xfer[xfercnt+1].rx_buf = dma_rxbuf + xfercnt * DMA_TRANSFER_MAX_LEN;
 			spi_message_add_tail(&xfer[xfercnt+1], &message);
-
-			xferlen = n_rx - (xfercnt+1) * DMA_TRANSFER_MAX_SIZE;
+			xferlen = n_rx - (xfercnt+1) * DMA_TRANSFER_MAX_LEN;
 		}
+#else
+                xfer[1].len = n_rx;
+                xfer[1].tx_buf = temp2;
+                xfer[1].rx_buf = dma_rxbuf;
+                spi_message_add_tail(&xfer[1], &message);
+#endif
 		status = spi_sync(spi, &message);
 		if (status == 0)
 			memcpy((u8 *)rxbuf, dma_rxbuf, n_rx);
@@ -526,38 +532,6 @@ out:
 static int core_spi_setup(u32 freq)
 {
 #ifdef CONFIG_MTK_SPI
-	struct mt_chip_conf *chip_config;
-	u32 temp_pulse_width = 0;
-
-	chip_config = (struct mt_chip_conf *)idev->spi->controller_data;
-	if (!chip_config) {
-		ipio_err("chip_config is NULL.\n");
-		chip_config = kzalloc(sizeof(struct mt_chip_conf), GFP_KERNEL);
-		if (!chip_config)
-			return -ENOMEM;
-	}
-
-	temp_pulse_width = ((112 * 1000000) / freq);
-	temp_pulse_width = temp_pulse_width / 2;
-
-	chip_config->setuptime = temp_pulse_width * 2;// for CS
-	chip_config->holdtime = temp_pulse_width * 2;// for CS
-	chip_config->high_time = temp_pulse_width;// for CLK = 1M
-	chip_config->low_time = temp_pulse_width;// for CLK= 1M
-	chip_config->cs_idletime = temp_pulse_width * 2;// for CS
-	chip_config->rx_mlsb = 1;
-	chip_config->tx_mlsb = 1;
-	chip_config->tx_endian = 0;
-	chip_config->rx_endian = 0;
-	chip_config->cpol = 0;
-	chip_config->cpha = 0;
-	chip_config->com_mod = DMA_TRANSFER;
-	//chip_config->com_mod = FIFO_TRANSFER;
-	chip_config->pause = 1;
-	chip_config->finish_intr = 1;
-	chip_config->deassert = 0;
-
-	idev->spi->controller_data = chip_config;
 	idev->spi_write_then_read = core_mtk_spi_write_then_read;
 #else
 	idev->spi_write_then_read = spi_write_then_read;
@@ -619,7 +593,7 @@ static int ilitek_spi_probe(struct spi_device *spi)
 	else
 		idev->reset = TP_HW_RST_ONLY;
 
-	idev->rst_edge_delay = 1;
+	idev->rst_edge_delay = 5;
 	idev->fw_open = FILP_OPEN;
 	idev->fw_upgrade_mode = UPGRADE_IRAM;
 	idev->mp_move_code = ilitek_tddi_move_mp_code_iram;
