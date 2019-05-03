@@ -833,8 +833,8 @@ out:
 		idev->panel_wid = TOUCH_SCREEN_X_MAX;
 		idev->panel_hei = TOUCH_SCREEN_Y_MAX;
 	} else {
-		idev->panel_wid = 1080;
-		idev->panel_hei = 2340;
+		idev->panel_wid = buf[1] << 8 | buf[2];
+		idev->panel_hei = buf[3] << 8 | buf[4];
 	}
 
 	ipio_info("Panel info: width = %d, height = %d\n", idev->panel_wid, idev->panel_hei);
