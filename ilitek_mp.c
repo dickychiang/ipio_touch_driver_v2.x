@@ -1513,11 +1513,17 @@ static int allnode_open_cdc_data(int mode, int *buf)
 		goto out;
 	}
 
+	/* Waiting for FW to prepare cdc data */
+	mdelay(1);
+
 	ret = idev->write(&cmd[1], 1);
 	if (ret < 0) {
 		ipio_err("Write (0x%x) error\n", cmd[1]);
 		goto out;
 	}
+
+	/* Waiting for FW to prepare cdc data */
+	mdelay(1);
 
 	/* Allocate a buffer for the original */
 	ori = kcalloc(len, sizeof(u8), GFP_KERNEL);
@@ -1633,11 +1639,17 @@ static int allnode_mutual_cdc_data(int index)
 		goto out;
 	}
 
+	/* Waiting for FW to prepare cdc data */
+	mdelay(1);
+
 	ret = idev->write(&cmd[1], 1);
 	if (ret < 0) {
 		ipio_err("Write (0x%x) error\n", cmd[1]);
 		goto out;
 	}
+
+	/* Waiting for FW to prepare cdc data */
+	mdelay(1);
 
 	/* Allocate a buffer for the original */
 	ori = kcalloc(len, sizeof(u8), GFP_KERNEL);
