@@ -305,18 +305,15 @@ static int debug_mode_get_data(struct file_buffer *file, u8 type, u32 frame_coun
 
 static int dev_mkdir(char *name, umode_t mode)
 {
-	struct dentry *dentry;
-	struct path path;
 	int err;
+	mm_segment_t fs;
 
 	ipio_info("mkdir: %s\n", name);
+	fs = get_fs();
+	set_fs(KERNEL_DS);
+	err = sys_mkdir(name, mode);
+	set_fs(fs);
 
-	dentry = kern_path_create(AT_FDCWD, name, &path, LOOKUP_DIRECTORY);
-	if (IS_ERR(dentry))
-		return PTR_ERR(dentry);
-
-	err = vfs_mkdir(path.dentry->d_inode, dentry, mode);
-	done_path_create(&path, dentry);
 	return err;
 }
 
