@@ -774,6 +774,28 @@ out:
 	return ret;
 }
 
+void ilitek_tddi_fw_uart_ctrl(u8 ctrl)
+{
+	u8 cmd[4] = {0};
+
+	ipio_info("ioctl: fw UART  = %d\n", ctrl);
+
+	if (ctrl > 1) {
+		ipio_info("Unknow cmd, Disable UART mdoe\n");
+		ctrl = 0;
+	} else {
+		ipio_info("UART mode %s\n", ctrl ? "Enable" : "Disable");
+	}
+	cmd[0] = P5_X_I2C_UART;
+	cmd[1] = 0x3;
+	cmd[2] = 0;
+	cmd[3] = ctrl;
+
+	if (idev->write(cmd, 4) < 0)
+		ipio_info("FW UART Control fail\n");
+	else
+		idev->fw_uart_en = ctrl ? ENABLE : DISABLE;
+}
 int ilitek_tddi_ic_get_fw_ver(void)
 {
 	int ret = 0;

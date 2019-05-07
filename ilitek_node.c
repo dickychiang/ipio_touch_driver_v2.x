@@ -25,7 +25,7 @@
 #define USER_STR_BUFF		PAGE_SIZE
 #define IOCTL_I2C_BUFF		PAGE_SIZE
 #define ILITEK_IOCTL_MAGIC	100
-#define ILITEK_IOCTL_MAXNR	21
+#define ILITEK_IOCTL_MAXNR	22
 
 #define ILITEK_IOCTL_I2C_WRITE_DATA		_IOWR(ILITEK_IOCTL_MAGIC, 0, u8*)
 #define ILITEK_IOCTL_I2C_SET_WRITE_LENGTH	_IOWR(ILITEK_IOCTL_MAGIC, 1, int)
@@ -55,6 +55,7 @@
 
 #define ILITEK_IOCTL_TP_INTERFACE_TYPE		_IOWR(ILITEK_IOCTL_MAGIC, 20, u8*)
 #define ILITEK_IOCTL_TP_DUMP_FLASH		_IOWR(ILITEK_IOCTL_MAGIC, 21, int)
+#define ILITEK_IOCTL_TP_FW_UART_CTRL			_IOWR(ILITEK_IOCTL_MAGIC, 22, u8*)
 
 #ifdef CONFIG_COMPAT
 #define ILITEK_COMPAT_IOCTL_I2C_WRITE_DATA		_IOWR(ILITEK_IOCTL_MAGIC, 0, compat_uptr_t)
@@ -85,6 +86,7 @@
 
 #define ILITEK_COMPAT_IOCTL_TP_INTERFACE_TYPE		_IOWR(ILITEK_IOCTL_MAGIC, 20, compat_uptr_t)
 #define ILITEK_COMPAT_IOCTL_TP_DUMP_FLASH		_IOWR(ILITEK_IOCTL_MAGIC, 21, compat_uptr_t)
+#define ILITEK_COMPAT_IOCTL_TP_FW_UART_CTRL			_IOWR(ILITEK_IOCTL_MAGIC, 22, compat_uptr_t)
 #endif
 
 unsigned char g_user_buf[USER_STR_BUFF] = {0};
@@ -1107,19 +1109,7 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 	} else if (strcmp(cmd, "edge_palm_ctrl") == 0) {
 		ilitek_tddi_ic_func_ctrl("edge_palm", data[1]);
 	} else if (strcmp(cmd, "uart_mode_ctrl") == 0) {
-		if (data[1] > 1) {
-			ipio_info("Unknow cmd, Disable UART mdoe\n");
-			data[1] = 0;
-		} else {
-			ipio_info("UART mode %s\n", data[1] ? "Enable" : "Disable");
-		}
-		temp[0] = P5_X_I2C_UART;
-		temp[1] = 0x3;
-		temp[2] = 0;
-		temp[3] = data[1];
-		idev->write(temp, 4);
-
-		idev->fw_uart_en = data[1] ? ENABLE : DISABLE;
+		ilitek_tddi_fw_uart_ctrl(data[1]);
 	} else {
 		ipio_err("Unknown command\n");
 	}
@@ -1483,6 +1473,22 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 		if (ret < 0) {
 			ipio_err("ioctl: Failed to dump flash data\n");
 		}
+		break;
+	case ILITEK_IOCTL_TP_FW_UART_CTRL:
+		ret = copy_from_user(szBuf, (u8 *) arg, 1);
+		if (ret < 0) {
+			ipio_err("Failed to copy data from user space\n");
+			break;
+		}
+		ipio_info("ioctl: fw UART  = %d\n", szBuf[0]);
+
+		ilitek_tddi_fw_uart_ctrl(szBuf[0]);
+
+		if_to_user = idev->fw_uart_en;
+		ret = copy_to_user((u8 *) arg, &if_to_user, sizeof(if_to_user));
+		if (ret < 0)
+			ipio_err("Failed to copy interface type to user space\n");
+
 		break;
 	default:
 		ret = -ENOTTY;
