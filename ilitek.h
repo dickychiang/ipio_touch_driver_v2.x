@@ -733,6 +733,7 @@ extern int ilitek_ice_mode_write(u32 addr, u32 data, int len);
 extern int ilitek_ice_mode_read(u32 addr, u32 *data, int len);
 extern int ilitek_ice_mode_ctrl(bool enable, bool mcu);
 extern void ilitek_tddi_ic_init(void);
+extern void ilitek_tddi_fw_uart_ctrl(u8 ctrl);
 
 /* Prototypes for tddi events */
 extern int ilitek_tddi_switch_mode(u8 *data);
