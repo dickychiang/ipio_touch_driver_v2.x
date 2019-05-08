@@ -417,60 +417,12 @@ void ilitek_tddi_touch_esd_gesture_iram(void)
 
 }
 
-int ilitek_tddi_debug_report_alloc(void)
-{
-	int i, ret = 0;
-	int row_size = 1 * K + 1, col_size = 2 * K + 1;
-
-	if (!idev->debug_node_open && !idev->debug_buf)
-		return ret;
-
-	if (!idev->debug_node_open && idev->debug_buf != NULL)
-		goto out;
-
-	if (idev->debug_node_open && !idev->debug_buf) {
-		idev->debug_buf = (unsigned char **)kzalloc(row_size * sizeof(unsigned char *), GFP_KERNEL);
-		if (ERR_ALLOC_MEM(idev->debug_buf)) {
-			ipio_err("Failed to allocate debug_buf mem, %ld\n", PTR_ERR(idev->debug_buf));
-			ret = -ENOMEM;
-			goto out;
-		}
-
-		for (i = 0; i < row_size; i++) {
-			idev->debug_buf[i] = (unsigned char *)kzalloc(col_size * sizeof(unsigned char), GFP_KERNEL);
-			if (ERR_ALLOC_MEM(idev->debug_buf[i])) {
-				ipio_err("Failed to allocate debug_buf[%d] mem, %ld\n", i, PTR_ERR(idev->debug_buf[i]));
-				ret = -ENOMEM;
-				goto out;
-			}
-		}
-	}
-	return ret;
-
-out:
-	/* Note that it might be freed by next touch event */
-	if (idev->debug_buf != NULL) {
-		for (i = 0; i < row_size; i++) {
-			if (idev->debug_buf[i] != NULL) {
-				kfree(idev->debug_buf[i]);
-				idev->debug_buf[i] = NULL;
-			}
-		}
-		kfree(idev->debug_buf);
-		idev->debug_buf = NULL;
-	}
-	return ret;
-}
-
 static void ilitek_tddi_touch_send_debug_data(u8 *buf, int len)
 {
-	mutex_lock(&idev->debug_mutex);
-
-	if (ilitek_tddi_debug_report_alloc() < 0)
-		goto out;
-
 	if (!idev->netlink && !idev->debug_node_open)
-		goto out;
+		return;
+
+	mutex_lock(&idev->debug_mutex);
 
 	/* Send data to netlink */
 	if (idev->netlink) {
@@ -745,7 +697,6 @@ void ilitek_tddi_report_gesture_mode(u8 *buf, int len)
 	default:
 		break;
 	}
-	ilitek_tddi_touch_send_debug_data(buf, len);
 }
 
 void ilitek_tddi_report_i2cuart_mode(u8 *buf, int len)
