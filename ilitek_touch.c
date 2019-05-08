@@ -450,7 +450,6 @@ int ilitek_tddi_debug_report_alloc(void)
 out:
 	/* Note that it might be freed by next touch event */
 	if (idev->debug_buf != NULL) {
-		idev->debug_data_frame = 0;
 		for (i = 0; i < row_size; i++) {
 			if (idev->debug_buf[i] != NULL) {
 				kfree(idev->debug_buf[i]);
