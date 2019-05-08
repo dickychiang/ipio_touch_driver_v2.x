@@ -55,7 +55,7 @@
 
 #define ILITEK_IOCTL_TP_INTERFACE_TYPE		_IOWR(ILITEK_IOCTL_MAGIC, 20, u8*)
 #define ILITEK_IOCTL_TP_DUMP_FLASH		_IOWR(ILITEK_IOCTL_MAGIC, 21, int)
-#define ILITEK_IOCTL_TP_FW_UART_CTRL			_IOWR(ILITEK_IOCTL_MAGIC, 22, u8*)
+#define ILITEK_IOCTL_TP_FW_UART_CTRL		_IOWR(ILITEK_IOCTL_MAGIC, 22, u8*)
 
 #ifdef CONFIG_COMPAT
 #define ILITEK_COMPAT_IOCTL_I2C_WRITE_DATA		_IOWR(ILITEK_IOCTL_MAGIC, 0, compat_uptr_t)
@@ -86,7 +86,7 @@
 
 #define ILITEK_COMPAT_IOCTL_TP_INTERFACE_TYPE		_IOWR(ILITEK_IOCTL_MAGIC, 20, compat_uptr_t)
 #define ILITEK_COMPAT_IOCTL_TP_DUMP_FLASH		_IOWR(ILITEK_IOCTL_MAGIC, 21, compat_uptr_t)
-#define ILITEK_COMPAT_IOCTL_TP_FW_UART_CTRL			_IOWR(ILITEK_IOCTL_MAGIC, 22, compat_uptr_t)
+#define ILITEK_COMPAT_IOCTL_TP_FW_UART_CTRL		_IOWR(ILITEK_IOCTL_MAGIC, 22, compat_uptr_t)
 #endif
 
 unsigned char g_user_buf[USER_STR_BUFF] = {0};
@@ -1183,6 +1183,10 @@ static long ilitek_node_compat_ioctl(struct file *filp, unsigned int cmd, unsign
 	case ILITEK_COMPAT_IOCTL_TP_DUMP_FLASH:
 		ipio_info("compat_ioctl: convert dump flash\n");
 		ret = filp->f_op->unlocked_ioctl(filp, ILITEK_IOCTL_TP_DUMP_FLASH, (unsigned long)compat_ptr(arg));
+		return ret;
+	case ILITEK_COMPAT_IOCTL_TP_FW_UART_CTRL:
+		ipio_info("compat_ioctl: convert fw uart\n");
+		ret = filp->f_op->unlocked_ioctl(filp, ILITEK_IOCTL_TP_FW_UART_CTRL, (unsigned long)compat_ptr(arg));
 		return ret;
 	default:
 		ipio_err("no ioctl cmd, return ilitek_node_ioctl\n");
