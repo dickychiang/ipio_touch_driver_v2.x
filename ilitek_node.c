@@ -205,41 +205,6 @@ static int file_write(struct file_buffer *file, bool new_open)
 	return 0;
 }
 
-static int debug_mode_switch(void)
-{
-	int r, row = 1024, col = 2048, ret = 0;
-
-	idev->debug_node_open = !idev->debug_node_open;
-
-	if (idev->debug_node_open) {
-		idev->debug_buf = (unsigned char**)kzalloc(row * sizeof(unsigned char*), GFP_KERNEL);
-		if (ERR_ALLOC_MEM(idev->debug_buf)) {
-			ipio_err("Failed to allocate debug_buf memory, %ld\n", PTR_ERR(idev->debug_buf));
-			idev->debug_node_open = false;
-			ret = -ENOMEM;
-			goto out;
-		}
-		for (r = 0; r < row; ++r) {
-			idev->debug_buf[r] = (unsigned char*)kzalloc(col * sizeof(unsigned char), GFP_KERNEL);
-			if (ERR_ALLOC_MEM(idev->debug_buf[r])) {
-				ipio_err("Failed to allocate debug_buf[%d] memory, %ld\n", r, PTR_ERR(idev->debug_buf[r]));
-				idev->debug_node_open = false;
-				ret = -ENOMEM;
-				goto out;
-			}
-			//memset(idev->debug_buf[r], 0, sizeof(unsigned char) * col);
-		}
-	}
-
-out:
-	for (r = 0; r < row; ++r)
-		ipio_kfree((void **)idev->debug_buf[r]);
-
-	ipio_kfree((void **)idev->debug_buf);
-
-	return ret;
-}
-
 static int debug_mode_get_data(struct file_buffer *file, u8 type, u32 frame_count)
 {
 	int ret;
@@ -625,9 +590,7 @@ static ssize_t ilitek_proc_debug_switch_read(struct file *pFile, char __user *bu
 
 	memset(g_user_buf, 0, USER_STR_BUFF * sizeof(unsigned char));
 
-	ret = debug_mode_switch();
-	if (ret < 0)
-		ipio_err("Failed switch to debug mode\n");
+	idev->debug_node_open = !idev->debug_node_open;
 
 	ipio_info(" %s debug_flag message = %x\n", idev->debug_node_open ? "Enabled" : "Disabled", idev->debug_node_open);
 
@@ -1056,7 +1019,7 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 		tp_mode = P5_X_FW_DEMO_MODE;
 		ilitek_tddi_switch_mode(&tp_mode);
 	} else if (strcmp(cmd, "dbgflag") == 0) {
-		debug_mode_switch();
+		idev->debug_node_open = !idev->debug_node_open;
 		ipio_info("debug flag message = %d\n", idev->debug_node_open);
 	} else if (strcmp(cmd, "iow") == 0) {
 		int w_len = 0;
