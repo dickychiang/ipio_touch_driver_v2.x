@@ -134,7 +134,7 @@
 /* Debug messages */
 #define DEBUG_NONE	0
 #define DEBUG_ALL	1
-#define DEBUG_OUTPUT	DEBUG_ALL
+#define DEBUG_OUTPUT	DEBUG_NONE
 
 #define ipio_info(fmt, arg...)						\
 ({									\
