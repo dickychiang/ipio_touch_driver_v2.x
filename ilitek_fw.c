@@ -731,7 +731,8 @@ static int ilitek_tddi_fw_iram_upgrade(u8 *pfw)
 		ilitek_tddi_reset_ctrl(TP_IC_CODE_RST);
 
 	ilitek_ice_mode_ctrl(DISABLE, OFF);
-	mdelay(10);
+        /* Waiting for fw ready */
+	mdelay(100);
 	return ret;
 }
 
@@ -836,6 +837,7 @@ static int ilitek_tddi_fw_flash_erase(void)
 
 			ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x1, 1); /* CS high */
 
+                        /* Waitint for flash setting ready */
 			mdelay(1);
 
 			if (addr == fbi[AP].start)
@@ -870,31 +872,29 @@ static int ilitek_tddi_fw_flash_upgrade(u8 *pfw)
 		return ret;
 
 	ret = ilitek_tddi_fw_check_ver(pfw);
-	if (ret == UPDATE_PASS)
-		goto out;
+	if (ret == UPDATE_PASS) {
+                if (ilitek_ice_mode_ctrl(DISABLE, OFF) < 0) {
+                        ipio_err("Disable ice mode failed, call reset instead\n");
+                        ilitek_tddi_reset_ctrl(idev->reset);
+                        return UPDATE_PASS;
+                }
+		return UPDATE_PASS;
+        }
 
 	ret = ilitek_tddi_fw_flash_erase();
 	if (ret == UPDATE_FAIL)
-		goto out;
+		return UPDATE_FAIL;
 
 	ret = ilitek_tddi_fw_flash_program(pfw);
 	if (ret == UPDATE_FAIL)
-		goto out;
+		return UPDATE_FAIL;
+
+	ret = ilitek_tddi_fw_check_hex_hw_crc(pfw);
+	if (ret == UPDATE_FAIL)
+		return UPDATE_FAIL;
 
 	/* We do have to reset chip in order to move new code from flash to iram. */
 	ilitek_tddi_reset_ctrl(idev->reset);
-
-	/* the delay time moving code depends on what the touch IC you're using. */
-	mdelay(200);
-
-	ret = ilitek_ice_mode_ctrl(ENABLE, OFF);
-	if (ret < 0)
-		goto out;
-
-	ret = ilitek_tddi_fw_check_hex_hw_crc(pfw);
-
-out:
-	ilitek_ice_mode_ctrl(DISABLE, OFF);
 	return ret;
 }
 

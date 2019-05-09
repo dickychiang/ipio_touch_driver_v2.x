@@ -29,6 +29,8 @@
 void ilitek_plat_tp_reset(void)
 {
 	ipio_info("edge delay = %d\n", idev->rst_edge_delay);
+
+	/* Need accurate power sequence, do not change it to msleep */
 	gpio_direction_output(idev->tp_rst, 1);
 	mdelay(1);
 	gpio_set_value(idev->tp_rst, 0);

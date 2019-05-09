@@ -34,6 +34,8 @@ extern struct tpd_device *tpd;
 void ilitek_plat_tp_reset(void)
 {
 	ipio_info("edge delay = %d\n", idev->rst_edge_delay);
+
+	/* Need accurate power sequence, do not change it to msleep */
 	tpd_gpio_output(idev->tp_rst, 1);
 	mdelay(1);
 	tpd_gpio_output(idev->tp_rst, 0);

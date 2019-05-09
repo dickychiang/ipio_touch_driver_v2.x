@@ -136,11 +136,13 @@ static void dma_trigger_reg_setting(u32 reg_dest_addr, u32 flash_start_addr, u32
 
 	/* DMA Trigger */
 	ilitek_ice_mode_write(FLASH4_reg_rcv_data, 0xFF, 1);
+	/* waiting for fw reload code completed. */
 	mdelay(30);
 
 	/* CS High */
 	ilitek_ice_mode_write(FLASH0_reg_flash_csb, 0x1, 1);
-	mdelay(60);
+	/* waiting for CS status done */
+	mdelay(10);
 }
 
 int ilitek_tddi_move_mp_code_flash(void)
@@ -215,11 +217,13 @@ int ilitek_tddi_move_mp_code_flash(void)
 	} else {
 		/* DMA Trigger */
 		ilitek_ice_mode_write(FLASH4_reg_rcv_data, 0xFF, 1);
+		/* waiting for fw reload code completed. */
 		mdelay(30);
 
 		/* CS High */
 		ilitek_ice_mode_write(FLASH0_reg_flash_csb, 0x1, 1);
-		mdelay(60);
+		/* waiting for CS status done */
+		mdelay(10);
 	}
 
 	ilitek_tddi_reset_ctrl(TP_IC_CODE_RST);
@@ -268,10 +272,7 @@ int ilitek_tddi_move_gesture_code_iram(int mode)
 		/* Prepare Check Ready */
 		cmd[0] = P5_X_READ_DATA_CTRL;
 		cmd[1] = 0xA;
-		cmd[2] = 0x5;
 		idev->write(cmd, 2);
-
-		mdelay(10);
 
 		/* Check ready for load code */
 		cmd[0] = 0x1;
@@ -336,9 +337,6 @@ void ilitek_tddi_touch_esd_gesture_flash(void)
 	idev->actual_tp_mode = P5_X_FW_DEMO_MODE;
 	ilitek_tddi_reset_ctrl(idev->reset);
 
-	/* waiting for FW reloading code */
-	msleep(100);
-
 	ilitek_ice_mode_ctrl(ENABLE, ON);
 
 	/* polling another specific register to see if gesutre is enabled properly */
@@ -347,7 +345,7 @@ void ilitek_tddi_touch_esd_gesture_flash(void)
 			ipio_err("Read gesture answer error\n");
 		if (answer != I2C_ESD_GESTURE_RUN)
 			ipio_info("answer = 0x%x != (0x%x)\n", answer, I2C_ESD_GESTURE_RUN);
-		msleep(10);
+		mdelay(1);
 		retry--;
 	} while (answer != I2C_ESD_GESTURE_RUN && retry > 0);
 
@@ -383,9 +381,6 @@ void ilitek_tddi_touch_esd_gesture_iram(void)
 	/* Host download gives effect to FW receives password successed */
 	ilitek_tddi_fw_upgrade_handler(NULL);
 
-	/* waiting for FW reloading code */
-	msleep(100);
-
 	ilitek_ice_mode_ctrl(ENABLE, ON);
 
 	/* polling another specific register to see if gesutre is enabled properly */
@@ -395,7 +390,7 @@ void ilitek_tddi_touch_esd_gesture_iram(void)
 
 		if (answer != SPI_ESD_GESTURE_RUN)
 			ipio_info("answer = 0x%x != (0x%x)\n", answer, SPI_ESD_GESTURE_RUN);
-		msleep(10);
+		mdelay(1);
 	} while (answer != SPI_ESD_GESTURE_RUN && --retry > 0);
 
 	if (retry <= 0)

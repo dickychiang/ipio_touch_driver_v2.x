@@ -297,13 +297,14 @@ int ilitek_tddi_ic_watch_dog_ctrl(bool write, bool enable)
 	if (enable) {
 		ilitek_ice_mode_write(idev->chip->wdt_addr, 1, 1);
 	} else {
+		/* need delay 300us to wait fw relaod code after stop mcu. */
+		udelay(300);
 		ilitek_ice_mode_write(idev->chip->wdt_addr, (idev->chip->wtd_key & 0xff), 1);
 		ilitek_ice_mode_write(idev->chip->wdt_addr, (idev->chip->wtd_key >> 8), 1);
-		/* need to delay 300us after stop mcu to wait fw relaod */
-		udelay(300);
 	}
 
 	while (timeout > 0) {
+		udelay(40);
 		if (ilitek_ice_mode_read(TDDI_WDT_ACTIVE_ADDR, &ret, sizeof(u8)) < 0)
 			ipio_err("Read wdt active error\n");
 
@@ -320,7 +321,6 @@ int ilitek_tddi_ic_watch_dog_ctrl(bool write, bool enable)
 			ilitek_ice_mode_write(idev->chip->wdt_addr, 0x98, 1);
 		}
 		timeout--;
-		mdelay(5);
 	}
 
 	if (timeout <= 0) {
@@ -414,7 +414,8 @@ int ilitek_tddi_ic_whole_reset(void)
 		ipio_err("ic whole reset failed\n");
 		return -1;
 	}
-	msleep(idev->rst_edge_delay);
+	/* Need accurate power sequence, do not change it to msleep */
+	mdelay(idev->rst_edge_delay);
 	return 0;
 }
 
@@ -577,6 +578,7 @@ void ilitek_tddi_ic_check_otp_prog_mode(void)
 		ilitek_ice_mode_write(0x43030, 0x0, 1);
 		ilitek_ice_mode_write(0x4300C, 0x4, 1);
 
+		/* Need accurate power sequence, do not change it to msleep */
 		mdelay(1);
 
 		ilitek_ice_mode_write(0x4300C, 0x4, 1);
@@ -632,9 +634,9 @@ u32 ilitek_tddi_ic_get_pc_counter(void)
 
 int ilitek_tddi_ic_check_int_stat(void)
 {
-	int timer = 5000;
+	int timer = 3000;
 
-	/* From FW request, timeout should at least be 5 sec */
+	/* From FW request, timeout should at least be 3 sec */
 	while (--timer > 0) {
 		if (atomic_read(&idev->mp_int_check) == DISABLE)
 			break;

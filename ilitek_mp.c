@@ -29,7 +29,6 @@
 #define RETRY_COUNT		3
 #define INT_CHECK		0
 #define POLL_CHECK		1
-#define DELAY_CHECK		2
 
 #define BENCHMARK		1
 #define NODETYPE		1
@@ -1315,10 +1314,8 @@ static int allnode_key_cdc_data(int index)
 	/* Check busy */
 	if (core_mp.busy_cdc == POLL_CHECK)
 		ret = ilitek_tddi_ic_check_busy(50, 50);
-	else if (core_mp.busy_cdc == INT_CHECK)
+	else
 		ret = ilitek_tddi_ic_check_int_stat();
-	else if (core_mp.busy_cdc == DELAY_CHECK)
-		mdelay(600);
 
 	if (ret < 0)
 		goto out;
@@ -1333,11 +1330,17 @@ static int allnode_key_cdc_data(int index)
 		goto out;
 	}
 
+	/* Waiting for FW to prepare cdc data */
+	mdelay(1);
+
 	ret = idev->write(&cmd[1], 1);
 	if (ret < 0) {
 		ipio_err("Write (0x%x) error\n", cmd[1]);
 		goto out;
 	}
+
+	/* Waiting for FW to prepare cdc data */
+	mdelay(1);
 
 	/* Allocate a buffer for the original */
 	ori = kcalloc(len, sizeof(u8), GFP_KERNEL);
@@ -1495,10 +1498,8 @@ static int allnode_open_cdc_data(int mode, int *buf)
 	/* Check busy */
 	if (core_mp.busy_cdc == POLL_CHECK)
 		ret = ilitek_tddi_ic_check_busy(50, 50);
-	else if (core_mp.busy_cdc == INT_CHECK)
+	else
 		ret = ilitek_tddi_ic_check_int_stat();
-	else if (core_mp.busy_cdc == DELAY_CHECK)
-		mdelay(600);
 
 	if (ret < 0)
 		goto out;
@@ -1621,10 +1622,8 @@ static int allnode_mutual_cdc_data(int index)
 	/* Check busy */
 	if (core_mp.busy_cdc == POLL_CHECK)
 		ret = ilitek_tddi_ic_check_busy(50, 50);
-	else if (core_mp.busy_cdc == INT_CHECK)
+	else
 		ret = ilitek_tddi_ic_check_int_stat();
-	else if (core_mp.busy_cdc == DELAY_CHECK)
-		mdelay(600);
 
 	if (ret < 0)
 		goto out;
