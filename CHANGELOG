@@ -1,6 +1,8 @@
-* v2.0.0.0
+* V2.0.1.0
 - Optimise software structure of TP driver based on v1.x.
 - SPI Transfer 64k once (on x20).
 - Device node with dumping iram/flash data.
 - Update compat_ioctl.
-- Fix bugs
+- Delay review * adjustment
+- Add mutex_lock in ioctl
+- Clear dma settings while doing overlay.
