@@ -634,23 +634,15 @@ u32 ilitek_tddi_ic_get_pc_counter(void)
 
 int ilitek_tddi_ic_check_int_stat(void)
 {
-	int timer = 3000;
-
 	/* From FW request, timeout should at least be 3 sec */
-	while (--timer > 0) {
-		if (atomic_read(&idev->mp_int_check) == DISABLE)
-			break;
-		mdelay(1);
+	if (!wait_event_interruptible_timeout(idev->inq, !atomic_read(&idev->mp_int_check), msecs_to_jiffies(3000))) {
+		ipio_err("Error! Interrupt for MP isn't received\n");
+		atomic_set(&idev->mp_int_check, DISABLE);
+		return -1;
 	}
 
-	if (timer > 0) {
-		ipio_info("Interrupt for MP is active\n");
-		return 0;
-	}
-
-	ipio_err("Error! Interrupt for MP isn't received\n");
-	atomic_set(&idev->mp_int_check, DISABLE);
-	return -1;
+	ipio_info("Interrupt for MP is active\n");
+	return 0;
 }
 
 int ilitek_tddi_ic_check_busy(int count, int delay)
