@@ -819,11 +819,19 @@ static ssize_t ilitek_node_mp_lcm_on_test_read(struct file *filp, char __user *b
 	if (ret != 0)
 		ipio_err("Failed to create directory for mp_test\n");
 
+	ilitek_tddi_wq_ctrl(WQ_ESD, DISABLE);
+	ilitek_tddi_wq_ctrl(WQ_BAT, DISABLE);
+	mutex_lock(&idev->touch_mutex);
+
 	ilitek_tddi_mp_test_handler(apk_ret, ON);
 
 	ret = copy_to_user((char *)buff, apk_ret, sizeof(apk_ret));
 	if (ret < 0)
 		ipio_err("Failed to copy data to user space\n");
+
+	mutex_unlock(&idev->touch_mutex);
+	ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
+	ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
 
 	return ret;
 }
@@ -843,11 +851,19 @@ static ssize_t ilitek_node_mp_lcm_off_test_read(struct file *filp, char __user *
 	if (ret != 0)
 		ipio_err("Failed to create directory for mp_test\n");
 
+	ilitek_tddi_wq_ctrl(WQ_ESD, DISABLE);
+	ilitek_tddi_wq_ctrl(WQ_BAT, DISABLE);
+	mutex_lock(&idev->touch_mutex);
+
 	ilitek_tddi_mp_test_handler(apk_ret, OFF);
 
 	ret = copy_to_user((char *)buff, apk_ret, sizeof(apk_ret));
 	if (ret < 0)
 		ipio_err("Failed to copy data to user space\n");
+
+	mutex_unlock(&idev->touch_mutex);
+	ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
+	ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
 
 	return ret;
 }
@@ -886,6 +902,11 @@ static ssize_t ilitek_node_fw_upgrade_read(struct file *filp, char __user *buff,
 		return 0;
 
 	memset(g_user_buf, 0, USER_STR_BUFF * sizeof(unsigned char));
+
+	ilitek_tddi_wq_ctrl(WQ_ESD, DISABLE);
+	ilitek_tddi_wq_ctrl(WQ_BAT, DISABLE);
+	mutex_lock(&idev->touch_mutex);
+
 	idev->force_fw_update = ENABLE;
 	ret = ilitek_tddi_fw_upgrade_handler(NULL);
 	len = sprintf(g_user_buf, "upgrade firwmare %s\n", (ret != 0) ? "failed" : "succeed");
@@ -893,6 +914,10 @@ static ssize_t ilitek_node_fw_upgrade_read(struct file *filp, char __user *buff,
 	ret = copy_to_user((u32 *) buff, g_user_buf, len);
 	if (ret < 0)
 		ipio_err("Failed to copy data to user space\n");
+
+	mutex_unlock(&idev->touch_mutex);
+	ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
+	ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
 
 	return 0;
 }
@@ -952,6 +977,8 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 
 	ipio_info("cmd = %s\n", cmd);
 
+	ilitek_tddi_wq_ctrl(WQ_ESD, DISABLE);
+	ilitek_tddi_wq_ctrl(WQ_BAT, DISABLE);
 	mutex_lock(&idev->touch_mutex);
 
 	if (strcmp(cmd, "hwreset") == 0) {
@@ -1081,6 +1108,8 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 
 	ipio_kfree((void **)&data);
 	mutex_unlock(&idev->touch_mutex);
+	ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
+	ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
 	return size;
 }
 
@@ -1222,11 +1251,21 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 		return -ENOMEM;
 	}
 
+	ilitek_tddi_wq_ctrl(WQ_ESD, DISABLE);
+	ilitek_tddi_wq_ctrl(WQ_BAT, DISABLE);
 	mutex_lock(&idev->touch_mutex);
 
 	switch (cmd) {
 	case ILITEK_IOCTL_I2C_WRITE_DATA:
 		ipio_info("ioctl: write len = %d\n", i2c_rw_length);
+
+		if (i2c_rw_length > IOCTL_I2C_BUFF) {
+			ipio_err("ERROR! write len is largn than ioctl buf (%d, %ld)\n",
+					i2c_rw_length, IOCTL_I2C_BUFF);
+			ret = -ENOTTY;
+			break;
+		}
+
 		ret = copy_from_user(szBuf, (u8 *) arg, i2c_rw_length);
 		if (ret < 0) {
 			ipio_err("Failed to copy data from user space\n");
@@ -1238,6 +1277,14 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 		break;
 	case ILITEK_IOCTL_I2C_READ_DATA:
 		ipio_info("ioctl: read len = %d\n", i2c_rw_length);
+
+		if (i2c_rw_length > IOCTL_I2C_BUFF) {
+			ipio_err("ERROR! read len is largn than ioctl buf (%d, %ld)\n",
+					i2c_rw_length, IOCTL_I2C_BUFF);
+			ret = -ENOTTY;
+			break;
+		}
+
 		ret = idev->read(szBuf, i2c_rw_length);
 		if (ret < 0) {
 			ipio_err("Failed to read data\n");
@@ -1466,6 +1513,8 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 
 	ipio_kfree((void **)&szBuf);
 	mutex_unlock(&idev->touch_mutex);
+	ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
+	ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
 	return ret;
 }
 

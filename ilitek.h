@@ -106,12 +106,12 @@
 #define VCC_VOLTAGE			1800000
 #define SPI_CLK				(10*M)
 #define SPI_RETRY			5
-#define WQ_ESD_DELAY			4000
+#define WQ_ESD_DELAY			1000
 #define WQ_BAT_DELAY			2000
 #define MT_B_TYPE			ENABLE
 #define TDDI_RST_BIND			DISABLE
 #define MT_PRESSURE			DISABLE
-#define ENABLE_WQ_ESD			DISABLE
+#define ENABLE_WQ_ESD			ENABLE
 #define ENABLE_WQ_BAT			DISABLE
 #define ENABLE_GESTURE			ENABLE
 #define REGULATOR_POWER			DISABLE
@@ -607,6 +607,9 @@ struct ilitek_tddi_dev {
 	atomic_t tp_sw_mode;
 	atomic_t mp_int_check;
 	atomic_t esd_stat;
+
+	/* completion event */
+	struct completion fw_update_done;
 
 	int (*write)(void *data, int len);
 	int (*read)(void *data, int len);

@@ -50,9 +50,6 @@ int ilitek_tddi_mp_test_handler(char *apk, bool lcm_on)
 		return -1;
 	}
 
-	ilitek_tddi_wq_ctrl(WQ_ESD, DISABLE);
-	ilitek_tddi_wq_ctrl(WQ_BAT, DISABLE);
-	mutex_lock(&idev->touch_mutex);
 	atomic_set(&idev->mp_stat, ENABLE);
 
 	if (idev->actual_tp_mode != P5_X_FW_TEST_MODE) {
@@ -81,9 +78,6 @@ out:
 		ilitek_tddi_reset_ctrl(idev->reset);
 
 	atomic_set(&idev->mp_stat, DISABLE);
-	mutex_unlock(&idev->touch_mutex);
-	ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
-	ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
 	return ret;
 }
 
@@ -360,14 +354,15 @@ int ilitek_tddi_sleep_handler(int mode)
 		return 0;
 	}
 
-	ipio_info("Sleep Mode = %d\n", mode);
 	ilitek_tddi_wq_ctrl(WQ_ESD, DISABLE);
 	ilitek_tddi_wq_ctrl(WQ_BAT, DISABLE);
 	ilitek_plat_irq_disable();
 
+	ipio_info("Sleep Mode = %d\n", mode);
+
 	switch (mode) {
 	case TP_SUSPEND:
-		ipio_info("TP normal suspend start\n");
+		ipio_info("TP suspend start\n");
 		ilitek_tddi_ic_func_ctrl("sense", DISABLE);
 		ilitek_tddi_ic_check_busy(50, 50);
 
@@ -378,7 +373,7 @@ int ilitek_tddi_sleep_handler(int mode)
 		} else {
 			ilitek_tddi_ic_func_ctrl("sleep", SLEEP_IN);
 		}
-		ipio_info("TP normal suspend end\n");
+		ipio_info("TP suspend end\n");
 		break;
 	case TP_DEEP_SLEEP:
 		ipio_info("TP deep suspend start\n");
@@ -419,28 +414,8 @@ int ilitek_tddi_fw_upgrade_handler(void *data)
 {
 	int ret = 0;
 	static bool input_reg_once = false;
-	bool get_lock = false;
 
 	atomic_set(&idev->fw_stat, START);
-
-	if (!atomic_read(&idev->tp_sleep) &&
-		!atomic_read(&idev->mp_stat) &&
-		!atomic_read(&idev->esd_stat)) {
-		ilitek_tddi_wq_ctrl(WQ_ESD, DISABLE);
-		ilitek_tddi_wq_ctrl(WQ_BAT, DISABLE);
-	}
-
-	if (!mutex_is_locked(&idev->touch_mutex)) {
-		mutex_lock(&idev->touch_mutex);
-		get_lock = true;
-		ipio_info("get touch lock\n");
-	}
-
-	if (idev->fw_upgrade_mode == UPGRADE_FLASH) {
-		ipio_info("Get current fw/protocol ver before upgrade fw\n");
-		ilitek_tddi_ic_get_protocl_ver();
-		ilitek_tddi_ic_get_fw_ver();
-	}
 
 	idev->fw_update_stat = 0;
 	ret = ilitek_tddi_fw_upgrade(idev->fw_upgrade_mode, HEX_FILE, idev->fw_open);
@@ -462,17 +437,8 @@ int ilitek_tddi_fw_upgrade_handler(void *data)
 		ilitek_plat_input_register();
 	}
 
-	if (get_lock)
-		mutex_unlock(&idev->touch_mutex);
-
-	if (!atomic_read(&idev->tp_sleep) &&
-		!atomic_read(&idev->mp_stat) &&
-		!atomic_read(&idev->esd_stat)) {
-		ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
-		ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
-	}
-
 	atomic_set(&idev->fw_stat, END);
+	complete(&idev->fw_update_done);
 	return ret;
 }
 
@@ -587,7 +553,7 @@ void ilitek_tddi_report_handler(void)
 	}
 
 out:
-	if (!idev->actual_tp_mode == P5_X_FW_GESTURE_MODE) {
+	if (!(idev->actual_tp_mode == P5_X_FW_GESTURE_MODE)) {
 		ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
 		ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
 	}
@@ -645,6 +611,7 @@ int ilitek_tddi_init(void)
 	mutex_init(&idev->debug_read_mutex);
 	init_waitqueue_head(&(idev->inq));
 	spin_lock_init(&idev->irq_spin);
+	init_completion(&idev->fw_update_done);
 
 	atomic_set(&idev->irq_stat, DISABLE);
 	atomic_set(&idev->ice_stat, DISABLE);
@@ -667,6 +634,13 @@ int ilitek_tddi_init(void)
 	idev->fw_uart_en = DISABLE;
 	idev->force_fw_update = DISABLE;
 
+	/* Compare version with fw info in boot stage */
+	if (idev->fw_upgrade_mode == UPGRADE_FLASH) {
+		ilitek_tddi_ic_get_protocl_ver();
+		ilitek_tddi_ic_get_fw_ver();
+		ilitek_tddi_ic_get_core_ver();
+	}
+
 	/*
 	 * This status of ice enable will be reset until process of fw upgrade runs.
 	 * it might cause unknown problems if we disable ice mode without any
@@ -688,6 +662,9 @@ int ilitek_tddi_init(void)
 		ipio_err("Failed to create fw upgrade thread\n");
 	}
 
+	wait_for_completion(&idev->fw_update_done);
+	ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
+	ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
 	return 0;
 }
 
