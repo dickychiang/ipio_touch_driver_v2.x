@@ -1296,11 +1296,13 @@ void ilitek_tddi_fw_read_flash_info(bool mode)
 	u8 cmd = 0x9F;
 	u32 tmp = 0;
 	u16 flash_id = 0, flash_mid = 0;
+	bool ice = atomic_read(&idev->ice_stat);
 
 	if (mode == UPGRADE_IRAM)
 		return;
 
-	ilitek_ice_mode_ctrl(ENABLE, OFF);
+	if (!ice)
+		ilitek_ice_mode_ctrl(ENABLE, OFF);
 
 	ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x0, 1); /* CS low */
 	ilitek_ice_mode_write(FLASH1_ADDR, 0x66aa55, 3); /* Key */
@@ -1341,5 +1343,7 @@ void ilitek_tddi_fw_read_flash_info(bool mode)
 	ipio_info("Flash sector = %d\n", idev->flash_sector);
 
 	ilitek_tddi_flash_protect(DISABLE);
-	ilitek_ice_mode_ctrl(DISABLE, OFF);
+
+	if (!ice)
+		ilitek_ice_mode_ctrl(DISABLE, OFF);
 }

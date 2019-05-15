@@ -418,6 +418,7 @@ int ilitek_tddi_sleep_handler(int mode)
 int ilitek_tddi_fw_upgrade_handler(void *data)
 {
 	int ret = 0;
+	static bool input_reg_once = false;
 	bool get_lock = false;
 
 	atomic_set(&idev->fw_stat, START);
@@ -454,7 +455,12 @@ int ilitek_tddi_fw_upgrade_handler(void *data)
 	ilitek_tddi_ic_get_core_ver();
 	ilitek_tddi_ic_get_tp_info();
 	ilitek_tddi_ic_get_panel_info();
-	ilitek_plat_input_register();
+
+	if (!input_reg_once) {
+		input_reg_once = true;
+		ipio_info("Registre touch to input subsystem\n");
+		ilitek_plat_input_register();
+	}
 
 	if (get_lock)
 		mutex_unlock(&idev->touch_mutex);
@@ -661,14 +667,17 @@ int ilitek_tddi_init(void)
 	idev->fw_uart_en = DISABLE;
 	idev->force_fw_update = DISABLE;
 
+	/*
+	 * This status of ice enable will be reset until process of fw upgrade runs.
+	 * it might cause unknown problems if we disable ice mode without any
+	 * codes inside touch ic.
+	 */
 	ilitek_ice_mode_ctrl(ENABLE, OFF);
 
 	if (ilitek_tddi_ic_get_info() < 0) {
 		ipio_err("Not found ilitek chips\n");
 		return -ENODEV;
 	}
-
-	ilitek_ice_mode_ctrl(DISABLE, OFF);
 
 	ilitek_tddi_fw_read_flash_info(idev->fw_upgrade_mode);
 
