@@ -258,37 +258,27 @@ out:
 static int ilitek_tddi_fw_iram_program(u32 start, u8 *w_buf, u32 w_len)
 {
 	int i = 0;
-	u8 *buf = NULL;
 
-	if (!w_buf) {
-		ipio_err("fw buffer is null\n");
-		return -ENOMEM;
-	}
+	for (i = 0; i < MAX_HEX_FILE_SIZE; i++)
+		idev->fw_dma_buf[i] = 0xFF;
 
-	buf = kzalloc(w_len + 4, GFP_KERNEL);
-	if (ERR_ALLOC_MEM(buf)) {
-		ipio_err("Failed to allocate a buffer to be read, %ld\n", PTR_ERR(buf));
-		return -ENOMEM;
-	}
+	idev->fw_dma_buf[0] = SPI_WRITE;
+	idev->fw_dma_buf[1] = 0x25;
+	idev->fw_dma_buf[2] = (char)((start & 0x000000FF));
+	idev->fw_dma_buf[3] = (char)((start & 0x0000FF00) >> 8);
+	idev->fw_dma_buf[4] = (char)((start & 0x00FF0000) >> 16);
 
-	for (i = 0; i < w_len + 4; i++)
-		buf[i] = 0xFF;
+	memcpy(&idev->fw_dma_buf[5], w_buf, w_len);
 
-	buf[0] = 0x25;
-	buf[3] = (char)((start & 0x00FF0000) >> 16);
-	buf[2] = (char)((start & 0x0000FF00) >> 8);
-	buf[1] = (char)((start & 0x000000FF));
-
-	for (i = 0; i < w_len; i++)
-		buf[i + 4] = w_buf[i];
-
-	if (idev->write(buf, w_len + 4)) {
-		ipio_err("Failed to write data via SPI in host download (%x)\n", w_len + 4);
-		ipio_kfree((void **)&buf);
+	/*
+	 * For efficiency, we won't call idev->write as it allocates a tx buffer repeatly.
+	 * Instead, we allocate the dma buffer to do dma transfer in host download.
+	 */
+	if (idev->spi_write_then_read(idev->spi, idev->fw_dma_buf, w_len + 5, NULL, 0) < 0) {
+		ipio_err("Failed to write data via SPI in host download (%x)\n", w_len + 5);
 		return -EIO;
 	}
 
-	ipio_kfree((void **)&buf);
 	return 0;
 }
 

@@ -119,6 +119,7 @@
 
 /* Plaform compatibility */
 // #define CONFIG_PLAT_SPRD
+#define SPI_DMA_TRANSFER_LIMIT
 
 /* Path */
 #define DEBUG_DATA_FILE_SIZE		(10*K)
@@ -525,7 +526,6 @@ struct ilitek_tddi_dev {
 	struct ilitek_hwif_info *hwif;
 	struct ilitek_ic_info *chip;
 	struct ilitek_protocol_info *protocol;
-
 	struct regulator *vdd;
 	struct regulator *vcc;
 
@@ -553,6 +553,7 @@ struct ilitek_tddi_dev {
 	u8 ych_num;
 	u8 stx;
 	u8 srx;
+	u8 *fw_dma_buf;
 
 	int actual_tp_mode;
 
