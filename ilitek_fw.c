@@ -976,7 +976,7 @@ static void ilitek_tddi_fw_update_block_info(u8 *pfw, u8 type)
 	ipio_info("star_addr = 0x%06X, end_addr = 0x%06X, Block Num = %d\n", tfd.start_addr, tfd.end_addr, tfd.block_number);
 }
 
-static void ilitek_tddi_fw_ili_convert(u8 *pfw)
+static int ilitek_tddi_fw_ili_convert(u8 *pfw)
 {
 	int i = 0, block_enable = 0, num = 0;
 	u8 block;
@@ -1001,6 +1001,13 @@ static void ilitek_tddi_fw_ili_convert(u8 *pfw)
 	for (i = 0; i < FW_BLOCK_INFO_NUM; i++) {
 		if (((block_enable >> i) & 0x01) == 0x01) {
 			num = i + 1;
+
+			if (num > (FW_BLOCK_INFO_NUM - 1)) {
+				ipio_err("ERROR! block num is larger than its define (%d, %d)\n",
+						num, FW_BLOCK_INFO_NUM - 1);
+				return -EINVAL;
+			}
+
 			if ((num) == 6) {
 				fbi[num].start = (CTPM_FW[0] << 16) + (CTPM_FW[1] << 8) + (CTPM_FW[2]);
 				fbi[num].end = (CTPM_FW[3] << 16) + (CTPM_FW[4] << 8) + (CTPM_FW[5]);
@@ -1031,6 +1038,7 @@ out:
 	tfd.block_number = CTPM_FW[33];
 	memcpy(pfw, CTPM_FW + ILI_FILE_HEADER, (sizeof(CTPM_FW) - ILI_FILE_HEADER));
 	tfd.end_addr = (sizeof(CTPM_FW) - ILI_FILE_HEADER);
+	return 0;
 }
 
 static int ilitek_tddi_fw_hex_convert(u8 *phex, int size, u8 *pfw)
@@ -1062,6 +1070,12 @@ static int ilitek_tddi_fw_hex_convert(u8 *phex, int size, u8 *pfw)
 			else
 				num = block;
 
+			if (num > (FW_BLOCK_INFO_NUM - 1)) {
+				ipio_err("ERROR! block num is larger than its define (%d, %d)\n",
+						num, FW_BLOCK_INFO_NUM - 1);
+				return -EINVAL;
+			}
+
 			fbi[num].start = HexToDec(&phex[i + 9], 6);
 			fbi[num].end = HexToDec(&phex[i + 9 + 6], 6);
 			fbi[num].fix_mem_start = INT_MAX;
@@ -1071,6 +1085,13 @@ static int ilitek_tddi_fw_hex_convert(u8 *phex, int size, u8 *pfw)
 			block++;
 		} else if (type == BLOCK_TAG_B0 && tfd.hex_tag == BLOCK_TAG_AF) {
 			num = HexToDec(&phex[i + 9 + 6], 2);
+
+			if (num > (FW_BLOCK_INFO_NUM - 1)) {
+				ipio_err("ERROR! block num is larger than its define (%d, %d)\n",
+						num, FW_BLOCK_INFO_NUM - 1);
+				return -EINVAL;
+			}
+
 			fbi[num].fix_mem_start = HexToDec(&phex[i + 9], 6);
 			ipio_info("Tag 0xB0: change Block[%d] to addr = 0x%x\n", num, fbi[num].fix_mem_start);
 		}
@@ -1203,7 +1224,7 @@ static int ilitek_tdd_fw_hex_open(u8 open_file_method, u8 *pfw)
 	return 0;
 }
 
-static void ilitek_tddi_fw_update_tp_info(int ret)
+static void ilitek_tddi_fw_check_update(int ret)
 {
 	ipio_info("FW upgrade %s\n", (ret == UPDATE_PASS ? "PASS" : "FAIL"));
 
@@ -1244,7 +1265,11 @@ int ilitek_tddi_fw_upgrade(int upgrade_type, int file_type, int open_file_method
 	if (idev->actual_tp_mode != P5_X_FW_GESTURE_MODE) {
 		if (ilitek_tdd_fw_hex_open(open_file_method, pfw) < 0) {
 			ipio_err("Open hex file fail, try upgrade from ILI file\n");
-			ilitek_tddi_fw_ili_convert(pfw);
+			if (ilitek_tddi_fw_ili_convert(pfw) < 0) {
+				ipio_err("Convert ILI file error\n");
+				ret = UPDATE_FAIL;
+				goto out;
+			}
 		}
 		ilitek_tddi_fw_update_block_info(pfw, upgrade_type);
 	}
@@ -1266,8 +1291,8 @@ int ilitek_tddi_fw_upgrade(int upgrade_type, int file_type, int open_file_method
 		ret = UPDATE_FAIL;
 	}
 
-	ilitek_tddi_fw_update_tp_info(ret);
 out:
+	ilitek_tddi_fw_check_update(ret);
 	ipio_vfree((void **)&pfw);
 	return ret;
 }
