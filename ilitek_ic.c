@@ -476,9 +476,6 @@ void ilitek_tddi_ic_set_ddi_reg_onepage(u8 page, u8 reg, u8 data)
 	u32 setreg = 0x1F000100 | (reg << 16) | data;
 	bool ice = atomic_read(&idev->ice_stat);
 
-	ilitek_tddi_wq_ctrl(WQ_ESD, DISABLE);
-	ilitek_tddi_wq_ctrl(WQ_BAT, DISABLE);
-
 	ipio_info("setpage =  0x%X setreg = 0x%X\n", setpage, setreg);
 
 	if (!ice)
@@ -502,9 +499,6 @@ void ilitek_tddi_ic_set_ddi_reg_onepage(u8 page, u8 reg, u8 data)
 
 	if (!ice)
 		ilitek_ice_mode_ctrl(DISABLE, OFF);
-
-	ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
-	ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
 }
 
 void ilitek_tddi_ic_get_ddi_reg_onepage(u8 page, u8 reg)
@@ -514,9 +508,6 @@ void ilitek_tddi_ic_get_ddi_reg_onepage(u8 page, u8 reg)
 	u32 setpage = 0x1FFFFF00 | page;
 	u32 setreg = 0x2F000100 | (reg << 16);
 	bool ice = atomic_read(&idev->ice_stat);
-
-	ilitek_tddi_wq_ctrl(WQ_ESD, DISABLE);
-	ilitek_tddi_wq_ctrl(WQ_BAT, DISABLE);
 
 	ipio_info("setpage = 0x%X setreg = 0x%X\n", setpage, setreg);
 
@@ -550,9 +541,6 @@ void ilitek_tddi_ic_get_ddi_reg_onepage(u8 page, u8 reg)
 
 	if (!ice)
 		ilitek_ice_mode_ctrl(DISABLE, OFF);
-
-	ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
-	ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
 }
 
 void ilitek_tddi_ic_check_otp_prog_mode(void)
@@ -686,21 +674,19 @@ int ilitek_tddi_ic_check_busy(int count, int delay)
 
 int ilitek_tddi_ic_get_project_id(u8 *pdata, int size)
 {
-	int i, ret;
+	int i;
 	u32 tmp;
+	bool ice = atomic_read(&idev->ice_stat);
 
 	if (!pdata) {
 		ipio_err("pdata is null\n");
 		return -ENOMEM;
 	}
 
-	mutex_lock(&idev->touch_mutex);
-
 	ipio_info("Read size = %d\n", size);
 
-	ret = ilitek_ice_mode_ctrl(ENABLE, OFF);
-	if (ret < 0)
-		goto out;
+	if (!ice)
+		ilitek_ice_mode_ctrl(ENABLE, OFF);
 
 	ilitek_ice_mode_write(0x041000, 0x0, 1);   /* CS low */
 	ilitek_ice_mode_write(0x041004, 0x66aa55, 3);  /* Key */
@@ -723,11 +709,10 @@ int ilitek_tddi_ic_get_project_id(u8 *pdata, int size)
 
 	ilitek_ice_mode_write(0x041000, 0x1, 1);   /* CS high */
 
-	ilitek_ice_mode_ctrl(DISABLE, OFF);
+	if (!ice)
+		ilitek_ice_mode_ctrl(DISABLE, OFF);
 
-out:
-	mutex_unlock(&idev->touch_mutex);
-	return ret;
+	return 0;
 }
 
 int ilitek_tddi_ic_get_core_ver(void)

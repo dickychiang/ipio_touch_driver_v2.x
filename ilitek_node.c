@@ -501,6 +501,7 @@ static ssize_t ilitek_proc_rw_tp_reg_read(struct file *pFile, char __user *buf, 
 	int ret = 0;
 	bool mcu_on = 0, read = 0;
 	u32 type, addr, read_data, write_data, write_len, stop_mcu;
+	bool esd_en = idev->wq_esd_ctrl, bat_en = idev->wq_bat_ctrl;
 
 	if (*pos != 0)
 		return 0;
@@ -513,8 +514,11 @@ static ssize_t ilitek_proc_rw_tp_reg_read(struct file *pFile, char __user *buf, 
 
 	ipio_info("stop_mcu = %d\n", rw_reg[0]);
 
-	ilitek_tddi_wq_ctrl(WQ_ESD, DISABLE);
-	ilitek_tddi_wq_ctrl(WQ_BAT, DISABLE);
+	if (esd_en)
+		ilitek_tddi_wq_ctrl(WQ_ESD, DISABLE);
+	if (bat_en)
+		ilitek_tddi_wq_ctrl(WQ_BAT, DISABLE);
+
 	mutex_lock(&idev->touch_mutex);
 
 	if (stop_mcu == mcu_on) {
@@ -553,8 +557,12 @@ static ssize_t ilitek_proc_rw_tp_reg_read(struct file *pFile, char __user *buf, 
 
 	*pos += size;
 	mutex_unlock(&idev->touch_mutex);
-	ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
-	ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
+
+	if (esd_en)
+		ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
+	if (bat_en)
+		ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
+
 	return size;
 }
 
@@ -808,6 +816,7 @@ static ssize_t ilitek_node_mp_lcm_on_test_read(struct file *filp, char __user *b
 {
 	int ret = 0;
 	char apk_ret[100] = {0};
+	bool esd_en = idev->wq_esd_ctrl, bat_en = idev->wq_bat_ctrl;
 
 	ipio_info("Run MP test with LCM on\n");
 
@@ -819,8 +828,11 @@ static ssize_t ilitek_node_mp_lcm_on_test_read(struct file *filp, char __user *b
 	if (ret != 0)
 		ipio_err("Failed to create directory for mp_test\n");
 
-	ilitek_tddi_wq_ctrl(WQ_ESD, DISABLE);
-	ilitek_tddi_wq_ctrl(WQ_BAT, DISABLE);
+	if (esd_en)
+		ilitek_tddi_wq_ctrl(WQ_ESD, DISABLE);
+	if (bat_en)
+		ilitek_tddi_wq_ctrl(WQ_BAT, DISABLE);
+
 	mutex_lock(&idev->touch_mutex);
 
 	ilitek_tddi_mp_test_handler(apk_ret, ON);
@@ -830,8 +842,11 @@ static ssize_t ilitek_node_mp_lcm_on_test_read(struct file *filp, char __user *b
 		ipio_err("Failed to copy data to user space\n");
 
 	mutex_unlock(&idev->touch_mutex);
-	ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
-	ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
+
+	if (esd_en)
+		ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
+	if (bat_en)
+		ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
 
 	return ret;
 }
@@ -840,6 +855,7 @@ static ssize_t ilitek_node_mp_lcm_off_test_read(struct file *filp, char __user *
 {
 	int ret = 0;
 	char apk_ret[100] = {0};
+	bool esd_en = idev->wq_esd_ctrl, bat_en = idev->wq_bat_ctrl;
 
 	ipio_info("Run MP test with LCM off\n");
 
@@ -851,8 +867,11 @@ static ssize_t ilitek_node_mp_lcm_off_test_read(struct file *filp, char __user *
 	if (ret != 0)
 		ipio_err("Failed to create directory for mp_test\n");
 
-	ilitek_tddi_wq_ctrl(WQ_ESD, DISABLE);
-	ilitek_tddi_wq_ctrl(WQ_BAT, DISABLE);
+	if (esd_en)
+		ilitek_tddi_wq_ctrl(WQ_ESD, DISABLE);
+	if (bat_en)
+		ilitek_tddi_wq_ctrl(WQ_BAT, DISABLE);
+
 	mutex_lock(&idev->touch_mutex);
 
 	ilitek_tddi_mp_test_handler(apk_ret, OFF);
@@ -862,8 +881,11 @@ static ssize_t ilitek_node_mp_lcm_off_test_read(struct file *filp, char __user *
 		ipio_err("Failed to copy data to user space\n");
 
 	mutex_unlock(&idev->touch_mutex);
-	ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
-	ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
+
+	if (esd_en)
+		ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
+	if (bat_en)
+		ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
 
 	return ret;
 }
@@ -895,6 +917,7 @@ static ssize_t ilitek_node_fw_upgrade_read(struct file *filp, char __user *buff,
 {
 	int ret = 0;
 	u32 len = 0;
+	bool esd_en = idev->wq_esd_ctrl, bat_en = idev->wq_bat_ctrl;
 
 	ipio_info("Preparing to upgarde firmware\n");
 
@@ -903,8 +926,11 @@ static ssize_t ilitek_node_fw_upgrade_read(struct file *filp, char __user *buff,
 
 	memset(g_user_buf, 0, USER_STR_BUFF * sizeof(unsigned char));
 
-	ilitek_tddi_wq_ctrl(WQ_ESD, DISABLE);
-	ilitek_tddi_wq_ctrl(WQ_BAT, DISABLE);
+	if (esd_en)
+		ilitek_tddi_wq_ctrl(WQ_ESD, DISABLE);
+	if (bat_en)
+		ilitek_tddi_wq_ctrl(WQ_BAT, DISABLE);
+
 	mutex_lock(&idev->touch_mutex);
 
 	idev->force_fw_update = ENABLE;
@@ -916,8 +942,11 @@ static ssize_t ilitek_node_fw_upgrade_read(struct file *filp, char __user *buff,
 		ipio_err("Failed to copy data to user space\n");
 
 	mutex_unlock(&idev->touch_mutex);
-	ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
-	ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
+
+	if (esd_en)
+		ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
+	if (bat_en)
+		ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
 
 	return 0;
 }
@@ -977,8 +1006,6 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 
 	ipio_info("cmd = %s\n", cmd);
 
-	ilitek_tddi_wq_ctrl(WQ_ESD, DISABLE);
-	ilitek_tddi_wq_ctrl(WQ_BAT, DISABLE);
 	mutex_lock(&idev->touch_mutex);
 
 	if (strcmp(cmd, "hwreset") == 0) {
@@ -1108,8 +1135,6 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 
 	ipio_kfree((void **)&data);
 	mutex_unlock(&idev->touch_mutex);
-	ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
-	ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
 	return size;
 }
 
@@ -1232,6 +1257,7 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 	static u16 i2c_rw_length;
 	u32 id_to_user[3] = {0};
 	char dbg[10] = { 0 };
+	bool esd_en = idev->wq_esd_ctrl, bat_en = idev->wq_bat_ctrl;
 
 	if (_IOC_TYPE(cmd) != ILITEK_IOCTL_MAGIC) {
 		ipio_err("The Magic number doesn't match\n");
@@ -1251,8 +1277,11 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 		return -ENOMEM;
 	}
 
-	ilitek_tddi_wq_ctrl(WQ_ESD, DISABLE);
-	ilitek_tddi_wq_ctrl(WQ_BAT, DISABLE);
+	if (esd_en)
+		ilitek_tddi_wq_ctrl(WQ_ESD, DISABLE);
+	if (bat_en)
+		ilitek_tddi_wq_ctrl(WQ_BAT, DISABLE);
+
 	mutex_lock(&idev->touch_mutex);
 
 	switch (cmd) {
@@ -1513,8 +1542,12 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 
 	ipio_kfree((void **)&szBuf);
 	mutex_unlock(&idev->touch_mutex);
-	ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
-	ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
+
+	if (esd_en)
+		ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
+	if (bat_en)
+		ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
+
 	return ret;
 }
 
