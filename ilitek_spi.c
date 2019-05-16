@@ -29,49 +29,33 @@ struct touch_bus_info {
 
 struct ilitek_tddi_dev *idev;
 
-/*
- * If SPI_DMA_TRANSFER_LIMIT is enabled, the data transmission will be split,
- * which length of each chunk is defined by DMA_TRANSFER_MAX_LEN and DMA_TRANSFER_MAX_CHUNK.
- *
- * If the option is disabled, this means that the platform has the ability to handle all data at once,
- * no matter how much data transmitted to/receive from a slave device.
- */
-
-#ifdef SPI_DMA_TRANSFER_LIMIT
 #define DMA_TRANSFER_MAX_CHUNK		64   // number of chunks to be transferred.
 #define DMA_TRANSFER_MAX_LEN		1024 // length of a chunk.
 struct spi_transfer	xfer[DMA_TRANSFER_MAX_CHUNK + 1];
-#else
-struct spi_transfer	xfer[2];
-#endif
 
-static int ilitek_spi_write_then_read(struct spi_device *spi,
+int ilitek_spi_write_then_read_split(struct spi_device *spi,
 		const void *txbuf, unsigned n_tx,
 		void *rxbuf, unsigned n_rx)
 {
 	static DEFINE_MUTEX(lock);
 
 	int status = -1;
-#ifdef SPI_DMA_TRANSFER_LIMIT
 	int xfercnt = 0, xferlen = 0, xferloop = 0;
 	u8 *dma_txbuf = NULL, *dma_rxbuf = NULL;
-#endif
 	u8 cmd, temp1[1] = {0}, temp2[1] = {0};
 	struct spi_message	message;
 
-#ifdef SPI_DMA_TRANSFER_LIMIT
-	dma_txbuf = kzalloc(n_tx, GFP_KERNEL);
+	dma_txbuf = kzalloc(n_tx, GFP_KERNEL | GFP_DMA);
 	if (ERR_ALLOC_MEM(dma_txbuf)) {
 		ipio_err("Failed to allocate dma_txbuf, %ld\n", PTR_ERR(dma_txbuf));
 		goto out;
 	}
 
-	dma_rxbuf = kzalloc(n_rx, GFP_KERNEL);
+	dma_rxbuf = kzalloc(n_rx, GFP_KERNEL | GFP_DMA);
 	if (ERR_ALLOC_MEM(dma_rxbuf)) {
 		ipio_err("Failed to allocate dma_rxbuf, %ld\n", PTR_ERR(dma_rxbuf));
 		goto out;
 	}
-#endif
 
 	mutex_trylock(&lock);
 
@@ -85,7 +69,6 @@ static int ilitek_spi_write_then_read(struct spi_device *spi,
 
 	switch (cmd) {
 	case SPI_WRITE:
-#ifdef SPI_DMA_TRANSFER_LIMIT
 		if (n_tx % DMA_TRANSFER_MAX_LEN)
 			xferloop = (n_tx / DMA_TRANSFER_MAX_LEN) + 1;
 		else
@@ -103,11 +86,6 @@ static int ilitek_spi_write_then_read(struct spi_device *spi,
 			spi_message_add_tail(&xfer[xfercnt], &message);
 			xferlen = n_tx - (xfercnt+1) * DMA_TRANSFER_MAX_LEN;
 		}
-#else
-                xfer[0].len = n_tx;
-                xfer[0].tx_buf = txbuf;
-                spi_message_add_tail(&xfer[0], &message);
-#endif
 		status = spi_sync(spi, &message);
 		break;
 	case SPI_READ:
@@ -116,7 +94,7 @@ static int ilitek_spi_write_then_read(struct spi_device *spi,
 		xfer[0].tx_buf = txbuf;
 		xfer[0].rx_buf = temp1;
 		spi_message_add_tail(&xfer[0], &message);
-#ifdef SPI_DMA_TRANSFER_LIMIT
+
 		/* for read data */
 		if (n_rx % DMA_TRANSFER_MAX_LEN)
 			xferloop = (n_rx / DMA_TRANSFER_MAX_LEN) + 1;
@@ -134,17 +112,9 @@ static int ilitek_spi_write_then_read(struct spi_device *spi,
 			spi_message_add_tail(&xfer[xfercnt+1], &message);
 			xferlen = n_rx - (xfercnt+1) * DMA_TRANSFER_MAX_LEN;
 		}
-#else
-                xfer[1].len = n_rx;
-                xfer[1].tx_buf = temp2;
-                xfer[1].rx_buf = rxbuf;
-                spi_message_add_tail(&xfer[1], &message);
-#endif
 		status = spi_sync(spi, &message);
-#ifdef SPI_DMA_TRANSFER_LIMIT
 		if (status == 0)
 			memcpy((u8 *)rxbuf, dma_rxbuf, n_rx);
-#endif
 		break;
 	default:
 		ipio_info("Unknown command 0x%x\n", cmd);
@@ -152,11 +122,60 @@ static int ilitek_spi_write_then_read(struct spi_device *spi,
 	}
 
 	mutex_unlock(&lock);
-#ifdef SPI_DMA_TRANSFER_LIMIT
+
 out:
 	ipio_kfree((void **)&dma_txbuf);
 	ipio_kfree((void **)&dma_rxbuf);
-#endif
+	return status;
+}
+
+int ilitek_spi_write_then_read_direct(struct spi_device *spi,
+		const void *txbuf, unsigned n_tx,
+		void *rxbuf, unsigned n_rx)
+{
+	static DEFINE_MUTEX(lock);
+
+	int status = -1;
+	u8 cmd, temp1[1] = {0}, temp2[1] = {0};
+	struct spi_message	message;
+	struct spi_transfer	xfer[2];
+
+	mutex_trylock(&lock);
+
+	spi_message_init(&message);
+	memset(xfer, 0, sizeof(xfer));
+
+	if ((n_tx == 1) && (n_rx == 1))
+		cmd = SPI_READ;
+	else
+		cmd = *((u8 *)txbuf);
+
+	switch (cmd) {
+	case SPI_WRITE:
+                xfer[0].len = n_tx;
+                xfer[0].tx_buf = txbuf;
+                spi_message_add_tail(&xfer[0], &message);
+		status = spi_sync(spi, &message);
+		break;
+	case SPI_READ:
+		/* for write cmd and head */
+		xfer[0].len = n_tx;
+		xfer[0].tx_buf = txbuf;
+		xfer[0].rx_buf = temp1;
+		spi_message_add_tail(&xfer[0], &message);
+
+                xfer[1].len = n_rx;
+                xfer[1].tx_buf = temp2;
+                xfer[1].rx_buf = rxbuf;
+                spi_message_add_tail(&xfer[1], &message);
+		status = spi_sync(spi, &message);
+		break;
+	default:
+		ipio_info("Unknown command 0x%x\n", cmd);
+		break;
+	}
+
+	mutex_unlock(&lock);
 	return status;
 }
 
@@ -585,7 +604,11 @@ static int ilitek_spi_probe(struct spi_device *spi)
 
 	idev->write = ilitek_spi_write;
 	idev->read = ilitek_spi_read;
-	idev->spi_write_then_read = ilitek_spi_write_then_read;
+#ifdef SPI_DMA_TRASNFER_SPLIT
+	idev->spi_write_then_read = ilitek_spi_write_then_read_split;
+#else
+	idev->spi_write_then_read = ilitek_spi_write_then_read_direct;
+#endif
 
 	idev->spi_speed = ilitek_tddi_ic_spi_speed_ctrl;
 	idev->actual_tp_mode = P5_X_FW_DEMO_MODE;

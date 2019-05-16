@@ -119,7 +119,7 @@
 
 /* Plaform compatibility */
 // #define CONFIG_PLAT_SPRD
-#define SPI_DMA_TRANSFER_LIMIT
+#define SPI_DMA_TRASNFER_SPLIT
 
 /* Path */
 #define DEBUG_DATA_FILE_SIZE		(10*K)
@@ -261,6 +261,7 @@ enum TP_WQ_TYPE {
 #define RESERVE_BLOCK_END_ADDR			0x1DFFF
 #define FW_VER_ADDR				0xFFE0
 #define FW_BLOCK_INFO_NUM			7
+#define SPI_UPGRADE_LEN			2048
 
 /* DMA Control Registers */
 #define DMA_BASED_ADDR				0x72000
@@ -756,6 +757,12 @@ extern void ilitek_tddi_dev_remove(void);
 /* Prototypes for i2c/spi interface */
 extern int ilitek_tddi_interface_dev_init(struct ilitek_hwif_info *hwif);
 extern void ilitek_tddi_interface_dev_exit(struct ilitek_hwif_info *hwif);
+extern int ilitek_spi_write_then_read_split(struct spi_device *spi,
+				const void *txbuf, unsigned n_tx,
+				void *rxbuf, unsigned n_rx);
+extern int ilitek_spi_write_then_read_direct(struct spi_device *spi,
+				const void *txbuf, unsigned n_tx,
+				void *rxbuf, unsigned n_rx);
 
 /* Prototypes for platform level */
 extern void ilitek_plat_regulator_power_on(bool status);

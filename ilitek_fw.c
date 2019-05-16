@@ -255,30 +255,48 @@ out:
 	return 0;
 }
 
-static int ilitek_tddi_fw_iram_program(u32 start, u8 *w_buf, u32 w_len)
+static int ilitek_tddi_fw_iram_program(u32 start, u8 *w_buf, u32 w_len, u32 split_len)
 {
-	int i = 0;
+	int i = 0, j = 0, addr = 0;
+	u32 end = start + w_len;
 
 	for (i = 0; i < MAX_HEX_FILE_SIZE; i++)
 		idev->fw_dma_buf[i] = 0xFF;
 
-	idev->fw_dma_buf[0] = SPI_WRITE;
-	idev->fw_dma_buf[1] = 0x25;
-	idev->fw_dma_buf[2] = (char)((start & 0x000000FF));
-	idev->fw_dma_buf[3] = (char)((start & 0x0000FF00) >> 8);
-	idev->fw_dma_buf[4] = (char)((start & 0x00FF0000) >> 16);
+	if (split_len != 0) {
+		for (addr = start, i = 0; addr < end; addr += split_len, i += split_len) {
+			if ((addr + split_len) > end)
+				split_len = end % split_len;
 
-	memcpy(&idev->fw_dma_buf[5], w_buf, w_len);
+			idev->fw_dma_buf[0] = SPI_WRITE;
+			idev->fw_dma_buf[1] = 0x25;
+			idev->fw_dma_buf[2] = (char)((addr & 0x000000FF));
+			idev->fw_dma_buf[3] = (char)((addr & 0x0000FF00) >> 8);
+			idev->fw_dma_buf[4] = (char)((addr & 0x00FF0000) >> 16);
 
-	/*
-	 * For efficiency, we won't call idev->write as it allocates a tx buffer repeatly.
-	 * Instead, we allocate the dma buffer to do dma transfer in host download.
-	 */
-	if (idev->spi_write_then_read(idev->spi, idev->fw_dma_buf, w_len + 5, NULL, 0) < 0) {
-		ipio_err("Failed to write data via SPI in host download (%x)\n", w_len + 5);
-		return -EIO;
+			for (j = 0; j < split_len; j++)
+				idev->fw_dma_buf[5 + j] = w_buf[i + j];
+
+			if (idev->spi_write_then_read(idev->spi, idev->fw_dma_buf, split_len + 5, NULL, 0)) {
+				ipio_err("Failed to write data via SPI in host download (%x)\n", split_len + 5);
+				return -EIO;
+			}
+		}
+	} else {
+		idev->fw_dma_buf[0] = SPI_WRITE;
+		idev->fw_dma_buf[1] = 0x25;
+		idev->fw_dma_buf[2] = (char)((start & 0x000000FF));
+		idev->fw_dma_buf[3] = (char)((start & 0x0000FF00) >> 8);
+		idev->fw_dma_buf[4] = (char)((start & 0x00FF0000) >> 16);
+
+		memcpy(&idev->fw_dma_buf[5], w_buf, w_len);
+
+		/* It must be supported by platforms that have the ability to transfer all data at once. */
+		if (idev->spi_write_then_read(idev->spi, idev->fw_dma_buf, w_len + 5, NULL, 0) < 0) {
+			ipio_err("Failed to write data via SPI in host download (%x)\n", w_len + 5);
+			return -EIO;
+		}
 	}
-
 	return 0;
 }
 
@@ -701,7 +719,11 @@ static int ilitek_tddi_fw_iram_upgrade(u8 *pfw)
 			ipio_info("Download %s code from hex 0x%x to IRAM 0x%x, len = 0x%x\n",
 					fbi[i].name, fbi[i].start, fbi[i].mem_start, fbi[i].len);
 
-			ilitek_tddi_fw_iram_program(fbi[i].mem_start, (fw_ptr + fbi[i].start), fbi[i].len);
+#ifdef SPI_DMA_TRASNFER_SPLIT
+			ilitek_tddi_fw_iram_program(fbi[i].mem_start, (fw_ptr + fbi[i].start), fbi[i].len, SPI_UPGRADE_LEN);
+#else
+			ilitek_tddi_fw_iram_program(fbi[i].mem_start, (fw_ptr + fbi[i].start), fbi[i].len, 0);
+#endif
 
 			crc = CalculateCRC32(fbi[i].start, fbi[i].len - 4, fw_ptr);
 			dma = host_download_dma_check(fbi[i].mem_start, fbi[i].len - 4);
@@ -714,6 +736,7 @@ static int ilitek_tddi_fw_iram_upgrade(u8 *pfw)
 				ilitek_tddi_fw_print_iram_data();
 				return UPDATE_FAIL;
 			}
+			idev->fw_update_stat = 90;
 		}
 	}
 
