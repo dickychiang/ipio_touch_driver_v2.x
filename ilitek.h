@@ -786,6 +786,7 @@ extern void ilitek_dump_data(void *data, int type, int len, int row_len, const c
 extern u8 ilitek_calc_packet_checksum(u8 *packet, int len);
 extern void netlink_reply_msg(void *raw, int size);
 extern int katoi(char *str);
+extern int str2hex(char *str);
 
 static inline void ipio_kfree(void **mem)
 {

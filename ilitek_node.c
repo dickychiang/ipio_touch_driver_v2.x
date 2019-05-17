@@ -91,7 +91,7 @@
 
 unsigned char g_user_buf[USER_STR_BUFF] = {0};
 
-static int str2hex(char *str)
+int str2hex(char *str)
 {
 	int strlen, result, intermed, intermedtop;
 	char *s = str;

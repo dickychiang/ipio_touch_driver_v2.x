@@ -3064,6 +3064,7 @@ static void mp_copy_ret_to_apk(char *buf)
 int ilitek_tddi_mp_test_main(char *apk, bool lcm_on)
 {
 	int ret = 0;
+	char str[128] = {0}, ver[128] = {0};
 
 	ilitek_ini_file_data = (struct ini_file_data *)vmalloc(sizeof(struct ini_file_data) * PARSER_MAX_KEY_NUM);
 	if (ERR_ALLOC_MEM(ilitek_ini_file_data)) {
@@ -3076,6 +3077,15 @@ int ilitek_tddi_mp_test_main(char *apk, bool lcm_on)
 	ret = ilitek_tddi_mp_ini_parser(INI_NAME_PATH);
 	if (ret < 0) {
 		ipio_err("Failed to parsing INI file\n");
+		goto out;
+	}
+
+	/* Compare both protocol version of ini and firmware */
+	parser_get_ini_key_value("pv5_4 command", "protocol", str);
+	sprintf(ver, "0x%s", str);
+	if ((str2hex(ver)) != (core_mp.protocol_ver >> 8)) {
+		ipio_err("ERROR! MP Protocol version is invaild\n");
+		ret = -EINVAL;
 		goto out;
 	}
 
