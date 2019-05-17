@@ -246,6 +246,68 @@ int ilitek_tddi_move_mp_code_iram(void)
 	return ilitek_tddi_fw_upgrade_handler(NULL);
 }
 
+int ilitek_tddi_proximity_near(int mode)
+{
+	int ret = 0;
+
+	switch (mode) {
+	case DDI_POWER_ON:
+		/*
+		 * If the power of VSP and VSN keeps alive when proximity near event
+		 * occures, TP can just go to sleep in.
+		 */
+		ret = ilitek_tddi_ic_func_ctrl("sleep", SLEEP_IN);
+		break;
+	case DDI_POWER_OFF:
+		ipio_info("DDI POWER OFF, do nothing\n");
+		break;
+	default:
+		ipio_err("Unknown mode (%d)\n", mode);
+		ret = -EINVAL;
+		break;
+	}
+	return ret;
+}
+
+int ilitek_tddi_proximity_far(int mode)
+{
+	int ret = 0;
+	u8 tp_mode = 0;
+	u8 cmd[2] = {0};
+
+	switch (mode) {
+	case WAKE_UP_GESTURE_RECOVERY:
+		/*
+		 * If the power of VSP and VSN has been shut down previsouly,
+		 * TP should go through gesture recovery to get back.
+		 */
+		ilitek_tddi_wq_ctrl(WQ_GES_RECOVER, ENABLE);
+		break;
+	case WAKE_UP_SWITCH_GESTURE_MODE:
+		/*
+		 * If the power of VSP and VSN keeps alive in the event of proximity near,
+		 * TP can be just recovered by switching gesture mode to get back.
+		 */
+		cmd[0] = 0xF6;
+		cmd[1] = 0x0A;
+
+		ipio_info("write prepare gesture command 0xF6 0x0A\n");
+		ret = idev->write(cmd, 2);
+		if (ret < 0) {
+			ipio_info("write prepare gesture command error\n");
+			break;
+		}
+		tp_mode = P5_X_FW_GESTURE_MODE;
+		ret = ilitek_tddi_switch_mode(&tp_mode);
+		break;
+	default:
+		ipio_err("Unknown mode (%d)\n", mode);
+		ret = -EINVAL;
+		break;
+	}
+	return ret;
+}
+
 int ilitek_tddi_move_gesture_code_flash(int mode)
 {
 	u8 tp_mode = P5_X_FW_GESTURE_MODE;

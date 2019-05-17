@@ -379,7 +379,14 @@ int ilitek_tddi_sleep_handler(int mode)
 		ipio_info("TP deep suspend start\n");
 		ilitek_tddi_ic_func_ctrl("sense", DISABLE);
 		ilitek_tddi_ic_check_busy(50, 50);
-		ilitek_tddi_ic_func_ctrl("sleep", DEEP_SLEEP_IN);
+
+		if (idev->gesture) {
+			idev->gesture_move_code(idev->gesture_mode);
+			enable_irq_wake(idev->irq_num);
+			ilitek_plat_irq_enable();
+		} else {
+			ilitek_tddi_ic_func_ctrl("sleep", DEEP_SLEEP_IN);
+		}
 		ipio_info("TP deep suspend end\n");
 		break;
 	case TP_RESUME:

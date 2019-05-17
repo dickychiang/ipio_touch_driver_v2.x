@@ -200,6 +200,13 @@ enum TP_SLEEP_STATUS {
 	TP_RESUME = 2
 };
 
+enum TP_PROXIMITY_STATUS {
+	DDI_POWER_OFF = 0,
+	DDI_POWER_ON = 1,
+	WAKE_UP_GESTURE_RECOVERY = 2,
+	WAKE_UP_SWITCH_GESTURE_MODE = 3
+};
+
 enum TP_SLEEP_CTRL {
 	SLEEP_IN = 0x0,
 	SLEEP_OUT = 0x1,
@@ -741,6 +748,8 @@ extern void ilitek_tddi_ic_init(void);
 extern void ilitek_tddi_fw_uart_ctrl(u8 ctrl);
 
 /* Prototypes for tddi events */
+extern int ilitek_tddi_proximity_far(int mode);
+extern int ilitek_tddi_proximity_near(int mode);
 extern int ilitek_tddi_switch_mode(u8 *data);
 extern int ilitek_tddi_fw_upgrade_handler(void *data);
 extern int ilitek_tddi_wq_esd_i2c_check(void);
