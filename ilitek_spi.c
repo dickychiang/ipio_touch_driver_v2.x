@@ -152,9 +152,9 @@ int ilitek_spi_write_then_read_direct(struct spi_device *spi,
 
 	switch (cmd) {
 	case SPI_WRITE:
-                xfer[0].len = n_tx;
-                xfer[0].tx_buf = txbuf;
-                spi_message_add_tail(&xfer[0], &message);
+		xfer[0].len = n_tx;
+		xfer[0].tx_buf = txbuf;
+		spi_message_add_tail(&xfer[0], &message);
 		status = spi_sync(spi, &message);
 		break;
 	case SPI_READ:
@@ -164,10 +164,10 @@ int ilitek_spi_write_then_read_direct(struct spi_device *spi,
 		xfer[0].rx_buf = temp1;
 		spi_message_add_tail(&xfer[0], &message);
 
-                xfer[1].len = n_rx;
-                xfer[1].tx_buf = temp2;
-                xfer[1].rx_buf = rxbuf;
-                spi_message_add_tail(&xfer[1], &message);
+		xfer[1].len = n_rx;
+		xfer[1].tx_buf = temp2;
+		xfer[1].rx_buf = rxbuf;
+		spi_message_add_tail(&xfer[1], &message);
 		status = spi_sync(spi, &message);
 		break;
 	default:
@@ -604,7 +604,7 @@ static int ilitek_spi_probe(struct spi_device *spi)
 
 	idev->write = ilitek_spi_write;
 	idev->read = ilitek_spi_read;
-#ifdef SPI_DMA_TRASNFER_SPLIT
+#ifdef SPI_DMA_TRANSFER_SPLIT
 	idev->spi_write_then_read = ilitek_spi_write_then_read_split;
 #else
 	idev->spi_write_then_read = ilitek_spi_write_then_read_direct;

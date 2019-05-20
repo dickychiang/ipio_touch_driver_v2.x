@@ -119,7 +119,7 @@
 
 /* Plaform compatibility */
 // #define CONFIG_PLAT_SPRD
-#define SPI_DMA_TRASNFER_SPLIT
+#define SPI_DMA_TRANSFER_SPLIT
 
 /* Path */
 #define DEBUG_DATA_FILE_SIZE		(10*K)

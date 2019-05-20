@@ -1150,7 +1150,7 @@ static long ilitek_node_compat_ioctl(struct file *filp, unsigned int cmd, unsign
 
 	ipio_info("cmd = %d\n", _IOC_NR(cmd));
 
-	switch(cmd) {
+	switch (cmd) {
 	case ILITEK_COMPAT_IOCTL_I2C_WRITE_DATA:
 		ipio_info("compat_ioctl: convert i2c/spi write\n");
 		ret = filp->f_op->unlocked_ioctl(filp, ILITEK_IOCTL_I2C_WRITE_DATA, (unsigned long)compat_ptr(arg));

@@ -420,7 +420,7 @@ int ilitek_tddi_sleep_handler(int mode)
 int ilitek_tddi_fw_upgrade_handler(void *data)
 {
 	int ret = 0;
-	static bool input_reg_once = false;
+	static bool input_reg_once;
 
 	atomic_set(&idev->fw_stat, START);
 
@@ -499,7 +499,7 @@ void ilitek_tddi_report_handler(void)
 		goto out;
 	}
 
-	buf_size = (idev->fw_uart_en == DISABLE)? rlen : 2048;
+	buf_size = (idev->fw_uart_en == DISABLE) ? rlen : 2048;
 
 	buf = kcalloc(buf_size, sizeof(u8), GFP_ATOMIC);
 	if (ERR_ALLOC_MEM(buf)) {
