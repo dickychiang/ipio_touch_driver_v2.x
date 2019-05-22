@@ -51,20 +51,7 @@ struct flash_block_info {
 	u8 mode;
 } fbi[FW_BLOCK_INFO_NUM];
 
-/*
- * AP address indicates where data should be programed
- * from gesture buffer to the address of iram, whereas Gesture address means
- * where data should be moved out from the address of hex to gesture buffer.
- */
-struct gesture_loader_info {
-	u32 ap_start;
-	u32 ap_end;
-	int ap_len;
-	u32 gesture_start;
-	u32 gesture_end;
-	int gesture_len;
-	u8 gestrue_fw[(10 * K)];
-} gli;
+u8 gestrue_fw[(10 * K)];
 
 static u32 HexToDec(char *phex, s32 len)
 {
@@ -721,7 +708,7 @@ static int ilitek_tddi_fw_iram_upgrade(u8 *pfw)
 		mode = MP;
 	} else if (idev->actual_tp_mode == P5_X_FW_GESTURE_MODE) {
 		mode = GESTURE;
-		fw_ptr = gli.gestrue_fw;
+		fw_ptr = gestrue_fw;
 	} else {
 		mode = AP;
 	}
@@ -924,75 +911,11 @@ static int ilitek_tddi_fw_flash_upgrade(u8 *pfw)
 	return ret;
 }
 
-static void ilitek_fw_read_gesture_loader_info(u8 *pfw)
-{
-	u32 ges_info_addr = 0;
-	u8 buf[21] = {0};
-	u8 checksum = 0;
-
-	if (READ_GL_INFO) {
-		if (ilitek_tddi_ic_func_ctrl("lpwg", 0x7) < 0) {
-			ipio_err("Write reading gesture loader info cmd failed\n");
-			goto load_from_hex;
-		}
-
-		if (idev->read(buf, sizeof(buf)) < 0) {
-			ipio_err("Read gesture loader info failed\n");
-			goto load_from_hex;
-		}
-
-		checksum = ilitek_calc_packet_checksum(buf, sizeof(buf) - 1);
-		ipio_info("checksum = %x, buf[20] = %x\n", checksum, buf[20]);
-
-		if (checksum != buf[20]) {
-			ipio_err("Gesture loader info checksum error\n");
-			goto load_from_hex;
-		}
-
-		gli.ap_start = (buf[4] << 24) | (buf[5] << 16) | (buf[6] << 8) | buf[7];
-		gli.ap_end = (buf[8] << 24) | (buf[9] << 16) | (buf[10] << 8) | buf[11];
-		gli.gesture_start = (buf[12] << 24) | (buf[13] << 16) | (buf[14] << 8) | buf[15];
-		gli.gesture_end = (buf[16] << 24) | (buf[17] << 16) | (buf[18] << 8) | buf[19];
-		gli.ap_len = gli.ap_end - gli.ap_start + 1;
-		gli.gesture_len = gli.gesture_end - gli.gesture_start + 1;
-		goto load_ok;
-	}
-
-load_from_hex:
-	/* Parsing gesture loader info from hex, start at 0xFFC4 */
-	if (tfd.hex_tag == BLOCK_TAG_AF)
-		ges_info_addr = (fbi[AP].end + 1 - 60);
-	else
-		ges_info_addr = (MAX_AP_FIRMWARE_SIZE - 60);
-
-	gli.ap_start = (pfw[ges_info_addr + 7] << 24) + (pfw[ges_info_addr + 6] << 16) + (pfw[ges_info_addr + 5] << 8) + pfw[ges_info_addr + 4];
-	gli.ap_end = (pfw[ges_info_addr + 11] << 24) + (pfw[ges_info_addr + 10] << 16) + (pfw[ges_info_addr + 9] << 8) + pfw[ges_info_addr + 8];
-	gli.gesture_start = (pfw[ges_info_addr + 15] << 24) + (pfw[ges_info_addr + 14] << 16) + (pfw[ges_info_addr + 13] << 8) + pfw[ges_info_addr + 12];
-	gli.gesture_end = (pfw[ges_info_addr + 19] << 24) + (pfw[ges_info_addr + 18] << 16) + (pfw[ges_info_addr + 17] << 8) + pfw[ges_info_addr + 16];
-	gli.ap_len = gli.ap_end - gli.ap_start + 1;
-	gli.gesture_len = gli.gesture_end - gli.gesture_start + 1;
-
-load_ok:
-	fbi[GESTURE].start = 0;
-	fbi[GESTURE].mem_start = gli.ap_start;
-	fbi[GESTURE].len = gli.ap_len;
-
-	memset(gli.gestrue_fw, 0xff, sizeof(gli.gestrue_fw));
-
-	ipio_info("==== Gesture loader info ====\n");
-	ipio_info("ap_start = 0x%x, ap_end = 0x%x, ap_len = 0x%x\n", gli.ap_start, gli.ap_end, gli.ap_len);
-	ipio_info("gesture_start = 0x%x, gesture_end = 0x%x, gesture_len = 0x%x\n", gli.gesture_start, gli.gesture_end, gli.gesture_len);
-	ipio_info("=============================\n");
-
-	/* Copy hex data to gesture buffer */
-	if (gli.ap_start != 0xffffffff && gli.gesture_start != 0xffffffff && gli.ap_start != 0 && gli.gesture_start != 0)
-		ipio_memcpy(gli.gestrue_fw, (pfw + gli.gesture_start), gli.gesture_len, sizeof(gli.gestrue_fw));
-	else
-		ipio_info("There is no gesture data inside fw\n");
-}
-
 static void ilitek_tddi_fw_update_block_info(u8 *pfw, u8 type)
 {
+	u32 ges_area_section, ges_info_addr, ges_fw_start, ges_fw_end;
+	u32 ap_end, ap_len;
+
 	ipio_info("Upgarde = %s, Tag = %x\n", type ? "IRAM" : "Flash", tfd.hex_tag);
 
 	if (type == UPGRADE_IRAM) {
@@ -1002,6 +925,18 @@ static void ilitek_tddi_fw_update_block_info(u8 *pfw, u8 type)
 			fbi[TUNING].mem_start = (fbi[TUNING].fix_mem_start != INT_MAX) ? fbi[TUNING].fix_mem_start :  fbi[DATA].mem_start + fbi[DATA].len;
 			fbi[MP].mem_start = (fbi[MP].fix_mem_start != INT_MAX) ? fbi[MP].fix_mem_start :  0;
 			fbi[GESTURE].mem_start = (fbi[GESTURE].fix_mem_start != INT_MAX) ? fbi[GESTURE].fix_mem_start :	 0;
+
+			/* Parsing gesture info form AP code */
+			ges_info_addr = (fbi[AP].end + 1 - 60);
+			ges_area_section = (pfw[ges_info_addr + 3] << 24) + (pfw[ges_info_addr + 2] << 16) + (pfw[ges_info_addr + 1] << 8) + pfw[ges_info_addr];
+			fbi[GESTURE].mem_start = (pfw[ges_info_addr + 7] << 24) + (pfw[ges_info_addr + 6] << 16) + (pfw[ges_info_addr + 5] << 8) + pfw[ges_info_addr + 4];
+			ap_end = (pfw[ges_info_addr + 11] << 24) + (pfw[ges_info_addr + 10] << 16) + (pfw[ges_info_addr + 9] << 8) + pfw[ges_info_addr + 8];
+			ap_len = ap_end - fbi[GESTURE].mem_start + 1;
+			ges_fw_start = (pfw[ges_info_addr + 15] << 24) + (pfw[ges_info_addr + 14] << 16) + (pfw[ges_info_addr + 13] << 8) + pfw[ges_info_addr + 12];
+			ges_fw_end = (pfw[ges_info_addr + 19] << 24) + (pfw[ges_info_addr + 18] << 16) + (pfw[ges_info_addr + 17] << 8) + pfw[ges_info_addr + 16];
+			fbi[GESTURE].len = ges_fw_end - ges_fw_start + 1;
+			fbi[GESTURE].start = 0;
+
 		} else {
 			memset(fbi, 0x0, sizeof(fbi));
 			fbi[AP].start = 0;
@@ -1015,9 +950,32 @@ static void ilitek_tddi_fw_update_block_info(u8 *pfw, u8 type)
 			fbi[MP].start = MP_HEX_ADDRESS;
 			fbi[MP].mem_start = 0;
 			fbi[MP].len = MAX_MP_FIRMWARE_SIZE;
+
+			/* Parsing gesture info form AP code */
+			ges_info_addr = (MAX_AP_FIRMWARE_SIZE - 60);
+			ges_area_section = (pfw[ges_info_addr + 3] << 24) + (pfw[ges_info_addr + 2] << 16) + (pfw[ges_info_addr + 1] << 8) + pfw[ges_info_addr];
+			fbi[GESTURE].mem_start = (pfw[ges_info_addr + 7] << 24) + (pfw[ges_info_addr + 6] << 16) + (pfw[ges_info_addr + 5] << 8) + pfw[ges_info_addr + 4];
+			ap_end = (pfw[ges_info_addr + 11] << 24) + (pfw[ges_info_addr + 10] << 16) + (pfw[ges_info_addr + 9] << 8) + pfw[ges_info_addr + 8];
+			ap_len = fbi[GESTURE].mem_start - ap_end + 1;
+			ges_fw_start = (pfw[ges_info_addr + 15] << 24) + (pfw[ges_info_addr + 14] << 16) + (pfw[ges_info_addr + 13] << 8) + pfw[ges_info_addr + 12];
+			ges_fw_end = (pfw[ges_info_addr + 19] << 24) + (pfw[ges_info_addr + 18] << 16) + (pfw[ges_info_addr + 17] << 8) + pfw[ges_info_addr + 16];
+			fbi[GESTURE].len = ges_fw_end - ges_fw_start + 1;
+			fbi[GESTURE].start = 0;
+
 		}
 
-		ilitek_fw_read_gesture_loader_info(pfw);
+		memset(gestrue_fw, 0xff, sizeof(gestrue_fw));
+
+		/* Copy gesture data */
+		if (fbi[GESTURE].mem_start != 0xffffffff && ges_fw_start != 0xffffffff && fbi[GESTURE].mem_start != 0 && ges_fw_start != 0)
+			ipio_memcpy(gestrue_fw, (pfw + ges_fw_start), fbi[GESTURE].len, sizeof(gestrue_fw));
+		else
+			ipio_err("There is no gesture data inside fw\n");
+
+		ipio_info("==== Gesture loader info ====\n");
+		ipio_info("ap_start = 0x%x, ap_end = 0x%x, ap_len = 0x%x\n", fbi[GESTURE].mem_start, ap_end, ap_len);
+		ipio_info("gesture_start = 0x%x, gesture_end = 0x%x, gesture_len = 0x%x\n", ges_fw_start, ges_fw_end, fbi[GESTURE].len);
+		ipio_info("=============================\n");
 
 		fbi[AP].name = "AP";
 		fbi[DATA].name = "DATA";
