@@ -67,7 +67,6 @@ out:
 	 */
 	if (!lcm_on) {
 		atomic_set(&idev->mp_stat, DISABLE);
-		mutex_unlock(&idev->touch_mutex);
 		return ret;
 	}
 

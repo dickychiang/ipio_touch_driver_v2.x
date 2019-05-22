@@ -114,6 +114,7 @@
 #define ENABLE_WQ_ESD			DISABLE
 #define ENABLE_WQ_BAT			DISABLE
 #define ENABLE_GESTURE			ENABLE
+#define READ_GL_INFO			DISABLE
 #define REGULATOR_POWER			DISABLE
 #define TP_SUSPEND_PRIO			ENABLE
 
@@ -268,7 +269,7 @@ enum TP_WQ_TYPE {
 #define RESERVE_BLOCK_END_ADDR			0x1DFFF
 #define FW_VER_ADDR				0xFFE0
 #define FW_BLOCK_INFO_NUM			7
-#define SPI_UPGRADE_LEN			2048
+#define SPI_UPGRADE_LEN				2048
 
 /* DMA Control Registers */
 #define DMA_BASED_ADDR				0x72000

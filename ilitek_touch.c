@@ -427,10 +427,6 @@ void ilitek_tddi_touch_esd_gesture_iram(void)
 	u32 answer = 0;
 	u8 cmd[3] = {0};
 
-	/* start to download AP code with host download */
-	idev->actual_tp_mode = P5_X_FW_DEMO_MODE;
-	ilitek_tddi_fw_upgrade_handler(NULL);
-
 	ilitek_ice_mode_ctrl(ENABLE, OFF);
 
 	ipio_info("ESD Gesture PWD Addr = 0x%x, Answer = 0x%x\n",
@@ -441,6 +437,7 @@ void ilitek_tddi_touch_esd_gesture_iram(void)
 		ipio_err("write password failed\n");
 
 	/* Host download gives effect to FW receives password successed */
+	idev->actual_tp_mode = P5_X_FW_DEMO_MODE;
 	ilitek_tddi_fw_upgrade_handler(NULL);
 
 	ilitek_ice_mode_ctrl(ENABLE, ON);
