@@ -226,8 +226,10 @@ static int debug_mode_get_data(struct file_buffer *file, u8 type, u32 frame_coun
 	ret = idev->write(cmd, 2);
 	idev->debug_node_open = true;
 	mutex_unlock(&idev->touch_mutex);
-	if (ret < 0)
+	if (ret < 0) {
+		ipio_err("Write 0xFA,0x%x failed\n", type);
 		return ret;
+	}
 
 	while ((write_index < frame_count) && (timeout > 0)) {
 		ipio_info("frame = %d,index = %d,count = %d\n", write_index, write_index % 1024, idev->debug_data_frame);
@@ -332,6 +334,10 @@ static ssize_t ilitek_proc_get_delta_data_read(struct file *pFile, char __user *
 
 	/* read debug packet header */
 	ret = idev->read(data, read_length);
+	if (ret < 0) {
+		ipio_err("Read debug packet header failed, %d\n", ret);
+		goto out;
+	}
 
 	cmd[1] = 0x03; //switch to normal mode
 	ret = idev->write(cmd, sizeof(cmd));
@@ -428,6 +434,10 @@ static ssize_t ilitek_proc_fw_get_raw_data_read(struct file *pFile, char __user 
 
 	/* read debug packet header */
 	ret = idev->read(data, read_length);
+	if (ret < 0) {
+		ipio_err("Read debug packet header failed, %d\n", ret);
+		goto out;
+	}
 
 	cmd[1] = 0x03; //switch to normal mode
 	ret = idev->write(cmd, sizeof(cmd));
@@ -541,15 +551,25 @@ static ssize_t ilitek_proc_rw_tp_reg_read(struct file *pFile, char __user *buf, 
 		ipio_info("READ:addr = 0x%06x, read = 0x%08x\n", addr, read_data);
 		size = snprintf(g_user_buf, PAGE_SIZE, "READ:addr = 0x%06x, read = 0x%08x\n", addr, read_data);
 	} else {
-		ilitek_ice_mode_write(addr, write_data, write_len);
+		if (ilitek_ice_mode_write(addr, write_data, write_len) < 0)
+			ipio_err("Write data error\n");
 		ipio_info("WRITE:addr = 0x%06x, write = 0x%08x, len =%d byte\n", addr, write_data, write_len);
 		size = snprintf(g_user_buf, PAGE_SIZE, "WRITE:addr = 0x%06x, write = 0x%08x, len =%d byte\n", addr, write_data, write_len);
 	}
 
-	if (stop_mcu == mcu_on)
-		ilitek_ice_mode_ctrl(DISABLE, ON);
-	else
-		ilitek_ice_mode_ctrl(DISABLE, OFF);
+	if (stop_mcu == mcu_on) {
+		ret = ilitek_ice_mode_ctrl(DISABLE, ON);
+		if (ret < 0) {
+			ipio_err("Failed to disable ICE mode, ret = %d\n", ret);
+			return -1;
+		}
+	} else {
+		ret = ilitek_ice_mode_ctrl(DISABLE, OFF);
+		if (ret < 0) {
+			ipio_err("Failed to disable ICE mode, ret = %d\n", ret);
+			return -1;
+		}
+	}
 
 	ret = copy_to_user(buf, g_user_buf, size);
 	if (ret < 0)
@@ -774,7 +794,9 @@ static ssize_t ilitek_proc_get_debug_mode_data_read(struct file *filp, char __us
 
 	/* change to demo mode */
 	tp_mode = P5_X_FW_DEMO_MODE;
-	ilitek_tddi_switch_mode(&tp_mode);
+	ret = ilitek_tddi_switch_mode(&tp_mode);
+	if (ret < 0)
+		goto out;
 
 out:
 	ipio_vfree((void **)&csv.ptr);
@@ -835,7 +857,8 @@ static ssize_t ilitek_node_mp_lcm_on_test_read(struct file *filp, char __user *b
 
 	mutex_lock(&idev->touch_mutex);
 
-	ilitek_tddi_mp_test_handler(apk_ret, ON);
+	ret = ilitek_tddi_mp_test_handler(apk_ret, ON);
+	ipio_info("MP TEST %s\n", (ret < 0) ? "FAIL" : "PASS");
 
 	ret = copy_to_user((char *)buff, apk_ret, sizeof(apk_ret));
 	if (ret < 0)
@@ -874,7 +897,8 @@ static ssize_t ilitek_node_mp_lcm_off_test_read(struct file *filp, char __user *
 
 	mutex_lock(&idev->touch_mutex);
 
-	ilitek_tddi_mp_test_handler(apk_ret, OFF);
+	ret = ilitek_tddi_mp_test_handler(apk_ret, OFF);
+	ipio_info("MP TEST %s\n", (ret < 0) ? "FAIL" : "PASS");
 
 	ret = copy_to_user((char *)buff, apk_ret, sizeof(apk_ret));
 	if (ret < 0)

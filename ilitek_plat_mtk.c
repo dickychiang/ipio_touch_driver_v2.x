@@ -324,12 +324,14 @@ static int ilitek_plat_irq_register(void)
 
 static void tpd_resume(struct device *h)
 {
-	ilitek_tddi_sleep_handler(TP_RESUME);
+	if (ilitek_tddi_sleep_handler(TP_RESUME) < 0)
+		ipio_err("TP resume failed\n");
 }
 
 static void tpd_suspend(struct device *h)
 {
-	ilitek_tddi_sleep_handler(TP_SUSPEND);
+	if (ilitek_tddi_sleep_handler(TP_SUSPEND) < 0)
+		ipio_err("TP suspend failed\n");
 }
 
 static int ilitek_plat_probe(void)
@@ -339,13 +341,17 @@ static int ilitek_plat_probe(void)
 	if (REGULATOR_POWER)
 		ilitek_plat_regulator_power_init();
 
-	ilitek_plat_gpio_register();
+	if (ilitek_plat_gpio_register() < 0)
+		ipio_err("Register gpio failed\n");
 
 	if (ilitek_tddi_init() < 0) {
 		ipio_err("platform probe failed\n");
 		return -ENODEV;
 	}
-	ilitek_plat_irq_register();
+
+	if (ilitek_plat_irq_register() < 0)
+		ipio_err("Register irq failed\n");
+
 	tpd_load_status = 1;
 	return 0;
 }

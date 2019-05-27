@@ -2562,8 +2562,9 @@ static void mp_do_retry(int index, int count)
 		return mp_do_retry(index, count - 1);
 }
 
-static void mp_show_result(bool lcm_on)
+static int mp_show_result(bool lcm_on)
 {
+	int ret = MP_PASS;
 	int i, x, y, j, csv_len = 0, pass_item_count = 0, line_count = 0, get_frame_cont = 1;
 	s32 *max_threshold = NULL, *min_threshold = NULL;
 	char *csv = NULL;
@@ -2576,6 +2577,7 @@ static void mp_show_result(bool lcm_on)
 	csv = vmalloc(CSV_FILE_SIZE);
 	if (ERR_ALLOC_MEM(csv)) {
 		ipio_err("Failed to allocate CSV mem\n");
+		ret = MP_FAIL;
 		goto fail_open;
 	}
 
@@ -2583,6 +2585,7 @@ static void mp_show_result(bool lcm_on)
 	min_threshold = kcalloc(core_mp.frame_len, sizeof(s32), GFP_KERNEL);
 	if (ERR_ALLOC_MEM(max_threshold) || ERR_ALLOC_MEM(min_threshold)) {
 		ipio_err("Failed to allocate threshold FRAME buffer\n");
+		ret = MP_FAIL;
 		goto fail_open;
 	}
 
@@ -2731,12 +2734,14 @@ static void mp_show_result(bool lcm_on)
 
 	if (pass_item_count == 0) {
 		core_mp.final_result = MP_FAIL;
+		ret = MP_FAIL;
 		if (lcm_on)
 			sprintf(csv_name, "%s/%s_%s.csv", CSV_LCM_ON_PATH, get_date_time_str(), ret_fail_name);
 		else
 			sprintf(csv_name, "%s/%s_%s.csv", CSV_LCM_OFF_PATH, get_date_time_str(), ret_fail_name);
 	} else {
 		core_mp.final_result = MP_PASS;
+		ret = MP_PASS;
 		if (lcm_on)
 			sprintf(csv_name, "%s/%s_%s.csv", CSV_LCM_ON_PATH, get_date_time_str(), ret_pass_name);
 		else
@@ -2750,6 +2755,7 @@ static void mp_show_result(bool lcm_on)
 
 	if (ERR_ALLOC_MEM(f)) {
 		ipio_err("Failed to open CSV file");
+		ret = MP_FAIL;
 		goto fail_open;
 	}
 
@@ -2757,6 +2763,7 @@ static void mp_show_result(bool lcm_on)
 
 	if (csv_len >= CSV_FILE_SIZE) {
 		ipio_err("The length saved to CSV is too long !\n");
+		ret = MP_FAIL;
 		goto fail_open;
 	}
 
@@ -2773,6 +2780,7 @@ fail_open:
 	ipio_vfree((void **)&csv);
 	ipio_kfree((void **)&max_threshold);
 	ipio_kfree((void **)&min_threshold);
+	return ret;
 }
 
 static void ilitek_tddi_mp_init_item(void)
@@ -3128,7 +3136,7 @@ int ilitek_tddi_mp_test_main(char *apk, bool lcm_on)
 		mp_test_run("pixel raw (have bk)");
 	}
 
-	mp_show_result(lcm_on);
+	ret = mp_show_result(lcm_on);
 	mp_copy_ret_to_apk(apk);
 	mp_test_free();
 

@@ -68,29 +68,41 @@ static void dma_clear_reg_setting(void)
 	ipio_info("[Clear register setting]\n");
 
 	ipio_info("interrupt t0/t1 enable flag\n");
-	ilitek_ice_mode_bit_mask_write(INTR32_ADDR, INTR32_reg_t0_int_en, (0 << 24));
-	ilitek_ice_mode_bit_mask_write(INTR32_ADDR, INTR32_reg_t1_int_en, (0 << 25));
+	if (ilitek_ice_mode_bit_mask_write(INTR32_ADDR, INTR32_reg_t0_int_en, (0 << 24)) < 0)
+		ipio_err("Write %lu at %x failed\n", INTR32_reg_t0_int_en, INTR32_ADDR);
+	if (ilitek_ice_mode_bit_mask_write(INTR32_ADDR, INTR32_reg_t1_int_en, (0 << 25)) < 0)
+		ipio_err("Write %lu at %x failed\n", INTR32_reg_t1_int_en, INTR32_ADDR);
 
 	ipio_info("clear tdi_err_int_flag\n");
-	ilitek_ice_mode_bit_mask_write(INTR2_ADDR, INTR2_tdi_err_int_flag_clear, (1 << 18));
+	if (ilitek_ice_mode_bit_mask_write(INTR2_ADDR, INTR2_tdi_err_int_flag_clear, (1 << 18)) < 0)
+		ipio_err("Write %lu at %x failed\n", INTR2_tdi_err_int_flag_clear, INTR2_ADDR);
 
 	ipio_info("clear dma channel 0 src1 info\n");
-	ilitek_ice_mode_write(DMA49_reg_dma_ch0_src1_addr, 0x00000000, 4);
-	ilitek_ice_mode_write(DMA50_reg_dma_ch0_src1_step_inc, 0x00, 1);
-	ilitek_ice_mode_bit_mask_write(DMA50_ADDR, DMA50_reg_dma_ch0_src1_format, (0 << 24));
-	ilitek_ice_mode_bit_mask_write(DMA50_ADDR, DMA50_reg_dma_ch0_src1_en, (1 << 31));
+	if (ilitek_ice_mode_write(DMA49_reg_dma_ch0_src1_addr, 0x00000000, 4) < 0)
+		ipio_err("Write 0x00000000 at %x failed\n", DMA49_reg_dma_ch0_src1_addr);
+	if (ilitek_ice_mode_write(DMA50_reg_dma_ch0_src1_step_inc, 0x00, 1) < 0)
+		ipio_err("Write 0x0 at %x failed\n", DMA50_reg_dma_ch0_src1_step_inc);
+	if (ilitek_ice_mode_bit_mask_write(DMA50_ADDR, DMA50_reg_dma_ch0_src1_format, (0 << 24)) < 0)
+		ipio_err("Write %lu at %x failed\n", DMA50_reg_dma_ch0_src1_format, DMA50_ADDR);
+	if (ilitek_ice_mode_bit_mask_write(DMA50_ADDR, DMA50_reg_dma_ch0_src1_en, (1 << 31)) < 0)
+		ipio_err("Write %lu at %x failed\n", DMA50_reg_dma_ch0_src1_en, DMA50_ADDR);
 
 	ipio_info("clear dma channel 0 src2 info\n");
-	ilitek_ice_mode_bit_mask_write(DMA52_ADDR, DMA52_reg_dma_ch0_src2_en, (0 << 31));
+	if (ilitek_ice_mode_bit_mask_write(DMA52_ADDR, DMA52_reg_dma_ch0_src2_en, (0 << 31)) < 0)
+		ipio_err("Write %lu at %x failed\n", DMA52_reg_dma_ch0_src2_en, DMA52_ADDR);
 
 	ipio_info("clear dma channel 0 trafer info\n");
-	ilitek_ice_mode_write(DMA55_reg_dma_ch0_trafer_counts, 0x00000000, 4);
-	ilitek_ice_mode_bit_mask_write(DMA55_ADDR, DMA55_reg_dma_ch0_trafer_mode, (0 << 24));
+	if (ilitek_ice_mode_write(DMA55_reg_dma_ch0_trafer_counts, 0x00000000, 4) < 0)
+		ipio_err("Write 0x00000000 at %x failed\n", DMA55_reg_dma_ch0_trafer_counts);
+	if (ilitek_ice_mode_bit_mask_write(DMA55_ADDR, DMA55_reg_dma_ch0_trafer_mode, (0 << 24)) < 0)
+		ipio_err("Write %lu at %x failed\n", DMA55_reg_dma_ch0_trafer_mode, DMA55_ADDR);
 
 	ipio_info("clear dma channel 0 trigger select\n");
-	ilitek_ice_mode_bit_mask_write(DMA48_ADDR, DMA48_reg_dma_ch0_trigger_sel, (0 << 16));
+	if (ilitek_ice_mode_bit_mask_write(DMA48_ADDR, DMA48_reg_dma_ch0_trigger_sel, (0 << 16)) < 0)
+		ipio_err("Write %lu at %x failed\n", DMA48_reg_dma_ch0_trigger_sel, DMA48_ADDR);
 
-	ilitek_ice_mode_bit_mask_write(INTR1_ADDR, INTR1_reg_flash_int_flag, (1 << 25));
+	if (ilitek_ice_mode_bit_mask_write(INTR1_ADDR, INTR1_reg_flash_int_flag, (1 << 25)) < 0)
+		ipio_err("Write %lu at %x failed\n", INTR1_reg_flash_int_flag, INTR1_ADDR);
 
 	ipio_info("clear dma flash setting\n");
 	ilitek_tddi_flash_clear_dma();
@@ -99,48 +111,67 @@ static void dma_clear_reg_setting(void)
 static void dma_trigger_reg_setting(u32 reg_dest_addr, u32 flash_start_addr, u32 copy_size)
 {
 	ipio_info("set dma channel 0 clear\n");
-	ilitek_ice_mode_bit_mask_write(DMA48_ADDR, DMA48_reg_dma_ch0_start_clear, (1 << 25));
+	if (ilitek_ice_mode_bit_mask_write(DMA48_ADDR, DMA48_reg_dma_ch0_start_clear, (1 << 25)) < 0)
+		ipio_err("Write %lu at %x failed\n", DMA48_reg_dma_ch0_start_clear, DMA48_ADDR);
 
 	ipio_info("set dma channel 0 src1 info\n");
-	ilitek_ice_mode_write(DMA49_reg_dma_ch0_src1_addr, 0x00041010, 4);
-	ilitek_ice_mode_write(DMA50_reg_dma_ch0_src1_step_inc, 0x00, 1);
-	ilitek_ice_mode_bit_mask_write(DMA50_ADDR, DMA50_reg_dma_ch0_src1_format, (0 << 24));
-	ilitek_ice_mode_bit_mask_write(DMA50_ADDR, DMA50_reg_dma_ch0_src1_en, (1 << 31));
+	if (ilitek_ice_mode_write(DMA49_reg_dma_ch0_src1_addr, 0x00041010, 4) < 0)
+		ipio_err("Write 0x00041010 at %x failed\n", DMA49_reg_dma_ch0_src1_addr);
+	if (ilitek_ice_mode_write(DMA50_reg_dma_ch0_src1_step_inc, 0x00, 1) < 0)
+		ipio_err("Write 0x00 at %x failed\n", DMA50_reg_dma_ch0_src1_step_inc);
+	if (ilitek_ice_mode_bit_mask_write(DMA50_ADDR, DMA50_reg_dma_ch0_src1_format, (0 << 24)) < 0)
+		ipio_err("Write %lu at %x failed\n", DMA50_reg_dma_ch0_src1_format, DMA50_ADDR);
+	if (ilitek_ice_mode_bit_mask_write(DMA50_ADDR, DMA50_reg_dma_ch0_src1_en, (1 << 31)) < 0)
+		ipio_err("Write %lu at %x failed\n", DMA50_reg_dma_ch0_src1_en, DMA50_ADDR);
 
 	ipio_info("set dma channel 0 src2 info\n");
-	ilitek_ice_mode_bit_mask_write(DMA52_ADDR, DMA52_reg_dma_ch0_src2_en, (0 << 31));
+	if (ilitek_ice_mode_bit_mask_write(DMA52_ADDR, DMA52_reg_dma_ch0_src2_en, (0 << 31)) < 0)
+		ipio_err("Write %lu at %x failed\n", DMA52_reg_dma_ch0_src2_en, DMA52_ADDR);
 
 	ipio_info("set dma channel 0 dest info\n");
-	ilitek_ice_mode_write(DMA53_reg_dma_ch0_dest_addr, reg_dest_addr, 3);
-	ilitek_ice_mode_write(DMA54_reg_dma_ch0_dest_step_inc, 0x01, 1);
-	ilitek_ice_mode_bit_mask_write(DMA54_ADDR, DMA54_reg_dma_ch0_dest_format, (0 << 24));
-	ilitek_ice_mode_bit_mask_write(DMA54_ADDR, DMA54_reg_dma_ch0_dest_en, (1 << 31));
+	if (ilitek_ice_mode_write(DMA53_reg_dma_ch0_dest_addr, reg_dest_addr, 3) < 0)
+		ipio_err("Write %x at %x failed\n", reg_dest_addr, DMA53_reg_dma_ch0_dest_addr);
+	if (ilitek_ice_mode_write(DMA54_reg_dma_ch0_dest_step_inc, 0x01, 1) < 0)
+		ipio_err("Write 0x01 at %x failed\n", DMA54_reg_dma_ch0_dest_step_inc);
+	if (ilitek_ice_mode_bit_mask_write(DMA54_ADDR, DMA54_reg_dma_ch0_dest_format, (0 << 24)) < 0)
+		ipio_err("Write %lu at %x failed\n", DMA54_reg_dma_ch0_dest_format, DMA54_ADDR);
+	if (ilitek_ice_mode_bit_mask_write(DMA54_ADDR, DMA54_reg_dma_ch0_dest_en, (1 << 31)) < 0)
+		ipio_err("Write %lu at %x failed\n", DMA54_reg_dma_ch0_dest_en, DMA54_ADDR);
 
 	ipio_info("set dma channel 0 trafer info\n");
-	ilitek_ice_mode_write(DMA55_reg_dma_ch0_trafer_counts, copy_size, 4);
-	ilitek_ice_mode_bit_mask_write(DMA55_ADDR, DMA55_reg_dma_ch0_trafer_mode, (0 << 24));
+	if (ilitek_ice_mode_write(DMA55_reg_dma_ch0_trafer_counts, copy_size, 4) < 0)
+		ipio_err("Write %x at %x failed\n", copy_size, DMA55_reg_dma_ch0_trafer_counts);
+	if (ilitek_ice_mode_bit_mask_write(DMA55_ADDR, DMA55_reg_dma_ch0_trafer_mode, (0 << 24)) < 0)
+		ipio_err("Write %lu at %x failed\n", DMA55_reg_dma_ch0_trafer_mode, DMA55_ADDR);
 
 	ipio_info("set dma channel 0 int info\n");
-	ilitek_ice_mode_bit_mask_write(INTR33_ADDR, INTR33_reg_dma_ch0_int_en, (1 << 17));
+	if (ilitek_ice_mode_bit_mask_write(INTR33_ADDR, INTR33_reg_dma_ch0_int_en, (1 << 17)) < 0)
+		ipio_err("Write %lu at %x failed\n", INTR33_reg_dma_ch0_int_en, INTR33_ADDR);
 
 	ipio_info("set dma channel 0 trigger select\n");
-	ilitek_ice_mode_bit_mask_write(DMA48_ADDR, DMA48_reg_dma_ch0_trigger_sel, (1 << 16));
+	if (ilitek_ice_mode_bit_mask_write(DMA48_ADDR, DMA48_reg_dma_ch0_trigger_sel, (1 << 16)) < 0)
+		ipio_err("Write %lu at %x failed\n", DMA48_reg_dma_ch0_trigger_sel, DMA48_ADDR);
 
 	ipio_info("set dma flash setting, FlashAddr = 0x%x\n", flash_start_addr);
 	ilitek_tddi_flash_dma_write(flash_start_addr, (flash_start_addr+copy_size), copy_size);
 
 	ipio_info("clear flash and dma ch0 int flag\n");
-	ilitek_ice_mode_bit_mask_write(INTR1_ADDR, INTR1_reg_flash_int_flag, (1 << 25));
-	ilitek_ice_mode_bit_mask_write(INTR1_ADDR, INTR1_reg_dma_ch0_int_flag, (1 << 17));
-	ilitek_ice_mode_bit_mask_write(0x041013, BIT(0), 1); //patch
+	if (ilitek_ice_mode_bit_mask_write(INTR1_ADDR, INTR1_reg_flash_int_flag, (1 << 25)) < 0)
+		ipio_err("Write %lu at %x failed\n", INTR1_reg_flash_int_flag, INTR1_ADDR);
+	if (ilitek_ice_mode_bit_mask_write(INTR1_ADDR, INTR1_reg_dma_ch0_int_flag, (1 << 17)) < 0)
+		ipio_err("Write %lu at %x failed\n", INTR1_reg_dma_ch0_int_flag, INTR1_ADDR);
+	if (ilitek_ice_mode_bit_mask_write(0x041013, BIT(0), 1) < 0) //patch
+		ipio_err("Write %lu at %x failed\n", BIT(0), 0x041013);
 
 	/* DMA Trigger */
-	ilitek_ice_mode_write(FLASH4_reg_rcv_data, 0xFF, 1);
+	if (ilitek_ice_mode_write(FLASH4_reg_rcv_data, 0xFF, 1) < 0)
+		ipio_err("Trigger DMA failed\n");
 	/* waiting for fw reload code completed. */
 	mdelay(30);
 
 	/* CS High */
-	ilitek_ice_mode_write(FLASH0_reg_flash_csb, 0x1, 1);
+	if (ilitek_ice_mode_write(FLASH0_reg_flash_csb, 0x1, 1) < 0)
+		ipio_err("Pull CS High failed\n");
 	/* waiting for CS status done */
 	mdelay(10);
 }
@@ -216,17 +247,20 @@ int ilitek_tddi_move_mp_code_flash(void)
 		dma_clear_reg_setting();
 	} else {
 		/* DMA Trigger */
-		ilitek_ice_mode_write(FLASH4_reg_rcv_data, 0xFF, 1);
+		if (ilitek_ice_mode_write(FLASH4_reg_rcv_data, 0xFF, 1) < 0)
+			ipio_err("Trigger DMA failed\n");
 		/* waiting for fw reload code completed. */
 		mdelay(30);
 
 		/* CS High */
-		ilitek_ice_mode_write(FLASH0_reg_flash_csb, 0x1, 1);
+		if (ilitek_ice_mode_write(FLASH0_reg_flash_csb, 0x1, 1) < 0)
+			ipio_err("Pull CS High failed\n");
 		/* waiting for CS status done */
 		mdelay(10);
 	}
 
-	ilitek_tddi_reset_ctrl(TP_IC_CODE_RST);
+	if (ilitek_tddi_reset_ctrl(TP_IC_CODE_RST) < 0)
+		ipio_err("IC Code reset failed during moving mp code\n");
 
 	ret = ilitek_ice_mode_ctrl(DISABLE, OFF);
 	if (ret < 0)
@@ -235,6 +269,8 @@ int ilitek_tddi_move_mp_code_flash(void)
 	/* Check if ic is already in test mode */
 	idev->actual_tp_mode = P5_X_FW_TEST_MODE; /* set busy as 0x51 */
 	ret = ilitek_tddi_ic_check_busy(300, 50);
+	if (ret < 0)
+		ipio_err("Check cdc timeout failed after moved mp code\n");
 
 out:
 	return ret;
@@ -257,6 +293,8 @@ int ilitek_tddi_proximity_near(int mode)
 		 * occures, TP can just go to sleep in.
 		 */
 		ret = ilitek_tddi_ic_func_ctrl("sleep", SLEEP_IN);
+		if (ret < 0)
+			ipio_err("Write sleep in cmd failed\n");
 		break;
 	case DDI_POWER_OFF:
 		ipio_info("DDI POWER OFF, do nothing\n");
@@ -299,6 +337,8 @@ int ilitek_tddi_proximity_far(int mode)
 		}
 		tp_mode = P5_X_FW_GESTURE_MODE;
 		ret = ilitek_tddi_switch_mode(&tp_mode);
+		if (ret < 0)
+			ipio_err("Switch to gesture mode failed during proximity far\n");
 		break;
 	default:
 		ipio_err("Unknown mode (%d)\n", mode);
@@ -323,12 +363,11 @@ int ilitek_tddi_move_gesture_code_iram(int mode)
 	u8 tp_mode = P5_X_FW_GESTURE_MODE;
 	u8 cmd[3] = {0};
 
-	ipio_info();
-
 	if (ilitek_tddi_ic_func_ctrl("lpwg", 0x3) < 0)
 		ipio_err("write gesture flag failed\n");
 
-	ilitek_tddi_switch_mode(&tp_mode);
+	if (ilitek_tddi_switch_mode(&tp_mode) < 0)
+		ipio_err("Switch to gesture mode failed during moving code\n");
 
 	for (i = 0; i < timeout; i++) {
 		/* Prepare Check Ready */
@@ -359,7 +398,8 @@ int ilitek_tddi_move_gesture_code_iram(int mode)
 		return 0;
 	}
 
-	ilitek_tddi_fw_upgrade_handler(NULL);
+	if (ilitek_tddi_fw_upgrade_handler(NULL) < 0)
+		ipio_err("FW upgrade failed during moving code\n");
 
 	/* FW star run gestrue code cmd */
 	cmd[0] = 0x1;
@@ -386,7 +426,8 @@ void ilitek_tddi_touch_esd_gesture_flash(void)
 	int retry = 100;
 	u32 answer = 0;
 
-	ilitek_ice_mode_ctrl(ENABLE, OFF);
+	if (ilitek_ice_mode_ctrl(ENABLE, OFF) < 0)
+		ipio_err("Enable ice mode failed during gesture recovery\n");
 
 	ipio_info("ESD Gesture PWD Addr = 0x%x, Answer = 0x%x\n",
 		I2C_ESD_GESTURE_PWD_ADDR, I2C_ESD_GESTURE_RUN);
@@ -397,9 +438,11 @@ void ilitek_tddi_touch_esd_gesture_flash(void)
 
 	/* HW reset gives effect to FW receives password successed */
 	idev->actual_tp_mode = P5_X_FW_DEMO_MODE;
-	ilitek_tddi_reset_ctrl(idev->reset);
+	if (ilitek_tddi_reset_ctrl(idev->reset) < 0)
+		ipio_err("TP Reset failed during gesture recovery\n");
 
-	ilitek_ice_mode_ctrl(ENABLE, ON);
+	if (ilitek_ice_mode_ctrl(ENABLE, ON) < 0)
+		ipio_err("Enable ice mode failed during gesture recovery\n");
 
 	/* polling another specific register to see if gesutre is enabled properly */
 	do {
@@ -416,7 +459,8 @@ void ilitek_tddi_touch_esd_gesture_flash(void)
 	else
 		ipio_info("Enter gesture successfully\n");
 
-	ilitek_ice_mode_ctrl(DISABLE, ON);
+	if (ilitek_ice_mode_ctrl(DISABLE, ON) < 0)
+		ipio_err("Disable ice mode failed during gesture recovery\n");
 
 	idev->gesture_move_code(idev->gesture_mode);
 }
@@ -427,7 +471,8 @@ void ilitek_tddi_touch_esd_gesture_iram(void)
 	u32 answer = 0;
 	u8 cmd[3] = {0};
 
-	ilitek_ice_mode_ctrl(ENABLE, OFF);
+	if (ilitek_ice_mode_ctrl(ENABLE, OFF) < 0)
+		ipio_err("Enable ice mode failed during gesture recovery\n");
 
 	ipio_info("ESD Gesture PWD Addr = 0x%x, Answer = 0x%x\n",
 		SPI_ESD_GESTURE_PWD_ADDR, SPI_ESD_GESTURE_RUN);
@@ -438,9 +483,11 @@ void ilitek_tddi_touch_esd_gesture_iram(void)
 
 	/* Host download gives effect to FW receives password successed */
 	idev->actual_tp_mode = P5_X_FW_DEMO_MODE;
-	ilitek_tddi_fw_upgrade_handler(NULL);
+	if (ilitek_tddi_fw_upgrade_handler(NULL) < 0)
+		ipio_err("FW upgrade failed during gesture recovery\n");
 
-	ilitek_ice_mode_ctrl(ENABLE, ON);
+	if (ilitek_ice_mode_ctrl(ENABLE, ON) < 0)
+		ipio_err("Enable ice mode failed during gesture recovery\n");
 
 	/* polling another specific register to see if gesutre is enabled properly */
 	do {
@@ -457,10 +504,12 @@ void ilitek_tddi_touch_esd_gesture_iram(void)
 	else
 		ipio_info("Enter gesture successfully\n");
 
-	ilitek_ice_mode_ctrl(DISABLE, ON);
+	if (ilitek_ice_mode_ctrl(DISABLE, ON) < 0)
+		ipio_err("Disable ice mode failed during gesture recovery\n");
 
 	idev->actual_tp_mode = P5_X_FW_GESTURE_MODE;
-	ilitek_tddi_fw_upgrade_handler(NULL);
+	if (ilitek_tddi_fw_upgrade_handler(NULL) < 0)
+		ipio_err("FW upgrade failed during gesture recovery\n");
 
 	/* FW star run gestrue code cmd */
 	cmd[0] = 0x1;

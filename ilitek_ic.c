@@ -247,7 +247,8 @@ int ilitek_ice_mode_ctrl(bool enable, bool mcu)
 		}
 
 		/* Patch to resolve the issue of i2c nack after exit to ice mode */
-		ilitek_ice_mode_write(0x47002, 0x00, 1);
+		if (ilitek_ice_mode_write(0x47002, 0x00, 1) < 0)
+			ipio_err("Write 0x0 at 0x47002 failed\n");
 	} else {
 		if (!atomic_read(&idev->ice_stat)) {
 			ipio_info("ice mode already disabled\n");
@@ -257,6 +258,7 @@ int ilitek_ice_mode_ctrl(bool enable, bool mcu)
 		ret = idev->write(cmd_close, sizeof(cmd_close));
 		if (ret < 0)
 			ipio_err("Exit to ICE Mode failed !!\n");
+
 		atomic_set(&idev->ice_stat, DISABLE);
 	}
 out:
@@ -295,12 +297,15 @@ int ilitek_tddi_ic_watch_dog_ctrl(bool write, bool enable)
 	ipio_info("%s WDT, key = %x\n", (enable ? "Enable" : "Disable"), idev->chip->wtd_key);
 
 	if (enable) {
-		ilitek_ice_mode_write(idev->chip->wdt_addr, 1, 1);
+		if (ilitek_ice_mode_write(idev->chip->wdt_addr, 1, 1) < 0)
+			ipio_err("Wrie WDT key failed\n");
 	} else {
 		/* need delay 300us to wait fw relaod code after stop mcu. */
 		udelay(300);
-		ilitek_ice_mode_write(idev->chip->wdt_addr, (idev->chip->wtd_key & 0xff), 1);
-		ilitek_ice_mode_write(idev->chip->wdt_addr, (idev->chip->wtd_key >> 8), 1);
+		if (ilitek_ice_mode_write(idev->chip->wdt_addr, (idev->chip->wtd_key & 0xff), 1) < 0)
+			ipio_err("Write WDT key failed\n");
+		if (ilitek_ice_mode_write(idev->chip->wdt_addr, (idev->chip->wtd_key >> 8), 1) < 0)
+			ipio_err("Write WDT key failed\n");
 	}
 
 	while (timeout > 0) {
@@ -317,8 +322,10 @@ int ilitek_tddi_ic_watch_dog_ctrl(bool write, bool enable)
 				break;
 
 			/* If WDT can't be disabled, try to command and wait to see */
-			ilitek_ice_mode_write(idev->chip->wdt_addr, 0x00, 1);
-			ilitek_ice_mode_write(idev->chip->wdt_addr, 0x98, 1);
+			if (ilitek_ice_mode_write(idev->chip->wdt_addr, 0x00, 1) < 0)
+				ipio_err("Write 0x0 at %x\n", idev->chip->wdt_addr);
+			if (ilitek_ice_mode_write(idev->chip->wdt_addr, 0x98, 1) < 0)
+				ipio_err("Write 0x98 at %x\n", idev->chip->wdt_addr);
 		}
 		timeout--;
 	}
@@ -333,7 +340,8 @@ int ilitek_tddi_ic_watch_dog_ctrl(bool write, bool enable)
 		ipio_info("WDT turn on succeed\n");
 	} else {
 		ipio_info("WDT turn off succeed\n");
-		ilitek_ice_mode_write(idev->chip->wdt_addr, 0, 1);
+		if (ilitek_ice_mode_write(idev->chip->wdt_addr, 0, 1) < 0)
+			ipio_err("Write turn off cmd failed\n");
 	}
 	return 0;
 }
@@ -341,8 +349,6 @@ int ilitek_tddi_ic_watch_dog_ctrl(bool write, bool enable)
 int ilitek_tddi_ic_func_ctrl(const char *name, int ctrl)
 {
 	int i = 0, ret;
-
-	/* Remember that must be unloked/unlock from outside if exports to users. */
 
 	for (i = 0; i < FUNC_CTRL_NUM; i++) {
 		if (strncmp(name, func_ctrl[i].name, strlen(name)) == 0) {
@@ -392,14 +398,16 @@ int ilitek_tddi_ic_code_reset(void)
 	bool ice = atomic_read(&idev->ice_stat);
 
 	if (!ice)
-		ilitek_ice_mode_ctrl(ENABLE, OFF);
+		if (ilitek_ice_mode_ctrl(ENABLE, OFF) < 0)
+			ipio_err("Enable ice mode failed before code reset\n");
 
 	ret = ilitek_ice_mode_write(0x40040, 0xAE, 1);
 	if (ret < 0)
 		ipio_err("ic code reset failed\n");
 
 	if (!ice)
-		ilitek_ice_mode_ctrl(DISABLE, OFF);
+		if (ilitek_ice_mode_ctrl(DISABLE, OFF) < 0)
+			ipio_err("Enable ice mode failed after code reset\n");
 	return ret;
 }
 
@@ -438,7 +446,8 @@ static void ilitek_tddi_ic_wr_pack(int packet)
 	if (retry <= 0)
 		ipio_info("check 0x73010 error read 0x%X\n", reg_data);
 
-	ilitek_ice_mode_write(0x73000, packet, 4);
+	if (ilitek_ice_mode_write(0x73000, packet, 4) < 0)
+		ipio_err("Write %x at 0x73000\n", packet);
 }
 
 static u32 ilitek_tddi_ic_rd_pack(int packet)
@@ -461,7 +470,8 @@ static u32 ilitek_tddi_ic_rd_pack(int packet)
 	if (retry <= 0)
 		ipio_info("check 0x4800A error read 0x%X\n", reg_data);
 
-	ilitek_ice_mode_write(0x4800A, 0x02, 1);
+	if (ilitek_ice_mode_write(0x4800A, 0x02, 1) < 0)
+		ipio_err("Write 0x2 at 0x4800A\n");
 
 	if (ilitek_ice_mode_read(0x73016, &reg_data, sizeof(u8)) < 0)
 		ipio_err("Read 0x73016 error\n");
@@ -479,11 +489,13 @@ void ilitek_tddi_ic_set_ddi_reg_onepage(u8 page, u8 reg, u8 data)
 	ipio_info("setpage =  0x%X setreg = 0x%X\n", setpage, setreg);
 
 	if (!ice)
-		ilitek_ice_mode_ctrl(ENABLE, OFF);
+		if (ilitek_ice_mode_ctrl(ENABLE, OFF) < 0)
+			ipio_err("Enable ice mode failed before writing ddi reg\n");
 
 	wdt = ilitek_tddi_ic_watch_dog_ctrl(ILI_READ, DISABLE);
 	if (wdt)
-		ilitek_tddi_ic_watch_dog_ctrl(ILI_WRITE, DISABLE);
+		if (ilitek_tddi_ic_watch_dog_ctrl(ILI_WRITE, DISABLE) < 0)
+			ipio_err("Disable WDT failed before writing ddi reg\n");
 
 	/*TDI_WR_KEY*/
 	ilitek_tddi_ic_wr_pack(0x1FFF9527);
@@ -495,10 +507,12 @@ void ilitek_tddi_ic_set_ddi_reg_onepage(u8 page, u8 reg, u8 data)
 	ilitek_tddi_ic_wr_pack(0x1FFF9500);
 
 	if (wdt)
-		ilitek_tddi_ic_watch_dog_ctrl(ILI_WRITE, ENABLE);
+		if (ilitek_tddi_ic_watch_dog_ctrl(ILI_WRITE, ENABLE) < 0)
+			ipio_err("Enable WDT failed after writing ddi reg\n");
 
 	if (!ice)
-		ilitek_ice_mode_ctrl(DISABLE, OFF);
+		if (ilitek_ice_mode_ctrl(DISABLE, OFF) < 0)
+			ipio_err("Disable ice mode failed after writing ddi reg\n");
 }
 
 void ilitek_tddi_ic_get_ddi_reg_onepage(u8 page, u8 reg)
@@ -512,11 +526,13 @@ void ilitek_tddi_ic_get_ddi_reg_onepage(u8 page, u8 reg)
 	ipio_info("setpage = 0x%X setreg = 0x%X\n", setpage, setreg);
 
 	if (!ice)
-		ilitek_ice_mode_ctrl(ENABLE, OFF);
+		if (ilitek_ice_mode_ctrl(ENABLE, OFF) < 0)
+			ipio_err("Enable ice mode failed before reading ddi reg\n");
 
 	wdt = ilitek_tddi_ic_watch_dog_ctrl(ILI_READ, DISABLE);
 	if (wdt)
-		ilitek_tddi_ic_watch_dog_ctrl(ILI_WRITE, DISABLE);
+		if (ilitek_tddi_ic_watch_dog_ctrl(ILI_WRITE, DISABLE) < 0)
+			ipio_err("Disable WDT failed before reading ddi reg\n");
 
 	/*TDI_WR_KEY*/
 	ilitek_tddi_ic_wr_pack(0x1FFF9527);
@@ -526,7 +542,8 @@ void ilitek_tddi_ic_get_ddi_reg_onepage(u8 page, u8 reg)
 	/*TDI_RD_KEY*/
 	ilitek_tddi_ic_wr_pack(0x1FFF9487);
 	/*( *( __IO uint8 *)	(0x4800A) ) =0x2*/
-	ilitek_ice_mode_write(0x4800A, 0x02, 1);
+	if (ilitek_ice_mode_write(0x4800A, 0x02, 1) < 0)
+		ipio_err("Write 0x2 at 0x4800A\n");
 
 	reg_data = ilitek_tddi_ic_rd_pack(setreg);
 	ipio_info("check page = 0x%X, reg = 0x%X, read 0x%X\n", page, reg, reg_data);
@@ -537,10 +554,12 @@ void ilitek_tddi_ic_get_ddi_reg_onepage(u8 page, u8 reg)
 	ilitek_tddi_ic_wr_pack(0x1FFF9500);
 
 	if (wdt)
-		ilitek_tddi_ic_watch_dog_ctrl(ILI_WRITE, ENABLE);
+		if (ilitek_tddi_ic_watch_dog_ctrl(ILI_WRITE, ENABLE) < 0)
+			ipio_err("Enable WDT failed after reading ddi reg\n");
 
 	if (!ice)
-		ilitek_ice_mode_ctrl(DISABLE, OFF);
+		if (ilitek_ice_mode_ctrl(DISABLE, OFF) < 0)
+			ipio_err("Disable ice mode failed after reading ddi reg\n");
 }
 
 void ilitek_tddi_ic_check_otp_prog_mode(void)
@@ -562,14 +581,20 @@ void ilitek_tddi_ic_check_otp_prog_mode(void)
 	}
 
 	do {
-		ilitek_ice_mode_write(0x43008, 0x80, 1);
-		ilitek_ice_mode_write(0x43030, 0x0, 1);
-		ilitek_ice_mode_write(0x4300C, 0x4, 1);
+		if (ilitek_ice_mode_write(0x43008, 0x80, 1) < 0)
+			ipio_err("Write 0x80 at 0x43008 failed\n");
+
+		if (ilitek_ice_mode_write(0x43030, 0x0, 1) < 0)
+			ipio_err("Write 0x0 at 0x43030 failed\n");
+
+		if (ilitek_ice_mode_write(0x4300C, 0x4, 1) < 0)
+			ipio_err("Write 0x4 at 0x4300C failed\n");
 
 		/* Need accurate power sequence, do not change it to msleep */
 		mdelay(1);
 
-		ilitek_ice_mode_write(0x4300C, 0x4, 1);
+		if (ilitek_ice_mode_write(0x4300C, 0x4, 1) < 0)
+			ipio_err("Write 0x4 at 0x4300C\n");
 
 		if (ilitek_ice_mode_read(0x43030, &prog_done, sizeof(u8)) < 0)
 			ipio_err("Read prog_done error\n");
@@ -591,13 +616,23 @@ void ilitek_tddi_ic_spi_speed_ctrl(bool enable)
 	ipio_info("%s spi speed up\n", (enable ? "Enable" : "Disable"));
 
 	if (enable) {
-		ilitek_ice_mode_write(0x063820, 0x00000101, 4);
-		ilitek_ice_mode_write(0x042c34, 0x00000008, 4);
-		ilitek_ice_mode_write(0x063820, 0x00000000, 4);
+		if (ilitek_ice_mode_write(0x063820, 0x00000101, 4) < 0)
+			ipio_err("Write 0x00000101 at 0x063820 failed\n");
+
+		if (ilitek_ice_mode_write(0x042c34, 0x00000008, 4) < 0)
+			ipio_err("Write 0x00000008 at 0x042c34 failed\n");
+
+		if (ilitek_ice_mode_write(0x063820, 0x00000000, 4) < 0)
+			ipio_err("Write 0x00000000 at 0x063820 failed\n");
 	} else {
-		ilitek_ice_mode_write(0x063820, 0x00000101, 4);
-		ilitek_ice_mode_write(0x042c34, 0x00000000, 4);
-		ilitek_ice_mode_write(0x063820, 0x00000000, 4);
+		if (ilitek_ice_mode_write(0x063820, 0x00000101, 4) < 0)
+			ipio_err("Write 0x00000101 at 0x063820 failed\n");
+
+		if (ilitek_ice_mode_write(0x042c34, 0x00000000, 4) < 0)
+			ipio_err("Write 0x00000000 at 0x042c34 failed\n");
+
+		if (ilitek_ice_mode_write(0x063820, 0x00000000, 4) < 0)
+			ipio_err("Write 0x00000000 at 0x063820 failed\n");
 	}
 }
 
@@ -607,7 +642,8 @@ u32 ilitek_tddi_ic_get_pc_counter(void)
 	u32 pc = 0;
 
 	if (!ice)
-		ilitek_ice_mode_ctrl(ENABLE, OFF);
+		if (ilitek_ice_mode_ctrl(ENABLE, OFF) < 0)
+			ipio_err("Enable ice mode failed while reading pc counter\n");
 
 	if (ilitek_ice_mode_read(idev->chip->pc_counter_addr, &pc, sizeof(u32)) < 0)
 		ipio_err("Read pc conter error\n");
@@ -615,7 +651,8 @@ u32 ilitek_tddi_ic_get_pc_counter(void)
 	ipio_info("pc counter = 0x%x\n", pc);
 
 	if (!ice)
-		ilitek_ice_mode_ctrl(DISABLE, OFF);
+		if (ilitek_ice_mode_ctrl(DISABLE, OFF) < 0)
+			ipio_err("Disable ice mode failed while reading pc counter\n");
 
 	return pc;
 }
@@ -653,9 +690,12 @@ int ilitek_tddi_ic_check_busy(int count, int delay)
 	ipio_info("read byte = %x, delay = %d\n", rby, delay);
 
 	do {
-		idev->write(cmd, sizeof(cmd));
-		idev->write(&cmd[1], sizeof(u8));
-		idev->read(&busy, sizeof(u8));
+		if (idev->write(cmd, sizeof(cmd)) < 0)
+			ipio_err("Write %x,%x failed\n", P5_X_READ_DATA_CTRL, P5_X_CDC_BUSY_STATE);
+		if (idev->write(&cmd[1], sizeof(u8)) < 0)
+			ipio_err("Write %x failed\n", P5_X_CDC_BUSY_STATE);
+		if (idev->read(&busy, sizeof(u8)) < 0)
+			ipio_err("Read check busy failed\n");
 
 		ipio_debug("busy = 0x%x\n", busy);
 
@@ -686,19 +726,27 @@ int ilitek_tddi_ic_get_project_id(u8 *pdata, int size)
 	ipio_info("Read size = %d\n", size);
 
 	if (!ice)
-		ilitek_ice_mode_ctrl(ENABLE, OFF);
+		if (ilitek_ice_mode_ctrl(ENABLE, OFF) < 0)
+			ipio_err("Enable ice mode failed while reading project id\n");
 
-	ilitek_ice_mode_write(0x041000, 0x0, 1);   /* CS low */
-	ilitek_ice_mode_write(0x041004, 0x66aa55, 3);  /* Key */
+	if (ilitek_ice_mode_write(0x041000, 0x0, 1) < 0)
+		ipio_err("Pull cs low failed\n");
+	if (ilitek_ice_mode_write(0x041004, 0x66aa55, 3) < 0)
+		ipio_err("Write key failed\n");
 
-	ilitek_ice_mode_write(0x041008, 0x03, 1);
+	if (ilitek_ice_mode_write(0x041008, 0x03, 1) < 0)
+		ipio_err("Write 0x03 at 0x041008\n");
 
-	ilitek_ice_mode_write(0x041008, (RESERVE_BLOCK_START_ADDR & 0xFF0000) >> 16, 1);
-	ilitek_ice_mode_write(0x041008, (RESERVE_BLOCK_START_ADDR & 0x00FF00) >> 8, 1);
-	ilitek_ice_mode_write(0x041008, (RESERVE_BLOCK_START_ADDR & 0x0000FF), 1);
+	if (ilitek_ice_mode_write(0x041008, (RESERVE_BLOCK_START_ADDR & 0xFF0000) >> 16, 1) < 0)
+		ipio_err("Write address failed\n");
+	if (ilitek_ice_mode_write(0x041008, (RESERVE_BLOCK_START_ADDR & 0x00FF00) >> 8, 1) < 0)
+		ipio_err("Write address failed\n");
+	if (ilitek_ice_mode_write(0x041008, (RESERVE_BLOCK_START_ADDR & 0x0000FF), 1) < 0)
+		ipio_err("Write address failed\n");
 
 	for (i = 0; i < size; i++) {
-		ilitek_ice_mode_write(0x041008, 0xFF, 1);
+		if (ilitek_ice_mode_write(0x041008, 0xFF, 1) < 0)
+			ipio_err("Write dummy failed\n");
 		if (ilitek_ice_mode_read(0x41010, &tmp, sizeof(u8)) < 0)
 			ipio_err("Read project id error\n");
 		pdata[i] = tmp;
@@ -707,10 +755,12 @@ int ilitek_tddi_ic_get_project_id(u8 *pdata, int size)
 
 	ilitek_tddi_flash_clear_dma();
 
-	ilitek_ice_mode_write(0x041000, 0x1, 1);   /* CS high */
+	if (ilitek_ice_mode_write(0x041000, 0x1, 1) < 0)
+		ipio_err("Pull cs high\n");
 
 	if (!ice)
-		ilitek_ice_mode_ctrl(DISABLE, OFF);
+		if (ilitek_ice_mode_ctrl(DISABLE, OFF) < 0)
+			ipio_err("Disable ice mode failed while reading project id\n");
 
 	return 0;
 }

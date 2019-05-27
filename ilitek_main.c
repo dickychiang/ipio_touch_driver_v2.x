@@ -71,10 +71,13 @@ out:
 	}
 
 	idev->actual_tp_mode = P5_X_FW_DEMO_MODE;
-	if (idev->fw_upgrade_mode == UPGRADE_IRAM)
-		ilitek_tddi_fw_upgrade_handler(NULL);
-	else
-		ilitek_tddi_reset_ctrl(idev->reset);
+	if (idev->fw_upgrade_mode == UPGRADE_IRAM) {
+		if (ilitek_tddi_fw_upgrade_handler(NULL) < 0)
+			ipio_err("FW upgrade failed\n");
+	} else {
+		if (ilitek_tddi_reset_ctrl(idev->reset) < 0)
+			ipio_err("TP Reset failed\n");
+	}
 
 	atomic_set(&idev->mp_stat, DISABLE);
 	return ret;
@@ -103,10 +106,14 @@ int ilitek_tddi_switch_mode(u8 *data)
 		ret = idev->write(cmd, 2);
 		if (ret < 0) {
 			ipio_err("Failed to switch demo mode, do reset/reload instead\n");
-			if (idev->fw_upgrade_mode == UPGRADE_IRAM)
-				ilitek_tddi_fw_upgrade_handler(NULL);
-			else
-				ilitek_tddi_reset_ctrl(idev->reset);
+			if (idev->fw_upgrade_mode == UPGRADE_IRAM) {
+				if (ilitek_tddi_fw_upgrade_handler(NULL) < 0)
+					ipio_err("FW upgrade failed\n");
+				break;
+			}
+			ret = ilitek_tddi_reset_ctrl(idev->reset);
+			if (ret < 0)
+				ipio_err("TP Reset failed\n");
 		}
 		break;
 	case P5_X_FW_DEBUG_MODE:
@@ -168,8 +175,12 @@ static void ilitek_tddi_wq_spi_recover(struct work_struct *work)
 	ilitek_tddi_wq_ctrl(WQ_ESD, DISABLE);
 	mutex_lock(&idev->touch_mutex);
 	atomic_set(&idev->esd_stat, START);
+
 	ipio_info("Doing spi recovery\n");
-	ilitek_tddi_fw_upgrade_handler(NULL);
+
+	if (ilitek_tddi_fw_upgrade_handler(NULL) < 0)
+		ipio_err("FW upgrade failed\n");
+
 	atomic_set(&idev->esd_stat, END);
 	mutex_unlock(&idev->touch_mutex);
 	ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
@@ -234,20 +245,24 @@ static void ilitek_tddi_wq_bat_check(struct work_struct *work)
 	u8 str[20] = {0};
 	static int charge_mode;
 
-	read_power_status(str);
+	if (read_power_status(str) < 0)
+		ipio_err("Read power status failed\n");
+
 	ipio_debug("Batter Status: %s\n", str);
 
 	if (strstr(str, "Charging") != NULL || strstr(str, "Full") != NULL
 		|| strstr(str, "Fully charged") != NULL) {
 		if (charge_mode != 1) {
 			ipio_debug("Charging mode\n");
-			ilitek_tddi_ic_func_ctrl("plug", DISABLE);// plug in
+			if (ilitek_tddi_ic_func_ctrl("plug", DISABLE) < 0) // plug in
+				ipio_err("Write plug in failed\n");
 			charge_mode = 1;
 		}
 	} else {
 		if (charge_mode != 2) {
 			ipio_debug("Not charging mode\n");
-			ilitek_tddi_ic_func_ctrl("plug", ENABLE);// plug out
+			if (ilitek_tddi_ic_func_ctrl("plug", ENABLE) < 0) // plug out
+				ipio_err("Write plug out failed\n");
 			charge_mode = 2;
 		}
 	}
@@ -362,29 +377,39 @@ int ilitek_tddi_sleep_handler(int mode)
 	switch (mode) {
 	case TP_SUSPEND:
 		ipio_info("TP suspend start\n");
-		ilitek_tddi_ic_func_ctrl("sense", DISABLE);
-		ilitek_tddi_ic_check_busy(50, 50);
+		if (ilitek_tddi_ic_func_ctrl("sense", DISABLE) < 0)
+			ipio_err("Write sense stop cmd failed\n");
+
+		if (ilitek_tddi_ic_check_busy(50, 50) < 0)
+			ipio_err("Check busy timeout during suspend\n");
 
 		if (idev->gesture) {
-			idev->gesture_move_code(idev->gesture_mode);
+			if (idev->gesture_move_code(idev->gesture_mode) < 0)
+				ipio_err("Move gesture code failed\n");
 			enable_irq_wake(idev->irq_num);
 			ilitek_plat_irq_enable();
 		} else {
-			ilitek_tddi_ic_func_ctrl("sleep", SLEEP_IN);
+			if (ilitek_tddi_ic_func_ctrl("sleep", SLEEP_IN) < 0)
+				ipio_err("Write sleep in cmd failed\n");
 		}
 		ipio_info("TP suspend end\n");
 		break;
 	case TP_DEEP_SLEEP:
 		ipio_info("TP deep suspend start\n");
-		ilitek_tddi_ic_func_ctrl("sense", DISABLE);
-		ilitek_tddi_ic_check_busy(50, 50);
+		if (ilitek_tddi_ic_func_ctrl("sense", DISABLE) < 0)
+			ipio_err("Write sense stop cmd failed\n");
+
+		if (ilitek_tddi_ic_check_busy(50, 50) < 0)
+			ipio_err("Check busy timeout during deep suspend\n");
 
 		if (idev->gesture) {
-			idev->gesture_move_code(idev->gesture_mode);
+			if (idev->gesture_move_code(idev->gesture_mode) < 0)
+				ipio_err("Move gesture code failed\n");
 			enable_irq_wake(idev->irq_num);
 			ilitek_plat_irq_enable();
 		} else {
-			ilitek_tddi_ic_func_ctrl("sleep", DEEP_SLEEP_IN);
+			if (ilitek_tddi_ic_func_ctrl("sleep", DEEP_SLEEP_IN) < 0)
+				ipio_err("Write deep sleep in cmd failed\n");
 		}
 		ipio_info("TP deep suspend end\n");
 		break;
@@ -395,10 +420,14 @@ int ilitek_tddi_sleep_handler(int mode)
 
 		/* Set tp as demo mode and reload code if it's iram. */
 		idev->actual_tp_mode = P5_X_FW_DEMO_MODE;
-		if (idev->fw_upgrade_mode == UPGRADE_IRAM)
-			ilitek_tddi_fw_upgrade_handler(NULL);
-		else
-			ilitek_tddi_reset_ctrl(idev->reset);
+		if (idev->fw_upgrade_mode == UPGRADE_IRAM) {
+			if (ilitek_tddi_fw_upgrade_handler(NULL) < 0)
+				ipio_err("FW upgrade failed during resume\n");
+		} else {
+			if (ilitek_tddi_reset_ctrl(idev->reset) < 0)
+				ipio_err("TP Reset failed during resume\n");
+		}
+
 		ilitek_plat_irq_enable();
 		ipio_info("TP resume end\n");
 		ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
@@ -521,8 +550,6 @@ void ilitek_tddi_report_handler(void)
 		goto out;
 	}
 
-	ipio_debug("Read length = %d\n", (ret));
-
 	rlen = ret;
 
 	ilitek_dump_data(buf, 8, rlen, 0, "finger report");
@@ -530,7 +557,7 @@ void ilitek_tddi_report_handler(void)
 	checksum = ilitek_calc_packet_checksum(buf, rlen - 1);
 
 	if (checksum != buf[rlen-1] && idev->fw_uart_en == DISABLE) {
-		ipio_err("Wrong checksum, checksum = %x, buf = %x\n", checksum, buf[rlen-1]);
+		ipio_err("Wrong checksum, checksum = %x, buf = %x, len = %d\n", checksum, buf[rlen-1], rlen);
 		ipio_debug_level = DEBUG_ALL;
 		ilitek_dump_data(buf, 8, rlen, 0, "finger report with wrong");
 		ipio_debug_level = tmp;
@@ -580,10 +607,14 @@ int ilitek_tddi_reset_ctrl(int mode)
 	case TP_IC_CODE_RST:
 		ipio_info("TP IC Code RST \n");
 		ret = ilitek_tddi_ic_code_reset();
+		if (ret < 0)
+			ipio_err("IC Code reset failed\n");
 		break;
 	case TP_IC_WHOLE_RST:
 		ipio_info("TP IC whole RST\n");
 		ret = ilitek_tddi_ic_whole_reset();
+		if (ret < 0)
+			ipio_err("IC whole reset failed\n");
 		break;
 	case TP_HW_RST_ONLY:
 		ipio_info("TP HW RST\n");
@@ -634,7 +665,8 @@ int ilitek_tddi_init(void)
 
 	/* Must do hw reset once in first time for work normally if tp reset is avaliable */
 	if (!TDDI_RST_BIND)
-		ilitek_tddi_reset_ctrl(idev->reset);
+		if (ilitek_tddi_reset_ctrl(idev->reset) < 0)
+			ipio_err("TP Reset failed during init\n");
 
 	idev->do_otp_check = ENABLE;
 	idev->fw_uart_en = DISABLE;
@@ -642,9 +674,12 @@ int ilitek_tddi_init(void)
 
 	/* Compare version with fw info in boot stage */
 	if (idev->fw_upgrade_mode == UPGRADE_FLASH) {
-		ilitek_tddi_ic_get_protocl_ver();
-		ilitek_tddi_ic_get_fw_ver();
-		ilitek_tddi_ic_get_core_ver();
+		if (ilitek_tddi_ic_get_protocl_ver() < 0)
+			ipio_err("Get protocol ver failed during init\n");
+		if (ilitek_tddi_ic_get_fw_ver() < 0)
+			ipio_err("Get firmware ver failed during init\n");
+		if (ilitek_tddi_ic_get_core_ver() < 0)
+			ipio_err("Get core ver failed during init\n");
 	}
 
 	/*
@@ -652,7 +687,8 @@ int ilitek_tddi_init(void)
 	 * it might cause unknown problems if we disable ice mode without any
 	 * codes inside touch ic.
 	 */
-	ilitek_ice_mode_ctrl(ENABLE, OFF);
+	if (ilitek_ice_mode_ctrl(ENABLE, OFF) < 0)
+		ipio_err("Enable ice mode failed during init\n");
 
 	if (ilitek_tddi_ic_get_info() < 0) {
 		ipio_err("Not found ilitek chips\n");
