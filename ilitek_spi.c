@@ -181,7 +181,7 @@ int ilitek_spi_write_then_read_direct(struct spi_device *spi,
 
 static int core_rx_lock_check(int *ret_size)
 {
-	int i, count = 100;
+	int i, count = 1;
 	u8 txbuf[5] = {SPI_WRITE, 0x25, 0x94, 0x0, 0x2};
 	u8 rxbuf[4] = {0};
 	u16 status = 0, lock = 0x5AA5;
