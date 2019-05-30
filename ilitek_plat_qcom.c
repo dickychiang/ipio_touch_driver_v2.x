@@ -342,6 +342,7 @@ int ilitek_plat_irq_register(int type)
 		ipio_err("Failed to register irq handler, irq = %d, ret = %d\n", idev->irq_num, ret);
 
 	atomic_set(&idev->irq_stat, ENABLE);
+
 	return ret;
 }
 

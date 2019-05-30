@@ -1882,6 +1882,7 @@ static int create_mp_test_frame_buffer(int index, int frame_count)
 int check_int_level(bool high)
 {
 	int timer = 500, ret = -1, level;
+
 	/* From FW request, timeout should at least be 5 sec */
 	while (timer) {
 		level = gpio_get_value(IRQ_GPIO_NUM);
@@ -1913,6 +1914,7 @@ static int pin_test(int index)
 {
 	int ret = 0;
 	u8 cmd[5] = {0};
+
 	ipio_info("PIN test start");
 	ipio_info("test_int_pin = 0x%x\n", tItems[index].test_int_pin);
 	ipio_info("int_pulse_test = 0x%x\n", tItems[index].int_pulse_test);
@@ -1943,12 +1945,11 @@ static int pin_test(int index)
 		ret = check_int_level(false);
 		if (ret < 0)
 			goto out;
-
 	}
 
 	if (tItems[index].int_pulse_test == ENABLE) {
 
-		ipio_info("mp irq RISING triger test\n");
+		ipio_info("MP IRQ Rising Trigger Test\n");
 		cmd[1] = 0x2;
 		cmd[2] = tItems[index].delay_time;
 
@@ -1968,7 +1969,7 @@ static int pin_test(int index)
 		if (ret < 0)
 			goto out;
 
-		ipio_info("mp irq FALLING triger test\n");
+		ipio_info("MP IRQ Falling Trigger Test\n");
 		ilitek_plat_irq_unregister();
 		ret = ilitek_plat_irq_register(IRQF_TRIGGER_FALLING);
 		if (ret < 0)
@@ -1986,13 +1987,14 @@ static int pin_test(int index)
 		if (ret < 0)
 			goto out;
 	}
+
 	tItems[index].item_result = MP_PASS;
 
 out:
 	if (ret < 0)
 		tItems[index].item_result = MP_FAIL;
 
-	ipio_info("change to defualt trigger type\n");
+	ipio_info("Change to defualt IRQ trigger type\n");
 	ilitek_plat_irq_unregister();
 	ilitek_plat_irq_register(idev->irq_tirgger_type);
 

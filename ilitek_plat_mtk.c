@@ -310,6 +310,7 @@ int ilitek_plat_irq_register(int type)
 	struct device_node *node;
 
 	atomic_set(&idev->irq_stat, DISABLE);
+
 	if (get_irq_pin == false) {
 		node = of_find_matching_node(NULL, touch_of_match);
 		if (node)
@@ -333,6 +334,7 @@ int ilitek_plat_irq_register(int type)
 		ipio_err("Failed to register irq handler, irq = %d, ret = %d\n", idev->irq_num, ret);
 
 	atomic_set(&idev->irq_stat, ENABLE);
+
 	return ret;
 }
 
