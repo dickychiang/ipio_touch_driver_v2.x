@@ -1070,7 +1070,9 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 		idev->gesture = !idev->gesture;
 		ipio_info("gesture = %d\n", idev->gesture);
 	} else if (strcmp(cmd, "esdgesture") == 0) {
-		ilitek_tddi_wq_ctrl(WQ_GES_RECOVER, ENABLE);
+		ilitek_tddi_gesture_recovery();
+	} else if (strcmp(cmd, "esdspi") == 0) {
+		ilitek_tddi_spi_recovery();
 	} else if (strcmp(cmd, "iceflag") == 0) {
 		if (data[1] == ENABLE)
 			atomic_set(&idev->ice_stat, ENABLE);

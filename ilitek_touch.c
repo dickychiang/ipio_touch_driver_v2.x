@@ -319,7 +319,7 @@ int ilitek_tddi_proximity_far(int mode)
 		 * If the power of VSP and VSN has been shut down previsouly,
 		 * TP should go through gesture recovery to get back.
 		 */
-		ilitek_tddi_wq_ctrl(WQ_GES_RECOVER, ENABLE);
+		ilitek_tddi_gesture_recovery();
 		break;
 	case WAKE_UP_SWITCH_GESTURE_MODE:
 		/*
@@ -394,7 +394,7 @@ int ilitek_tddi_move_gesture_code_iram(int mode)
 
 	if (i >= timeout) {
 		ipio_err("Gesture is not ready (0x%x), try to run its recovery\n", cmd[0]);
-		ilitek_tddi_wq_ctrl(WQ_GES_RECOVER, ENABLE);
+		ilitek_tddi_gesture_recovery();
 		return 0;
 	}
 

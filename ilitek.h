@@ -232,9 +232,6 @@ enum TP_FW_BLOCK_TAG {
 enum TP_WQ_TYPE {
 	WQ_ESD = 0,
 	WQ_BAT,
-	WQ_SUSPEND,
-	WQ_SPI_RECOVER,
-	WQ_GES_RECOVER
 };
 
 #define TDDI_I2C_ADDR				0x41
@@ -607,6 +604,7 @@ struct ilitek_tddi_dev {
 	bool do_otp_check;
 	bool fw_uart_en;
 	bool force_fw_update;
+	bool irq_after_recovery;
 
 	atomic_t irq_stat;
 	atomic_t tp_reset;
@@ -755,6 +753,8 @@ extern int ilitek_tddi_switch_mode(u8 *data);
 extern int ilitek_tddi_fw_upgrade_handler(void *data);
 extern int ilitek_tddi_wq_esd_i2c_check(void);
 extern int ilitek_tddi_wq_esd_spi_check(void);
+extern void ilitek_tddi_gesture_recovery(void);
+extern void ilitek_tddi_spi_recovery(void);
 extern void ilitek_tddi_wq_ctrl(int type, int ctrl);
 extern int ilitek_tddi_mp_test_handler(char *apk, bool lcm_on);
 extern void ilitek_tddi_report_handler(void);

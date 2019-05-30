@@ -27,12 +27,8 @@ EXPORT_SYMBOL(ipio_debug_level);
 
 static struct workqueue_struct *esd_wq;
 static struct workqueue_struct *bat_wq;
-static struct workqueue_struct *spi_recover_wq;
-static struct workqueue_struct *esd_gesture_wq;
 static struct delayed_work esd_work;
 static struct delayed_work bat_work;
-static struct delayed_work spi_recover_work;
-static struct delayed_work esd_gesture_work;
 
 int ilitek_tddi_mp_test_handler(char *apk, bool lcm_on)
 {
@@ -160,30 +156,41 @@ int ilitek_tddi_switch_mode(u8 *data)
 	return ret;
 }
 
-static void ilitek_tddi_wq_ges_recover(struct work_struct *work)
+void ilitek_tddi_gesture_recovery(void)
 {
-	mutex_lock(&idev->touch_mutex);
+	bool lock = mutex_is_locked(&idev->touch_mutex);
+
 	atomic_set(&idev->esd_stat, START);
+
+	if (!lock)
+		mutex_lock(&idev->touch_mutex);
+
 	ipio_info("Doing gesture recovery\n");
 	idev->ges_recover();
+
+	if (!lock)
+		mutex_unlock(&idev->touch_mutex);
+
 	atomic_set(&idev->esd_stat, END);
-	mutex_unlock(&idev->touch_mutex);
 }
 
-static void ilitek_tddi_wq_spi_recover(struct work_struct *work)
+void ilitek_tddi_spi_recovery(void)
 {
-	ilitek_tddi_wq_ctrl(WQ_ESD, DISABLE);
-	mutex_lock(&idev->touch_mutex);
+	bool lock = mutex_is_locked(&idev->touch_mutex);
+
 	atomic_set(&idev->esd_stat, START);
 
-	ipio_info("Doing spi recovery\n");
+	if (!lock)
+		mutex_lock(&idev->touch_mutex);
 
+	ipio_info("Doing spi recovery\n");
 	if (ilitek_tddi_fw_upgrade_handler(NULL) < 0)
 		ipio_err("FW upgrade failed\n");
 
+	if (!lock)
+		mutex_unlock(&idev->touch_mutex);
+
 	atomic_set(&idev->esd_stat, END);
-	mutex_unlock(&idev->touch_mutex);
-	ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
 }
 
 int ilitek_tddi_wq_esd_spi_check(void)
@@ -209,7 +216,7 @@ static void ilitek_tddi_wq_esd_check(struct work_struct *work)
 {
 	if (idev->esd_recover() < 0) {
 		ipio_err("SPI ACK failed, doing spi recovery\n");
-		ilitek_tddi_wq_ctrl(WQ_SPI_RECOVER, ENABLE);
+		ilitek_tddi_spi_recovery();
 		return;
 	}
 	ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
@@ -308,27 +315,6 @@ void ilitek_tddi_wq_ctrl(int type, int ctrl)
 			}
 		}
 		break;
-	case WQ_SPI_RECOVER:
-		if (!spi_recover_wq) {
-			ipio_err("wq spi recovery is null\n");
-			break;
-		}
-		ipio_info("execute spi recovery\n");
-		if (!queue_delayed_work(spi_recover_wq, &spi_recover_work, msecs_to_jiffies(HZ)))
-			ipio_info("spi recovery was already on queue\n");
-		break;
-	case WQ_GES_RECOVER:
-		if (!esd_gesture_wq) {
-			ipio_err("wq gesture recovery is null\n");
-			break;
-		}
-		ipio_info("execute geture recovery\n");
-		if (!queue_delayed_work(esd_gesture_wq, &esd_gesture_work, msecs_to_jiffies(HZ)))
-			ipio_info("geture recovery was already on queue\n");
-		break;
-	case WQ_SUSPEND:
-		ipio_err("Not implement yet\n");
-		break;
 	default:
 		ipio_err("Unknown WQ type, %d\n", type);
 		break;
@@ -339,18 +325,12 @@ static void ilitek_tddi_wq_init(void)
 {
 	esd_wq = alloc_workqueue("esd_check", WQ_MEM_RECLAIM, 0);
 	bat_wq = alloc_workqueue("bat_check", WQ_MEM_RECLAIM, 0);
-	spi_recover_wq = alloc_workqueue("spi_recover", WQ_MEM_RECLAIM, 0);
-	esd_gesture_wq = alloc_workqueue("esd_gesture", WQ_MEM_RECLAIM, 0);
 
 	WARN_ON(!esd_wq);
 	WARN_ON(!bat_wq);
-	WARN_ON(!spi_recover_wq);
-	WARN_ON(!esd_gesture_wq);
 
 	INIT_DELAYED_WORK(&esd_work, ilitek_tddi_wq_esd_check);
 	INIT_DELAYED_WORK(&bat_work, ilitek_tddi_wq_bat_check);
-	INIT_DELAYED_WORK(&spi_recover_work, ilitek_tddi_wq_spi_recover);
-	INIT_DELAYED_WORK(&esd_gesture_work, ilitek_tddi_wq_ges_recover);
 }
 
 int ilitek_tddi_sleep_handler(int mode)
@@ -493,6 +473,12 @@ void ilitek_tddi_report_handler(void)
 		return;
 	}
 
+	if (idev->irq_after_recovery) {
+		ipio_info("ignore int triggered by recovery\n");
+		idev->irq_after_recovery = false;
+		return;
+	}
+
 	ilitek_tddi_wq_ctrl(WQ_ESD, DISABLE);
 	ilitek_tddi_wq_ctrl(WQ_BAT, DISABLE);
 
@@ -540,11 +526,13 @@ void ilitek_tddi_report_handler(void)
 		ipio_err("Read report packet failed, ret = %d\n", ret);
 		if (idev->actual_tp_mode == P5_X_FW_GESTURE_MODE && idev->gesture) {
 			ipio_err("Gesture failed, doing gesture recovery\n");
-			ilitek_tddi_wq_ctrl(WQ_GES_RECOVER, ENABLE);
+			ilitek_tddi_gesture_recovery();
+			idev->irq_after_recovery = true;
 			goto recover;
 		} else if (ret == DO_SPI_RECOVER) {
 			ipio_err("SPI ACK failed, doing spi recovery\n");
-			ilitek_tddi_wq_ctrl(WQ_SPI_RECOVER, ENABLE);
+			ilitek_tddi_spi_recovery();
+			idev->irq_after_recovery = true;
 			goto recover;
 		}
 		goto out;
@@ -730,16 +718,7 @@ void ilitek_tddi_dev_remove(void)
 		flush_workqueue(bat_wq);
 		destroy_workqueue(bat_wq);
 	}
-	if (spi_recover_wq != NULL) {
-		cancel_delayed_work_sync(&spi_recover_work);
-		flush_workqueue(spi_recover_wq);
-		destroy_workqueue(spi_recover_wq);
-	}
-	if (esd_gesture_wq != NULL) {
-		cancel_delayed_work_sync(&esd_gesture_work);
-		flush_workqueue(esd_gesture_wq);
-		destroy_workqueue(esd_gesture_wq);
-	}
+
 	ilitek_tddi_interface_dev_exit(idev->hwif);
 }
 
