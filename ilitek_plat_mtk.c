@@ -296,7 +296,7 @@ static irqreturn_t ilitek_plat_isr_bottom_half(int irq, void *dev_id)
 	ilitek_tddi_report_handler();
 	mutex_unlock(&idev->touch_mutex);
 	return IRQ_HANDLED;
-}	
+}
 
 void ilitek_plat_irq_unregister(void)
 {
