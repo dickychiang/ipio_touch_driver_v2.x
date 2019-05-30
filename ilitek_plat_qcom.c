@@ -371,15 +371,19 @@ static int ilitek_plat_notifier_fb(struct notifier_block *self, unsigned long ev
 				if (event != FB_EVENT_BLANK)
 					return NOTIFY_DONE;
 			}
-			ilitek_tddi_sleep_handler(TP_SUSPEND);
+			if (ilitek_tddi_sleep_handler(TP_SUSPEND) < 0)
+				ipio_err("TP suspend failed\n");
 			break;
 		case FB_BLANK_UNBLANK:
 		case FB_BLANK_NORMAL:
 #ifdef CONFIG_PLAT_SPRD
 		case DRM_MODE_DPMS_ON:
 #endif /* CONFIG_PLAT_SPRD */
-			if (event == FB_EVENT_BLANK)
-				ilitek_tddi_sleep_handler(TP_RESUME);
+			if (event == FB_EVENT_BLANK) {
+				if (ilitek_tddi_sleep_handler(TP_RESUME) < 0)
+					ipio_err("TP resume failed\n");
+
+			}
 			break;
 		default:
 			ipio_err("Unknown event, blank = %d\n", *blank);
@@ -391,12 +395,14 @@ static int ilitek_plat_notifier_fb(struct notifier_block *self, unsigned long ev
 #else
 static void ilitek_plat_early_suspend(struct early_suspend *h)
 {
-	ilitek_tddi_sleep_handler(TP_SUSPEND);
+	if (ilitek_tddi_sleep_handler(TP_SUSPEND) < 0)
+		ipio_err("TP suspend failed\n");
 }
 
 static void ilitek_plat_late_resume(struct early_suspend *h)
 {
-	ilitek_tddi_sleep_handler(TP_RESUME);
+	if (ilitek_tddi_sleep_handler(TP_RESUME) < 0)
+		ipio_err("TP resume failed\n");
 }
 #endif
 
@@ -428,7 +434,8 @@ static int ilitek_plat_probe(void)
 	if (REGULATOR_POWER)
 		ilitek_plat_regulator_power_init();
 
-	ilitek_plat_gpio_register();
+	if (ilitek_plat_gpio_register() < 0)
+		ipio_err("Register gpio failed\n");
 
 	if (ilitek_tddi_init() < 0) {
 		ipio_err("platform probe failed\n");

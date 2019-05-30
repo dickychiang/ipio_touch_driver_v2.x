@@ -181,7 +181,7 @@ int ilitek_spi_write_then_read_direct(struct spi_device *spi,
 
 static int core_rx_lock_check(int *ret_size)
 {
-	int i, count = 100;
+	int i, count = 1;
 	u8 txbuf[5] = {SPI_WRITE, 0x25, 0x94, 0x0, 0x2};
 	u8 rxbuf[4] = {0};
 	u16 status = 0, lock = 0x5AA5;
@@ -211,7 +211,7 @@ static int core_rx_lock_check(int *ret_size)
 	}
 
 out:
-	ipio_err("Rx check lock error, lock = 0x%x, size = %d\n", status, *ret_size);
+	ipio_err("Rx check lock error, lock = 0x%x\n", status);
 	return -EIO;
 }
 
@@ -384,6 +384,7 @@ static int core_spi_ice_mode_enable(void)
 static int core_spi_ice_mode_write(u8 *data, int len)
 {
 	int ret = 0;
+
 	ret = core_spi_ice_mode_enable();
 	if (ret < 0)
 		return ret;
@@ -403,7 +404,7 @@ static int core_spi_ice_mode_write(u8 *data, int len)
 
 out:
 	if (core_spi_ice_mode_disable() < 0)
-		return -EIO;
+		ret = -EIO;
 
 	return ret;
 }
@@ -435,12 +436,10 @@ static int core_spi_ice_mode_read(u8 *data, int len)
 		goto out;
 
 out:
-	ret = core_spi_ice_mode_disable();
+	if (core_spi_ice_mode_disable() < 0)
+		ret = -EIO;
 
-	if (ret >= 0)
-		return size;
-
-	return ret;
+	return (ret >= 0) ? size : ret;
 }
 
 static int core_spi_write(u8 *data, int len)

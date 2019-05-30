@@ -98,26 +98,35 @@ static int host_download_dma_check(u32 start_addr, u32 block_size)
 	u32 busy = 0;
 
 	/* dma1 src1 address */
-	ilitek_ice_mode_write(0x072104, start_addr, 4);
+	if (ilitek_ice_mode_write(0x072104, start_addr, 4) < 0)
+		ipio_err("Write dma1 src1 address failed\n");
 	/* dma1 src1 format */
-	ilitek_ice_mode_write(0x072108, 0x80000001, 4);
+	if (ilitek_ice_mode_write(0x072108, 0x80000001, 4) < 0)
+		ipio_err("Write dma1 src1 format failed\n");
 	/* dma1 dest address */
-	ilitek_ice_mode_write(0x072114, 0x00030000, 4);
+	if (ilitek_ice_mode_write(0x072114, 0x00030000, 4) < 0)
+		ipio_err("Write dma1 src1 format failed\n");
 	/* dma1 dest format */
-	ilitek_ice_mode_write(0x072118, 0x80000000, 4);
+	if (ilitek_ice_mode_write(0x072118, 0x80000000, 4) < 0)
+		ipio_err("Write dma1 dest format failed\n");
 	/* Block size*/
-	ilitek_ice_mode_write(0x07211C, block_size, 4);
+	if (ilitek_ice_mode_write(0x07211C, block_size, 4) < 0)
+		ipio_err("Write block size (%d) failed\n", block_size);
 
 	idev->chip->hd_dma_check_crc_off();
 
 	/* crc on */
-	ilitek_ice_mode_write(0x041016, 0x01, 1);
+	if (ilitek_ice_mode_write(0x041016, 0x01, 1) < 0)
+		ipio_err("Write crc on failed\n");
 	/* Dma1 stop */
-	ilitek_ice_mode_write(0x072100, 0x00000000, 4);
+	if (ilitek_ice_mode_write(0x072100, 0x00000000, 4) < 0)
+		ipio_err("Write dma1 stop failed\n");
 	/* clr int */
-	ilitek_ice_mode_write(0x048006, 0x1, 1);
+	if (ilitek_ice_mode_write(0x048006, 0x1, 1) < 0)
+		ipio_err("Write clr int failed\n");
 	/* Dma1 start */
-	ilitek_ice_mode_write(0x072100, 0x01000000, 4);
+	if (ilitek_ice_mode_write(0x072100, 0x01000000, 4) < 0)
+		ipio_err("Write dma1 start failed\n");
 
 	/* Polling BIT0 */
 	while (count > 0) {
@@ -218,8 +227,10 @@ int ilitek_tddi_fw_dump_iram_data(u32 start, u32 end)
 	}
 
 	wdt = ilitek_tddi_ic_watch_dog_ctrl(ILI_READ, DISABLE);
-	if (wdt)
-		ilitek_tddi_ic_watch_dog_ctrl(ILI_WRITE, DISABLE);
+	if (wdt) {
+		if (ilitek_tddi_ic_watch_dog_ctrl(ILI_WRITE, DISABLE) < 0)
+			ipio_err("Disable WDT failed during dumping iram\n");
+	}
 
 	len = end - start + 1;
 
@@ -245,8 +256,10 @@ int ilitek_tddi_fw_dump_iram_data(u32 start, u32 end)
 	set_fs(old_fs);
 
 out:
-	if (wdt)
-		ilitek_tddi_ic_watch_dog_ctrl(ILI_WRITE, ENABLE);
+	if (wdt) {
+		if (ilitek_tddi_ic_watch_dog_ctrl(ILI_WRITE, ENABLE) < 0)
+			ipio_err("Enable WDT failed during dumping iram\n");
+	}
 
 	ilitek_ice_mode_ctrl(DISABLE, OFF);
 	filp_close(f, NULL);
@@ -332,13 +345,21 @@ static int ilitek_tddi_flash_poll_busy(int timer)
 	u8 cmd = 0x5;
 	u32 temp = 0;
 
-	ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x0, 1); /* CS low */
-	ilitek_ice_mode_write(FLASH1_ADDR, 0x66aa55, 3); /* Key */
-	ilitek_ice_mode_write(FLASH2_ADDR, cmd, 1);
+	if (ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x0, 1) < 0)
+		ipio_err("Pull cs low failed\n");
+
+	if (ilitek_ice_mode_write(FLASH1_ADDR, 0x66aa55, 3) < 0)
+		ipio_err("Write key failed\n");
+
+	if (ilitek_ice_mode_write(FLASH2_ADDR, cmd, 1) < 0)
+		ipio_err("Write 0x5 cmd failed\n");
 
 	do {
-		ilitek_ice_mode_write(FLASH2_ADDR, 0xFF, 1); /* Dummy */
+		if (ilitek_ice_mode_write(FLASH2_ADDR, 0xFF, 1) < 0)
+			ipio_err("Write dummy failed\n");
+
 		mdelay(1);
+
 		if (ilitek_ice_mode_read(FLASH4_ADDR, &temp, sizeof(u8)) < 0)
 			ipio_err("Read flash busy error\n");
 
@@ -346,7 +367,8 @@ static int ilitek_tddi_flash_poll_busy(int timer)
 			break;
 	} while (--retry >= 0);
 
-	ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x1, 1); /* CS high */
+	if (ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x1, 1) < 0)
+		ipio_err("Pull cs high failed\n");
 
 	if (retry <= 0) {
 		ipio_err("Flash polling busy timeout ! tmp = %x\n", temp);
@@ -358,16 +380,26 @@ static int ilitek_tddi_flash_poll_busy(int timer)
 
 void ilitek_tddi_flash_clear_dma(void)
 {
-	ilitek_ice_mode_bit_mask_write(INTR1_ADDR, INTR1_reg_flash_int_flag, (1 << 25));
+	if (ilitek_ice_mode_bit_mask_write(INTR1_ADDR, INTR1_reg_flash_int_flag, (1 << 25)) < 0)
+		ipio_err("Write %lu at %x failed\n", INTR1_reg_flash_int_flag, INTR1_ADDR);
 
-	ilitek_ice_mode_bit_mask_write(FLASH0_ADDR, FLASH0_reg_preclk_sel, (2 << 16));
-	ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x01, 1);	/* CS high */
+	if (ilitek_ice_mode_bit_mask_write(FLASH0_ADDR, FLASH0_reg_preclk_sel, (2 << 16)) < 0)
+		ipio_err("Write %lu at %x failed\n", FLASH0_reg_preclk_sel, FLASH0_ADDR);
 
-	ilitek_ice_mode_bit_mask_write(FLASH4_ADDR, FLASH4_reg_flash_dma_trigger_en, (0 << 24));
-	ilitek_ice_mode_bit_mask_write(FLASH0_ADDR, FLASH0_reg_rx_dual, (0 << 24));
+	if (ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x01, 1) < 0)
+		ipio_err("Pull cs high failed\n");
 
-	ilitek_ice_mode_write(FLASH3_reg_rcv_cnt, 0x00, 1);
-	ilitek_ice_mode_write(FLASH4_reg_rcv_data, 0xFF, 1);
+	if (ilitek_ice_mode_bit_mask_write(FLASH4_ADDR, FLASH4_reg_flash_dma_trigger_en, (0 << 24)) < 0)
+		ipio_err("Write %lu at %x failed\n", FLASH4_reg_flash_dma_trigger_en, FLASH4_ADDR);
+
+	if (ilitek_ice_mode_bit_mask_write(FLASH0_ADDR, FLASH0_reg_rx_dual, (0 << 24)) < 0)
+		ipio_err("Write %lu at %x failed\n", FLASH0_reg_rx_dual, FLASH0_ADDR);
+
+	if (ilitek_ice_mode_write(FLASH3_reg_rcv_cnt, 0x00, 1) < 0)
+		ipio_err("Write 0x0 at %x failed\n", FLASH3_reg_rcv_cnt);
+
+	if (ilitek_ice_mode_write(FLASH4_reg_rcv_data, 0xFF, 1) < 0)
+		ipio_err("Write 0xFF at %x failed\n", FLASH4_reg_rcv_data);
 }
 
 int ilitek_tddi_flash_read_int_flag(void)
@@ -393,67 +425,90 @@ int ilitek_tddi_flash_read_int_flag(void)
 
 void ilitek_tddi_flash_dma_write(u32 start, u32 end, u32 len)
 {
-	ilitek_ice_mode_bit_mask_write(FLASH0_ADDR, FLASH0_reg_preclk_sel, 1 << 16);
+	if (ilitek_ice_mode_bit_mask_write(FLASH0_ADDR, FLASH0_reg_preclk_sel, 1 << 16) < 0)
+		ipio_err("Write %lu at %x failed\n", FLASH0_reg_preclk_sel, FLASH0_ADDR);
 
-	ilitek_ice_mode_write(FLASH0_reg_flash_csb, 0x00, 1);	/* CS low */
-	ilitek_ice_mode_write(FLASH1_reg_flash_key1, 0x66aa55, 3);	/* Key */
+	if (ilitek_ice_mode_write(FLASH0_reg_flash_csb, 0x00, 1) < 0)
+		ipio_err("Pull cs low failed\n");
 
-	ilitek_ice_mode_write(FLASH2_reg_tx_data, 0x0b, 1);
+	if (ilitek_ice_mode_write(FLASH1_reg_flash_key1, 0x66aa55, 3) < 0)
+		ipio_err("Write key failed\n");
+
+	if (ilitek_ice_mode_write(FLASH2_reg_tx_data, 0x0b, 1) < 0)
+		ipio_err("Write 0x0b at %x failed\n", FLASH2_reg_tx_data);
 
 	if (ilitek_tddi_flash_read_int_flag() < 0) {
 		ipio_err("Write 0xb timeout \n");
 		return;
 	}
 
-	ilitek_ice_mode_bit_mask_write(INTR1_ADDR, INTR1_reg_flash_int_flag, (1 << 25));
+	if (ilitek_ice_mode_bit_mask_write(INTR1_ADDR, INTR1_reg_flash_int_flag, (1 << 25)) < 0)
+		ipio_err("Write %lu at %x failed\n", INTR1_reg_flash_int_flag, INTR1_ADDR);
 
-	ilitek_ice_mode_write(FLASH2_reg_tx_data, (start & 0xFF0000) >> 16, 1);
+	if (ilitek_ice_mode_write(FLASH2_reg_tx_data, (start & 0xFF0000) >> 16, 1) < 0)
+		ipio_err("Write %x at %x failed\n", (start & 0xFF0000), FLASH2_reg_tx_data);
 
 	if (ilitek_tddi_flash_read_int_flag() < 0) {
 		ipio_err("Write addr1 timeout\n");
 		return;
 	}
 
-	ilitek_ice_mode_bit_mask_write(INTR1_ADDR, INTR1_reg_flash_int_flag, (1 << 25));
+	if (ilitek_ice_mode_bit_mask_write(INTR1_ADDR, INTR1_reg_flash_int_flag, (1 << 25)) < 0)
+		ipio_err("Write %lu at %x failed\n", INTR1_reg_flash_int_flag, INTR1_ADDR);
 
-	ilitek_ice_mode_write(FLASH2_reg_tx_data, (start & 0x00FF00) >> 8, 1);
+	if (ilitek_ice_mode_write(FLASH2_reg_tx_data, (start & 0x00FF00) >> 8, 1) < 0)
+		ipio_err("Write %x at %x failed\n", (start & 0x00FF00) >> 8, FLASH2_reg_tx_data);
 
 	if (ilitek_tddi_flash_read_int_flag() < 0) {
 		ipio_err("Write addr2 timeout\n");
 		return;
 	}
 
-	ilitek_ice_mode_bit_mask_write(INTR1_ADDR, INTR1_reg_flash_int_flag, (1 << 25));
+	if (ilitek_ice_mode_bit_mask_write(INTR1_ADDR, INTR1_reg_flash_int_flag, (1 << 25)) < 0)
+		ipio_err("Write %lu at %x failed\n", INTR1_reg_flash_int_flag, INTR1_ADDR);
 
-	ilitek_ice_mode_write(FLASH2_reg_tx_data, (start & 0x0000FF), 1);
+	if (ilitek_ice_mode_write(FLASH2_reg_tx_data, (start & 0x0000FF), 1) < 0)
+		ipio_err("Write %x at %x failed\n", (start & 0x0000FF), FLASH2_reg_tx_data);
 
 	if (ilitek_tddi_flash_read_int_flag() < 0) {
 		ipio_err("Write addr3 timeout\n");
 		return;
 	}
 
-	ilitek_ice_mode_bit_mask_write(INTR1_ADDR, INTR1_reg_flash_int_flag, (1 << 25));
+	if (ilitek_ice_mode_bit_mask_write(INTR1_ADDR, INTR1_reg_flash_int_flag, (1 << 25)) < 0)
+		ipio_err("Write %lu at %x failed\n", INTR1_reg_flash_int_flag, INTR1_ADDR);
 
-	ilitek_ice_mode_bit_mask_write(FLASH0_ADDR, FLASH0_reg_rx_dual, 0 << 24);
+	if (ilitek_ice_mode_bit_mask_write(FLASH0_ADDR, FLASH0_reg_rx_dual, 0 << 24) < 0)
+		ipio_err("Write %lu at %x failed\n", FLASH0_reg_rx_dual, FLASH0_ADDR);
 
-	ilitek_ice_mode_write(FLASH2_reg_tx_data, 0x00, 1);	/* Dummy */
+	if (ilitek_ice_mode_write(FLASH2_reg_tx_data, 0x00, 1) < 0)
+		ipio_err("Write dummy failed\n");
 
 	if (ilitek_tddi_flash_read_int_flag() < 0) {
 		ipio_err("Write dummy timeout\n");
 		return;
 	}
 
-	ilitek_ice_mode_bit_mask_write(INTR1_ADDR, INTR1_reg_flash_int_flag, (1 << 25));
+	if (ilitek_ice_mode_bit_mask_write(INTR1_ADDR, INTR1_reg_flash_int_flag, (1 << 25)) < 0)
+		ipio_err("Write %lu at %x failed\n", INTR1_reg_flash_int_flag, INTR1_ADDR);
 
-	ilitek_ice_mode_write(FLASH3_reg_rcv_cnt, len, 4);	/* Write Length */
+	if (ilitek_ice_mode_write(FLASH3_reg_rcv_cnt, len, 4) < 0)
+		ipio_err("Write length failed\n");
 }
 
 static void ilitek_tddi_flash_write_enable(void)
 {
-	ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x0, 1); /* CS low */
-	ilitek_ice_mode_write(FLASH1_ADDR, 0x66aa55, 3); /* Key */
-	ilitek_ice_mode_write(FLASH2_ADDR, 0x6, 1);
-	ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x1, 1); /* CS high */
+	if (ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x0, 1) < 0)
+		ipio_err("Pull CS low failed\n");
+
+	if (ilitek_ice_mode_write(FLASH1_ADDR, 0x66aa55, 3) < 0)
+		ipio_err("Write key failed\n");
+
+	if (ilitek_ice_mode_write(FLASH2_ADDR, 0x6, 1) < 0)
+		ipio_err("Write 0x6 failed\n");
+
+	if (ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x1, 1) < 0)
+		ipio_err("Pull CS high failed\n");
 }
 
 u32 ilitek_tddi_fw_read_hw_crc(u32 start, u32 end)
@@ -469,20 +524,44 @@ u32 ilitek_tddi_fw_read_hw_crc(u32 start, u32 end)
 		return -1;
 	}
 
-	ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x0, 1); /* CS low */
-	ilitek_ice_mode_write(FLASH1_ADDR, 0x66aa55, 3); /* Key */
-	ilitek_ice_mode_write(FLASH2_ADDR, 0x3b, 1);
-	ilitek_ice_mode_write(FLASH2_ADDR, (start & 0xFF0000) >> 16, 1);
-	ilitek_ice_mode_write(FLASH2_ADDR, (start & 0x00FF00) >> 8, 1);
-	ilitek_ice_mode_write(FLASH2_ADDR, (start & 0x0000FF), 1);
-	ilitek_ice_mode_write(0x041003, 0x01, 1); /* Enable Dio_Rx_dual */
-	ilitek_ice_mode_write(FLASH2_ADDR, 0xFF, 1); /* Dummy */
-	ilitek_ice_mode_write(0x04100C, write_len, 3); /* Set Receive count */
-	ilitek_ice_mode_write(0x048007, 0x02, 1);/* Clear Int Flag */
-	ilitek_ice_mode_write(0x041016, 0x00, 1);
-	ilitek_ice_mode_write(0x041016, 0x01, 1);	/* Checksum_En */
+	if (ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x0, 1) < 0)
+		ipio_err("Pull CS low failed\n");
 
-	ilitek_ice_mode_write(FLASH4_ADDR, 0xFF, 1); /* Start to receive */
+	if (ilitek_ice_mode_write(FLASH1_ADDR, 0x66aa55, 3) < 0)
+		ipio_err("Write key failed\n");
+
+	if (ilitek_ice_mode_write(FLASH2_ADDR, 0x3b, 1) < 0)
+		ipio_err("Write 0x3b failed\n");
+
+	if (ilitek_ice_mode_write(FLASH2_ADDR, (start & 0xFF0000) >> 16, 1) < 0)
+		ipio_err("Write address failed\n");
+
+	if (ilitek_ice_mode_write(FLASH2_ADDR, (start & 0x00FF00) >> 8, 1) < 0)
+		ipio_err("Write address failed\n");
+
+	if (ilitek_ice_mode_write(FLASH2_ADDR, (start & 0x0000FF), 1) < 0)
+		ipio_err("Write address failed\n");
+
+	if (ilitek_ice_mode_write(0x041003, 0x01, 1) < 0)
+		ipio_err("Write enable Dio_Rx_dual failed\n");
+
+	if (ilitek_ice_mode_write(FLASH2_ADDR, 0xFF, 1) < 0)
+		ipio_err("Write dummy failed\n");
+
+	if (ilitek_ice_mode_write(0x04100C, write_len, 3) < 0)
+		ipio_err("Write Set Receive count failed\n");
+
+	if (ilitek_ice_mode_write(0x048007, 0x02, 1) < 0)
+		ipio_err("Write clearing int flag failed\n");
+
+	if (ilitek_ice_mode_write(0x041016, 0x00, 1) < 0)
+		ipio_err("Write 0x0 at 0x041016 failed\n");
+
+	if (ilitek_ice_mode_write(0x041016, 0x01, 1) < 0)
+		ipio_err("Write Checksum_En failed\n");
+
+	if (ilitek_ice_mode_write(FLASH4_ADDR, 0xFF, 1) < 0)
+		ipio_err("Write start to receive failed\n");
 
 	do {
 		if (ilitek_ice_mode_read(0x048007, &busy, sizeof(u8)) < 0)
@@ -493,14 +572,16 @@ u32 ilitek_tddi_fw_read_hw_crc(u32 start, u32 end)
 			break;
 	} while (--retry >= 0);
 
-	ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x1, 1); /* CS high */
+	if (ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x1, 1) < 0)
+		ipio_err("Write CS high failed\n");
 
 	if (retry <= 0) {
 		ipio_err("Read HW CRC timeout !, busy = 0x%x\n", busy);
 		return -1;
 	}
 
-	ilitek_ice_mode_write(0x041003, 0x0, 1); /* Disable dio_Rx_dual */
+	if (ilitek_ice_mode_write(0x041003, 0x0, 1) < 0)
+		ipio_err("Write disable dio_Rx_dual failed\n");
 
 	if (ilitek_ice_mode_read(0x04101C, &flash_crc, sizeof(u32)) < 0) {
 		ipio_err("Read hw crc error\n");
@@ -520,15 +601,27 @@ int ilitek_tddi_fw_read_flash_data(u32 start, u32 end, u8 *data, int len)
 		return -1;
 	}
 
-	ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x0, 1); /* CS low */
-	ilitek_ice_mode_write(FLASH1_ADDR, 0x66aa55, 3); /* Key */
-	ilitek_ice_mode_write(FLASH2_ADDR, 0x03, 1);
-	ilitek_ice_mode_write(FLASH2_ADDR, (start & 0xFF0000) >> 16, 1);
-	ilitek_ice_mode_write(FLASH2_ADDR, (start & 0x00FF00) >> 8, 1);
-	ilitek_ice_mode_write(FLASH2_ADDR, (start & 0x0000FF), 1);
+	if (ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x0, 1) < 0)
+		ipio_err("Write cs low failed\n");
+
+	if (ilitek_ice_mode_write(FLASH1_ADDR, 0x66aa55, 3) < 0)
+		ipio_err("Write key failed\n");
+
+	if (ilitek_ice_mode_write(FLASH2_ADDR, 0x03, 1) < 0)
+		ipio_err("Write 0x3 failed\n");
+
+	if (ilitek_ice_mode_write(FLASH2_ADDR, (start & 0xFF0000) >> 16, 1) < 0)
+		ipio_err("Write address failed\n");
+
+	if (ilitek_ice_mode_write(FLASH2_ADDR, (start & 0x00FF00) >> 8, 1) < 0)
+		ipio_err("Write address failed\n");
+
+	if (ilitek_ice_mode_write(FLASH2_ADDR, (start & 0x0000FF), 1) < 0)
+		ipio_err("Write address failed\n");
 
 	for (i = start; i <= end; i++) {
-		ilitek_ice_mode_write(FLASH2_ADDR, 0xFF, 1); /* Dummy */
+		if (ilitek_ice_mode_write(FLASH2_ADDR, 0xFF, 1) < 0)
+			ipio_err("Write dummy failed\n");
 
 		if (ilitek_ice_mode_read(FLASH4_ADDR, &tmp, sizeof(u8)) < 0)
 			ipio_err("Read flash data error!\n");
@@ -539,7 +632,9 @@ int ilitek_tddi_fw_read_flash_data(u32 start, u32 end, u8 *data, int len)
 		ipio_debug("Reading flash data .... %d%c", precent, '%');
 	}
 
-	ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x1, 1); /* CS high */
+	if (ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x1, 1) < 0)
+		ipio_err("Write cs high failed\n");
+
 	return 0;
 }
 
@@ -602,26 +697,40 @@ static void ilitek_tddi_flash_protect(bool enable)
 
 	ilitek_tddi_flash_write_enable();
 
-	ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x0, 1); /* CS low */
-	ilitek_ice_mode_write(FLASH1_ADDR, 0x66aa55, 3); /* Key */
-	ilitek_ice_mode_write(FLASH2_ADDR, 0x1, 1);
-	ilitek_ice_mode_write(FLASH2_ADDR, 0x0, 1);
+	if (ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x0, 1) < 0)
+		ipio_err("Write cs low failed\n");
+
+	if (ilitek_ice_mode_write(FLASH1_ADDR, 0x66aa55, 3) < 0)
+		ipio_err("Write key failed\n");
+
+	if (ilitek_ice_mode_write(FLASH2_ADDR, 0x1, 1) < 0)
+		ipio_err("Write 0x1 failed\n");
+
+	if (ilitek_ice_mode_write(FLASH2_ADDR, 0x0, 1) < 0)
+		ipio_err("Write 0x0 failed\n");
 
 	switch (idev->flash_mid) {
 	case 0xEF:
 		if (idev->flash_devid == 0x6012 || idev->flash_devid == 0x6011) {
-			if (enable)
-				ilitek_ice_mode_write(FLASH2_ADDR, 0x7E, 1);
-			else
-				ilitek_ice_mode_write(FLASH2_ADDR, 0x0, 1);
+			if (enable) {
+				if (ilitek_ice_mode_write(FLASH2_ADDR, 0x7E, 1) < 0)
+					ipio_err("Write 0x7E at %x failed\n", FLASH2_ADDR);
+			} else {
+				if (ilitek_ice_mode_write(FLASH2_ADDR, 0x0, 1) < 0)
+					ipio_err("Write 0x0 at %x failed\n", FLASH2_ADDR);
+			}
 		}
 		break;
 	case 0xC8:
 		if (idev->flash_devid == 0x6012 || idev->flash_devid == 0x6013) {
-			if (enable)
-				ilitek_ice_mode_write(FLASH2_ADDR, 0x7A, 1);
-			else
-				ilitek_ice_mode_write(FLASH2_ADDR, 0x0, 1);
+			if (enable) {
+				if (ilitek_ice_mode_write(FLASH2_ADDR, 0x7A, 1) < 0)
+					ipio_err("Write 0x7A at %x failed\n", FLASH2_ADDR);
+			} else {
+				if (ilitek_ice_mode_write(FLASH2_ADDR, 0x0, 1) < 0)
+					ipio_err("Write 0x0 at %x failed\n", FLASH2_ADDR);
+			}
+
 		}
 		break;
 	default:
@@ -629,7 +738,8 @@ static void ilitek_tddi_flash_protect(bool enable)
 		break;
 	}
 
-	ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x1, 1); /* CS high */
+	if (ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x1, 1) < 0)
+		ipio_err("Write cs high failed\n");
 }
 
 static int ilitek_tddi_fw_check_ver(u8 *pfw)
@@ -720,9 +830,11 @@ static int ilitek_tddi_fw_iram_upgrade(u8 *pfw)
 					fbi[i].name, fbi[i].start, fbi[i].mem_start, fbi[i].len);
 
 #ifdef SPI_DMA_TRANSFER_SPLIT
-			ilitek_tddi_fw_iram_program(fbi[i].mem_start, (fw_ptr + fbi[i].start), fbi[i].len, SPI_UPGRADE_LEN);
+			if (ilitek_tddi_fw_iram_program(fbi[i].mem_start, (fw_ptr + fbi[i].start), fbi[i].len, SPI_UPGRADE_LEN) < 0)
+				ipio_err("IRAM program failed\n");
 #else
-			ilitek_tddi_fw_iram_program(fbi[i].mem_start, (fw_ptr + fbi[i].start), fbi[i].len, 0);
+			if (ilitek_tddi_fw_iram_program(fbi[i].mem_start, (fw_ptr + fbi[i].start), fbi[i].len, 0) < 0)
+				ipio_err("IRAM program failed\n");
 #endif
 
 			crc = CalculateCRC32(fbi[i].start, fbi[i].len - 4, fw_ptr);
@@ -740,10 +852,14 @@ static int ilitek_tddi_fw_iram_upgrade(u8 *pfw)
 		}
 	}
 
-	if (idev->actual_tp_mode != P5_X_FW_GESTURE_MODE)
-		ilitek_tddi_reset_ctrl(TP_IC_CODE_RST);
+	if (idev->actual_tp_mode != P5_X_FW_GESTURE_MODE) {
+		if (ilitek_tddi_reset_ctrl(TP_IC_CODE_RST) < 0)
+			ipio_err("TP Code reset failed during iram programming\n");
+	}
 
-	ilitek_ice_mode_ctrl(DISABLE, OFF);
+	if (ilitek_ice_mode_ctrl(DISABLE, OFF) < 0)
+		ipio_err("Disable ice mode failed after code reset\n");
+
 	/* Waiting for fw ready */
 	mdelay(100);
 	return ret;
@@ -782,26 +898,36 @@ static int ilitek_tddi_fw_flash_program(u8 *pfw)
 			}
 
 			if (skip) {
-				ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x1, 1); /* CS high */
+				if (ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x1, 1) < 0)
+					ipio_err("Write cs high failed\n");
 				return UPDATE_FAIL;
 			}
 
 			ilitek_tddi_flash_write_enable();
 
-			ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x0, 1); /* CS low */
-			ilitek_ice_mode_write(FLASH1_ADDR, 0x66aa55, 3); /* Key */
-			ilitek_ice_mode_write(FLASH2_ADDR, 0x2, 1);
+			if (ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x0, 1) < 0)
+				ipio_err("Write cs low failed\n");
+
+			if (ilitek_ice_mode_write(FLASH1_ADDR, 0x66aa55, 3) < 0)
+				ipio_err("Write key failed\n");
+
+			if (ilitek_ice_mode_write(FLASH2_ADDR, 0x2, 1) < 0)
+				ipio_err("Write 0x2 failed\n");
+
 			recv_addr = ((addr & 0xFF0000) >> 16) | (addr & 0x00FF00) | ((addr & 0x0000FF) << 16);
-			ilitek_ice_mode_write(FLASH2_ADDR, recv_addr, 3);
+			if (ilitek_ice_mode_write(FLASH2_ADDR, recv_addr, 3) < 0)
+				ipio_err("Write address failed\n");
 
 			if (idev->write(buf, idev->program_page + 4) < 0) {
 				ipio_err("Failed to program data at start_addr = 0x%X, k = 0x%X, addr = 0x%x\n",
 				addr, k, addr + k);
-				ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x1, 1); /* CS high */
+				if (ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x1, 1) < 0)
+					ipio_err("Write cs high failed\n");
 				return UPDATE_FAIL;
 			}
 
-			ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x1, 1); /* CS high */
+			if (ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x1, 1) < 0)
+				ipio_err("Write cs high failed\n");
 
 			if (idev->flash_mid == 0xEF) {
 				mdelay(1);
@@ -837,18 +963,26 @@ static int ilitek_tddi_fw_flash_erase(void)
 		for (addr = fbi[i].start; addr <= fbi[i].end; addr += idev->flash_sector) {
 			ilitek_tddi_flash_write_enable();
 
-			ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x0, 1); /* CS low */
-			ilitek_ice_mode_write(FLASH1_ADDR, 0x66aa55, 3); /* Key */
+			if (ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x0, 1) < 0)
+				ipio_err("Write cs low failed\n");
 
-			if (addr == fbi[AP].start)
-				ilitek_ice_mode_write(FLASH2_ADDR, 0xD8, 1);
-			else
-				ilitek_ice_mode_write(FLASH2_ADDR, 0x20, 1);
+			if (ilitek_ice_mode_write(FLASH1_ADDR, 0x66aa55, 3) < 0)
+				ipio_err("Write key failed\n");
+
+			if (addr == fbi[AP].start) {
+				if (ilitek_ice_mode_write(FLASH2_ADDR, 0xD8, 1) < 0)
+					ipio_err("Write 0xB at %x failed\n", FLASH2_ADDR);
+			} else {
+				if (ilitek_ice_mode_write(FLASH2_ADDR, 0x20, 1) < 0)
+					ipio_err("Write 0x20 at %x failed\n", FLASH2_ADDR);
+			}
 
 			recv_addr = ((addr & 0xFF0000) >> 16) | (addr & 0x00FF00) | ((addr & 0x0000FF) << 16);
-			ilitek_ice_mode_write(FLASH2_ADDR, recv_addr, 3);
+			if (ilitek_ice_mode_write(FLASH2_ADDR, recv_addr, 3) < 0)
+				ipio_err("Write address failed\n");
 
-			ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x1, 1); /* CS high */
+			if (ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x1, 1) < 0)
+				ipio_err("Write cs high failed\n");
 
 			/* Waitint for flash setting ready */
 			mdelay(1);
@@ -861,7 +995,8 @@ static int ilitek_tddi_fw_flash_erase(void)
 			if (ret < 0)
 				return UPDATE_FAIL;
 
-			ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x1, 1); /* CS high */
+			if (ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x1, 1) < 0)
+				ipio_err("Write cs high failed\n");
 
 			if (fbi[i].start == fbi[AP].start)
 				break;
@@ -874,7 +1009,8 @@ static int ilitek_tddi_fw_flash_upgrade(u8 *pfw)
 {
 	int ret = UPDATE_PASS;
 
-	ilitek_tddi_reset_ctrl(idev->reset);
+	if (ilitek_tddi_reset_ctrl(idev->reset) < 0)
+		ipio_err("TP reset failed during flash progam\n");
 
 	ret = ilitek_ice_mode_ctrl(ENABLE, OFF);
 	if (ret < 0)
@@ -886,9 +1022,12 @@ static int ilitek_tddi_fw_flash_upgrade(u8 *pfw)
 
 	ret = ilitek_tddi_fw_check_ver(pfw);
 	if (ret == UPDATE_PASS) {
-			if (ilitek_ice_mode_ctrl(DISABLE, OFF) < 0) {
+		if (ilitek_ice_mode_ctrl(DISABLE, OFF) < 0) {
 			ipio_err("Disable ice mode failed, call reset instead\n");
-			ilitek_tddi_reset_ctrl(idev->reset);
+			if (ilitek_tddi_reset_ctrl(idev->reset) < 0) {
+				ipio_err("TP reset failed during flash progam\n");
+				return UPDATE_FAIL;
+			}
 			return UPDATE_PASS;
 		}
 		return UPDATE_PASS;
@@ -907,7 +1046,9 @@ static int ilitek_tddi_fw_flash_upgrade(u8 *pfw)
 		return UPDATE_FAIL;
 
 	/* We do have to reset chip in order to move new code from flash to iram. */
-	ilitek_tddi_reset_ctrl(idev->reset);
+	if (ilitek_tddi_reset_ctrl(idev->reset) < 0)
+		ipio_err("TP reset failed after flash progam\n");
+
 	return ret;
 }
 
@@ -956,7 +1097,7 @@ static void ilitek_tddi_fw_update_block_info(u8 *pfw, u8 type)
 			ges_area_section = (pfw[ges_info_addr + 3] << 24) + (pfw[ges_info_addr + 2] << 16) + (pfw[ges_info_addr + 1] << 8) + pfw[ges_info_addr];
 			fbi[GESTURE].mem_start = (pfw[ges_info_addr + 7] << 24) + (pfw[ges_info_addr + 6] << 16) + (pfw[ges_info_addr + 5] << 8) + pfw[ges_info_addr + 4];
 			ap_end = (pfw[ges_info_addr + 11] << 24) + (pfw[ges_info_addr + 10] << 16) + (pfw[ges_info_addr + 9] << 8) + pfw[ges_info_addr + 8];
-			ap_len = fbi[GESTURE].mem_start - ap_end + 1;
+			ap_len = ap_end - fbi[GESTURE].mem_start + 1;
 			ges_fw_start = (pfw[ges_info_addr + 15] << 24) + (pfw[ges_info_addr + 14] << 16) + (pfw[ges_info_addr + 13] << 8) + pfw[ges_info_addr + 12];
 			ges_fw_end = (pfw[ges_info_addr + 19] << 24) + (pfw[ges_info_addr + 18] << 16) + (pfw[ges_info_addr + 17] << 8) + pfw[ges_info_addr + 16];
 			fbi[GESTURE].len = ges_fw_end - ges_fw_start + 1;
@@ -1255,16 +1396,24 @@ static void ilitek_tddi_fw_check_update(int ret)
 			ipio_info("No need to erase data during mp test\n");
 			return;
 		}
+
 		ipio_info("Erase all fw data\n");
 		if (idev->fw_upgrade_mode == UPGRADE_IRAM) {
-			ilitek_tddi_reset_ctrl(idev->reset);
+			if (ilitek_tddi_reset_ctrl(idev->reset) < 0)
+				ipio_err("TP reset failed while erasing data\n");
 		} else {
-			ilitek_ice_mode_ctrl(ENABLE, OFF);
-			ilitek_tddi_fw_flash_erase();
-			ilitek_ice_mode_ctrl(DISABLE, OFF);
-			ilitek_tddi_reset_ctrl(idev->reset);
+			if (ilitek_ice_mode_ctrl(ENABLE, OFF) < 0)
+				ipio_err("Enable ice mode failed while erasing data\n");
+
+			if (ilitek_tddi_fw_flash_erase() < 0)
+				ipio_err("Erase flash failed\n");
+
+			if (ilitek_ice_mode_ctrl(DISABLE, OFF) < 0)
+				ipio_err("Disable ice mode failed after erase data\n");
+
+			if (ilitek_tddi_reset_ctrl(idev->reset) < 0)
+				ipio_err("TP reset failed after erase data\n");
 		}
-		return;
 	}
 }
 
@@ -1348,21 +1497,32 @@ void ilitek_tddi_fw_read_flash_info(bool mode)
 	if (mode == UPGRADE_IRAM)
 		return;
 
-	if (!ice)
-		ilitek_ice_mode_ctrl(ENABLE, OFF);
+	if (!ice) {
+		if (ilitek_ice_mode_ctrl(ENABLE, OFF) < 0)
+			ipio_err("Enable ice mode failed while reading flash info\n");
+	}
 
-	ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x0, 1); /* CS low */
-	ilitek_ice_mode_write(FLASH1_ADDR, 0x66aa55, 3); /* Key */
-	ilitek_ice_mode_write(FLASH2_ADDR, cmd, 1);
+	if (ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x0, 1) < 0)
+		ipio_err("Write cs low failed\n");
+
+	if (ilitek_ice_mode_write(FLASH1_ADDR, 0x66aa55, 3) < 0)
+		ipio_err("Write key failed\n");
+
+	if (ilitek_ice_mode_write(FLASH2_ADDR, cmd, 1) < 0)
+		ipio_err("Write 0x9F failed\n");
 
 	for (i = 0; i < ARRAY_SIZE(buf); i++) {
-		ilitek_ice_mode_write(FLASH2_ADDR, 0xFF, 1);
+		if (ilitek_ice_mode_write(FLASH2_ADDR, 0xFF, 1) < 0)
+			ipio_err("Write dummy failed\n");
+
 		if (ilitek_ice_mode_read(FLASH4_ADDR, &tmp, sizeof(u8)) < 0)
 			ipio_err("Read flash info error\n");
+
 		buf[i] = tmp;
 	}
 
-	ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x1, 1); /* CS high */
+	if (ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x1, 1) < 0)
+		ipio_err("Write cs high failed\n"); /* CS high */
 
 	flash_mid = buf[0];
 	flash_id = buf[1] << 8 | buf[2];
@@ -1391,6 +1551,8 @@ void ilitek_tddi_fw_read_flash_info(bool mode)
 
 	ilitek_tddi_flash_protect(DISABLE);
 
-	if (!ice)
-		ilitek_ice_mode_ctrl(DISABLE, OFF);
+	if (!ice) {
+		if (ilitek_ice_mode_ctrl(DISABLE, OFF) < 0)
+			ipio_err("Disable ice mode failed while reading flash info\n");
+	}
 }
