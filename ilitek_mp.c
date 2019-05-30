@@ -88,6 +88,7 @@
 #define CMD_GET_TIMING_INFO		0x30
 #define CMD_DOZE_P2P			0x32
 #define CMD_DOZE_RAW			0x33
+#define CMD_PIN_TEST			0x61
 
 #define Mathabs(x) ({					\
 		long ret;				\
@@ -136,6 +137,7 @@ enum mp_test_catalog {
 	OPEN_TEST = 7,
 	PEAK_TO_PEAK_TEST = 8,
 	SHORT_TEST = 9,
+	PIN_TEST = 10,
 };
 
 struct mp_test_P540_open {
@@ -237,6 +239,9 @@ struct mp_test_items {
 	int v_tdf_2;
 	int h_tdf_1;
 	int h_tdf_2;
+	u8  delay_time;
+	u8  test_int_pin;
+	u8  int_pulse_test;
 	s32 *result_buf;
 	s32 *buf;
 	s32 *max_buf;
@@ -247,7 +252,7 @@ struct mp_test_items {
 	int (*do_test)(int index);
 };
 
-#define MP_TEST_ITEM	48
+#define MP_TEST_ITEM	49
 static struct mp_test_items tItems[MP_TEST_ITEM] = {
 	{.name = "mutual_dac", .desp = "calibration data(dac)", .result = "FAIL", .catalog = MUTUAL_TEST},
 	{.name = "mutual_bg", .desp = "baseline data(bg)", .result = "FAIL", .catalog = MUTUAL_TEST},
@@ -298,6 +303,7 @@ static struct mp_test_items tItems[MP_TEST_ITEM] = {
 	{.name = "rx_short", .desp = "short test", .result = "FAIL", .catalog = SHORT_TEST},
 	{.name = "open test_c", .desp = "open test_c", .result = "FAIL", .catalog = OPEN_TEST},
 	{.name = "touch deltac", .desp = "touch deltac", .result = "FAIL", .catalog = MUTUAL_TEST},
+	{.name = "pin test", .desp = "pin test ( int and rst )", .result = "FAIL", .catalog = PIN_TEST},
 };
 
 s32 *frame_buf;
@@ -1873,6 +1879,126 @@ static int create_mp_test_frame_buffer(int index, int frame_count)
 	return 0;
 }
 
+int check_int_level(bool high)
+{
+	int timer = 500, ret = -1, level;
+	/* From FW request, timeout should at least be 5 sec */
+	while (timer) {
+		level = gpio_get_value(IRQ_GPIO_NUM);
+
+		ipio_info("int GPIO level = %d\n", level);
+		if (high) {
+			if (level) {
+				ipio_info("check int high sucess \n");
+				ret = 0;
+				break;
+			}
+		} else {
+			if (!level) {
+				ipio_info("check int low sucess \n");
+				ret = 0;
+				break;
+			}
+		}
+		timer--;
+		udelay(2);
+	}
+	if (timer == 0)
+		ipio_info("check int %s fail \n", (high == true)? "High" : "Low");
+
+	return ret;
+}
+
+static int pin_test(int index)
+{
+	int ret = 0;
+	u8 cmd[5] = {0};
+	ipio_info("PIN test start");
+	ipio_info("test_int_pin = 0x%x\n", tItems[index].test_int_pin);
+	ipio_info("int_pulse_test = 0x%x\n", tItems[index].int_pulse_test);
+	ipio_info("delay_time = 0x%x\n", tItems[index].delay_time);
+
+	if (tItems[index].test_int_pin == ENABLE) {
+		/* test HIGH level*/
+		cmd[0] = tItems[index].cmd;
+		cmd[1] = 0x1;
+		ret = idev->write(cmd, 2);
+		if (ret < 0) {
+			ipio_err("Write command failed\n");
+			goto out;
+		}
+
+		ret = check_int_level(true);
+		if (ret < 0)
+			goto out;
+
+		/* test LOW level*/
+		cmd[1] = 0x0;
+		ret = idev->write(cmd, 2);
+		if (ret < 0) {
+			ipio_err("Write command failed\n");
+			goto out;
+		}
+
+		ret = check_int_level(false);
+		if (ret < 0)
+			goto out;
+
+	}
+
+	if (tItems[index].int_pulse_test == ENABLE) {
+
+		ipio_info("mp irq RISING triger test\n");
+		cmd[1] = 0x2;
+		cmd[2] = tItems[index].delay_time;
+
+		ilitek_plat_irq_unregister();
+		ret = ilitek_plat_irq_register(IRQF_TRIGGER_RISING);
+		if (ret < 0)
+			goto out;
+
+		atomic_set(&idev->mp_int_check, ENABLE);
+		ret = idev->write(cmd, 3);
+		if (ret < 0) {
+			ipio_err("Write command failed\n");
+			goto out;
+		}
+
+		ret = ilitek_tddi_ic_check_int_stat();
+		if (ret < 0)
+			goto out;
+
+		ipio_info("mp irq FALLING triger test\n");
+		ilitek_plat_irq_unregister();
+		ret = ilitek_plat_irq_register(IRQF_TRIGGER_FALLING);
+		if (ret < 0)
+			goto out;
+
+		atomic_set(&idev->mp_int_check, ENABLE);
+
+		ret = idev->write(cmd, 3);
+		if (ret < 0) {
+			ipio_err("Write command failed\n");
+			goto out;
+		}
+
+		ret = ilitek_tddi_ic_check_int_stat();
+		if (ret < 0)
+			goto out;
+	}
+	tItems[index].item_result = MP_PASS;
+
+out:
+	if (ret < 0)
+		tItems[index].item_result = MP_FAIL;
+
+	ipio_info("change to defualt trigger type\n");
+	ilitek_plat_irq_unregister();
+	ilitek_plat_irq_register(idev->irq_tirgger_type);
+
+	return tItems[index].item_result;
+}
+
 static int mutual_test(int index)
 {
 	int i = 0, j = 0, x = 0, y = 0, ret = 0, get_frame_cont = 1;
@@ -2470,6 +2596,9 @@ static int mp_comp_result_before_retry(int index)
 	int i, test_result = MP_PASS;
 	s32 *max_threshold = NULL, *min_threshold = NULL;
 
+	if (tItems[index].catalog == PIN_TEST)
+		return tItems[index].item_result;
+
 	max_threshold = kcalloc(core_mp.frame_len, sizeof(s32), GFP_KERNEL);
 	if (ERR_ALLOC_MEM(max_threshold)) {
 		ipio_err("Failed to allocate threshold FRAME buffer\n");
@@ -2603,6 +2732,16 @@ static int mp_show_result(bool lcm_on)
 		} else {
 			pr_info("\n\n[%s],NG \n", tItems[i].desp);
 			csv_len += sprintf(csv + csv_len, "\n\n[%s],NG\n", tItems[i].desp);
+		}
+
+		if (tItems[i].catalog == PIN_TEST) {
+			pr_info("Test INT Pin = %d\n", tItems[i].test_int_pin);
+			csv_len += sprintf(csv + csv_len, "Test INT Pin = %d\n", tItems[i].test_int_pin);
+			pr_info("Pulse Test = %d\n", tItems[i].int_pulse_test);
+			csv_len += sprintf(csv + csv_len, "Pulse Test = %d\n", tItems[i].int_pulse_test);
+			pr_info("Delay Time = %d\n", tItems[i].delay_time);
+			csv_len += sprintf(csv + csv_len, "Delay Time = %d\n", tItems[i].delay_time);
+			continue;
 		}
 
 		mp_print_csv_cdc_cmd(csv, &csv_len, i);
@@ -2838,6 +2977,9 @@ static void ilitek_tddi_mp_init_item(void)
 		tItems[i].bench_mark_max = NULL;
 		tItems[i].bench_mark_min = NULL;
 		tItems[i].node_type = NULL;
+		tItems[i].delay_time = 0;
+		tItems[i].test_int_pin = 0;
+		tItems[i].int_pulse_test = 0;
 
 		if (tItems[i].catalog == MUTUAL_TEST) {
 			tItems[i].do_test = mutual_test;
@@ -2864,6 +3006,8 @@ static void ilitek_tddi_mp_init_item(void)
 			tItems[i].do_test = mutual_test;
 		} else if (tItems[i].catalog == SHORT_TEST) {
 			tItems[i].do_test = mutual_test;
+		} else if (tItems[i].catalog == PIN_TEST) {
+			tItems[i].do_test = pin_test;
 		}
 
 		tItems[i].result = kmalloc(16, GFP_KERNEL);
@@ -2905,6 +3049,7 @@ static void ilitek_tddi_mp_init_item(void)
 	tItems[32].cmd = CMD_RX_SHORT;
 	tItems[33].cmd = CMD_RX_SHORT;
 	tItems[34].cmd = CMD_PEAK_TO_PEAK;
+	tItems[48].cmd = CMD_PIN_TEST;
 }
 
 static void mp_test_run(char *item)
@@ -2940,6 +3085,16 @@ static void mp_test_run(char *item)
 			tItems[i].lowest_percentage = katoi(str);
 			parser_get_int_data(item, "highest percentage", str);
 			tItems[i].highest_percentage = katoi(str);
+
+			/* Get pin test delay time */
+			if (tItems[i].catalog == PIN_TEST) {
+				parser_get_int_data(item, "test int pin", str);
+				tItems[i].test_int_pin = katoi(str);
+				parser_get_int_data(item, "int pulse test", str);
+				tItems[i].int_pulse_test = katoi(str);
+				parser_get_int_data(item, "delay time", str);
+				tItems[i].delay_time = katoi(str);
+			}
 
 			/* Get TDF value from ini */
 			if (tItems[i].catalog == SHORT_TEST) {
@@ -2978,13 +3133,10 @@ static void mp_test_run(char *item)
 				tItems[i].min = katoi(str);
 			}
 
-			parser_get_int_data(item, "frame count", str);
-			tItems[i].frame_count = katoi(str);
-
 			ipio_debug("%s: run = %d, max = %d, min = %d, frame_count = %d\n", tItems[i].desp,
 					tItems[i].run, tItems[i].max, tItems[i].min, tItems[i].frame_count);
 
-			ipio_debug("v_tdf_1 = %d, v_tdf_2 = %d, h_tdf_1 = %d, h_tdf_2 = %d\n", tItems[i].v_tdf_1,
+			ipio_debug("v_tdf_1 = %d, v_tdf_2 = %d, h_tdf_1 = %d, h_tdf_2 = %d", tItems[i].v_tdf_1,
 					tItems[i].v_tdf_2, tItems[i].h_tdf_1, tItems[i].h_tdf_2);
 
 			if (!tItems[i].run)
@@ -3105,6 +3257,7 @@ int ilitek_tddi_mp_test_main(char *apk, bool lcm_on)
 	}
 
 	/* Do not chang the sequence of test */
+	mp_test_run("pin test ( int and rst )");
 	if (idev->protocol->ver >= PROTOCOL_VER_540) {
 		if (lcm_on) {
 			mp_test_run("noise peak to peak(with panel)");
