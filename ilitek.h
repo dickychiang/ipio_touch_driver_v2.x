@@ -101,11 +101,12 @@
 #define DRIVER_VERSION			"2.0.1.0"
 
 /* Options */
-#define TDDI_INTERFACE			BUS_SPI /* BUS_I2C(0x18) or BUS_SPI(0x1C) */
+#define TDDI_INTERFACE			BUS_I2C /* BUS_I2C(0x18) or BUS_SPI(0x1C) */
 #define VDD_VOLTAGE			1800000
 #define VCC_VOLTAGE			1800000
 #define SPI_CLK				(10*M)
 #define SPI_RETRY			5
+#define IRQ_GPIO_NUM			66
 #define WQ_ESD_DELAY			4000
 #define WQ_BAT_DELAY			2000
 #define MT_B_TYPE			ENABLE
@@ -567,6 +568,8 @@ struct ilitek_tddi_dev {
 	int actual_tp_mode;
 
 	int irq_num;
+	int irq_gpio;
+	int irq_tirgger_type;
 	int tp_rst;
 	int tp_int;
 
@@ -780,6 +783,8 @@ extern void ilitek_plat_input_register(void);
 extern void ilitek_plat_irq_disable(void);
 extern void ilitek_plat_irq_enable(void);
 extern void ilitek_plat_tp_reset(void);
+extern void ilitek_plat_irq_unregister(void);
+extern int ilitek_plat_irq_register(int type);
 
 /* Prototypes for miscs */
 extern void ilitek_tddi_node_init(void);

@@ -296,24 +296,38 @@ static irqreturn_t ilitek_plat_isr_bottom_half(int irq, void *dev_id)
 	ilitek_tddi_report_handler();
 	mutex_unlock(&idev->touch_mutex);
 	return IRQ_HANDLED;
+}	
+
+void ilitek_plat_irq_unregister(void)
+{
+	devm_free_irq(idev->dev, idev->irq_num, NULL);
 }
 
-static int ilitek_plat_irq_register(void)
+int ilitek_plat_irq_register(int type)
 {
 	int ret = 0;
-
+	static bool get_irq_pin;
 	struct device_node *node;
 
-	node = of_find_matching_node(NULL, touch_of_match);
-	if (node)
-		idev->irq_num = irq_of_parse_and_map(node, 0);
+	atomic_set(&idev->irq_stat, DISABLE);
+	if (get_irq_pin == false) {
+		node = of_find_matching_node(NULL, touch_of_match);
+		if (node)
+			idev->irq_num = irq_of_parse_and_map(node, 0);
 
-	ipio_info("idev->irq_num = %d\n", idev->irq_num);
+		ipio_info("idev->irq_num = %d\n", idev->irq_num);
+		get_irq_pin = true;
+	}
 
 	ret = devm_request_threaded_irq(idev->dev, idev->irq_num,
-				   ilitek_plat_isr_top_half,
-				   ilitek_plat_isr_bottom_half,
-				   IRQF_TRIGGER_FALLING | IRQF_ONESHOT, "ilitek", NULL);
+				ilitek_plat_isr_top_half,
+				ilitek_plat_isr_bottom_half,
+				type | IRQF_ONESHOT, "ilitek", NULL);
+
+	if (type == IRQF_TRIGGER_FALLING)
+		ipio_info("IRQ TYPE = IRQF_TRIGGER_FALLING\n");
+	if (type == IRQF_TRIGGER_RISING)
+		ipio_info("IRQ TYPE = IRQF_TRIGGER_RISING\n");
 
 	if (ret != 0)
 		ipio_err("Failed to register irq handler, irq = %d, ret = %d\n", idev->irq_num, ret);
@@ -345,7 +359,7 @@ static int ilitek_plat_probe(void)
 		ipio_err("platform probe failed\n");
 		return -ENODEV;
 	}
-	ilitek_plat_irq_register();
+	ilitek_plat_irq_register(idev->irq_tirgger_type);
 	tpd_load_status = 1;
 	return 0;
 }

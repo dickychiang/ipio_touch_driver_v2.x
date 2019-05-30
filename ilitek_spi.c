@@ -630,6 +630,7 @@ static int ilitek_spi_probe(struct spi_device *spi)
 	idev->report = ENABLE;
 	idev->netlink = DISABLE;
 	idev->debug_node_open = DISABLE;
+	idev->irq_tirgger_type = IRQF_TRIGGER_FALLING;
 
 	if (ENABLE_GESTURE)
 		idev->gesture = ENABLE;

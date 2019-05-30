@@ -309,18 +309,34 @@ static irqreturn_t ilitek_plat_isr_bottom_half(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
-static int ilitek_plat_irq_register(void)
+void ilitek_plat_irq_unregister(void)
+{
+	devm_free_irq(idev->dev, idev->irq_num, NULL);
+}
+
+int ilitek_plat_irq_register(int type)
 {
 	int ret = 0;
+	static bool get_irq_pin;
 
-	idev->irq_num  = gpio_to_irq(idev->tp_int);
+	atomic_set(&idev->irq_stat, DISABLE);
+
+	if (get_irq_pin == false) {
+		idev->irq_num  = gpio_to_irq(idev->tp_int);
+		get_irq_pin = true;
+	}
 
 	ipio_info("idev->irq_num = %d\n", idev->irq_num);
 
 	ret = devm_request_threaded_irq(idev->dev, idev->irq_num,
 				   ilitek_plat_isr_top_half,
 				   ilitek_plat_isr_bottom_half,
-				   IRQF_TRIGGER_FALLING | IRQF_ONESHOT, "ilitek", NULL);
+				   type | IRQF_ONESHOT, "ilitek", NULL);
+
+	if (type == IRQF_TRIGGER_FALLING)
+		ipio_info("IRQ TYPE = IRQF_TRIGGER_FALLING\n");
+	if (type == IRQF_TRIGGER_RISING)
+		ipio_info("IRQ TYPE = IRQF_TRIGGER_RISING\n");
 
 	if (ret != 0)
 		ipio_err("Failed to register irq handler, irq = %d, ret = %d\n", idev->irq_num, ret);
@@ -419,7 +435,7 @@ static int ilitek_plat_probe(void)
 		return -ENODEV;
 	}
 
-	ilitek_plat_irq_register();
+	ilitek_plat_irq_register(idev->irq_tirgger_type);
 	ilitek_plat_sleep_init();
 	return 0;
 }
