@@ -1073,6 +1073,10 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 		ilitek_tddi_gesture_recovery();
 	} else if (strcmp(cmd, "esdspi") == 0) {
 		ilitek_tddi_spi_recovery();
+	} else if (strcmp(cmd, "sleepin") == 0) {
+		ilitek_tddi_ic_func_ctrl("sleep", SLEEP_IN);
+	} else if (strcmp(cmd, "deepsleepin") == 0) {
+		ilitek_tddi_ic_func_ctrl("sleep", DEEP_SLEEP_IN);
 	} else if (strcmp(cmd, "iceflag") == 0) {
 		if (data[1] == ENABLE)
 			atomic_set(&idev->ice_stat, ENABLE);
