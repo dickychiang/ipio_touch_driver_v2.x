@@ -450,10 +450,11 @@ int ilitek_tddi_fw_upgrade_handler(void *data)
 		input_reg_once = true;
 		ipio_info("Registre touch to input subsystem\n");
 		ilitek_plat_input_register();
+		ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
+		ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
 	}
 
 	atomic_set(&idev->fw_stat, END);
-	complete(&idev->fw_update_done);
 	return ret;
 }
 
@@ -636,7 +637,6 @@ int ilitek_tddi_init(void)
 	mutex_init(&idev->debug_read_mutex);
 	init_waitqueue_head(&(idev->inq));
 	spin_lock_init(&idev->irq_spin);
-	init_completion(&idev->fw_update_done);
 
 	atomic_set(&idev->irq_stat, DISABLE);
 	atomic_set(&idev->ice_stat, DISABLE);
@@ -692,9 +692,6 @@ int ilitek_tddi_init(void)
 		ipio_err("Failed to create fw upgrade thread\n");
 	}
 
-	wait_for_completion(&idev->fw_update_done);
-	ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
-	ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
 	return 0;
 }
 
