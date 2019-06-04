@@ -529,12 +529,10 @@ void ilitek_tddi_report_handler(void)
 			ipio_err("Gesture failed, doing gesture recovery\n");
 			ilitek_tddi_gesture_recovery();
 			idev->irq_after_recovery = true;
-			goto recover;
 		} else if (ret == DO_SPI_RECOVER) {
 			ipio_err("SPI ACK failed, doing spi recovery\n");
 			ilitek_tddi_spi_recovery();
 			idev->irq_after_recovery = true;
-			goto recover;
 		}
 		goto out;
 	}
@@ -579,7 +577,7 @@ out:
 		ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
 		ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
 	}
-recover:
+
 	ipio_kfree((void **)&buf);
 }
 
@@ -659,16 +657,6 @@ int ilitek_tddi_init(void)
 	idev->do_otp_check = ENABLE;
 	idev->fw_uart_en = DISABLE;
 	idev->force_fw_update = DISABLE;
-
-	/* Compare version with fw info in boot stage */
-	if (idev->fw_upgrade_mode == UPGRADE_FLASH) {
-		if (ilitek_tddi_ic_get_protocl_ver() < 0)
-			ipio_err("Get protocol ver failed during init\n");
-		if (ilitek_tddi_ic_get_fw_ver() < 0)
-			ipio_err("Get firmware ver failed during init\n");
-		if (ilitek_tddi_ic_get_core_ver() < 0)
-			ipio_err("Get core ver failed during init\n");
-	}
 
 	/*
 	 * This status of ice enable will be reset until process of fw upgrade runs.

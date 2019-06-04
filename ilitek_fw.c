@@ -1012,6 +1012,10 @@ static int ilitek_tddi_fw_flash_upgrade(u8 *pfw)
 	if (ilitek_tddi_reset_ctrl(idev->reset) < 0)
 		ipio_err("TP reset failed during flash progam\n");
 
+	/* Get current fw version before comparing. */
+	if (ilitek_tddi_ic_get_fw_ver() < 0)
+		ipio_err("Get firmware ver failed before upgrade\n");
+
 	ret = ilitek_ice_mode_ctrl(ENABLE, OFF);
 	if (ret < 0)
 		return UPDATE_FAIL;
