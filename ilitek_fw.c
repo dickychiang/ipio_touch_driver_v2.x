@@ -279,7 +279,7 @@ static int ilitek_tddi_fw_iram_program(u32 start, u8 *w_buf, u32 w_len, u32 spli
 	if (split_len != 0) {
 		for (addr = start, i = 0; addr < end; addr += split_len, i += split_len) {
 			if ((addr + split_len) > end)
-				split_len = end % split_len;
+				split_len = end - addr;
 
 			idev->fw_dma_buf[0] = SPI_WRITE;
 			idev->fw_dma_buf[1] = 0x25;
