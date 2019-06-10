@@ -585,6 +585,7 @@ struct ilitek_tddi_dev {
 	bool report;
 	bool gesture;
 	int gesture_mode;
+	bool gesture_debug;
 
 	u16 flash_mid;
 	u16 flash_devid;
