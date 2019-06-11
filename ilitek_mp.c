@@ -2025,13 +2025,13 @@ static int mutual_test(int index)
 	for (y = 0; y < core_mp.ych_len; y++) {
 		for (x = 0; x < core_mp.xch_len; x++) {
 			if (tItems[i].catalog == TX_RX_DELTA) {
-				core_mp.tx_max_buf[y * core_mp.xch_len + x] = INT_MIN;
-				core_mp.rx_max_buf[y * core_mp.xch_len + x] = INT_MIN;
-				core_mp.tx_min_buf[y * core_mp.xch_len + x] = INT_MAX;
-				core_mp.rx_min_buf[y * core_mp.xch_len + x] = INT_MAX;
+				core_mp.tx_max_buf[y * core_mp.xch_len + x] = INT_MAX;
+				core_mp.rx_max_buf[y * core_mp.xch_len + x] = INT_MAX;
+				core_mp.tx_min_buf[y * core_mp.xch_len + x] = INT_MIN;
+				core_mp.rx_min_buf[y * core_mp.xch_len + x] = INT_MIN;
 			} else {
-				tItems[index].max_buf[y * core_mp.xch_len + x] = INT_MIN;
-				tItems[index].min_buf[y * core_mp.xch_len + x] = INT_MAX;
+				tItems[index].max_buf[y * core_mp.xch_len + x] = INT_MAX;
+				tItems[index].min_buf[y * core_mp.xch_len + x] = INT_MIN;
 			}
 		}
 	}
@@ -3246,7 +3246,7 @@ int ilitek_tddi_mp_test_main(char *apk, bool lcm_on)
 	parser_get_ini_key_value("pv5_4 command", "protocol", str);
 	sprintf(ver, "0x%s", str);
 	if ((str2hex(ver)) != (core_mp.protocol_ver >> 8)) {
-		ipio_err("ERROR! MP Protocol version is invaild\n");
+		ipio_err("ERROR! MP Protocol version is invaild, 0x%x\n", str2hex(ver));
 		ret = -EINVAL;
 		goto out;
 	}
