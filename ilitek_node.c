@@ -400,9 +400,9 @@ static ssize_t ilitek_proc_fw_get_raw_data_read(struct file *pFile, char __user 
 
 	memset(g_user_buf, 0, USER_STR_BUFF * sizeof(unsigned char));
 
-	// ilitek_tddi_wq_ctrl(WQ_ESD, DISABLE);
-	// ilitek_tddi_wq_ctrl(WQ_BAT, DISABLE);
-	// mutex_lock(&idev->touch_mutex);
+	ilitek_tddi_wq_ctrl(WQ_ESD, DISABLE);
+	ilitek_tddi_wq_ctrl(WQ_BAT, DISABLE);
+	mutex_lock(&idev->touch_mutex);
 
 	row = idev->ych_num;
 	col = idev->xch_num;
@@ -479,9 +479,9 @@ static ssize_t ilitek_proc_fw_get_raw_data_read(struct file *pFile, char __user 
 	*pos += size;
 
 out:
-	// mutex_unlock(&idev->touch_mutex);
-	// ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
-	// ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
+	mutex_unlock(&idev->touch_mutex);
+	ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
+	ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
 	ipio_kfree((void **)&data);
 	ipio_kfree((void **)&rawdata);
 	return 0;
