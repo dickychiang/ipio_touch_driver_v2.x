@@ -330,7 +330,7 @@ static ssize_t ilitek_proc_get_delta_data_read(struct file *pFile, char __user *
 		goto out;
 	}
 
-	msleep(20);
+	msleep(120);
 
 	/* read debug packet header */
 	ret = idev->read(data, read_length);
@@ -383,7 +383,7 @@ out:
 	ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
 	ipio_kfree((void **)&data);
 	ipio_kfree((void **)&delta);
-	return size;
+	return 0;
 }
 
 static ssize_t ilitek_proc_fw_get_raw_data_read(struct file *pFile, char __user *buf, size_t size, loff_t *pos)
@@ -400,9 +400,9 @@ static ssize_t ilitek_proc_fw_get_raw_data_read(struct file *pFile, char __user 
 
 	memset(g_user_buf, 0, USER_STR_BUFF * sizeof(unsigned char));
 
-	ilitek_tddi_wq_ctrl(WQ_ESD, DISABLE);
-	ilitek_tddi_wq_ctrl(WQ_BAT, DISABLE);
-	mutex_lock(&idev->touch_mutex);
+	// ilitek_tddi_wq_ctrl(WQ_ESD, DISABLE);
+	// ilitek_tddi_wq_ctrl(WQ_BAT, DISABLE);
+	// mutex_lock(&idev->touch_mutex);
 
 	row = idev->ych_num;
 	col = idev->xch_num;
@@ -430,7 +430,8 @@ static ssize_t ilitek_proc_fw_get_raw_data_read(struct file *pFile, char __user 
 		goto out;
 	}
 
-	msleep(20);
+	//msleep(20);
+	msleep(120);
 
 	/* read debug packet header */
 	ret = idev->read(data, read_length);
@@ -478,12 +479,12 @@ static ssize_t ilitek_proc_fw_get_raw_data_read(struct file *pFile, char __user 
 	*pos += size;
 
 out:
-	mutex_unlock(&idev->touch_mutex);
-	ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
-	ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
+	// mutex_unlock(&idev->touch_mutex);
+	// ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
+	// ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
 	ipio_kfree((void **)&data);
 	ipio_kfree((void **)&rawdata);
-	return size;
+	return 0;
 }
 
 static ssize_t ilitek_proc_fw_pc_counter_read(struct file *pFile, char __user *buf, size_t size, loff_t *pos)
@@ -1159,10 +1160,57 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 		ilitek_tddi_fw_uart_ctrl(data[1]);
 	} else if (strcmp(cmd, "flashesdgesture") == 0) {
 		ilitek_tddi_touch_esd_gesture_flash();
+	} else if (strcmp(cmd, "spiw") == 0) {
+		int wlen;
+		wlen = data[1];
+		temp[0] = 0x82;
+		for (i = 0; i < wlen; i++) {
+			temp[i] = data[2 + i];
+			ipio_info("write[%d] = %x\n", i, temp[i]);
+		}
+		idev->spi_write_then_read(idev->spi, temp, wlen, NULL, 0);
+	} else if (strcmp(cmd, "spir") == 0) {
+		int rlen;
+		u8 *rbuf = NULL;
+		rlen = data[1];
+		rbuf = kzalloc(rlen, GFP_KERNEL | GFP_DMA);
+		if (ERR_ALLOC_MEM(rbuf)) {
+			ipio_err("Failed to allocate dma_rxbuf, %ld\n", PTR_ERR(rbuf));
+			kfree(rbuf);
+			goto out;
+		}
+		temp[0] = 0x83;
+		idev->spi_write_then_read(idev->spi, temp, 1, rbuf, rlen);
+		for (i = 0; i < rlen; i++)
+			ipio_info("read[%d] = %x\n", i, rbuf[i]);
+		kfree(rbuf);
+	} else if (strcmp(cmd, "spirw") == 0) {
+		int wlen, rlen;
+		u8 *rbuf = NULL;
+		wlen = data[1];
+		rlen = data[2];
+		for (i = 0; i < wlen; i++) {
+			temp[i] = data[3 + i];
+			ipio_info("write[%d] = %x\n", i, temp[i]);
+		}
+		if (rlen != 0) {
+			rbuf = kzalloc(rlen, GFP_KERNEL | GFP_DMA);
+			if (ERR_ALLOC_MEM(rbuf)) {
+				ipio_err("Failed to allocate dma_rxbuf, %ld\n", PTR_ERR(rbuf));
+				kfree(rbuf);
+				goto out;
+			}
+		}
+		idev->spi_write_then_read(idev->spi, temp, wlen, rbuf, rlen);
+		if (rlen != 0) {
+			for (i = 0; i < rlen; i++)
+				ipio_info("read[%d] = %x\n", i, rbuf[i]);
+		}
+		kfree(rbuf);
 	} else {
 		ipio_err("Unknown command\n");
 	}
-
+out:
 	ipio_kfree((void **)&data);
 	mutex_unlock(&idev->touch_mutex);
 	return size;

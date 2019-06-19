@@ -64,6 +64,8 @@ int ilitek_spi_write_then_read_split(struct spi_device *spi,
 
 	if ((n_tx == 1) && (n_rx == 1))
 		cmd = SPI_READ;
+	else if ((n_tx > 0) && (n_rx > 0))
+		cmd = SPI_READ;
 	else
 		cmd = *((u8 *)txbuf);
 
