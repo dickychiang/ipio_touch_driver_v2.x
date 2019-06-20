@@ -798,8 +798,8 @@ int ilitek_tddi_ic_get_core_ver(void)
 	}
 
 out:
-	ipio_info("Core version = %d.%d.%d.%d\n", buf[1], buf[2], buf[3], buf[4]);
-	idev->chip->core_ver = buf[1] << 24 | buf[2] << 16 | buf[3] << 8 | buf[4];
+	ipio_info("Core version = %d.%d.%d\n", buf[1], buf[2], buf[3]);
+	idev->chip->core_ver = buf[1] << 24 | buf[2] << 16 | buf[3];
 	return ret;
 }
 
