@@ -1052,7 +1052,7 @@ static void mp_print_csv_cdc_cmd(char *csv, int *csv_len, int index)
 	int i, slen = 0, tmp_len = *csv_len;
 	char str[128] = {0};
 	char *open_sp_cmd[] = {"open dac", "open raw1", "open raw2", "open raw3"};
-	char *open_c_cmd[] = {"open cap1 dac", "open cap1 raw", "open cap2 dac", "open cap2 raw"};
+	char *open_c_cmd[] = {"open cap1 dac", "open cap1 raw"};
 	char *name = tItems[index].desp;
 
 	if (strncmp(name, "open test(integration)_sp", strlen(name)) == 0) {
