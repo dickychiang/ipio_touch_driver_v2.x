@@ -627,6 +627,7 @@ static int ilitek_spi_probe(struct spi_device *spi)
 	idev->esd_recover = ilitek_tddi_wq_esd_spi_check;
 	idev->ges_recover = ilitek_tddi_touch_esd_gesture_iram;
 	idev->gesture_mode = P5_X_FW_GESTURE_INFO_MODE;
+	idev->gesture_debug = DISABLE;
 	idev->wtd_ctrl = ON;
 	idev->report = ENABLE;
 	idev->netlink = DISABLE;

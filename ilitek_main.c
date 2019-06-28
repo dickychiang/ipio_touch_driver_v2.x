@@ -364,8 +364,10 @@ int ilitek_tddi_sleep_handler(int mode)
 			ipio_err("Check busy timeout during suspend\n");
 
 		if (idev->gesture) {
-			if (idev->actual_tp_mode == P5_X_FW_DEBUG_MODE)
-				idev->gesture_debug = true;
+			if (idev->actual_tp_mode == P5_X_FW_DEBUG_MODE) {
+				ipio_info("Enable gesture debug mode\n");
+				idev->gesture_debug = ENABLE;
+			}
 			if (idev->gesture_move_code(idev->gesture_mode) < 0)
 				ipio_err("Move gesture code failed\n");
 			enable_irq_wake(idev->irq_num);
@@ -494,7 +496,7 @@ void ilitek_tddi_report_handler(void)
 		rlen += 2 * self_key + (8 * 2) + 1 + 35;
 		break;
 	case P5_X_FW_GESTURE_MODE:
-		if (idev->gesture_debug == true)
+		if (idev->gesture_debug)
 			rlen = (2 * idev->xch_num * idev->ych_num) + (idev->stx * 2) + (idev->srx * 2) + 2 * self_key + (8 * 2) + 1 + 35;
 		else if (idev->gesture_mode == P5_X_FW_GESTURE_INFO_MODE)
 			rlen = P5_X_GESTURE_INFO_LENGTH;
@@ -624,7 +626,7 @@ int ilitek_tddi_reset_ctrl(int mode)
 	if (mode != TP_IC_CODE_RST)
 		atomic_set(&idev->ice_stat, DISABLE);
 	idev->fw_uart_en = DISABLE;
-	idev->gesture_debug = false;
+	idev->gesture_debug = DISABLE;
 	atomic_set(&idev->tp_reset, END);
 	return ret;
 }
