@@ -413,18 +413,31 @@ int ilitek_tddi_ic_code_reset(void)
 
 int ilitek_tddi_ic_whole_reset(void)
 {
+	int ret = 0;
+	bool ice = atomic_read(&idev->ice_stat);
+
+	if (!ice)
+		if (ilitek_ice_mode_ctrl(ENABLE, OFF) < 0)
+			ipio_err("Enable ice mode failed before chip reset\n");
+
 	ipio_info("ic whole reset key = 0x%x, edge_delay = %d\n",
 		idev->chip->reset_key, idev->rst_edge_delay);
 
-	if (ilitek_ice_mode_write(idev->chip->reset_key,
-				idev->chip->reset_addr,
-				sizeof(u32)) < 0) {
+	ret = ilitek_ice_mode_write(idev->chip->reset_addr, idev->chip->reset_key, sizeof(u32));
+	if (ret < 0) {
 		ipio_err("ic whole reset failed\n");
-		return -1;
+		goto out;
 	}
+
 	/* Need accurate power sequence, do not change it to msleep */
 	mdelay(idev->rst_edge_delay);
-	return 0;
+
+out:
+	if (!ice)
+		if (ilitek_ice_mode_ctrl(DISABLE, OFF) < 0)
+			ipio_err("Enable ice mode failed after chip reset\n");
+
+	return ret;
 }
 
 static void ilitek_tddi_ic_wr_pack(int packet)
