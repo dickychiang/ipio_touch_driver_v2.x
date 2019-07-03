@@ -29,6 +29,32 @@ struct touch_bus_info {
 
 struct ilitek_tddi_dev *idev;
 
+#ifdef I2C_DMA_TRANSFER
+static unsigned char *ilitek_dma_va;
+static dma_addr_t ilitek_dma_pa;
+
+#define DMA_VA_BUFFER   4096
+
+static int dma_i2c_alloc(struct i2c_client *client)
+{
+	if (client != NULL) {
+		client->dev.coherent_dma_mask = DMA_BIT_MASK(32);
+		ilitek_dma_va = (u8 *)dmam_alloc_coherent(client->dev, DMA_VA_BUFFER, &ilitek_dma_pa, GFP_KERNEL);
+		if (ERR_ALLOC_MEM(ilitek_dma_va)) {
+			ipio_err("Allocate DMA I2C Buffer failed\n");
+			return -ENOMEM;
+		}
+
+		memset(ilitek_dma_va, 0, DMA_VA_BUFFER);
+		client->ext_flag |= I2C_DMA_FLAG;
+		return 0;
+	}
+
+	ipio_err("client is NULL, allocated dma i2c failed\n");
+	return -ENODEV;
+}
+#endif
+
 static int core_i2c_write(void *buf, int len)
 {
 	int ret = 0;
@@ -45,6 +71,16 @@ static int core_i2c_write(void *buf, int len)
 		 .buf = txbuf,
 		 },
 	};
+
+#ifdef I2C_DMA_TRANSFER
+	if (len > 8) {
+		msgs[0].addr = (idev->client->addr & I2C_MASK_FLAG);
+		msgs[0].ext_flag = (idev->client->ext_flag | I2C_ENEXT_FLAG | I2C_DMA_FLAG);
+		memcpy(ilitek_dma_va, txbuf, len);
+		msgs[0].buf = (u8 *)ilitek_dma_pa;
+	}
+#endif
+
 
 	/*
 	 * NOTE: If TP driver is doing MP test and commanding 0xF1 to FW, we add a checksum
@@ -89,7 +125,24 @@ static int core_i2c_read(void *buf, int len)
 		 },
 	};
 
+
+#ifdef I2C_DMA_TRANSFER
+	if (len > 8) {
+		msgs[0].addr = (idev->client->addr & I2C_MASK_FLAG);
+		msgs[0].ext_flag = (idev->client->ext_flag | I2C_ENEXT_FLAG | I2C_DMA_FLAG);
+		msgs[0].buf = (u8 *)ilitek_dma_pa;
+	} else {
+		msgs[0].buf = rxbuf;
+	}
+#endif
+
+
 	ret = i2c_transfer(idev->i2c->adapter, msgs, 1);
+
+#ifdef I2C_DMA_TRANSFER
+	if (len > 8)
+		memcpy(rxbuf, ilitek_dma_va, len);
+#endif
 
 	/*
 	 * If i2c_transfer is ok (must return 1 because only sends one msg),
@@ -179,6 +232,11 @@ static int ilitek_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id *
 
 	idev->write = ilitek_i2c_write;
 	idev->read = ilitek_i2c_read;
+
+#ifdef I2C_DMA_TRANSFER
+	if (dma_i2c_alloc(idev->i2c) < 0)
+		ipio_err("Failed to alllocate DMA mem %ld\n", PTR_ERR(idev->i2c));
+#endif
 
 	idev->spi_speed = NULL;
 	idev->actual_tp_mode = P5_X_FW_DEMO_MODE;

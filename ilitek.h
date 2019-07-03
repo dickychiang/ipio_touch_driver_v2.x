@@ -121,6 +121,7 @@
 
 /* Plaform compatibility */
 // #define CONFIG_PLAT_SPRD
+// #define I2C_DMA_TRANSFER
 #define SPI_DMA_TRANSFER_SPLIT
 
 /* Path */
