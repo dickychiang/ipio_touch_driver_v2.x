@@ -528,7 +528,7 @@ void ilitek_tddi_report_handler(void)
 	buf = kcalloc(buf_size, sizeof(u8), GFP_ATOMIC);
 	if (ERR_ALLOC_MEM(buf)) {
 		ipio_err("Failed to allocate packet memory, %ld\n", PTR_ERR(buf));
-		return;
+		goto out;
 	}
 
 	ret = idev->read(buf, rlen);
@@ -575,7 +575,6 @@ void ilitek_tddi_report_handler(void)
 		break;
 	case P5_X_GESTURE_PACKET_ID:
 		ilitek_tddi_report_gesture_mode(buf, rlen);
-		__pm_relax(idev->ws);
 		break;
 	default:
 		ipio_err("Unknown packet id, %x\n", pid);
@@ -587,6 +586,9 @@ out:
 		ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
 		ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
 	}
+
+	if (idev->actual_tp_mode == P5_X_FW_GESTURE_MODE)
+		__pm_relax(idev->ws);
 
 	ipio_kfree((void **)&buf);
 }
