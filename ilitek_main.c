@@ -582,7 +582,7 @@ void ilitek_tddi_report_handler(void)
 	}
 
 out:
-	if (!(idev->actual_tp_mode == P5_X_FW_GESTURE_MODE)) {
+	if (idev->actual_tp_mode != P5_X_FW_GESTURE_MODE) {
 		ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
 		ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
 	}
