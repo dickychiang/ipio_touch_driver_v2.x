@@ -2664,8 +2664,8 @@ static int mp_comp_result_before_retry(int index)
 			mp_test_data_sort_average(tItems[index].buf, index, tItems[index].result_buf);
 			mp_compare_cdc_result(index, tItems[index].result_buf, max_threshold, min_threshold, &test_result);
 		} else {
-			mp_compare_cdc_result(index, tItems[index].buf, max_threshold, min_threshold, &test_result);
-			mp_compare_cdc_result(index, tItems[index].buf, max_threshold, min_threshold, &test_result);
+			mp_compare_cdc_result(index, tItems[index].max_buf, max_threshold, min_threshold, &test_result);
+			mp_compare_cdc_result(index, tItems[index].min_buf, max_threshold, min_threshold, &test_result);
 		}
 	}
 
