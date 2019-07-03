@@ -496,6 +496,9 @@ void ilitek_tddi_report_handler(void)
 		rlen += 2 * self_key + (8 * 2) + 1 + 35;
 		break;
 	case P5_X_FW_GESTURE_MODE:
+		__pm_stay_awake(idev->ws);
+		/* Waiting for pm resume completed */
+		mdelay(40);
 		if (idev->gesture_debug)
 			rlen = (2 * idev->xch_num * idev->ych_num) + (idev->stx * 2) + (idev->srx * 2) + 2 * self_key + (8 * 2) + 1 + 35;
 		else if (idev->gesture_mode == P5_X_FW_GESTURE_INFO_MODE)
@@ -572,6 +575,7 @@ void ilitek_tddi_report_handler(void)
 		break;
 	case P5_X_GESTURE_PACKET_ID:
 		ilitek_tddi_report_gesture_mode(buf, rlen);
+		__pm_relax(idev->ws);
 		break;
 	default:
 		ipio_err("Unknown packet id, %x\n", pid);
@@ -686,6 +690,10 @@ int ilitek_tddi_init(void)
 		WARN_ON(!fw_boot_th);
 		ipio_err("Failed to create fw upgrade thread\n");
 	}
+
+	idev->ws = wakeup_source_register("ili_wakelock");
+	if (!idev->ws)
+		ipio_err("wakeup source request failed\n");
 
 	return 0;
 }
