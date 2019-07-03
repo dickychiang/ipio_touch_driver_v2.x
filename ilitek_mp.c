@@ -2025,13 +2025,13 @@ static int mutual_test(int index)
 	for (y = 0; y < core_mp.ych_len; y++) {
 		for (x = 0; x < core_mp.xch_len; x++) {
 			if (tItems[i].catalog == TX_RX_DELTA) {
-				core_mp.tx_max_buf[y * core_mp.xch_len + x] = INT_MAX;
-				core_mp.rx_max_buf[y * core_mp.xch_len + x] = INT_MAX;
-				core_mp.tx_min_buf[y * core_mp.xch_len + x] = INT_MIN;
-				core_mp.rx_min_buf[y * core_mp.xch_len + x] = INT_MIN;
+				core_mp.tx_max_buf[y * core_mp.xch_len + x] = INT_MIN;
+				core_mp.rx_max_buf[y * core_mp.xch_len + x] = INT_MIN;
+				core_mp.tx_min_buf[y * core_mp.xch_len + x] = INT_MAX;
+				core_mp.rx_min_buf[y * core_mp.xch_len + x] = INT_MAX;
 			} else {
-				tItems[index].max_buf[y * core_mp.xch_len + x] = INT_MAX;
-				tItems[index].min_buf[y * core_mp.xch_len + x] = INT_MIN;
+				tItems[index].max_buf[y * core_mp.xch_len + x] = INT_MIN;
+				tItems[index].min_buf[y * core_mp.xch_len + x] = INT_MAX;
 			}
 		}
 	}
@@ -2729,11 +2729,11 @@ static int mp_show_result(bool lcm_on)
 			continue;
 
 		if (tItems[i].item_result == MP_PASS) {
-			pr_info("\n\n[%s],OK \n", tItems[i].desp);
-			csv_len += sprintf(csv + csv_len, "\n\n[%s],OK\n", tItems[i].desp);
+			pr_info("\n[%s],OK \n", tItems[i].desp);
+			csv_len += sprintf(csv + csv_len, "\n[%s],OK\n", tItems[i].desp);
 		} else {
-			pr_info("\n\n[%s],NG \n", tItems[i].desp);
-			csv_len += sprintf(csv + csv_len, "\n\n[%s],NG\n", tItems[i].desp);
+			pr_info("\n[%s],NG \n", tItems[i].desp);
+			csv_len += sprintf(csv + csv_len, "\n[%s],NG\n", tItems[i].desp);
 		}
 
 		if (tItems[i].catalog == PIN_TEST) {
