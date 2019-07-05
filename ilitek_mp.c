@@ -39,6 +39,8 @@
 
 #define NORMAL_CSV_PASS_NAME	"mp_pass"
 #define NORMAL_CSV_FAIL_NAME	"mp_fail"
+#define NORMAL_CSV_WARNING_NAME	"mp_warning"
+
 #define CSV_FILE_SIZE		(1 * M)
 
 #define PARSER_MAX_CFG_BUF		(512 * 3)
@@ -214,6 +216,7 @@ struct core_mp_test_data {
 	int tdf;
 	int busy_cdc;
 	bool ctrl_lcm;
+	bool lost_benchmark;
 } core_mp = {0};
 
 struct mp_test_items {
@@ -420,6 +423,7 @@ void parser_ini_benchmark(s32 *max_ptr, s32 *min_ptr, int8_t type, char *desp, i
 	char str[512] = {0}, record = ',';
 	s32 data[4];
 	char benchmark_str[256] = {0};
+	bool flag = false;
 
 	/* format complete string from the name of section "_Benchmark_Data". */
 	sprintf(benchmark_str, "%s%s%s", desp, "_", BENCHMARK_KEY_NAME);
@@ -428,7 +432,7 @@ void parser_ini_benchmark(s32 *max_ptr, s32 *min_ptr, int8_t type, char *desp, i
 		if ((strcmp(ilitek_ini_file_data[i].pSectionName, benchmark_str) != 0) ||
 			strcmp(ilitek_ini_file_data[i].pKeyName, BENCHMARK_KEY_NAME) != 0)
 			continue;
-
+		flag =  true;
 		record = ',';
 		for (j = 0, index1 = 0; j <= ilitek_ini_file_data[i].iKeyValueLen; j++) {
 			if (ilitek_ini_file_data[i].pKeyValue[j] == ',' || ilitek_ini_file_data[i].pKeyValue[j] == ';' ||
@@ -467,6 +471,8 @@ void parser_ini_benchmark(s32 *max_ptr, s32 *min_ptr, int8_t type, char *desp, i
 			}
 		}
 	}
+	if (!flag)
+		core_mp.lost_benchmark = true;
 }
 
 static int parser_get_tdf_value(char *str, int catalog)
@@ -2700,7 +2706,7 @@ static int mp_show_result(bool lcm_on)
 	s32 *max_threshold = NULL, *min_threshold = NULL;
 	char *csv = NULL;
 	char csv_name[128] = { 0 };
-	char *ret_pass_name = NULL, *ret_fail_name = NULL;
+	char *ret_pass_name = NULL, *ret_fail_name = NULL, *ret_warning_name = NULL;
 	struct file *f = NULL;
 	mm_segment_t fs;
 	loff_t pos;
@@ -2872,8 +2878,16 @@ static int mp_show_result(bool lcm_on)
 	/* define csv file name */
 	ret_pass_name = NORMAL_CSV_PASS_NAME;
 	ret_fail_name = NORMAL_CSV_FAIL_NAME;
+	ret_warning_name = NORMAL_CSV_WARNING_NAME;
 
-	if (pass_item_count == 0) {
+	if (core_mp.lost_benchmark) {
+		core_mp.final_result = MP_FAIL;
+		ret = MP_FAIL;
+		if (lcm_on)
+			sprintf(csv_name, "%s/%s_%s.csv", CSV_LCM_ON_PATH, get_date_time_str(), ret_warning_name);
+		else
+			sprintf(csv_name, "%s/%s_%s.csv", CSV_LCM_OFF_PATH, get_date_time_str(), ret_warning_name);
+	} else if (pass_item_count == 0) {
 		core_mp.final_result = MP_FAIL;
 		ret = MP_FAIL;
 		if (lcm_on)
@@ -2946,6 +2960,7 @@ static void ilitek_tddi_mp_init_item(void)
 	core_mp.busy_cdc = INT_CHECK;
 	core_mp.retry = false;
 	core_mp.final_result = MP_FAIL;
+	core_mp.lost_benchmark = false;
 
 	ipio_info("CHIP = 0x%x\n", core_mp.chip_pid);
 	ipio_info("Firmware version = %x\n", core_mp.fw_ver);
