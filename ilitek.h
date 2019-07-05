@@ -530,6 +530,7 @@ struct ilitek_tddi_dev {
 	struct spi_device *spi;
 	struct input_dev *input;
 	struct device *dev;
+	struct wakeup_source *ws;
 
 	struct ilitek_hwif_info *hwif;
 	struct ilitek_ic_info *chip;
