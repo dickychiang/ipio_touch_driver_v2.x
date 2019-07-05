@@ -370,10 +370,10 @@ static int parser_get_ini_key_value(char *section, char *key, char *value)
 	len = strlen(key);
 
 	for (i = 0; i < g_ini_items; i++) {
-		if (strcmp(section, ilitek_ini_file_data[i].pSectionName) != 0)
+		if (strncmp(section, ilitek_ini_file_data[i].pSectionName, strlen(section)) != 0)
 			continue;
 
-		if (strcmp(key, ilitek_ini_file_data[i].pKeyName) == 0) {
+		if (strncmp(key, ilitek_ini_file_data[i].pKeyName, strlen(key)) == 0) {
 			ipio_memcpy(value, ilitek_ini_file_data[i].pKeyValue, ilitek_ini_file_data[i].iKeyValueLen, PARSER_MAX_KEY_VALUE_LEN);
 			ipio_debug(" value:%s , pKeyValue: %s\n", value, ilitek_ini_file_data[i].pKeyValue);
 			ret = 0;
@@ -390,7 +390,7 @@ void parser_ini_nodetype(s32 *type_ptr, char *desp, int frame_len)
 
 	for (i = 0; i < g_ini_items; i++) {
 		if ((strstr(ilitek_ini_file_data[i].pSectionName, desp) <= 0) ||
-			strcmp(ilitek_ini_file_data[i].pKeyName, NODE_TYPE_KEY_NAME) != 0) {
+			strncmp(ilitek_ini_file_data[i].pKeyName, NODE_TYPE_KEY_NAME, strlen(ilitek_ini_file_data[i].pKeyName)) != 0) {
 			continue;
 		}
 
@@ -429,8 +429,8 @@ void parser_ini_benchmark(s32 *max_ptr, s32 *min_ptr, int8_t type, char *desp, i
 	sprintf(benchmark_str, "%s%s%s", desp, "_", BENCHMARK_KEY_NAME);
 
 	for (i = 0; i < g_ini_items; i++) {
-		if ((strcmp(ilitek_ini_file_data[i].pSectionName, benchmark_str) != 0) ||
-			strcmp(ilitek_ini_file_data[i].pKeyName, BENCHMARK_KEY_NAME) != 0)
+		if ((strncmp(ilitek_ini_file_data[i].pSectionName, benchmark_str, strlen(ilitek_ini_file_data[i].pSectionName)) != 0) ||
+			strncmp(ilitek_ini_file_data[i].pKeyName, BENCHMARK_KEY_NAME , strlen(ilitek_ini_file_data[i].pSectionName)) != 0)
 			continue;
 		flag =  true;
 		record = ',';
@@ -927,10 +927,10 @@ static int run_open_test(int index)
 	int border_y[] = {-1, -1, -1, 0, 1, 1, 1, 0};
 	s32 *p_comb = frame_buf;
 
-	if (strcmp(tItems[index].name, "open_integration") == 0) {
+	if (strncmp(tItems[index].name, "open_integration", strlen(tItems[index].name)) == 0) {
 		for (i = 0; i < core_mp.frame_len; i++)
 			tItems[index].buf[i] = p_comb[i];
-	} else if (strcmp(tItems[index].name, "open_cap") == 0) {
+	} else if (strncmp(tItems[index].name, "open_cap", strlen(tItems[index].name)) == 0) {
 		/*
 		 * Each result is getting from a 3 by 3 grid depending on where the centre location is.
 		 * So if the centre is at corner, the number of node grabbed from a grid will be different.
@@ -1443,9 +1443,9 @@ static int mp_cdc_init_cmd_common(u8 *cmd, int len, int index)
 
 	core_mp.cdc_len = 3;
 
-	if (strcmp(tItems[index].name, "open_integration") == 0)
+	if (strncmp(tItems[index].name, "open_integration", strlen(tItems[index].name)) == 0)
 		cmd[2] = 0x2;
-	if (strcmp(tItems[index].name, "open_cap") == 0)
+	if (strncmp(tItems[index].name, "open_cap", strlen(tItems[index].name)) == 0)
 		cmd[2] = 0x3;
 
 	if (tItems[index].catalog == PEAK_TO_PEAK_TEST) {
@@ -1455,7 +1455,7 @@ static int mp_cdc_init_cmd_common(u8 *cmd, int len, int index)
 
 		core_mp.cdc_len = 5;
 
-		if (strcmp(tItems[index].name, "noise_peak_to_peak_cut") == 0)
+		if (strncmp(tItems[index].name, "noise_peak_to_peak_cut", strlen(tItems[index].name)) == 0)
 			cmd[4] = 0x1;
 
 		ipio_debug("P2P CMD: %d,%d,%d,%d,%d\n",
@@ -2786,13 +2786,13 @@ static int mp_show_result(bool lcm_on)
 			csv_len += sprintf(csv + csv_len, "Min = %d\n", tItems[i].min);
 		}
 
-		if (strcmp(tItems[i].name, "open_integration_sp") == 0) {
+		if (strncmp(tItems[i].name, "open_integration_sp", strlen(tItems[i].name)) == 0) {
 			mp_compare_cdc_show_result(i, frame1_cbk700, csv, &csv_len, TYPE_NO_JUGE, max_threshold, min_threshold, "frame1 cbk700");
 			mp_compare_cdc_show_result(i, frame1_cbk250, csv, &csv_len, TYPE_NO_JUGE, max_threshold, min_threshold, "frame1 cbk250");
 			mp_compare_cdc_show_result(i, frame1_cbk200, csv, &csv_len, TYPE_NO_JUGE, max_threshold, min_threshold, "frame1 cbk200");
 		}
 
-		if (strcmp(tItems[i].name, "open test_c") == 0) {
+		if (strncmp(tItems[i].name, "open test_c", strlen(tItems[i].name)) == 0) {
 			mp_compare_cdc_show_result(i, cap_dac, csv, &csv_len, TYPE_NO_JUGE, max_threshold, min_threshold, "CAP_DAC");
 			mp_compare_cdc_show_result(i, cap_raw, csv, &csv_len, TYPE_NO_JUGE, max_threshold, min_threshold, "CAP_RAW");
 		}
@@ -3007,9 +3007,9 @@ static void ilitek_tddi_mp_init_item(void)
 		} else if (tItems[i].catalog == PIXEL) {
 			tItems[i].do_test = mutual_test;
 		} else if (tItems[i].catalog == OPEN_TEST) {
-			if (strcmp(tItems[i].name, "open_integration_sp") == 0)
+			if (strncmp(tItems[i].name, "open_integration_sp", strlen(tItems[i].name)) == 0)
 				tItems[i].do_test = open_test_sp;
-			else if (strcmp(tItems[i].name, "open test_c") == 0)
+			else if (strncmp(tItems[i].name, "open test_c", strlen(tItems[i].name)) == 0)
 				tItems[i].do_test = open_test_cap;
 			else
 				tItems[i].do_test = mutual_test;
@@ -3131,7 +3131,7 @@ static void mp_test_run(char *item)
 			}
 
 			/* Get threshold from ini structure in parser */
-			if (strcmp(item, "tx/rx delta") == 0) {
+			if (strncmp(item, "tx/rx delta", strlen(item)) == 0) {
 				parser_get_int_data(item, "tx max", str);
 				core_mp.TxDeltaMax = katoi(str);
 				parser_get_int_data(item, "tx min", str);

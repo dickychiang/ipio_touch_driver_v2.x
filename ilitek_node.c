@@ -1033,16 +1033,16 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 
 	mutex_lock(&idev->touch_mutex);
 
-	if (strcmp(cmd, "hwreset") == 0) {
+	if (strncmp(cmd, "hwreset", strlen(cmd)) == 0) {
 		ilitek_tddi_reset_ctrl(TP_HW_RST_ONLY);
-	} else if (strcmp(cmd, "icwholereset") == 0) {
+	} else if (strncmp(cmd, "icwholereset", strlen(cmd)) == 0) {
 		ilitek_ice_mode_ctrl(ENABLE, OFF);
 		ilitek_tddi_reset_ctrl(TP_IC_WHOLE_RST);
-	} else if (strcmp(cmd, "iccodereset") == 0) {
+	} else if (strncmp(cmd, "iccodereset", strlen(cmd)) == 0) {
 		ilitek_ice_mode_ctrl(ENABLE, OFF);
 		ilitek_tddi_reset_ctrl(TP_IC_CODE_RST);
 		ilitek_ice_mode_ctrl(DISABLE, OFF);
-	} else if (strcmp(cmd, "getinfo") == 0) {
+	} else if (strncmp(cmd, "getinfo", strlen(cmd)) == 0) {
 		ilitek_ice_mode_ctrl(ENABLE, OFF);
 		ilitek_tddi_ic_get_info();
 		ilitek_ice_mode_ctrl(DISABLE, OFF);
@@ -1052,60 +1052,60 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 		ilitek_tddi_ic_get_tp_info();
 		ilitek_tddi_ic_get_panel_info();
 		ipio_info("Driver version = %s\n", DRIVER_VERSION);
-	} else if (strcmp(cmd, "enableicemode") == 0) {
+	} else if (strncmp(cmd, "enableicemode", strlen(cmd)) == 0) {
 		if (data[1] == ON)
 			ilitek_ice_mode_ctrl(ENABLE, ON);
 		else
 			ilitek_ice_mode_ctrl(ENABLE, OFF);
-	} else if (strcmp(cmd, "disableicemode") == 0) {
+	} else if (strncmp(cmd, "disableicemode", strlen(cmd)) == 0) {
 		ilitek_ice_mode_ctrl(DISABLE, OFF);
-	} else if (strcmp(cmd, "enablewqesd") == 0) {
+	} else if (strncmp(cmd, "enablewqesd", strlen(cmd)) == 0) {
 		ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
-	} else if (strcmp(cmd, "enablewqbat") == 0) {
+	} else if (strncmp(cmd, "enablewqbat", strlen(cmd)) == 0) {
 		ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
-	} else if (strcmp(cmd, "disablewqesd") == 0) {
+	} else if (strncmp(cmd, "disablewqesd", strlen(cmd)) == 0) {
 		ilitek_tddi_wq_ctrl(WQ_ESD, DISABLE);
-	} else if (strcmp(cmd, "disablewqbat") == 0) {
+	} else if (strncmp(cmd, "disablewqbat", strlen(cmd)) == 0) {
 		ilitek_tddi_wq_ctrl(WQ_BAT, DISABLE);
-	} else if (strcmp(cmd, "gesture") == 0) {
+	} else if (strncmp(cmd, "gesture", strlen(cmd)) == 0) {
 		idev->gesture = !idev->gesture;
 		ipio_info("gesture = %d\n", idev->gesture);
-	} else if (strcmp(cmd, "esdgesture") == 0) {
+	} else if (strncmp(cmd, "esdgesture", strlen(cmd)) == 0) {
 		ilitek_tddi_gesture_recovery();
-	} else if (strcmp(cmd, "esdspi") == 0) {
+	} else if (strncmp(cmd, "esdspi", strlen(cmd)) == 0) {
 		ilitek_tddi_spi_recovery();
-	} else if (strcmp(cmd, "sleepin") == 0) {
+	} else if (strncmp(cmd, "sleepin", strlen(cmd)) == 0) {
 		ilitek_tddi_ic_func_ctrl("sleep", SLEEP_IN);
-	} else if (strcmp(cmd, "deepsleepin") == 0) {
+	} else if (strncmp(cmd, "deepsleepin", strlen(cmd)) == 0) {
 		ilitek_tddi_ic_func_ctrl("sleep", DEEP_SLEEP_IN);
-	} else if (strcmp(cmd, "iceflag") == 0) {
+	} else if (strncmp(cmd, "iceflag", strlen(cmd)) == 0) {
 		if (data[1] == ENABLE)
 			atomic_set(&idev->ice_stat, ENABLE);
 		else
 			atomic_set(&idev->ice_stat, DISABLE);
 		ipio_info("ice mode flag = %d\n", atomic_read(&idev->ice_stat));
-	} else if (strcmp(cmd, "gesturenormal") == 0) {
+	} else if (strncmp(cmd, "gesturenormal", strlen(cmd)) == 0) {
 		idev->gesture_mode = P5_X_FW_GESTURE_NORMAL_MODE;
 		ipio_info("gesture mode = %d\n", idev->gesture_mode);
-	} else if (strcmp(cmd, "gestureinfo") == 0) {
+	} else if (strncmp(cmd, "gestureinfo", strlen(cmd)) == 0) {
 		idev->gesture_mode = P5_X_FW_GESTURE_INFO_MODE;
 		ipio_info("gesture mode = %d\n", idev->gesture_mode);
-	} else if (strcmp(cmd, "netlink") == 0) {
+	} else if (strncmp(cmd, "netlink", strlen(cmd)) == 0) {
 		idev->netlink = !idev->netlink;
 		ipio_info("netlink flag= %d\n", idev->netlink);
-	} else if (strcmp(cmd, "switchtestmode") == 0) {
+	} else if (strncmp(cmd, "switchtestmode", strlen(cmd)) == 0) {
 		tp_mode = P5_X_FW_TEST_MODE;
 		ilitek_tddi_switch_mode(&tp_mode);
-	} else if (strcmp(cmd, "switchdebugmode") == 0) {
+	} else if (strncmp(cmd, "switchdebugmode", strlen(cmd)) == 0) {
 		tp_mode = P5_X_FW_DEBUG_MODE;
 		ilitek_tddi_switch_mode(&tp_mode);
-	} else if (strcmp(cmd, "switchdemomode") == 0) {
+	} else if (strncmp(cmd, "switchdemomode", strlen(cmd)) == 0) {
 		tp_mode = P5_X_FW_DEMO_MODE;
 		ilitek_tddi_switch_mode(&tp_mode);
-	} else if (strcmp(cmd, "dbgflag") == 0) {
+	} else if (strncmp(cmd, "dbgflag", strlen(cmd)) == 0) {
 		idev->debug_node_open = !idev->debug_node_open;
 		ipio_info("debug flag message = %d\n", idev->debug_node_open);
-	} else if (strcmp(cmd, "iow") == 0) {
+	} else if (strncmp(cmd, "iow", strlen(cmd)) == 0) {
 		int w_len = 0;
 		w_len = data[1];
 		ipio_info("w_len = %d\n", w_len);
@@ -1116,14 +1116,14 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 		}
 
 		idev->write(temp, w_len);
-	} else if (strcmp(cmd, "ior") == 0) {
+	} else if (strncmp(cmd, "ior", strlen(cmd)) == 0) {
 		int r_len = 0;
 		r_len = data[1];
 		ipio_info("r_len = %d\n", r_len);
 		idev->read(temp, r_len);
 		for (i = 0; i < r_len; i++)
 			ipio_info("read[%d] = %x\n", i, temp[i]);
-	} else if (strcmp(cmd, "iowr") == 0) {
+	} else if (strncmp(cmd, "iowr", strlen(cmd)) == 0) {
 		int delay = 0;
 		int w_len = 0, r_len = 0;
 		w_len = data[1];
@@ -1142,25 +1142,25 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 
 		for (i = 0; i < r_len; i++)
 			ipio_info("read[%d] = %x\n", i, temp[i]);
-	} else if (strcmp(cmd, "getddiregdata") == 0) {
+	} else if (strncmp(cmd, "getddiregdata", strlen(cmd)) == 0) {
 		ipio_info("Get ddi reg one page: page = %x, reg = %x\n", data[1], data[2]);
 		ilitek_tddi_ic_get_ddi_reg_onepage(data[1], data[2]);
-	} else if (strcmp(cmd, "setddiregdata") == 0) {
+	} else if (strncmp(cmd, "setddiregdata", strlen(cmd)) == 0) {
 		ipio_info("Set ddi reg one page: page = %x, reg = %x, data = %x\n", data[1], data[2], data[3]);
 		ilitek_tddi_ic_set_ddi_reg_onepage(data[1], data[2], data[3]);
-	} else if (strcmp(cmd, "dumpflashdata") == 0) {
+	} else if (strncmp(cmd, "dumpflashdata", strlen(cmd)) == 0) {
 		ipio_info("Start = 0x%x, End = 0x%x, Dump Hex path = %s\n", data[1], data[2], DUMP_FLASH_PATH);
 		ilitek_tddi_fw_dump_flash_data(data[1], data[2], false);
-	} else if (strcmp(cmd, "dumpiramdata") == 0) {
+	} else if (strncmp(cmd, "dumpiramdata", strlen(cmd)) == 0) {
 		ipio_info("Start = 0x%x, End = 0x%x, Dump IRAM path = %s\n", data[1], data[2], DUMP_IRAM_PATH);
 		ilitek_tddi_fw_dump_iram_data(data[1], data[2]);
-	} else if (strcmp(cmd, "edge_palm_ctrl") == 0) {
+	} else if (strncmp(cmd, "edge_palm_ctrl", strlen(cmd)) == 0) {
 		ilitek_tddi_ic_func_ctrl("edge_palm", data[1]);
-	} else if (strcmp(cmd, "uart_mode_ctrl") == 0) {
+	} else if (strncmp(cmd, "uart_mode_ctrl", strlen(cmd)) == 0) {
 		ilitek_tddi_fw_uart_ctrl(data[1]);
-	} else if (strcmp(cmd, "flashesdgesture") == 0) {
+	} else if (strncmp(cmd, "flashesdgesture", strlen(cmd)) == 0) {
 		ilitek_tddi_touch_esd_gesture_flash();
-	} else if (strcmp(cmd, "spiw") == 0) {
+	} else if (strncmp(cmd, "spiw", strlen(cmd)) == 0) {
 		int wlen;
 		wlen = data[1];
 		temp[0] = 0x82;
@@ -1169,7 +1169,7 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 			ipio_info("write[%d] = %x\n", i, temp[i]);
 		}
 		idev->spi_write_then_read(idev->spi, temp, wlen, NULL, 0);
-	} else if (strcmp(cmd, "spir") == 0) {
+	} else if (strncmp(cmd, "spir", strlen(cmd)) == 0) {
 		int rlen;
 		u8 *rbuf = NULL;
 		rlen = data[1];
@@ -1184,7 +1184,7 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 		for (i = 0; i < rlen; i++)
 			ipio_info("read[%d] = %x\n", i, rbuf[i]);
 		kfree(rbuf);
-	} else if (strcmp(cmd, "spirw") == 0) {
+	} else if (strncmp(cmd, "spirw", strlen(cmd)) == 0) {
 		int wlen, rlen;
 		u8 *rbuf = NULL;
 		wlen = data[1];
