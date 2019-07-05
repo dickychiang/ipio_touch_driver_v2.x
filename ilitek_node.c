@@ -594,6 +594,11 @@ static ssize_t ilitek_proc_rw_tp_reg_write(struct file *filp, const char *buff, 
 	char cmd[256] = { 0 };
 	u32 count = 0;
 
+	if ((size - 1) > sizeof(cmd)) {
+		ipio_err("ERROR! input length is larger than local buffer\n");
+		return -1;
+	}
+
 	if (buff != NULL) {
 		ret = copy_from_user(cmd, buff, size - 1);
 		if (ret < 0) {
@@ -811,6 +816,11 @@ static ssize_t ilitek_proc_get_debug_mode_data_write(struct file *filp, const ch
 	char cmd[256] = {0};
 	u8 temp[256] = {0}, count = 0;
 
+	if ((size - 1) > sizeof(cmd)) {
+		ipio_err("ERROR! input length is larger than local buffer\n");
+		return -1;
+	}
+
 	if (buff != NULL) {
 		ret = copy_from_user(cmd, buff, size - 1);
 		if (ret < 0) {
@@ -837,7 +847,7 @@ static ssize_t ilitek_proc_get_debug_mode_data_write(struct file *filp, const ch
 
 static ssize_t ilitek_node_mp_lcm_on_test_read(struct file *filp, char __user *buff, size_t size, loff_t *pos)
 {
-	int ret = 0;
+	int ret1 = 0, ret2 = 0;
 	char apk_ret[100] = {0};
 	bool esd_en = idev->wq_esd_ctrl, bat_en = idev->wq_bat_ctrl;
 
@@ -847,8 +857,7 @@ static ssize_t ilitek_node_mp_lcm_on_test_read(struct file *filp, char __user *b
 		return 0;
 
 	/* Create the directory for mp_test result */
-	ret = dev_mkdir(CSV_LCM_ON_PATH, S_IRUGO | S_IWUSR);
-	if (ret != 0)
+	if ((dev_mkdir(CSV_LCM_ON_PATH, S_IRUGO | S_IWUSR)) != 0)
 		ipio_err("Failed to create directory for mp_test\n");
 
 	if (esd_en)
@@ -858,11 +867,11 @@ static ssize_t ilitek_node_mp_lcm_on_test_read(struct file *filp, char __user *b
 
 	mutex_lock(&idev->touch_mutex);
 
-	ret = ilitek_tddi_mp_test_handler(apk_ret, ON);
-	ipio_info("MP TEST %s\n", (ret < 0) ? "FAIL" : "PASS");
+	ret1 = ilitek_tddi_mp_test_handler(apk_ret, ON);
+	ipio_info("MP TEST %s\n", (ret1 < 0) ? "FAIL" : "PASS");
 
-	ret = copy_to_user((char *)buff, apk_ret, sizeof(apk_ret));
-	if (ret < 0)
+	ret2 = copy_to_user((char *)buff, apk_ret, sizeof(apk_ret));
+	if (ret2 < 0)
 		ipio_err("Failed to copy data to user space\n");
 
 	mutex_unlock(&idev->touch_mutex);
@@ -872,7 +881,7 @@ static ssize_t ilitek_node_mp_lcm_on_test_read(struct file *filp, char __user *b
 	if (bat_en)
 		ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
 
-	return ret;
+	return ((ret1 < 0) || (ret2 < 0)) ? -1 : 0;
 }
 
 static ssize_t ilitek_node_mp_lcm_off_test_read(struct file *filp, char __user *buff, size_t size, loff_t *pos)
@@ -940,7 +949,7 @@ static ssize_t ilitek_proc_fw_process_read(struct file *filp, char __user *buff,
 
 static ssize_t ilitek_node_fw_upgrade_read(struct file *filp, char __user *buff, size_t size, loff_t *pos)
 {
-	int ret = 0;
+	int ret1 = 0, ret2 = 0;
 	u32 len = 0;
 	bool esd_en = idev->wq_esd_ctrl, bat_en = idev->wq_bat_ctrl;
 
@@ -949,6 +958,8 @@ static ssize_t ilitek_node_fw_upgrade_read(struct file *filp, char __user *buff,
 	if (*pos != 0)
 		return 0;
 
+	mutex_lock(&idev->touch_mutex);
+
 	memset(g_user_buf, 0, USER_STR_BUFF * sizeof(unsigned char));
 
 	if (esd_en)
@@ -956,14 +967,12 @@ static ssize_t ilitek_node_fw_upgrade_read(struct file *filp, char __user *buff,
 	if (bat_en)
 		ilitek_tddi_wq_ctrl(WQ_BAT, DISABLE);
 
-	mutex_lock(&idev->touch_mutex);
-
 	idev->force_fw_update = ENABLE;
-	ret = ilitek_tddi_fw_upgrade_handler(NULL);
-	len = sprintf(g_user_buf, "upgrade firwmare %s\n", (ret != 0) ? "failed" : "succeed");
+	ret1 = ilitek_tddi_fw_upgrade_handler(NULL);
+	len = sprintf(g_user_buf, "upgrade firwmare %s\n", (ret1 != 0) ? "failed" : "succeed");
 	idev->force_fw_update = DISABLE;
-	ret = copy_to_user((u32 *) buff, g_user_buf, len);
-	if (ret < 0)
+	ret2 = copy_to_user((u32 *) buff, g_user_buf, len);
+	if (ret2 < 0)
 		ipio_err("Failed to copy data to user space\n");
 
 	mutex_unlock(&idev->touch_mutex);
@@ -973,7 +982,7 @@ static ssize_t ilitek_node_fw_upgrade_read(struct file *filp, char __user *buff,
 	if (bat_en)
 		ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
 
-	return 0;
+	return ((ret1 < 0) || (ret2 < 0)) ? -1 : 0;
 }
 
 static ssize_t ilitek_proc_debug_level_read(struct file *filp, char __user *buff, size_t size, loff_t *pos)
@@ -1009,6 +1018,13 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 	u32 *data = NULL;
 	u8 tp_mode;
 
+	if ((size - 1) > sizeof(cmd)) {
+		ipio_err("ERROR! input length is larger than local buffer\n");
+		return -1;
+	}
+
+	mutex_lock(&idev->touch_mutex);
+
 	if (buff != NULL) {
 		ret = copy_from_user(cmd, buff, size - 1);
 		if (ret < 0) {
@@ -1030,8 +1046,6 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 	}
 
 	ipio_info("cmd = %s\n", cmd);
-
-	mutex_lock(&idev->touch_mutex);
 
 	if (strcmp(cmd, "hwreset") == 0) {
 		ilitek_tddi_reset_ctrl(TP_HW_RST_ONLY);
@@ -1207,6 +1221,26 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 				ipio_info("read[%d] = %x\n", i, rbuf[i]);
 		}
 		kfree(rbuf);
+	} else if (strcmp(cmd, "at_esd_test") == 0) {
+		reinit_completion(&idev->esd_done);
+		ilitek_tddi_reset_ctrl(idev->reset);
+		if (!wait_for_completion_timeout(&idev->esd_done, msecs_to_jiffies(5000)))
+			ipio_err("[AT]: spi recovery timeout\n");
+		cmd[0] = SPI_WRITE;
+		if (idev->spi_write_then_read(idev->spi, cmd, 1, temp, 1) < 0) {
+			ipio_err("spi write 0x82 error\n");
+			size = -1;
+		}
+		ipio_info("[AT]: spi ack = %x\n", temp[0]);
+		if (temp[0] != SPI_ACK) {
+			ipio_err("Check SPI_ACK failed (0x%x)\n", temp[0]);
+			size = -1;
+		}
+	} else if (strcmp(cmd, "at_ges_recv_test") == 0) {
+		if (ilitek_tddi_gesture_recovery() < 0) {
+			ipio_err("[AT]: gesture recovery test failed\n");
+			size = -1;
+		}
 	} else {
 		ipio_err("Unknown command\n");
 	}

@@ -49,8 +49,11 @@ int ilitek_tddi_mp_test_handler(char *apk, bool lcm_on)
 	atomic_set(&idev->mp_stat, ENABLE);
 
 	if (idev->actual_tp_mode != P5_X_FW_TEST_MODE) {
-		if (ilitek_tddi_switch_mode(&tp_mode) < 0)
+		ret = ilitek_tddi_switch_mode(&tp_mode);
+		if (ret < 0) {
+			ipio_err("Switch MP mode failed\n");
 			goto out;
+		}
 	}
 
 	ret = ilitek_tddi_mp_test_main(apk, lcm_on);
@@ -68,11 +71,13 @@ out:
 
 	idev->actual_tp_mode = P5_X_FW_DEMO_MODE;
 	if (idev->fw_upgrade_mode == UPGRADE_IRAM) {
-		if (ilitek_tddi_fw_upgrade_handler(NULL) < 0)
-			ipio_err("FW upgrade failed\n");
+		ret = ilitek_tddi_fw_upgrade_handler(NULL);
+		if (ret < 0)
+			ipio_err("FW upgrade failed during mp test\n");
 	} else {
-		if (ilitek_tddi_reset_ctrl(idev->reset) < 0)
-			ipio_err("TP Reset failed\n");
+		ret = ilitek_tddi_reset_ctrl(idev->reset);
+		if (ret < 0)
+			ipio_err("TP Reset failed during mp test\n");
 	}
 
 	atomic_set(&idev->mp_stat, DISABLE);
@@ -156,8 +161,9 @@ int ilitek_tddi_switch_mode(u8 *data)
 	return ret;
 }
 
-void ilitek_tddi_gesture_recovery(void)
+int ilitek_tddi_gesture_recovery(void)
 {
+	int ret = 0;
 	bool lock = mutex_is_locked(&idev->touch_mutex);
 
 	atomic_set(&idev->esd_stat, START);
@@ -166,12 +172,13 @@ void ilitek_tddi_gesture_recovery(void)
 		mutex_lock(&idev->touch_mutex);
 
 	ipio_info("Doing gesture recovery\n");
-	idev->ges_recover();
+	ret = idev->ges_recover();
 
 	if (!lock)
 		mutex_unlock(&idev->touch_mutex);
 
 	atomic_set(&idev->esd_stat, END);
+	return ret;
 }
 
 void ilitek_tddi_spi_recovery(void)
@@ -217,8 +224,8 @@ static void ilitek_tddi_wq_esd_check(struct work_struct *work)
 	if (idev->esd_recover() < 0) {
 		ipio_err("SPI ACK failed, doing spi recovery\n");
 		ilitek_tddi_spi_recovery();
-		return;
 	}
+	complete_all(&idev->esd_done);
 	ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
 }
 
@@ -536,7 +543,8 @@ void ilitek_tddi_report_handler(void)
 		ipio_err("Read report packet failed, ret = %d\n", ret);
 		if (idev->actual_tp_mode == P5_X_FW_GESTURE_MODE && idev->gesture) {
 			ipio_err("Gesture failed, doing gesture recovery\n");
-			ilitek_tddi_gesture_recovery();
+			if (ilitek_tddi_gesture_recovery() < 0)
+				ipio_err("Failed to recover gesture\n");
 			idev->irq_after_recovery = true;
 		} else if (ret == DO_SPI_RECOVER) {
 			ipio_err("SPI ACK failed, doing spi recovery\n");
@@ -648,6 +656,7 @@ int ilitek_tddi_init(void)
 	mutex_init(&idev->debug_read_mutex);
 	init_waitqueue_head(&(idev->inq));
 	spin_lock_init(&idev->irq_spin);
+	init_completion(&idev->esd_done);
 
 	atomic_set(&idev->irq_stat, DISABLE);
 	atomic_set(&idev->ice_stat, DISABLE);
