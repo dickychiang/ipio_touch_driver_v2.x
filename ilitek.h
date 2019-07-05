@@ -622,6 +622,9 @@ struct ilitek_tddi_dev {
 	atomic_t mp_int_check;
 	atomic_t esd_stat;
 
+	/* Event for driver test */
+	struct completion esd_done;
+
 	int (*write)(void *data, int len);
 	int (*read)(void *data, int len);
 	int (*spi_write_then_read)(struct spi_device *spi, const void *txbuf,
@@ -630,7 +633,7 @@ struct ilitek_tddi_dev {
 	int (*gesture_move_code)(int mode);
 	int (*esd_recover)(void);
 	void (*spi_speed)(bool enable);
-	void (*ges_recover)(void);
+	int (*ges_recover)(void);
 };
 extern struct ilitek_tddi_dev *idev;
 
@@ -712,8 +715,8 @@ extern int ilitek_tddi_fw_upgrade(int upgrade_type, int file_type, int open_file
 extern int ilitek_tddi_mp_test_main(char *apk, bool lcm_on);
 
 /* Prototypes for tddi core functions */
-extern void ilitek_tddi_touch_esd_gesture_flash(void);
-extern void ilitek_tddi_touch_esd_gesture_iram(void);
+extern int ilitek_tddi_touch_esd_gesture_flash(void);
+extern int ilitek_tddi_touch_esd_gesture_iram(void);
 extern int ilitek_tddi_move_gesture_code_flash(int mode);
 extern int ilitek_tddi_move_gesture_code_iram(int mode);
 extern int ilitek_tddi_move_mp_code_flash(void);
@@ -756,7 +759,7 @@ extern int ilitek_tddi_switch_mode(u8 *data);
 extern int ilitek_tddi_fw_upgrade_handler(void *data);
 extern int ilitek_tddi_wq_esd_i2c_check(void);
 extern int ilitek_tddi_wq_esd_spi_check(void);
-extern void ilitek_tddi_gesture_recovery(void);
+extern int ilitek_tddi_gesture_recovery(void);
 extern void ilitek_tddi_spi_recovery(void);
 extern void ilitek_tddi_wq_ctrl(int type, int ctrl);
 extern int ilitek_tddi_mp_test_handler(char *apk, bool lcm_on);

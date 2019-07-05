@@ -421,9 +421,9 @@ u8 ilitek_calc_packet_checksum(u8 *packet, int len)
 	return (u8) ((-sum) & 0xFF);
 }
 
-void ilitek_tddi_touch_esd_gesture_flash(void)
+int ilitek_tddi_touch_esd_gesture_flash(void)
 {
-	int retry = 100;
+	int ret = 0, retry = 100;
 	u32 answer = 0;
 
 	if (ilitek_ice_mode_ctrl(ENABLE, OFF) < 0)
@@ -454,20 +454,23 @@ void ilitek_tddi_touch_esd_gesture_flash(void)
 		retry--;
 	} while (answer != I2C_ESD_GESTURE_RUN && retry > 0);
 
-	if (retry <= 0)
+	if (retry <= 0) {
 		ipio_err("Enter gesture failed\n");
-	else
+		ret = -1;
+	} else {
 		ipio_info("Enter gesture successfully\n");
+	}
 
 	if (ilitek_ice_mode_ctrl(DISABLE, ON) < 0)
 		ipio_err("Disable ice mode failed during gesture recovery\n");
 
 	idev->gesture_move_code(idev->gesture_mode);
+	return ret;
 }
 
-void ilitek_tddi_touch_esd_gesture_iram(void)
+int ilitek_tddi_touch_esd_gesture_iram(void)
 {
-	int retry = 100;
+	int ret = 0, retry = 100;
 	u32 answer = 0;
 	u8 cmd[3] = {0};
 
@@ -499,10 +502,12 @@ void ilitek_tddi_touch_esd_gesture_iram(void)
 		mdelay(1);
 	} while (answer != SPI_ESD_GESTURE_RUN && --retry > 0);
 
-	if (retry <= 0)
+	if (retry <= 0) {
 		ipio_err("Enter gesture failed\n");
-	else
+		ret = -1;
+	} else {
 		ipio_info("Enter gesture successfully\n");
+	}
 
 	if (ilitek_ice_mode_ctrl(DISABLE, ON) < 0)
 		ipio_err("Disable ice mode failed during gesture recovery\n");
@@ -518,6 +523,7 @@ void ilitek_tddi_touch_esd_gesture_iram(void)
 	if ((idev->write(cmd, sizeof(cmd))) < 0)
 		ipio_err("write 0x1,0xA,0x6 error");
 
+	return ret;
 }
 
 int ilitek_tddi_debug_report_alloc(void)
