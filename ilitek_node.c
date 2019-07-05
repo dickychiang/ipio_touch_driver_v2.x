@@ -1047,8 +1047,6 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 
 	ipio_info("cmd = %s\n", cmd);
 
-	mutex_lock(&idev->touch_mutex);
-
 	if (strncmp(cmd, "hwreset", strlen(cmd)) == 0) {
 		ilitek_tddi_reset_ctrl(TP_HW_RST_ONLY);
 	} else if (strncmp(cmd, "icwholereset", strlen(cmd)) == 0) {
