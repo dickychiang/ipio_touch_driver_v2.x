@@ -690,7 +690,7 @@ static int parser_get_ini_phy_data(char *data, int fsize)
 		}
 
 		/* copy section's name without square brackets to its real buffer */
-		strncpy(ilitek_ini_file_data[g_ini_items].pSectionName, tmpSectionName, (PARSER_MAX_KEY_NAME_LEN * sizeof(char));
+		strncpy(ilitek_ini_file_data[g_ini_items].pSectionName, tmpSectionName, (PARSER_MAX_KEY_NAME_LEN * sizeof(char)));
 		ilitek_ini_file_data[g_ini_items].iSectionNameLen = strlen(tmpSectionName);
 
 		isEqualSign = 0;
