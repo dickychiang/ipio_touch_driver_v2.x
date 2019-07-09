@@ -580,6 +580,7 @@ struct ilitek_tddi_dev {
 	int fw_retry;
 	int fw_update_stat;
 	int fw_open;
+	bool wq_ctrl;
 	bool wq_esd_ctrl;
 	bool wq_bat_ctrl;
 

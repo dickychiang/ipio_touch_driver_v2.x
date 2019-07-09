@@ -71,12 +71,10 @@ out:
 
 	idev->actual_tp_mode = P5_X_FW_DEMO_MODE;
 	if (idev->fw_upgrade_mode == UPGRADE_IRAM) {
-		ret = ilitek_tddi_fw_upgrade_handler(NULL);
-		if (ret < 0)
+		if (ilitek_tddi_fw_upgrade_handler(NULL) < 0)
 			ipio_err("FW upgrade failed during mp test\n");
 	} else {
-		ret = ilitek_tddi_reset_ctrl(idev->reset);
-		if (ret < 0)
+		if (ilitek_tddi_reset_ctrl(idev->reset) < 0)
 			ipio_err("TP Reset failed during mp test\n");
 	}
 
@@ -287,7 +285,7 @@ void ilitek_tddi_wq_ctrl(int type, int ctrl)
 {
 	switch (type) {
 	case WQ_ESD:
-		if (ENABLE_WQ_ESD) {
+		if (ENABLE_WQ_ESD || idev->wq_ctrl) {
 			if (!esd_wq) {
 				ipio_err("wq esd is null\n");
 				break;
@@ -305,7 +303,7 @@ void ilitek_tddi_wq_ctrl(int type, int ctrl)
 		}
 		break;
 	case WQ_BAT:
-		if (ENABLE_WQ_BAT) {
+		if (ENABLE_WQ_BAT || idev->wq_ctrl) {
 			if (!bat_wq) {
 				ipio_err("WQ BAT is null\n");
 				break;

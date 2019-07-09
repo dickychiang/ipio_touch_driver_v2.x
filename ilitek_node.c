@@ -1071,6 +1071,9 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 			ilitek_ice_mode_ctrl(ENABLE, ON);
 		else
 			ilitek_ice_mode_ctrl(ENABLE, OFF);
+	} else if (strncmp(cmd, "wqctrl", strlen(cmd)) == 0) {
+		idev->wq_ctrl = !idev->wq_ctrl;
+		ipio_info("wq_ctrl flag= %d\n", idev->wq_ctrl);
 	} else if (strncmp(cmd, "disableicemode", strlen(cmd)) == 0) {
 		ilitek_ice_mode_ctrl(DISABLE, OFF);
 	} else if (strncmp(cmd, "enablewqesd", strlen(cmd)) == 0) {
@@ -1085,7 +1088,10 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 		idev->gesture = !idev->gesture;
 		ipio_info("gesture = %d\n", idev->gesture);
 	} else if (strncmp(cmd, "esdgesture", strlen(cmd)) == 0) {
-		ilitek_tddi_gesture_recovery();
+		if (ilitek_tddi_gesture_recovery() < 0) {
+			ipio_err("gesture recovery failed\n");
+			size = -1;
+		}
 	} else if (strncmp(cmd, "esdspi", strlen(cmd)) == 0) {
 		ilitek_tddi_spi_recovery();
 	} else if (strncmp(cmd, "sleepin", strlen(cmd)) == 0) {
@@ -1222,6 +1228,8 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 		}
 		kfree(rbuf);
 	} else if (strncmp(cmd, "at_esd_test", strlen(cmd)) == 0) {
+		idev->wq_ctrl = ENABLE;
+		ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
 		reinit_completion(&idev->esd_done);
 		ilitek_tddi_reset_ctrl(idev->reset);
 		if (!wait_for_completion_timeout(&idev->esd_done, msecs_to_jiffies(5000)))
@@ -1236,13 +1244,11 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 			ipio_err("Check SPI_ACK failed (0x%x)\n", temp[0]);
 			size = -1;
 		}
-	} else if (strncmp(cmd, "at_ges_recv_test", strlen(cmd)) == 0) {
-		if (ilitek_tddi_gesture_recovery() < 0) {
-			ipio_err("[AT]: gesture recovery test failed\n");
-			size = -1;
-		}
+		ilitek_tddi_wq_ctrl(WQ_ESD, DISABLE);
+		idev->wq_ctrl = DISABLE;
 	} else {
 		ipio_err("Unknown command\n");
+		size = -1;
 	}
 out:
 	ipio_kfree((void **)&data);
