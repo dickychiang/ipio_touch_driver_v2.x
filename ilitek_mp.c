@@ -426,7 +426,7 @@ void parser_ini_benchmark(s32 *max_ptr, s32 *min_ptr, int8_t type, char *desp, i
 	bool flag = false;
 
 	/* format complete string from the name of section "_Benchmark_Data". */
-	sprintf(benchmark_str, "%s%s%s", desp, "_", BENCHMARK_KEY_NAME);
+	snprintf(benchmark_str,sizeof(benchmark_str), "%s%s%s", desp, "_", BENCHMARK_KEY_NAME);
 
 	for (i = 0; i < g_ini_items; i++) {
 		if ((strncmp(ilitek_ini_file_data[i].pSectionName, benchmark_str, strlen(ilitek_ini_file_data[i].pSectionName)) != 0) ||
@@ -543,7 +543,7 @@ static int parser_get_u8_array(char *key, u8 *buf, u16 base, int len)
 	return conut;
 }
 
-static int parser_get_int_data(char *section, char *keyname, char *rv)
+static int parser_get_int_data(char *section, char *keyname, char *rv, int rv_len)
 {
 	int len = 0;
 	char value[512] = { 0 };
@@ -555,11 +555,11 @@ static int parser_get_int_data(char *section, char *keyname, char *rv)
 
 	/* return a white-space string if get nothing */
 	if (parser_get_ini_key_value(section, keyname, value) < 0) {
-		sprintf(rv, "%s", value);
+		snprintf(rv, rv_len, "%s", value);
 		return 0;
 	}
 
-	len = sprintf(rv, "%s", value);
+	len = snprintf(rv, rv_len, "%s", value);
 	return len;
 }
 
@@ -681,7 +681,7 @@ static int parser_get_ini_phy_data(char *data, int fsize)
 				}
 
 				ini_buf[n - 1] = 0x00;
-				strcpy((char *)tmpSectionName, ini_buf + 1);
+				strncpy((char *)tmpSectionName, ini_buf + 1, (PARSER_MAX_CFG_BUF + 1) * sizeof(char));
 				banchmark_flag = 0;
 				nodetype_flag = 0;
 				ipio_debug("Section Name: %s, Len: %d, offset = %d\n", tmpSectionName, n - 2, offset);
@@ -690,7 +690,7 @@ static int parser_get_ini_phy_data(char *data, int fsize)
 		}
 
 		/* copy section's name without square brackets to its real buffer */
-		strcpy(ilitek_ini_file_data[g_ini_items].pSectionName, tmpSectionName);
+		strncpy(ilitek_ini_file_data[g_ini_items].pSectionName, tmpSectionName, (PARSER_MAX_KEY_NAME_LEN * sizeof(char));
 		ilitek_ini_file_data[g_ini_items].iSectionNameLen = strlen(tmpSectionName);
 
 		isEqualSign = 0;
@@ -722,11 +722,11 @@ static int parser_get_ini_phy_data(char *data, int fsize)
 
 		if (banchmark_flag) {
 			ilitek_ini_file_data[g_ini_items].iKeyNameLen = strlen(BENCHMARK_KEY_NAME);
-			strcpy(ilitek_ini_file_data[g_ini_items].pKeyName, BENCHMARK_KEY_NAME);
+			strncpy(ilitek_ini_file_data[g_ini_items].pKeyName, BENCHMARK_KEY_NAME, (PARSER_MAX_KEY_NAME_LEN * sizeof(char)));
 			ilitek_ini_file_data[g_ini_items].iKeyValueLen = n;
 		} else if (nodetype_flag) {
 			ilitek_ini_file_data[g_ini_items].iKeyNameLen = strlen(NODE_TYPE_KEY_NAME);
-			strcpy(ilitek_ini_file_data[g_ini_items].pKeyName, NODE_TYPE_KEY_NAME);
+			strncpy(ilitek_ini_file_data[g_ini_items].pKeyName, NODE_TYPE_KEY_NAME, (PARSER_MAX_KEY_NAME_LEN * sizeof(char)));
 			ilitek_ini_file_data[g_ini_items].iKeyValueLen = n;
 		} else{
 			ilitek_ini_file_data[g_ini_items].iKeyNameLen = isEqualSign;
@@ -985,7 +985,7 @@ static char *get_date_time_str(void)
 
 	getnstimeofday(&now_time);
 	rtc_time_to_tm(now_time.tv_sec, &rtc_now_time);
-	sprintf(time_data_buf, "%04d%02d%02d-%02d%02d%02d",
+	snprintf(time_data_buf, sizeof(time_data_buf), "%04d%02d%02d-%02d%02d%02d",
 		(rtc_now_time.tm_year + 1900), rtc_now_time.tm_mon + 1,
 		rtc_now_time.tm_mday, rtc_now_time.tm_hour, rtc_now_time.tm_min,
 		rtc_now_time.tm_sec);
@@ -993,67 +993,67 @@ static char *get_date_time_str(void)
 	return time_data_buf;
 }
 
-static void mp_print_csv_header(char *csv, int *csv_len, int *csv_line)
+static void mp_print_csv_header(char *csv, int *csv_len, int *csv_line, int file_size)
 {
 	int i, tmp_len = *csv_len, tmp_line = *csv_line;
 
 	/* header must has 19 line*/
-	tmp_len += sprintf(csv + tmp_len, "==============================================================================\n");
+	tmp_len += snprintf(csv + tmp_len, (file_size - tmp_len), "==============================================================================\n");
 	tmp_line++;
-	tmp_len += sprintf(csv + tmp_len, "ILITek C-TP Utility V%s	%x : Driver Sensor Test\n", DRIVER_VERSION, core_mp.chip_pid);
+	tmp_len += snprintf(csv + tmp_len, (file_size - tmp_len), "ILITek C-TP Utility V%s	%x : Driver Sensor Test\n", DRIVER_VERSION, core_mp.chip_pid);
 	tmp_line++;
-	tmp_len += sprintf(csv + tmp_len, "Confidentiality Notice:\n");
+	tmp_len += snprintf(csv + tmp_len, (file_size - tmp_len), "Confidentiality Notice:\n");
 	tmp_line++;
-	tmp_len += sprintf(csv + tmp_len, "Any information of this tool is confidential and privileged.\n");
+	tmp_len += snprintf(csv + tmp_len, (file_size - tmp_len), "Any information of this tool is confidential and privileged.\n");
 	tmp_line++;
-	tmp_len += sprintf(csv + tmp_len, "@ ILI TECHNOLOGY CORP. All Rights Reserved.\n");
+	tmp_len += snprintf(csv + tmp_len, (file_size - tmp_len), "@ ILI TECHNOLOGY CORP. All Rights Reserved.\n");
 	tmp_line++;
-	tmp_len += sprintf(csv + tmp_len, "==============================================================================\n");
+	tmp_len += snprintf(csv + tmp_len, (file_size - tmp_len), "==============================================================================\n");
 	tmp_line++;
-	tmp_len += sprintf(csv + tmp_len, "Firmware Version ,0x%x\n", core_mp.fw_ver);
+	tmp_len += snprintf(csv + tmp_len, (file_size - tmp_len), "Firmware Version ,0x%x\n", core_mp.fw_ver);
 	tmp_line++;
-	tmp_len += sprintf(csv + tmp_len, "Panel information ,XCH=%d, YCH=%d\n", core_mp.xch_len, core_mp.ych_len);
+	tmp_len += snprintf(csv + tmp_len, (file_size - tmp_len), "Panel information ,XCH=%d, YCH=%d\n", core_mp.xch_len, core_mp.ych_len);
 	tmp_line++;
-	tmp_len += sprintf(csv + tmp_len, "Test Item:\n");
+	tmp_len += snprintf(csv + tmp_len, (file_size - tmp_len), "Test Item:\n");
 	tmp_line++;
 
 	for (i = 0; i < ARRAY_SIZE(tItems); i++) {
 		if (tItems[i].run == 1) {
-			tmp_len += sprintf(csv + tmp_len, "	  ---%s\n", tItems[i].desp);
+			tmp_len += snprintf(csv + tmp_len, (file_size - tmp_len), "	  ---%s\n", tItems[i].desp);
 			tmp_line++;
 		}
 	}
 
 	while (tmp_line < 19) {
-		tmp_len += sprintf(csv + tmp_len, "\n");
+		tmp_len += snprintf(csv + tmp_len, (file_size - tmp_len), "\n");
 		tmp_line++;
 	}
 
-	tmp_len += sprintf(csv + tmp_len, "==============================================================================\n");
+	tmp_len += snprintf(csv + tmp_len, (file_size - tmp_len), "==============================================================================\n");
 
 	*csv_len = tmp_len;
 	*csv_line = tmp_line;
 }
 
-static void mp_print_csv_tail(char *csv, int *csv_len)
+static void mp_print_csv_tail(char *csv, int *csv_len, int file_size)
 {
 	int i, tmp_len = *csv_len;
 
-	tmp_len += sprintf(csv + tmp_len, "==============================================================================\n");
-	tmp_len += sprintf(csv + tmp_len, "Result_Summary			\n");
+	tmp_len += snprintf(csv + tmp_len, (file_size - tmp_len), "==============================================================================\n");
+	tmp_len += snprintf(csv + tmp_len, (file_size - tmp_len), "Result_Summary			\n");
 
 	for (i = 0; i < ARRAY_SIZE(tItems); i++) {
 		if (tItems[i].run) {
 			if (tItems[i].item_result == MP_PASS)
-				tmp_len += sprintf(csv + tmp_len, "	  {%s}	   ,OK\n", tItems[i].desp);
+				tmp_len += snprintf(csv + tmp_len, (file_size - tmp_len), "	  {%s}	   ,OK\n", tItems[i].desp);
 			else
-				tmp_len += sprintf(csv + tmp_len, "	  {%s}	   ,NG\n", tItems[i].desp);
+				tmp_len += snprintf(csv + tmp_len, (file_size - tmp_len), "	  {%s}	   ,NG\n", tItems[i].desp);
 		}
 	}
 	*csv_len = tmp_len;
 }
 
-static void mp_print_csv_cdc_cmd(char *csv, int *csv_len, int index)
+static void mp_print_csv_cdc_cmd(char *csv, int *csv_len, int index, int file_size)
 {
 	int i, slen = 0, tmp_len = *csv_len;
 	char str[128] = {0};
@@ -1063,33 +1063,33 @@ static void mp_print_csv_cdc_cmd(char *csv, int *csv_len, int index)
 
 	if (strncmp(name, "open test(integration)_sp", strlen(name)) == 0) {
 		for (i = 0; i < ARRAY_SIZE(open_sp_cmd); i++) {
-			slen = parser_get_int_data("pv5_4 command", open_sp_cmd[i], str);
+			slen = parser_get_int_data("pv5_4 command", open_sp_cmd[i], str, sizeof(str));
 			if (slen < 0)
 				ipio_err("Failed to get CDC command %s from ini\n", open_sp_cmd[i]);
 			else
-				tmp_len += sprintf(csv + tmp_len, "%s = ,%s\n", open_sp_cmd[i], str);
+				tmp_len += snprintf(csv + tmp_len, (file_size - tmp_len), "%s = ,%s\n", open_sp_cmd[i], str);
 		}
 	} else if (strncmp(name, "open test_c", strlen(name)) == 0) {
 		for (i = 0; i < ARRAY_SIZE(open_c_cmd); i++) {
-			slen = parser_get_int_data("pv5_4 command", open_c_cmd[i], str);
+			slen = parser_get_int_data("pv5_4 command", open_c_cmd[i], str, sizeof(str));
 			if (slen < 0)
 				ipio_err("Failed to get CDC command %s from ini\n", open_sp_cmd[i]);
 			else
-				tmp_len += sprintf(csv + tmp_len, "%s = ,%s\n", open_c_cmd[i], str);
+				tmp_len += snprintf(csv + tmp_len, (file_size - tmp_len), "%s = ,%s\n", open_c_cmd[i], str);
 		}
 	} else {
-		slen = parser_get_int_data("pv5_4 command", name, str);
+		slen = parser_get_int_data("pv5_4 command", name, str, sizeof(str));
 		if (slen < 0)
 			ipio_err("Failed to get CDC command %s from ini\n", name);
 		else
-			tmp_len += sprintf(csv + tmp_len, "CDC command = ,%s\n", str);
+			tmp_len += snprintf(csv + tmp_len, (file_size - tmp_len), "CDC command = ,%s\n", str);
 	}
 	*csv_len = tmp_len;
 }
 
 static void mp_compare_cdc_show_result(int index, s32 *tmp, char *csv,
 				int *csv_len, int type, s32 *max_ts,
-				s32 *min_ts, const char *desp)
+				s32 *min_ts, const char *desp, int file_zise)
 {
 	int x, y, tmp_len = *csv_len;
 	int mp_result = MP_PASS;
@@ -1104,18 +1104,18 @@ static void mp_compare_cdc_show_result(int index, s32 *tmp, char *csv,
 	for (x = 0; x < core_mp.xch_len; x++) {
 		if (x == 0) {
 			DUMP("\n %s ", desp);
-			tmp_len += sprintf(csv + tmp_len, "\n	   %s ,", desp);
+			tmp_len += snprintf(csv + tmp_len, (file_zise - tmp_len), "\n	   %s ,", desp);
 		}
 		DUMP("  X_%d	,", (x+1));
-		tmp_len += sprintf(csv + tmp_len, "	 X_%d  ,", (x+1));
+		tmp_len += snprintf(csv + tmp_len, (file_zise - tmp_len), "	 X_%d  ,", (x+1));
 	}
 
 	DUMP("\n");
-	tmp_len += sprintf(csv + tmp_len, "\n");
+	tmp_len += snprintf(csv + tmp_len, (file_zise - tmp_len), "\n");
 
 	for (y = 0; y < core_mp.ych_len; y++) {
 		DUMP("  Y_%d	,", (y+1));
-		tmp_len += sprintf(csv + tmp_len, "	 Y_%d  ,", (y+1));
+		tmp_len += snprintf(csv + tmp_len, (file_zise - tmp_len), "	 Y_%d  ,", (y+1));
 
 		for (x = 0; x < core_mp.xch_len; x++) {
 			int shift = y * core_mp.xch_len + x;
@@ -1124,11 +1124,11 @@ static void mp_compare_cdc_show_result(int index, s32 *tmp, char *csv,
 			if (tItems[index].catalog == SHORT_TEST) {
 				if (tmp[shift] < min_ts[shift]) {
 					DUMP(" #%7d ", tmp[shift]);
-					tmp_len += sprintf(csv + tmp_len, "#%7d,", tmp[shift]);
+					tmp_len += snprintf(csv + tmp_len, (file_zise - tmp_len), "#%7d,", tmp[shift]);
 					mp_result = MP_FAIL;
 				} else {
 					DUMP(" %7d ", tmp[shift]);
-					tmp_len += sprintf(csv + tmp_len, " %7d, ", tmp[shift]);
+					tmp_len += snprintf(csv + tmp_len, (file_zise - tmp_len), " %7d, ", tmp[shift]);
 				}
 				continue;
 			}
@@ -1136,34 +1136,34 @@ static void mp_compare_cdc_show_result(int index, s32 *tmp, char *csv,
 			if ((tmp[shift] <= max_ts[shift] && tmp[shift] >= min_ts[shift]) || (type != TYPE_JUGE)) {
 				if ((tmp[shift] == INT_MAX || tmp[shift] == INT_MIN) && (type == TYPE_BENCHMARK)) {
 					DUMP("%s", "BYPASS,");
-					tmp_len += sprintf(csv + tmp_len, "BYPASS,");
+					tmp_len += snprintf(csv + tmp_len, (file_zise - tmp_len), "BYPASS,");
 				} else {
 					DUMP(" %7d ", tmp[shift]);
-					tmp_len += sprintf(csv + tmp_len, " %7d, ", tmp[shift]);
+					tmp_len += snprintf(csv + tmp_len, (file_zise - tmp_len), " %7d, ", tmp[shift]);
 				}
 			} else {
 				if (tmp[shift] > max_ts[shift]) {
 					DUMP(" *%7d ", tmp[shift]);
-					tmp_len += sprintf(csv + tmp_len, "*%7d,", tmp[shift]);
+					tmp_len += snprintf(csv + tmp_len, (file_zise - tmp_len), "*%7d,", tmp[shift]);
 				} else {
 					DUMP(" #%7d ", tmp[shift]);
-					tmp_len += sprintf(csv + tmp_len, "#%7d,", tmp[shift]);
+					tmp_len += snprintf(csv + tmp_len, (file_zise - tmp_len), "#%7d,", tmp[shift]);
 				}
 				mp_result = MP_FAIL;
 			}
 		}
 		DUMP("\n");
-		tmp_len += sprintf(csv + tmp_len, "\n");
+		tmp_len += snprintf(csv + tmp_len, (file_zise - tmp_len), "\n");
 	}
 
 out:
 	if (type == TYPE_JUGE) {
 		if (mp_result == MP_PASS) {
 			pr_info("\n Result : PASS\n");
-			tmp_len += sprintf(csv + tmp_len, "Result : PASS\n");
+			tmp_len += snprintf(csv + tmp_len, (file_zise - tmp_len), "Result : PASS\n");
 		} else {
 			pr_info("\n Result : FAIL\n");
-			tmp_len += sprintf(csv + tmp_len, "Result : FAIL\n");
+			tmp_len += snprintf(csv + tmp_len, (file_zise - tmp_len), "Result : FAIL\n");
 		}
 	}
 	*csv_len = tmp_len;
@@ -1418,7 +1418,7 @@ static int mp_cdc_get_pv5_4_command(u8 *cmd, int len, int index)
 
 	ipio_info("Get cdc command for %s\n", key);
 
-	slen = parser_get_int_data("pv5_4 command", key, str);
+	slen = parser_get_int_data("pv5_4 command", key, str, sizeof(str));
 	if (slen < 0)
 		return -1;
 
@@ -1488,7 +1488,7 @@ static int allnode_open_cdc_data(int mode, int *buf)
 	}
 
 	/* CDC init. Read command from ini file */
-	ret = parser_get_int_data("pv5_4 command", key[mode], str);
+	ret = parser_get_int_data("pv5_4 command", key[mode], str, sizeof(str));
 	if (ret < 0) {
 		ipio_err("Failed to parse PV54 command, ret = %d\n", ret);
 		goto out;
@@ -2164,19 +2164,19 @@ static int open_test_sp(int index)
 	parser_ini_nodetype(tItems[index].node_type, NODE_TYPE_KEY_NAME, core_mp.frame_len);
 	dump_node_type_buffer(tItems[index].node_type, "node type");
 
-	ret = parser_get_int_data(tItems[index].desp, "charge_aa", str);
+	ret = parser_get_int_data(tItems[index].desp, "charge_aa", str, sizeof(str));
 	if (ret || ret == 0)
 		Charge_AA = katoi(str);
 
-	ret = parser_get_int_data(tItems[index].desp, "charge_border", str);
+	ret = parser_get_int_data(tItems[index].desp, "charge_border", str, sizeof(str));
 	if (ret || ret == 0)
 		Charge_Border = katoi(str);
 
-	ret = parser_get_int_data(tItems[index].desp, "charge_notch", str);
+	ret = parser_get_int_data(tItems[index].desp, "charge_notch", str, sizeof(str));
 	if (ret || ret == 0)
 		Charge_Notch = katoi(str);
 
-	ret = parser_get_int_data(tItems[index].desp, "full open", str);
+	ret = parser_get_int_data(tItems[index].desp, "full open", str, sizeof(str));
 	if (ret || ret == 0)
 		full_open_rate = katoi(str);
 
@@ -2342,15 +2342,15 @@ static int open_test_cap(int index)
 		dump_benchmark_data(tItems[index].bench_mark_max, tItems[index].bench_mark_min);
 	}
 
-	ret = parser_get_int_data(tItems[index].desp, "gain", str);
+	ret = parser_get_int_data(tItems[index].desp, "gain", str, sizeof(str));
 	if (ret || ret == 0)
 		open_c_spec.gain = katoi(str);
 
-	ret = parser_get_int_data(tItems[index].desp, "tvch", str);
+	ret = parser_get_int_data(tItems[index].desp, "tvch", str, sizeof(str));
 	if (ret || ret == 0)
 		open_c_spec.tvch = katoi(str);
 
-	ret = parser_get_int_data(tItems[index].desp, "tvcl", str);
+	ret = parser_get_int_data(tItems[index].desp, "tvcl", str, sizeof(str));
 	if (ret || ret == 0)
 		open_c_spec.tvcl = katoi(str);
 
@@ -2465,7 +2465,7 @@ static int mp_get_timing_info(void)
 
 	core_mp.isLongV = 0;
 
-	slen = parser_get_int_data("pv5_4 command", key, str);
+	slen = parser_get_int_data("pv5_4 command", key, str, sizeof(str));
 	if (slen < 0)
 		return -1;
 
@@ -2726,7 +2726,7 @@ static int mp_show_result(bool lcm_on)
 		goto fail_open;
 	}
 
-	mp_print_csv_header(csv, &csv_len, &line_count);
+	mp_print_csv_header(csv, &csv_len, &line_count, CSV_FILE_SIZE);
 
 	for (i = 0; i < ARRAY_SIZE(tItems); i++) {
 
@@ -2736,33 +2736,33 @@ static int mp_show_result(bool lcm_on)
 
 		if (tItems[i].item_result == MP_PASS) {
 			pr_info("\n[%s],OK \n", tItems[i].desp);
-			csv_len += sprintf(csv + csv_len, "\n[%s],OK\n", tItems[i].desp);
+			csv_len += snprintf(csv + csv_len, (CSV_FILE_SIZE - csv_len), "\n[%s],OK\n", tItems[i].desp);
 		} else {
 			pr_info("\n[%s],NG \n", tItems[i].desp);
-			csv_len += sprintf(csv + csv_len, "\n[%s],NG\n", tItems[i].desp);
+			csv_len += snprintf(csv + csv_len, (CSV_FILE_SIZE - csv_len), "\n[%s],NG\n", tItems[i].desp);
 		}
 
 		if (tItems[i].catalog == PIN_TEST) {
 			pr_info("Test INT Pin = %d\n", tItems[i].test_int_pin);
-			csv_len += sprintf(csv + csv_len, "Test INT Pin = %d\n", tItems[i].test_int_pin);
+			csv_len += snprintf(csv + csv_len, (CSV_FILE_SIZE - csv_len), "Test INT Pin = %d\n", tItems[i].test_int_pin);
 			pr_info("Pulse Test = %d\n", tItems[i].int_pulse_test);
-			csv_len += sprintf(csv + csv_len, "Pulse Test = %d\n", tItems[i].int_pulse_test);
+			csv_len += snprintf(csv + csv_len, (CSV_FILE_SIZE - csv_len), "Pulse Test = %d\n", tItems[i].int_pulse_test);
 			pr_info("Delay Time = %d\n", tItems[i].delay_time);
-			csv_len += sprintf(csv + csv_len, "Delay Time = %d\n", tItems[i].delay_time);
+			csv_len += snprintf(csv + csv_len, (CSV_FILE_SIZE - csv_len), "Delay Time = %d\n", tItems[i].delay_time);
 			continue;
 		}
 
-		mp_print_csv_cdc_cmd(csv, &csv_len, i);
+		mp_print_csv_cdc_cmd(csv, &csv_len, i, CSV_FILE_SIZE);
 
 		pr_info("Frame count = %d\n", tItems[i].frame_count);
-		csv_len += sprintf(csv + csv_len, "Frame count = %d\n", tItems[i].frame_count);
+		csv_len += snprintf(csv + csv_len, (CSV_FILE_SIZE - csv_len), "Frame count = %d\n", tItems[i].frame_count);
 
 		if (tItems[i].trimmed_mean && tItems[i].catalog != PEAK_TO_PEAK_TEST) {
 			pr_info("lowest percentage = %d\n", tItems[i].lowest_percentage);
-			csv_len += sprintf(csv + csv_len, "lowest percentage = %d\n", tItems[i].lowest_percentage);
+			csv_len += snprintf(csv + csv_len, (CSV_FILE_SIZE - csv_len), "lowest percentage = %d\n", tItems[i].lowest_percentage);
 
 			pr_info("highest percentage = %d\n", tItems[i].highest_percentage);
-			csv_len += sprintf(csv + csv_len, "highest percentage = %d\n", tItems[i].highest_percentage);
+			csv_len += snprintf(csv + csv_len, (CSV_FILE_SIZE - csv_len), "highest percentage = %d\n", tItems[i].highest_percentage);
 		}
 
 		/* Show result of benchmark max and min */
@@ -2771,8 +2771,8 @@ static int mp_show_result(bool lcm_on)
 				max_threshold[j] = tItems[i].bench_mark_max[j];
 				min_threshold[j] = tItems[i].bench_mark_min[j];
 			}
-			mp_compare_cdc_show_result(i, tItems[i].bench_mark_max, csv, &csv_len, TYPE_BENCHMARK, max_threshold, min_threshold, "Max_Bench");
-			mp_compare_cdc_show_result(i, tItems[i].bench_mark_min, csv, &csv_len, TYPE_BENCHMARK, max_threshold, min_threshold, "Min_Bench");
+			mp_compare_cdc_show_result(i, tItems[i].bench_mark_max, csv, &csv_len, TYPE_BENCHMARK, max_threshold, min_threshold, "Max_Bench", CSV_FILE_SIZE);
+			mp_compare_cdc_show_result(i, tItems[i].bench_mark_min, csv, &csv_len, TYPE_BENCHMARK, max_threshold, min_threshold, "Min_Bench", CSV_FILE_SIZE);
 		} else {
 			for (j = 0; j < core_mp.frame_len; j++) {
 				max_threshold[j] = tItems[i].max;
@@ -2780,21 +2780,21 @@ static int mp_show_result(bool lcm_on)
 			}
 
 			pr_info("Max = %d\n", tItems[i].max);
-			csv_len += sprintf(csv + csv_len, "Max = %d\n", tItems[i].max);
+			csv_len += snprintf(csv + csv_len, (CSV_FILE_SIZE - csv_len), "Max = %d\n", tItems[i].max);
 
 			pr_info("Min = %d\n", tItems[i].min);
-			csv_len += sprintf(csv + csv_len, "Min = %d\n", tItems[i].min);
+			csv_len += snprintf(csv + csv_len, (CSV_FILE_SIZE - csv_len), "Min = %d\n", tItems[i].min);
 		}
 
 		if (strncmp(tItems[i].name, "open_integration_sp", strlen(tItems[i].name)) == 0) {
-			mp_compare_cdc_show_result(i, frame1_cbk700, csv, &csv_len, TYPE_NO_JUGE, max_threshold, min_threshold, "frame1 cbk700");
-			mp_compare_cdc_show_result(i, frame1_cbk250, csv, &csv_len, TYPE_NO_JUGE, max_threshold, min_threshold, "frame1 cbk250");
-			mp_compare_cdc_show_result(i, frame1_cbk200, csv, &csv_len, TYPE_NO_JUGE, max_threshold, min_threshold, "frame1 cbk200");
+			mp_compare_cdc_show_result(i, frame1_cbk700, csv, &csv_len, TYPE_NO_JUGE, max_threshold, min_threshold, "frame1 cbk700", CSV_FILE_SIZE);
+			mp_compare_cdc_show_result(i, frame1_cbk250, csv, &csv_len, TYPE_NO_JUGE, max_threshold, min_threshold, "frame1 cbk250", CSV_FILE_SIZE);
+			mp_compare_cdc_show_result(i, frame1_cbk200, csv, &csv_len, TYPE_NO_JUGE, max_threshold, min_threshold, "frame1 cbk200", CSV_FILE_SIZE);
 		}
 
 		if (strncmp(tItems[i].name, "open test_c", strlen(tItems[i].name)) == 0) {
-			mp_compare_cdc_show_result(i, cap_dac, csv, &csv_len, TYPE_NO_JUGE, max_threshold, min_threshold, "CAP_DAC");
-			mp_compare_cdc_show_result(i, cap_raw, csv, &csv_len, TYPE_NO_JUGE, max_threshold, min_threshold, "CAP_RAW");
+			mp_compare_cdc_show_result(i, cap_dac, csv, &csv_len, TYPE_NO_JUGE, max_threshold, min_threshold, "CAP_DAC", CSV_FILE_SIZE);
+			mp_compare_cdc_show_result(i, cap_raw, csv, &csv_len, TYPE_NO_JUGE, max_threshold, min_threshold, "CAP_RAW", CSV_FILE_SIZE);
 		}
 
 		if (tItems[i].catalog == TX_RX_DELTA) {
@@ -2814,40 +2814,40 @@ static int mp_show_result(bool lcm_on)
 		if (tItems[i].catalog == KEY_TEST) {
 			for (x = 0; x < core_mp.key_len; x++) {
 				DUMP("KEY_%02d ", x);
-				csv_len += sprintf(csv + csv_len, "KEY_%02d,", x);
+				csv_len += snprintf(csv + csv_len, (CSV_FILE_SIZE - csv_len), "KEY_%02d,", x);
 			}
 
 			DUMP("\n");
-			csv_len += sprintf(csv + csv_len, "\n");
+			csv_len += snprintf(csv + csv_len, (CSV_FILE_SIZE - csv_len), "\n");
 
 			for (y = 0; y < core_mp.key_len; y++) {
 				DUMP(" %3d   ", tItems[i].buf[y]);
-				csv_len += sprintf(csv + csv_len, " %3d, ", tItems[i].buf[y]);
+				csv_len += snprintf(csv + csv_len, (CSV_FILE_SIZE - csv_len), " %3d, ", tItems[i].buf[y]);
 			}
 
 			DUMP("\n");
-			csv_len += sprintf(csv + csv_len, "\n");
+			csv_len += snprintf(csv + csv_len, (CSV_FILE_SIZE - csv_len), "\n");
 		} else if (tItems[i].catalog == TX_RX_DELTA) {
 			for (j = 0; j < core_mp.frame_len; j++) {
 				max_threshold[j] = core_mp.TxDeltaMax;
 				min_threshold[j] = core_mp.TxDeltaMin;
 			}
-			mp_compare_cdc_show_result(i, core_mp.tx_max_buf, csv, &csv_len, TYPE_JUGE, max_threshold, min_threshold, "TX Max Hold");
-			mp_compare_cdc_show_result(i, core_mp.tx_min_buf, csv, &csv_len, TYPE_JUGE, max_threshold, min_threshold, "TX Min Hold");
+			mp_compare_cdc_show_result(i, core_mp.tx_max_buf, csv, &csv_len, TYPE_JUGE, max_threshold, min_threshold, "TX Max Hold", CSV_FILE_SIZE);
+			mp_compare_cdc_show_result(i, core_mp.tx_min_buf, csv, &csv_len, TYPE_JUGE, max_threshold, min_threshold, "TX Min Hold", CSV_FILE_SIZE);
 
 			for (j = 0; j < core_mp.frame_len; j++) {
 				max_threshold[j] = core_mp.RxDeltaMax;
 				min_threshold[j] = core_mp.RxDeltaMin;
 			}
-			mp_compare_cdc_show_result(i, core_mp.rx_max_buf, csv, &csv_len, TYPE_JUGE, max_threshold, min_threshold, "RX Max Hold");
-			mp_compare_cdc_show_result(i, core_mp.rx_min_buf, csv, &csv_len, TYPE_JUGE, max_threshold, min_threshold, "RX Min Hold");
+			mp_compare_cdc_show_result(i, core_mp.rx_max_buf, csv, &csv_len, TYPE_JUGE, max_threshold, min_threshold, "RX Max Hold", CSV_FILE_SIZE);
+			mp_compare_cdc_show_result(i, core_mp.rx_min_buf, csv, &csv_len, TYPE_JUGE, max_threshold, min_threshold, "RX Min Hold", CSV_FILE_SIZE);
 		} else {
 			/* general result */
 			if (tItems[i].trimmed_mean && tItems[i].catalog != PEAK_TO_PEAK_TEST) {
-				mp_compare_cdc_show_result(i, tItems[i].result_buf, csv, &csv_len, TYPE_JUGE, max_threshold, min_threshold, "Mean result");
+				mp_compare_cdc_show_result(i, tItems[i].result_buf, csv, &csv_len, TYPE_JUGE, max_threshold, min_threshold, "Mean result", CSV_FILE_SIZE);
 			} else {
-				mp_compare_cdc_show_result(i, tItems[i].max_buf, csv, &csv_len, TYPE_JUGE, max_threshold, min_threshold, "Max Hold");
-				mp_compare_cdc_show_result(i, tItems[i].min_buf, csv, &csv_len, TYPE_JUGE, max_threshold, min_threshold, "Min Hold");
+				mp_compare_cdc_show_result(i, tItems[i].max_buf, csv, &csv_len, TYPE_JUGE, max_threshold, min_threshold, "Max Hold", CSV_FILE_SIZE);
+				mp_compare_cdc_show_result(i, tItems[i].min_buf, csv, &csv_len, TYPE_JUGE, max_threshold, min_threshold, "Min Hold", CSV_FILE_SIZE);
 			}
 			if (tItems[i].catalog != PEAK_TO_PEAK_TEST)
 				get_frame_cont = tItems[i].frame_count;
@@ -2855,15 +2855,15 @@ static int mp_show_result(bool lcm_on)
 			/* result of each frame */
 			for (j = 0; j < get_frame_cont; j++) {
 				char frame_name[128] = {0};
-				sprintf(frame_name, "Frame %d", (j+1));
-				mp_compare_cdc_show_result(i, &tItems[i].buf[(j*core_mp.frame_len)], csv, &csv_len, TYPE_NO_JUGE, max_threshold, min_threshold, frame_name);
+				snprintf(frame_name, (CSV_FILE_SIZE - csv_len), "Frame %d", (j+1));
+				mp_compare_cdc_show_result(i, &tItems[i].buf[(j*core_mp.frame_len)], csv, &csv_len, TYPE_NO_JUGE, max_threshold, min_threshold, frame_name, CSV_FILE_SIZE);
 			}
 		}
 	}
 
 	memset(csv_name, 0, 128 * sizeof(char));
 
-	mp_print_csv_tail(csv, &csv_len);
+	mp_print_csv_tail(csv, &csv_len, CSV_FILE_SIZE);
 
 	for (i = 0; i < ARRAY_SIZE(tItems); i++) {
 		if (tItems[i].run) {
@@ -2884,23 +2884,23 @@ static int mp_show_result(bool lcm_on)
 		core_mp.final_result = MP_FAIL;
 		ret = MP_FAIL;
 		if (lcm_on)
-			sprintf(csv_name, "%s/%s_%s.csv", CSV_LCM_ON_PATH, get_date_time_str(), ret_warning_name);
+			snprintf(csv_name, (CSV_FILE_SIZE - csv_len), "%s/%s_%s.csv", CSV_LCM_ON_PATH, get_date_time_str(), ret_warning_name);
 		else
-			sprintf(csv_name, "%s/%s_%s.csv", CSV_LCM_OFF_PATH, get_date_time_str(), ret_warning_name);
+			snprintf(csv_name, (CSV_FILE_SIZE - csv_len), "%s/%s_%s.csv", CSV_LCM_OFF_PATH, get_date_time_str(), ret_warning_name);
 	} else if (pass_item_count == 0) {
 		core_mp.final_result = MP_FAIL;
 		ret = MP_FAIL;
 		if (lcm_on)
-			sprintf(csv_name, "%s/%s_%s.csv", CSV_LCM_ON_PATH, get_date_time_str(), ret_fail_name);
+			snprintf(csv_name, (CSV_FILE_SIZE - csv_len), "%s/%s_%s.csv", CSV_LCM_ON_PATH, get_date_time_str(), ret_fail_name);
 		else
-			sprintf(csv_name, "%s/%s_%s.csv", CSV_LCM_OFF_PATH, get_date_time_str(), ret_fail_name);
+			snprintf(csv_name, (CSV_FILE_SIZE - csv_len), "%s/%s_%s.csv", CSV_LCM_OFF_PATH, get_date_time_str(), ret_fail_name);
 	} else {
 		core_mp.final_result = MP_PASS;
 		ret = MP_PASS;
 		if (lcm_on)
-			sprintf(csv_name, "%s/%s_%s.csv", CSV_LCM_ON_PATH, get_date_time_str(), ret_pass_name);
+			snprintf(csv_name, (CSV_FILE_SIZE - csv_len), "%s/%s_%s.csv", CSV_LCM_ON_PATH, get_date_time_str(), ret_pass_name);
 		else
-			sprintf(csv_name, "%s/%s_%s.csv", CSV_LCM_OFF_PATH, get_date_time_str(), ret_pass_name);
+			snprintf(csv_name, (CSV_FILE_SIZE - csv_len), "%s/%s_%s.csv", CSV_LCM_OFF_PATH, get_date_time_str(), ret_pass_name);
 	}
 
 	ipio_info("Open CSV : %s\n", csv_name);
@@ -3028,7 +3028,7 @@ static void ilitek_tddi_mp_init_item(void)
 		}
 
 		tItems[i].result = kmalloc(16, GFP_KERNEL);
-		sprintf(tItems[i].result, "%s", "FAIL");
+		snprintf(tItems[i].result, 16, "%s", "FAIL");
 	}
 
 	tItems[0].cmd = CMD_MUTUAL_DAC;
@@ -3088,65 +3088,65 @@ static void mp_test_run(char *item)
 				continue;
 
 			/* Get parameters from ini */
-			parser_get_int_data(item, "enable", str);
+			parser_get_int_data(item, "enable", str, sizeof(str));
 			tItems[i].run = katoi(str);
-			parser_get_int_data(item, "spec option", str);
+			parser_get_int_data(item, "spec option", str, sizeof(str));
 			tItems[i].spec_option = katoi(str);
-			parser_get_int_data(item, "type option", str);
+			parser_get_int_data(item, "type option", str, sizeof(str));
 			tItems[i].type_option = katoi(str);
-			parser_get_int_data(item, "frame count", str);
+			parser_get_int_data(item, "frame count", str, sizeof(str));
 			tItems[i].frame_count = katoi(str);
-			parser_get_int_data(item, "trimmed mean", str);
+			parser_get_int_data(item, "trimmed mean", str, sizeof(str));
 			tItems[i].trimmed_mean = katoi(str);
-			parser_get_int_data(item, "lowest percentage", str);
+			parser_get_int_data(item, "lowest percentage", str, sizeof(str));
 			tItems[i].lowest_percentage = katoi(str);
-			parser_get_int_data(item, "highest percentage", str);
+			parser_get_int_data(item, "highest percentage", str, sizeof(str));
 			tItems[i].highest_percentage = katoi(str);
 
 			/* Get pin test delay time */
 			if (tItems[i].catalog == PIN_TEST) {
-				parser_get_int_data(item, "test int pin", str);
+				parser_get_int_data(item, "test int pin", str, sizeof(str));
 				tItems[i].test_int_pin = katoi(str);
-				parser_get_int_data(item, "int pulse test", str);
+				parser_get_int_data(item, "int pulse test", str, sizeof(str));
 				tItems[i].int_pulse_test = katoi(str);
-				parser_get_int_data(item, "delay time", str);
+				parser_get_int_data(item, "delay time", str, sizeof(str));
 				tItems[i].delay_time = katoi(str);
 			}
 
 			/* Get TDF value from ini */
 			if (tItems[i].catalog == SHORT_TEST) {
-				parser_get_int_data(item, "v_tdf_1", str);
+				parser_get_int_data(item, "v_tdf_1", str, sizeof(str));
 				tItems[i].v_tdf_1 = parser_get_tdf_value(str, tItems[i].catalog);
-				parser_get_int_data(item, "v_tdf_2", str);
+				parser_get_int_data(item, "v_tdf_2", str, sizeof(str));
 				tItems[i].v_tdf_2 = parser_get_tdf_value(str, tItems[i].catalog);
-				parser_get_int_data(item, "h_tdf_1", str);
+				parser_get_int_data(item, "h_tdf_1", str, sizeof(str));
 				tItems[i].h_tdf_1 = parser_get_tdf_value(str, tItems[i].catalog);
-				parser_get_int_data(item, "h_tdf_2", str);
+				parser_get_int_data(item, "h_tdf_2", str, sizeof(str));
 				tItems[i].h_tdf_2 = parser_get_tdf_value(str, tItems[i].catalog);
 			} else {
-				parser_get_int_data(item, "v_tdf", str);
+				parser_get_int_data(item, "v_tdf", str, sizeof(str));
 				tItems[i].v_tdf_1 = parser_get_tdf_value(str, tItems[i].catalog);
-				parser_get_int_data(item, "h_tdf", str);
+				parser_get_int_data(item, "h_tdf", str, sizeof(str));
 				tItems[i].h_tdf_1 = parser_get_tdf_value(str, tItems[i].catalog);
 			}
 
 			/* Get threshold from ini structure in parser */
 			if (strncmp(item, "tx/rx delta", strlen(item)) == 0) {
-				parser_get_int_data(item, "tx max", str);
+				parser_get_int_data(item, "tx max", str, sizeof(str));
 				core_mp.TxDeltaMax = katoi(str);
-				parser_get_int_data(item, "tx min", str);
+				parser_get_int_data(item, "tx min", str, sizeof(str));
 				core_mp.TxDeltaMin = katoi(str);
-				parser_get_int_data(item, "rx max", str);
+				parser_get_int_data(item, "rx max", str, sizeof(str));
 				core_mp.RxDeltaMax = katoi(str);
-				parser_get_int_data(item, "rx min", str);
+				parser_get_int_data(item, "rx min", str, sizeof(str));
 				core_mp.RxDeltaMin = katoi(str);
 				ipio_debug("%s: Tx Max = %d, Tx Min = %d, Rx Max = %d,  Rx Min = %d\n",
 						tItems[i].desp, core_mp.TxDeltaMax, core_mp.TxDeltaMin,
 						core_mp.RxDeltaMax, core_mp.RxDeltaMin);
 			} else {
-				parser_get_int_data(item, "max", str);
+				parser_get_int_data(item, "max", str, sizeof(str));
 				tItems[i].max = katoi(str);
-				parser_get_int_data(item, "min", str);
+				parser_get_int_data(item, "min", str, sizeof(str));
 				tItems[i].min = katoi(str);
 			}
 
@@ -3186,7 +3186,7 @@ static void mp_test_free(void)
 		tItems[i].max_res = MP_FAIL;
 		tItems[i].min_res = MP_FAIL;
 		tItems[i].item_result = MP_PASS;
-		sprintf(tItems[i].result, "%s", "FAIL");
+		snprintf(tItems[i].result, 16, "%s", "FAIL");
 
 		if (tItems[i].catalog == TX_RX_DELTA) {
 				ipio_kfree((void **)&core_mp.rx_delta_buf);
@@ -3259,7 +3259,7 @@ int ilitek_tddi_mp_test_main(char *apk, bool lcm_on)
 
 	/* Compare both protocol version of ini and firmware */
 	parser_get_ini_key_value("pv5_4 command", "protocol", str);
-	sprintf(ver, "0x%s", str);
+	snprintf(ver, sizeof(ver), "0x%s", str);
 	if ((str2hex(ver)) != (core_mp.protocol_ver >> 8)) {
 		ipio_err("ERROR! MP Protocol version is invaild, 0x%x\n", str2hex(ver));
 		ret = -EINVAL;
