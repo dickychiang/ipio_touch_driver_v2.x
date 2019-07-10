@@ -139,12 +139,6 @@ int ilitek_tddi_switch_mode(u8 *data)
 		if (ret < 0)
 			ipio_err("Failed to switch debug info mode\n");
 		break;
-	case P5_X_FW_SOP_FLOW_MODE:
-		ipio_info("Not implemented SOP flow mode yet\n");
-		break;
-	case P5_X_FW_ESD_MODE:
-		ipio_info("Not implemented ESD mode yet\n");
-		break;
 	default:
 		ipio_err("Unknown TP mode: %x\n", mode);
 		ret = -1;
