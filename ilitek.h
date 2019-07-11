@@ -524,6 +524,7 @@ enum TP_WQ_TYPE {
 #define ILI7807G_AB			0x78071001
 #define RAWDATA_NO_BK_SHIFT_9881H	8192
 #define RAWDATA_NO_BK_SHIFT_9881F	4096
+#define INFO_HEX_START_ADDR_64K		0xFFB4
 
 struct ilitek_tddi_dev {
 	struct i2c_client *i2c;
@@ -682,6 +683,9 @@ struct ilitek_ic_info {
 	u32 max_count;
 	u32 reset_key;
 	u16 wtd_key;
+	u32 info_addr;
+	u8  info[75];
+	bool  info_from_hex;
 	int no_bk_shift;
 	bool spi_speed_ctrl;
 	s32 (*open_sp_formula)(int dac, int raw);

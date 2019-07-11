@@ -1134,6 +1134,9 @@ static void ilitek_tddi_fw_update_block_info(u8 *pfw, u8 type)
 		fbi[GESTURE].mode = GESTURE;
 	}
 
+	/* Save fw info buffer */
+	ipio_memcpy(idev->chip->info, (pfw + idev->chip->info_addr), sizeof(idev->chip->info), sizeof(idev->chip->info));
+	ilitek_dump_data(idev->chip->info, 8, sizeof(idev->chip->info), 16, "info");
 	/* Get hex fw vers */
 	tfd.new_fw_cb = (pfw[FW_VER_ADDR] << 24) | (pfw[FW_VER_ADDR + 1] << 16) |
 			(pfw[FW_VER_ADDR + 2] << 8) | (pfw[FW_VER_ADDR + 3]);
