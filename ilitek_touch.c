@@ -220,7 +220,7 @@ int ilitek_tddi_move_mp_code_flash(void)
 		overlay_end_addr, mp_flash_addr, mp_size);
 
 	/* Check if ic is ready switching test mode from demo mode */
-	idev->actual_tp_mode = P5_X_FW_DEMO_MODE;
+	idev->actual_tp_mode = P5_X_FW_AP_MODE;
 	ret = ilitek_tddi_ic_check_busy(50, 50); /* Set busy as 0x41 */
 	if (ret < 0)
 		goto out;
@@ -310,7 +310,6 @@ int ilitek_tddi_proximity_near(int mode)
 int ilitek_tddi_proximity_far(int mode)
 {
 	int ret = 0;
-	u8 tp_mode = 0;
 	u8 cmd[2] = {0};
 
 	switch (mode) {
@@ -335,8 +334,8 @@ int ilitek_tddi_proximity_far(int mode)
 			ipio_info("write prepare gesture command error\n");
 			break;
 		}
-		tp_mode = P5_X_FW_GESTURE_MODE;
-		ret = ilitek_tddi_switch_mode(&tp_mode);
+
+		ret = ilitek_tddi_switch_mode(P5_X_FW_GESTURE_MODE);
 		if (ret < 0)
 			ipio_err("Switch to gesture mode failed during proximity far\n");
 		break;
@@ -350,23 +349,20 @@ int ilitek_tddi_proximity_far(int mode)
 
 int ilitek_tddi_move_gesture_code_flash(int mode)
 {
-	u8 tp_mode = P5_X_FW_GESTURE_MODE;
-
 	ipio_info();
-	return ilitek_tddi_switch_mode(&tp_mode);
+	return ilitek_tddi_switch_mode(P5_X_FW_GESTURE_MODE);
 }
 
 int ilitek_tddi_move_gesture_code_iram(int mode)
 {
 	int i;
 	int timeout = 10;
-	u8 tp_mode = P5_X_FW_GESTURE_MODE;
 	u8 cmd[3] = {0};
 
 	if (ilitek_tddi_ic_func_ctrl("lpwg", 0x3) < 0)
 		ipio_err("write gesture flag failed\n");
 
-	if (ilitek_tddi_switch_mode(&tp_mode) < 0)
+	if (ilitek_tddi_switch_mode(P5_X_FW_GESTURE_MODE) < 0)
 		ipio_err("Switch to gesture mode failed during moving code\n");
 
 	for (i = 0; i < timeout; i++) {
@@ -437,7 +433,7 @@ int ilitek_tddi_touch_esd_gesture_flash(void)
 		ipio_err("write password failed\n");
 
 	/* HW reset gives effect to FW receives password successed */
-	idev->actual_tp_mode = P5_X_FW_DEMO_MODE;
+	idev->actual_tp_mode = P5_X_FW_AP_MODE;
 	if (ilitek_tddi_reset_ctrl(idev->reset) < 0)
 		ipio_err("TP Reset failed during gesture recovery\n");
 
@@ -485,7 +481,7 @@ int ilitek_tddi_touch_esd_gesture_iram(void)
 		ipio_err("write password failed\n");
 
 	/* Host download gives effect to FW receives password successed */
-	idev->actual_tp_mode = P5_X_FW_DEMO_MODE;
+	idev->actual_tp_mode = P5_X_FW_AP_MODE;
 	if (ilitek_tddi_fw_upgrade_handler(NULL) < 0)
 		ipio_err("FW upgrade failed during gesture recovery\n");
 

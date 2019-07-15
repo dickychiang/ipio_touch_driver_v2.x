@@ -693,7 +693,7 @@ int ilitek_tddi_ic_check_busy(int count, int delay)
 	cmd[0] = P5_X_READ_DATA_CTRL;
 	cmd[1] = P5_X_CDC_BUSY_STATE;
 
-	if (idev->actual_tp_mode == P5_X_FW_DEMO_MODE)
+	if (idev->actual_tp_mode == P5_X_FW_AP_MODE)
 		rby = 0x41;
 	else if (idev->actual_tp_mode == P5_X_FW_TEST_MODE)
 		rby = 0x51;

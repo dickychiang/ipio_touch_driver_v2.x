@@ -33,7 +33,6 @@ static struct delayed_work bat_work;
 int ilitek_tddi_mp_test_handler(char *apk, bool lcm_on)
 {
 	int ret = 0;
-	u8 tp_mode = P5_X_FW_TEST_MODE;
 
 	if (atomic_read(&idev->fw_stat)) {
 		ipio_err("fw upgrade processing, ignore\n");
@@ -49,7 +48,7 @@ int ilitek_tddi_mp_test_handler(char *apk, bool lcm_on)
 	atomic_set(&idev->mp_stat, ENABLE);
 
 	if (idev->actual_tp_mode != P5_X_FW_TEST_MODE) {
-		ret = ilitek_tddi_switch_mode(&tp_mode);
+		ret = ilitek_tddi_switch_mode(P5_X_FW_TEST_MODE);
 		if (ret < 0) {
 			ipio_err("Switch MP mode failed\n");
 			goto out;
@@ -69,7 +68,7 @@ out:
 		return ret;
 	}
 
-	idev->actual_tp_mode = P5_X_FW_DEMO_MODE;
+	idev->actual_tp_mode = P5_X_FW_AP_MODE;
 	if (idev->fw_upgrade_mode == UPGRADE_IRAM) {
 		if (ilitek_tddi_fw_upgrade_handler(NULL) < 0)
 			ipio_err("FW upgrade failed during mp test\n");
@@ -82,46 +81,56 @@ out:
 	return ret;
 }
 
-int ilitek_tddi_switch_mode(u8 *data)
+int ilitek_tddi_report_data_format(u8 format)
 {
-	int ret = 0, mode;
-	u8 cmd[4] = {0};
+	u8 cmd[2] = {0};
+	int ret = 0;
 
-	if (!data) {
-		ipio_err("data is null\n");
-		return -EINVAL;
-	}
-
-	atomic_set(&idev->tp_sw_mode, START);
-
-	mode = data[0];
-	idev->actual_tp_mode = mode;
-
-	switch (idev->actual_tp_mode) {
+	switch (format) {
 	case P5_X_FW_DEMO_MODE:
 		ipio_info("Switch to Demo mode\n");
-		cmd[0] = P5_X_MODE_CONTROL;
-		cmd[1] = mode;
-		ret = idev->write(cmd, 2);
-		if (ret < 0) {
-			ipio_err("Failed to switch demo mode, do reset/reload instead\n");
-			if (idev->fw_upgrade_mode == UPGRADE_IRAM) {
-				if (ilitek_tddi_fw_upgrade_handler(NULL) < 0)
-					ipio_err("FW upgrade failed\n");
-				break;
-			}
-			ret = ilitek_tddi_reset_ctrl(idev->reset);
-			if (ret < 0)
-				ipio_err("TP Reset failed\n");
-		}
 		break;
 	case P5_X_FW_DEBUG_MODE:
 		ipio_info("Switch to Debug mode\n");
-		cmd[0] = P5_X_MODE_CONTROL;
-		cmd[1] = mode;
-		ret = idev->write(cmd, 2);
+		break;
+	case P5_X_FW_DEMO_DEBUG_INFO_MODE:
+		ipio_info("Switch to demo debug info mode\n");
+		break;
+	}
+
+	idev->actual_tp_format = format;
+	cmd[0] = P5_X_MODE_CONTROL;
+	cmd[1] = format;
+	ret = idev->write(cmd, 2);
+
+	if (ret < 0) {
+		ipio_err("switch to format %d failed\n", format);
+		if (idev->actual_tp_mode == P5_X_FW_AP_MODE)
+			ilitek_tddi_switch_mode(P5_X_FW_AP_MODE);
+	}
+
+	return ret;
+}
+
+int ilitek_tddi_switch_mode(u8 mode)
+{
+	int ret = 0;
+
+	atomic_set(&idev->tp_sw_mode, START);
+
+	idev->actual_tp_mode = mode;
+
+	switch (idev->actual_tp_mode) {
+	case P5_X_FW_AP_MODE:
+		if (idev->fw_upgrade_mode == UPGRADE_IRAM) {
+			if (ilitek_tddi_fw_upgrade_handler(NULL) < 0)
+				ipio_err("FW upgrade failed\n");
+		} else {
+			ret = ilitek_tddi_reset_ctrl(idev->reset);
+		}
 		if (ret < 0)
-			ipio_err("Failed to switch Debug mode\n");
+			ipio_err("TP Reset failed\n");
+		idev->actual_tp_format = P5_X_FW_DEMO_MODE;
 		break;
 	case P5_X_FW_GESTURE_MODE:
 		ipio_info("Switch to Gesture mode, lpwg cmd = %d\n",  idev->gesture_mode);
@@ -130,14 +139,6 @@ int ilitek_tddi_switch_mode(u8 *data)
 	case P5_X_FW_TEST_MODE:
 		ipio_info("Switch to Test mode\n");
 		ret = idev->mp_move_code();
-		break;
-	case P5_X_FW_DEMO_DEBUG_INFO_MODE:
-		ipio_info("Switch to demo debug info mode\n");
-		cmd[0] = P5_X_MODE_CONTROL;
-		cmd[1] = mode;
-		ret = idev->write(cmd, 2);
-		if (ret < 0)
-			ipio_err("Failed to switch debug info mode\n");
 		break;
 	default:
 		ipio_err("Unknown TP mode: %x\n", mode);
@@ -363,10 +364,6 @@ int ilitek_tddi_sleep_handler(int mode)
 			ipio_err("Check busy timeout during suspend\n");
 
 		if (idev->gesture) {
-			if (idev->actual_tp_mode == P5_X_FW_DEBUG_MODE) {
-				ipio_info("Enable gesture debug mode\n");
-				idev->gesture_debug = ENABLE;
-			}
 			if (idev->gesture_move_code(idev->gesture_mode) < 0)
 				ipio_err("Move gesture code failed\n");
 			enable_irq_wake(idev->irq_num);
@@ -402,7 +399,7 @@ int ilitek_tddi_sleep_handler(int mode)
 			disable_irq_wake(idev->irq_num);
 
 		/* Set tp as demo mode and reload code if it's iram. */
-		idev->actual_tp_mode = P5_X_FW_DEMO_MODE;
+		idev->actual_tp_mode = P5_X_FW_AP_MODE;
 		if (idev->fw_upgrade_mode == UPGRADE_IRAM) {
 			if (ilitek_tddi_fw_upgrade_handler(NULL) < 0)
 				ipio_err("FW upgrade failed during resume\n");
@@ -464,12 +461,52 @@ int ilitek_tddi_fw_upgrade_handler(void *data)
 	return ret;
 }
 
+int ilitek_tddi_ap_report_len(void)
+{
+	int rlen = 0;
+	u16 self_key = 2;
+
+	switch(idev->actual_tp_format) {
+	case P5_X_FW_DEMO_MODE:
+		rlen = P5_X_DEMO_MODE_PACKET_LENGTH;
+		break;
+	case P5_X_FW_DEBUG_MODE:
+		rlen = (2 * idev->xch_num * idev->ych_num) + (idev->stx * 2) + (idev->srx * 2);
+		rlen += 2 * self_key + (8 * 2) + 1 + 35;
+		break;
+	case P5_X_FW_DEMO_DEBUG_INFO_MODE:
+		/*only suport SPI interface now, so defult use size 1024 buffer*/
+		rlen = 1024;
+		break;
+	default:
+		ipio_err("Unknown fw mode, %d\n", idev->actual_tp_format);
+		rlen = 0;
+		break;
+	}
+
+	return rlen;
+}
+
+int ilitek_tddi_gesture_report_len(void)
+{
+	int rlen = 0;
+	u16 self_key = 2;
+
+	if (idev->actual_tp_format == P5_X_FW_DEBUG_MODE)
+		rlen = (2 * idev->xch_num * idev->ych_num) + (idev->stx * 2) + (idev->srx * 2) + 2 * self_key + (8 * 2) + 1 + 35;
+	else if (idev->gesture_mode == P5_X_FW_GESTURE_INFO_MODE)
+		rlen = P5_X_GESTURE_INFO_LENGTH;
+	else
+		rlen = P5_X_GESTURE_NORMAL_LENGTH;
+
+	return rlen;
+}
+
 void ilitek_tddi_report_handler(void)
 {
 	int ret = 0, pid = 0;
 	u8 *buf = NULL, checksum = 0;
 	int rlen = 0, buf_size = 0;
-	u16 self_key = 2;
 	int tmp = ipio_debug_level;
 
 	/* Just in case these stats couldn't be blocked in top half context */
@@ -490,27 +527,14 @@ void ilitek_tddi_report_handler(void)
 	ilitek_tddi_wq_ctrl(WQ_BAT, DISABLE);
 
 	switch (idev->actual_tp_mode) {
-	case P5_X_FW_DEMO_MODE:
-		rlen = P5_X_DEMO_MODE_PACKET_LENGTH;
-		break;
-	case P5_X_FW_DEBUG_MODE:
-		rlen = (2 * idev->xch_num * idev->ych_num) + (idev->stx * 2) + (idev->srx * 2);
-		rlen += 2 * self_key + (8 * 2) + 1 + 35;
+	case P5_X_FW_AP_MODE:
+		rlen = ilitek_tddi_ap_report_len();
 		break;
 	case P5_X_FW_GESTURE_MODE:
 		__pm_stay_awake(idev->ws);
 		/* Waiting for pm resume completed */
 		mdelay(40);
-		if (idev->gesture_debug)
-			rlen = (2 * idev->xch_num * idev->ych_num) + (idev->stx * 2) + (idev->srx * 2) + 2 * self_key + (8 * 2) + 1 + 35;
-		else if (idev->gesture_mode == P5_X_FW_GESTURE_INFO_MODE)
-			rlen = P5_X_GESTURE_INFO_LENGTH;
-		else
-			rlen = P5_X_GESTURE_NORMAL_LENGTH;
-		break;
-	case P5_X_FW_DEMO_DEBUG_INFO_MODE:
-		/*only suport SPI interface now, so defult use size 1024 buffer*/
-		rlen = 1024;
+		rlen = ilitek_tddi_gesture_report_len();
 		break;
 	default:
 		ipio_err("Unknown fw mode, %d\n", idev->actual_tp_mode);
@@ -635,7 +659,7 @@ int ilitek_tddi_reset_ctrl(int mode)
 	if (mode != TP_IC_CODE_RST)
 		atomic_set(&idev->ice_stat, DISABLE);
 	idev->fw_uart_en = DISABLE;
-	idev->gesture_debug = DISABLE;
+	idev->actual_tp_format = P5_X_FW_DEMO_MODE;
 	atomic_set(&idev->tp_reset, END);
 	return ret;
 }

@@ -478,8 +478,9 @@ enum TP_WQ_TYPE {
 #define P5_X_MP_TEST_MODE_INFO		0xFE
 #define P5_X_I2C_UART			0x40
 #define P5_X_FW_UNKNOWN_MODE		0xFF
-#define P5_X_FW_DEMO_MODE		0x00
+#define P5_X_FW_AP_MODE			0x00
 #define P5_X_FW_TEST_MODE		0x01
+#define P5_X_FW_DEMO_MODE		0x00
 #define P5_X_FW_DEBUG_MODE		0x02
 #define P5_X_FW_DEMO_DEBUG_INFO_MODE	0x04
 #define P5_X_FW_GESTURE_MODE		0x0F
@@ -564,6 +565,7 @@ struct ilitek_tddi_dev {
 	u8 *fw_dma_buf;
 
 	int actual_tp_mode;
+	int actual_tp_format;
 
 	int irq_num;
 	int irq_gpio;
@@ -587,7 +589,6 @@ struct ilitek_tddi_dev {
 	bool report;
 	bool gesture;
 	int gesture_mode;
-	bool gesture_debug;
 
 	u16 flash_mid;
 	u16 flash_devid;
@@ -758,7 +759,8 @@ extern void ilitek_tddi_fw_uart_ctrl(u8 ctrl);
 /* Prototypes for tddi events */
 extern int ilitek_tddi_proximity_far(int mode);
 extern int ilitek_tddi_proximity_near(int mode);
-extern int ilitek_tddi_switch_mode(u8 *data);
+extern int ilitek_tddi_switch_mode(u8 data);
+extern int ilitek_tddi_report_data_format(u8 format);
 extern int ilitek_tddi_fw_upgrade_handler(void *data);
 extern int ilitek_tddi_wq_esd_i2c_check(void);
 extern int ilitek_tddi_wq_esd_spi_check(void);
