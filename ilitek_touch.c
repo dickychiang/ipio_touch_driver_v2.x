@@ -335,7 +335,7 @@ int ilitek_tddi_proximity_far(int mode)
 			break;
 		}
 
-		ret = ilitek_tddi_switch_mode(P5_X_FW_GESTURE_MODE);
+		ret = ilitek_tddi_switch_tp_mode(P5_X_FW_GESTURE_MODE);
 		if (ret < 0)
 			ipio_err("Switch to gesture mode failed during proximity far\n");
 		break;
@@ -350,7 +350,7 @@ int ilitek_tddi_proximity_far(int mode)
 int ilitek_tddi_move_gesture_code_flash(int mode)
 {
 	ipio_info();
-	return ilitek_tddi_switch_mode(P5_X_FW_GESTURE_MODE);
+	return ilitek_tddi_switch_tp_mode(P5_X_FW_GESTURE_MODE);
 }
 
 int ilitek_tddi_move_gesture_code_iram(int mode)
@@ -362,7 +362,7 @@ int ilitek_tddi_move_gesture_code_iram(int mode)
 	if (ilitek_tddi_ic_func_ctrl("lpwg", 0x3) < 0)
 		ipio_err("write gesture flag failed\n");
 
-	if (ilitek_tddi_switch_mode(P5_X_FW_GESTURE_MODE) < 0)
+	if (ilitek_tddi_switch_tp_mode(P5_X_FW_GESTURE_MODE) < 0)
 		ipio_err("Switch to gesture mode failed during moving code\n");
 
 	for (i = 0; i < timeout; i++) {
