@@ -565,7 +565,7 @@ struct ilitek_tddi_dev {
 	u8 *fw_dma_buf;
 
 	int actual_tp_mode;
-	int actual_tp_format;
+	int actual_tp_data_format;
 
 	int irq_num;
 	int irq_gpio;
@@ -759,8 +759,8 @@ extern void ilitek_tddi_fw_uart_ctrl(u8 ctrl);
 /* Prototypes for tddi events */
 extern int ilitek_tddi_proximity_far(int mode);
 extern int ilitek_tddi_proximity_near(int mode);
-extern int ilitek_tddi_switch_mode(u8 data);
-extern int ilitek_tddi_report_data_format(u8 format);
+extern int ilitek_tddi_switch_tp_mode(u8 data);
+extern int ilitek_tddi_switch_tp_data_format(u8 format);
 extern int ilitek_tddi_fw_upgrade_handler(void *data);
 extern int ilitek_tddi_wq_esd_i2c_check(void);
 extern int ilitek_tddi_wq_esd_spi_check(void);

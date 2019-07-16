@@ -48,7 +48,7 @@ int ilitek_tddi_mp_test_handler(char *apk, bool lcm_on)
 	atomic_set(&idev->mp_stat, ENABLE);
 
 	if (idev->actual_tp_mode != P5_X_FW_TEST_MODE) {
-		ret = ilitek_tddi_switch_mode(P5_X_FW_TEST_MODE);
+		ret = ilitek_tddi_switch_tp_mode(P5_X_FW_TEST_MODE);
 		if (ret < 0) {
 			ipio_err("Switch MP mode failed\n");
 			goto out;
@@ -81,38 +81,41 @@ out:
 	return ret;
 }
 
-int ilitek_tddi_report_data_format(u8 format)
+int ilitek_tddi_switch_tp_data_format(u8 format)
 {
 	u8 cmd[2] = {0};
 	int ret = 0;
 
 	switch (format) {
 	case P5_X_FW_DEMO_MODE:
-		ipio_info("Switch to Demo mode\n");
+		ipio_info("Switch to the format of Demo data\n");
 		break;
 	case P5_X_FW_DEBUG_MODE:
-		ipio_info("Switch to Debug mode\n");
+		ipio_info("Switch to the format of Debug data\n");
 		break;
 	case P5_X_FW_DEMO_DEBUG_INFO_MODE:
-		ipio_info("Switch to demo debug info mode\n");
+		ipio_info("Switch to the format of Demo Debug data\n");
 		break;
+	default:
+		ipio_err("Unknow TP data format\n");
+		return -1;
 	}
 
-	idev->actual_tp_format = format;
+	idev->actual_tp_data_format = format;
 	cmd[0] = P5_X_MODE_CONTROL;
 	cmd[1] = format;
-	ret = idev->write(cmd, 2);
+	ret = idev->write(cmd, sizeof(cmd));
 
 	if (ret < 0) {
-		ipio_err("switch to format %d failed\n", format);
+		ipio_err("Failed to switch TP data format (%d)\n", format);
 		if (idev->actual_tp_mode == P5_X_FW_AP_MODE)
-			ilitek_tddi_switch_mode(P5_X_FW_AP_MODE);
+			ilitek_tddi_switch_tp_mode(P5_X_FW_AP_MODE);
 	}
 
 	return ret;
 }
 
-int ilitek_tddi_switch_mode(u8 mode)
+int ilitek_tddi_switch_tp_mode(u8 mode)
 {
 	int ret = 0;
 
@@ -122,6 +125,7 @@ int ilitek_tddi_switch_mode(u8 mode)
 
 	switch (idev->actual_tp_mode) {
 	case P5_X_FW_AP_MODE:
+		ipio_info("Switch to AP mode\n");
 		if (idev->fw_upgrade_mode == UPGRADE_IRAM) {
 			if (ilitek_tddi_fw_upgrade_handler(NULL) < 0)
 				ipio_err("FW upgrade failed\n");
@@ -130,7 +134,7 @@ int ilitek_tddi_switch_mode(u8 mode)
 		}
 		if (ret < 0)
 			ipio_err("TP Reset failed\n");
-		idev->actual_tp_format = P5_X_FW_DEMO_MODE;
+		idev->actual_tp_data_format = P5_X_FW_DEMO_MODE;
 		break;
 	case P5_X_FW_GESTURE_MODE:
 		ipio_info("Switch to Gesture mode, lpwg cmd = %d\n",  idev->gesture_mode);
@@ -147,7 +151,7 @@ int ilitek_tddi_switch_mode(u8 mode)
 	}
 
 	if (ret < 0)
-		ipio_err("Switch mode failed\n");
+		ipio_err("Switch TP mode (%d) failed \n", mode);
 
 	ipio_debug("Actual TP mode = %d\n", idev->actual_tp_mode);
 	atomic_set(&idev->tp_sw_mode, END);
@@ -466,7 +470,7 @@ int ilitek_tddi_ap_report_len(void)
 	int rlen = 0;
 	u16 self_key = 2;
 
-	switch(idev->actual_tp_format) {
+	switch(idev->actual_tp_data_format) {
 	case P5_X_FW_DEMO_MODE:
 		rlen = P5_X_DEMO_MODE_PACKET_LENGTH;
 		break;
@@ -479,7 +483,7 @@ int ilitek_tddi_ap_report_len(void)
 		rlen = 1024;
 		break;
 	default:
-		ipio_err("Unknown fw mode, %d\n", idev->actual_tp_format);
+		ipio_err("Unknown fw mode, %d\n", idev->actual_tp_data_format);
 		rlen = 0;
 		break;
 	}
@@ -492,7 +496,7 @@ int ilitek_tddi_gesture_report_len(void)
 	int rlen = 0;
 	u16 self_key = 2;
 
-	if (idev->actual_tp_format == P5_X_FW_DEBUG_MODE)
+	if (idev->actual_tp_data_format == P5_X_FW_DEBUG_MODE)
 		rlen = (2 * idev->xch_num * idev->ych_num) + (idev->stx * 2) + (idev->srx * 2) + 2 * self_key + (8 * 2) + 1 + 35;
 	else if (idev->gesture_mode == P5_X_FW_GESTURE_INFO_MODE)
 		rlen = P5_X_GESTURE_INFO_LENGTH;
@@ -659,7 +663,7 @@ int ilitek_tddi_reset_ctrl(int mode)
 	if (mode != TP_IC_CODE_RST)
 		atomic_set(&idev->ice_stat, DISABLE);
 	idev->fw_uart_en = DISABLE;
-	idev->actual_tp_format = P5_X_FW_DEMO_MODE;
+	idev->actual_tp_data_format = P5_X_FW_DEMO_MODE;
 	atomic_set(&idev->tp_reset, END);
 	return ret;
 }

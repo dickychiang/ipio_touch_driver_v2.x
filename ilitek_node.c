@@ -764,7 +764,7 @@ static ssize_t ilitek_proc_get_debug_mode_data_read(struct file *filp, char __us
 	file_write(&csv, true);
 
 	/* change to debug mode */
-	ret = ilitek_tddi_report_data_format(P5_X_FW_DEBUG_MODE);
+	ret = ilitek_tddi_switch_tp_data_format(P5_X_FW_DEBUG_MODE);
 	if (ret < 0)
 		goto out;
 
@@ -787,7 +787,7 @@ static ssize_t ilitek_proc_get_debug_mode_data_read(struct file *filp, char __us
 		goto out;
 
 	/* change to demo mode */
-	ret = ilitek_tddi_report_data_format(P5_X_FW_DEMO_MODE);
+	ret = ilitek_tddi_switch_tp_data_format(P5_X_FW_DEMO_MODE);
 	if (ret < 0)
 		goto out;
 
@@ -1089,11 +1089,11 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 		idev->netlink = !idev->netlink;
 		ipio_info("netlink flag= %d\n", idev->netlink);
 	} else if (strncmp(cmd, "switchtestmode", strlen(cmd)) == 0) {
-		ilitek_tddi_switch_mode(P5_X_FW_TEST_MODE);
+		ilitek_tddi_switch_tp_mode(P5_X_FW_TEST_MODE);
 	} else if (strncmp(cmd, "switchdebugmode", strlen(cmd)) == 0) {
-		ilitek_tddi_report_data_format(P5_X_FW_DEBUG_MODE);
+		ilitek_tddi_switch_tp_data_format(P5_X_FW_DEBUG_MODE);
 	} else if (strncmp(cmd, "switchdemomode", strlen(cmd)) == 0) {
-		ilitek_tddi_report_data_format(P5_X_FW_DEMO_MODE);
+		ilitek_tddi_switch_tp_data_format(P5_X_FW_DEMO_MODE);
 	} else if (strncmp(cmd, "dbgflag", strlen(cmd)) == 0) {
 		idev->debug_node_open = !idev->debug_node_open;
 		ipio_info("debug flag message = %d\n", idev->debug_node_open);
@@ -1589,7 +1589,7 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 			break;
 		}
 		ipio_info("ioctl: switch fw format = %d\n", szBuf[0]);
-		ret = ilitek_tddi_report_data_format(szBuf[0]);
+		ret = ilitek_tddi_switch_tp_data_format(szBuf[0]);
 		break;
 	case ILITEK_IOCTL_TP_MODE_STATUS:
 		ipio_info("ioctl: current firmware mode = %d", idev->actual_tp_mode);
