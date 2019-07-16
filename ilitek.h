@@ -130,7 +130,8 @@
 #define CSV_LCM_ON_PATH			"/sdcard/ilitek_mp_lcm_on_log"
 #define CSV_LCM_OFF_PATH		"/sdcard/ilitek_mp_lcm_off_log"
 #define INI_NAME_PATH			"/sdcard/mp.ini"
-#define UPDATE_FW_PATH			"/sdcard/ILITEK_FW"
+#define UPDATE_FW_FILP_PATH		"/sdcard/ILITEK_FW"
+#define UPDATE_FW_REQUEST_PATH		"ILITEK_FW"
 #define POWER_STATUS_PATH		"/sys/class/power_supply/battery/status"
 #define DUMP_FLASH_PATH			"/sdcard/flash_dump"
 #define DUMP_IRAM_PATH			"/sdcard/iram_dump"
@@ -563,6 +564,7 @@ struct ilitek_tddi_dev {
 	u8 stx;
 	u8 srx;
 	u8 *fw_dma_buf;
+	struct firmware tp_fw;
 
 	int actual_tp_mode;
 	int actual_tp_data_format;

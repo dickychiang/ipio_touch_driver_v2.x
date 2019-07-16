@@ -1313,21 +1313,21 @@ static int ilitek_tddi_fw_hex_convert(u8 *phex, int size, u8 *pfw)
 
 static int ilitek_tdd_fw_hex_open(u8 open_file_method, u8 *pfw)
 {
-	int fsize = 1;
-	u8 *hex_buffer = NULL;
+	int fsize = 0;
 	const struct firmware *fw = NULL;
 	struct file *f = NULL;
 	mm_segment_t old_fs;
 	loff_t pos = 0;
 
 	ipio_info("Open file method = %s, path = %s\n",
-		open_file_method ? "FILP_OPEN" : "REQUEST_FIRMWARE", UPDATE_FW_PATH);
+		open_file_method ? "FILP_OPEN" : "REQUEST_FIRMWARE",
+		open_file_method ? UPDATE_FW_FILP_PATH : UPDATE_FW_REQUEST_PATH);
 
 	switch (open_file_method) {
 	case REQUEST_FIRMWARE:
-		if (request_firmware(&fw, UPDATE_FW_PATH, idev->dev) < 0) {
+		if (request_firmware(&fw, UPDATE_FW_REQUEST_PATH, idev->dev) < 0) {
 			ipio_err("Request firmware failed\n");
-			return -ENOMEM;
+			goto convert_hex;
 		}
 
 		fsize = fw->size;
@@ -1335,39 +1335,52 @@ static int ilitek_tdd_fw_hex_open(u8 open_file_method, u8 *pfw)
 		if (fsize <= 0) {
 			ipio_err("The size of file is zero\n");
 			release_firmware(fw);
-			return -ENOMEM;
+			goto convert_hex;
 		}
 
-		hex_buffer = vmalloc(fsize * sizeof(u8));
-		if (ERR_ALLOC_MEM(hex_buffer)) {
-			ipio_err("Failed to allocate hex_buffer memory, %ld\n", PTR_ERR(hex_buffer));
-			release_firmware(fw);
-			return -ENOMEM;
+		ipio_vfree((void **) & (idev->tp_fw.data));
+		idev->tp_fw.size = 0;
+		idev->tp_fw.data = vmalloc(fsize);
+		if (!idev->tp_fw.data) {
+			ipio_err("Failed to allocate tp_fw by vmalloc, try again\n");
+			idev->tp_fw.data = vmalloc(fsize);
+			if (!idev->tp_fw.data) {
+				ipio_err("Failed to allocate tp_fw after retry\n");
+				return -ENOMEM;
+			}
 		}
 
-		ipio_memcpy(hex_buffer, fw->data, fsize * sizeof(*fw->data), fsize);
+		/* Copy fw data got from request_firmware to global */
+		ipio_memcpy((u8 *)idev->tp_fw.data, fw->data, fsize * sizeof(*fw->data), fsize);
+		idev->tp_fw.size = fsize;
 		release_firmware(fw);
 		break;
 	case FILP_OPEN:
-		f = filp_open(UPDATE_FW_PATH, O_RDONLY, 0644);
+		f = filp_open(UPDATE_FW_FILP_PATH, O_RDONLY, 0644);
 		if (ERR_ALLOC_MEM(f)) {
-			ipio_err("Failed to open the file at %ld.\n", PTR_ERR(f));
-			return -ENOMEM;
+			ipio_err("Failed to open the file at %ld, try to load it from tp_fw\n", PTR_ERR(f));
+			goto convert_hex;
 		}
 
 		fsize = f->f_inode->i_size;
 		ipio_info("fsize = %d\n", fsize);
 		if (fsize <= 0) {
-			ipio_err("The size of file is invaild\n");
+			ipio_err("The size of file is invaild, try to load it from tp_fw\n");
 			filp_close(f, NULL);
-			return -ENOMEM;
+			goto convert_hex;
 		}
 
-		hex_buffer = vmalloc(fsize * sizeof(u8));
-		if (ERR_ALLOC_MEM(hex_buffer)) {
-			ipio_err("Failed to allocate hex_buffer memory, %ld\n", PTR_ERR(hex_buffer));
-			filp_close(f, NULL);
-			return -ENOMEM;
+		ipio_vfree((void **) & (idev->tp_fw.data));
+		idev->tp_fw.size = 0;
+		idev->tp_fw.data = vmalloc(fsize);
+		if (idev->tp_fw.data == NULL) {
+			ipio_err("Failed to allocate tp_fw by vmalloc, try again\n");
+			idev->tp_fw.data = vmalloc(fsize);
+			if (idev->tp_fw.data == NULL) {
+				ipio_err("Failed to allocate tp_fw after retry\n");
+				filp_close(f, NULL);
+				return -ENOMEM;
+			}
 		}
 
 		/* ready to map user's memory to obtain data by reading files */
@@ -1375,22 +1388,27 @@ static int ilitek_tdd_fw_hex_open(u8 open_file_method, u8 *pfw)
 		set_fs(get_ds());
 		set_fs(KERNEL_DS);
 		pos = 0;
-		vfs_read(f, hex_buffer, fsize, &pos);
+		vfs_read(f, (u8 *)idev->tp_fw.data, fsize, &pos);
 		set_fs(old_fs);
 		filp_close(f, NULL);
+		idev->tp_fw.size = fsize;
 		break;
 	default:
 		ipio_err("Unknown open file method, %d\n", open_file_method);
 		break;
 	}
 
-	/* Convert hex and copy data from hex_buffer to pfw */
-	if (ilitek_tddi_fw_hex_convert(hex_buffer, fsize, pfw) < 0) {
-		ipio_err("Convert hex file failed\n");
-		ipio_vfree((void **)&hex_buffer);
+convert_hex:
+	/* Convert hex and copy data from tp_fw.data to pfw */
+	if (!ERR_ALLOC_MEM(idev->tp_fw.data) && idev->tp_fw.size > 0) {
+		if (ilitek_tddi_fw_hex_convert((u8 *)idev->tp_fw.data, idev->tp_fw.size, pfw) < 0) {
+			ipio_err("Convert hex file failed\n");
+			return -1;
+		}
+	} else {
+		ipio_err("tp_fw is NULL or fsize(%d) is zero\n", fsize);
 		return -1;
 	}
-	ipio_vfree((void **)&hex_buffer);
 	return 0;
 }
 
