@@ -104,7 +104,7 @@
 #define TDDI_INTERFACE			BUS_SPI /* BUS_I2C(0x18) or BUS_SPI(0x1C) */
 #define VDD_VOLTAGE			1800000
 #define VCC_VOLTAGE			1800000
-#define SPI_CLK				(10*M)
+#define SPI_CLK				(10*MEGA_HZ)
 #define SPI_RETRY			5
 #define IRQ_GPIO_NUM			66
 #define WQ_ESD_DELAY			4000
@@ -162,6 +162,7 @@ do {									\
 #define ERR_ALLOC_MEM(X)	((IS_ERR(X) || X == NULL) ? 1 : 0)
 #define K			(1024)
 #define M			(K * K)
+#define MEGA_HZ			1000000
 #define ENABLE			1
 #define START			1
 #define ON			1
