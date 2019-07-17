@@ -346,7 +346,7 @@ int ilitek_plat_irq_register(int type)
 	return ret;
 }
 
-#ifdef CONFIG_FB
+#if defined(CONFIG_FB) || defined(CONFIG_DRM_MSM)
 static int ilitek_plat_notifier_fb(struct notifier_block *self, unsigned long event, void *data)
 {
 	int *blank;
@@ -361,26 +361,50 @@ static int ilitek_plat_notifier_fb(struct notifier_block *self, unsigned long ev
 	if (evdata && evdata->data) {
 		blank = evdata->data;
 		switch (*blank) {
+#ifdef CONFIG_DRM_MSM
+		case MSM_DRM_BLANK_POWERDOWN:
+#else
 		case FB_BLANK_POWERDOWN:
+#endif
 #ifdef CONFIG_PLAT_SPRD
 		case DRM_MODE_DPMS_OFF:
 #endif /* CONFIG_PLAT_SPRD */
 			if (TP_SUSPEND_PRIO) {
+#ifdef CONFIG_DRM_MSM
+				if (event != MSM_DRM_EARLY_EVENT_BLANK)
+#else
 				if (event != FB_EARLY_EVENT_BLANK)
+#endif
 					return NOTIFY_DONE;
 			} else {
+#ifdef CONFIG_DRM_MSM
+				if (event != MSM_DRM_EVENT_BLANK)
+#else
 				if (event != FB_EVENT_BLANK)
+#endif
 					return NOTIFY_DONE;
 			}
 			if (ilitek_tddi_sleep_handler(TP_SUSPEND) < 0)
 				ipio_err("TP suspend failed\n");
 			break;
+#ifdef CONFIG_DRM_MSM
+		case MSM_DRM_BLANK_UNBLANK:
+		case MSM_DRM_BLANK_NORMAL:
+#else
 		case FB_BLANK_UNBLANK:
 		case FB_BLANK_NORMAL:
+#endif
+
 #ifdef CONFIG_PLAT_SPRD
 		case DRM_MODE_DPMS_ON:
 #endif /* CONFIG_PLAT_SPRD */
-			if (event == FB_EVENT_BLANK) {
+
+#ifdef CONFIG_DRM_MSM
+			if (event == MSM_DRM_EVENT_BLANK)
+#else
+			if (event == FB_EVENT_BLANK)
+#endif
+			{
 				if (ilitek_tddi_sleep_handler(TP_RESUME) < 0)
 					ipio_err("TP resume failed\n");
 
@@ -409,9 +433,14 @@ static void ilitek_plat_late_resume(struct early_suspend *h)
 
 static void ilitek_plat_sleep_init(void)
 {
-#ifdef CONFIG_FB
+#ifdef CONFIG_FB || defined(CONFIG_DRM_MSM)
 	ipio_info("Init notifier_fb struct\n");
 	idev->notifier_fb.notifier_call = ilitek_plat_notifier_fb;
+#if defined(CONFIG_DRM_MSM)
+		if (msm_drm_register_client(&idev->notifier_fb)) {
+			ipio_err("msm_drm_register_client Unable to register fb_notifier\n");
+		}
+#else
 #ifdef CONFIG_PLAT_SPRD
 	if (adf_register_client(&idev->notifier_fb))
 		ipio_err("Unable to register notifier_fb\n");
@@ -419,6 +448,7 @@ static void ilitek_plat_sleep_init(void)
 	if (fb_register_client(&idev->notifier_fb))
 		ipio_err("Unable to register notifier_fb\n");
 #endif /* CONFIG_PLAT_SPRD */
+#endif /* CONFIG_DRM_MSM */
 #else
 	ipio_info("Init eqarly_suspend struct\n");
 	idev->early_suspend.suspend = ilitek_plat_early_suspend;

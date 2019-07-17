@@ -93,6 +93,10 @@
 #include <linux/earlysuspend.h>
 #endif
 
+#ifdef CONFIG_DRM_MSM
+#include <linux/msm_drm_notify.h>
+#endif
+
 #ifdef CONFIG_MTK_SPI
 #include "mt_spi.h"
 #include "sync_write.h"
