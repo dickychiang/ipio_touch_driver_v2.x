@@ -118,6 +118,7 @@
 #define READ_GL_INFO			DISABLE
 #define REGULATOR_POWER			DISABLE
 #define TP_SUSPEND_PRIO			ENABLE
+#define RESUME_BY_DDI			DISABLE
 
 /* Plaform compatibility */
 // #define CONFIG_PLAT_SPRD
@@ -614,6 +615,8 @@ struct ilitek_tddi_dev {
 	bool fw_uart_en;
 	bool force_fw_update;
 	bool irq_after_recovery;
+	bool ddi_rest_done;
+	bool resume_by_ddi;
 
 	atomic_t irq_stat;
 	atomic_t tp_reset;
@@ -759,6 +762,9 @@ extern void ilitek_tddi_ic_init(void);
 extern void ilitek_tddi_fw_uart_ctrl(u8 ctrl);
 
 /* Prototypes for tddi events */
+#ifdef RESUME_BY_DDI
+extern void ilitek_resume_by_ddi(void);
+#endif
 extern int ilitek_tddi_proximity_far(int mode);
 extern int ilitek_tddi_proximity_near(int mode);
 extern int ilitek_tddi_switch_tp_mode(u8 data);

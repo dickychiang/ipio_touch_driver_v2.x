@@ -802,12 +802,17 @@ static int ilitek_tddi_fw_iram_upgrade(u8 *pfw)
 	u32 mode, crc, dma;
 	u8 *fw_ptr = NULL;
 
-	if (idev->actual_tp_mode != P5_X_FW_GESTURE_MODE)
-		ilitek_tddi_reset_ctrl(idev->reset);
+	if (!idev->ddi_rest_done) {
+		if (idev->actual_tp_mode != P5_X_FW_GESTURE_MODE)
+			ilitek_tddi_reset_ctrl(idev->reset);
 
-	ret = ilitek_ice_mode_ctrl(ENABLE, OFF);
-	if (ret < 0)
-		return ret;
+		ret = ilitek_ice_mode_ctrl(ENABLE, OFF);
+		if (ret < 0)
+			return ret;
+	} else {
+		/* Restore it if the wq of load_fw_ddi has been called. */
+		idev->ddi_rest_done = false;
+	}
 
 	ret = ilitek_tddi_ic_watch_dog_ctrl(ILI_WRITE, DISABLE);
 	if (ret < 0)
