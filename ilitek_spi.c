@@ -362,6 +362,7 @@ static int core_spi_ice_mode_disable(void)
 
 static int core_spi_ice_mode_enable(void)
 {
+	u8 cmd[9] = {0x82, 0x25, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3};
 	u8 txbuf[5] = {0x82, 0x1F, 0x62, 0x10, 0x18};
 	u8 rxbuf[2] = {0};
 
@@ -374,6 +375,14 @@ static int core_spi_ice_mode_enable(void)
 	if (rxbuf[0] != SPI_ACK) {
 		ipio_err("Check SPI_ACK failed (0x%x)\n", rxbuf[0]);
 		return DO_SPI_RECOVER;
+	}
+
+	/* if system is suspended, wake up our spi pll clock before communication. */
+	if (idev->tp_suspend) {
+		if (idev->spi_write_then_read(idev->spi, cmd, sizeof(cmd), rxbuf, 0) < 0) {
+			ipio_err("spi write wakeup cmd failed\n");
+			return -EIO;
+		}
 	}
 
 	if (idev->spi_write_then_read(idev->spi, txbuf, 5, rxbuf, 0) < 0) {

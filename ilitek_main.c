@@ -401,6 +401,7 @@ int ilitek_tddi_sleep_handler(int mode)
 				ipio_err("Write sleep in cmd failed\n");
 		}
 		ipio_info("TP suspend end\n");
+		idev->tp_suspend = true;
 		break;
 	case TP_DEEP_SLEEP:
 		ipio_info("TP deep suspend start\n");
@@ -420,10 +421,13 @@ int ilitek_tddi_sleep_handler(int mode)
 				ipio_err("Write deep sleep in cmd failed\n");
 		}
 		ipio_info("TP deep suspend end\n");
+		idev->tp_suspend = true;
 		break;
 	case TP_RESUME:
 		if (!idev->resume_by_ddi) {
 			ipio_info("TP resume start\n");
+			idev->tp_suspend = false;
+
 			if (idev->gesture)
 				disable_irq_wake(idev->irq_num);
 
