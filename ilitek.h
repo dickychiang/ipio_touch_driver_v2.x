@@ -648,6 +648,7 @@ struct ilitek_tddi_dev {
 	bool irq_after_recovery;
 	bool ddi_rest_done;
 	bool resume_by_ddi;
+	bool tp_suspend;
 
 	atomic_t irq_stat;
 	atomic_t tp_reset;
