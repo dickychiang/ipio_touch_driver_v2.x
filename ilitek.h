@@ -93,6 +93,10 @@
 #include <linux/earlysuspend.h>
 #endif
 
+#ifdef CONFIG_DRM_MSM
+#include <linux/msm_drm_notify.h>
+#endif
+
 #ifdef CONFIG_MTK_SPI
 #include "mt_spi.h"
 #include "sync_write.h"
@@ -104,7 +108,7 @@
 #define TDDI_INTERFACE			BUS_SPI /* BUS_I2C(0x18) or BUS_SPI(0x1C) */
 #define VDD_VOLTAGE			1800000
 #define VCC_VOLTAGE			1800000
-#define SPI_CLK				(10*M)
+#define SPI_CLK				(10*MEGA_HZ)
 #define SPI_RETRY			5
 #define IRQ_GPIO_NUM			66
 #define WQ_ESD_DELAY			4000
@@ -118,6 +122,7 @@
 #define READ_GL_INFO			DISABLE
 #define REGULATOR_POWER			DISABLE
 #define TP_SUSPEND_PRIO			ENABLE
+#define RESUME_BY_DDI			DISABLE
 
 /* Plaform compatibility */
 // #define CONFIG_PLAT_SPRD
@@ -130,7 +135,8 @@
 #define CSV_LCM_ON_PATH			"/sdcard/ilitek_mp_lcm_on_log"
 #define CSV_LCM_OFF_PATH		"/sdcard/ilitek_mp_lcm_off_log"
 #define INI_NAME_PATH			"/sdcard/mp.ini"
-#define UPDATE_FW_PATH			"/sdcard/ILITEK_FW"
+#define UPDATE_FW_FILP_PATH		"/sdcard/ILITEK_FW"
+#define UPDATE_FW_REQUEST_PATH		"ILITEK_FW"
 #define POWER_STATUS_PATH		"/sys/class/power_supply/battery/status"
 #define DUMP_FLASH_PATH			"/sdcard/flash_dump"
 #define DUMP_IRAM_PATH			"/sdcard/iram_dump"
@@ -160,6 +166,7 @@ do {									\
 #define ERR_ALLOC_MEM(X)	((IS_ERR(X) || X == NULL) ? 1 : 0)
 #define K			(1024)
 #define M			(K * K)
+#define MEGA_HZ			1000000
 #define ENABLE			1
 #define START			1
 #define ON			1
@@ -587,6 +594,7 @@ struct ilitek_tddi_dev {
 	u8 stx;
 	u8 srx;
 	u8 *fw_dma_buf;
+	struct firmware tp_fw;
 
 	int actual_tp_mode;
 	int actual_tp_data_format;
@@ -638,6 +646,8 @@ struct ilitek_tddi_dev {
 	bool fw_uart_en;
 	bool force_fw_update;
 	bool irq_after_recovery;
+	bool ddi_rest_done;
+	bool resume_by_ddi;
 
 	atomic_t irq_stat;
 	atomic_t tp_reset;
@@ -784,6 +794,9 @@ extern void ilitek_tddi_ic_init(void);
 extern void ilitek_tddi_fw_uart_ctrl(u8 ctrl);
 
 /* Prototypes for tddi events */
+#ifdef RESUME_BY_DDI
+extern void ilitek_resume_by_ddi(void);
+#endif
 extern int ilitek_tddi_proximity_far(int mode);
 extern int ilitek_tddi_proximity_near(int mode);
 extern int ilitek_tddi_switch_tp_mode(u8 data);

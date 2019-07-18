@@ -30,6 +30,58 @@ static struct workqueue_struct *bat_wq;
 static struct delayed_work esd_work;
 static struct delayed_work bat_work;
 
+#ifdef RESUME_BY_DDI
+static struct workqueue_struct	*resume_by_ddi_wq = NULL;
+static struct work_struct	resume_by_ddi_work;
+
+static void ilitek_resume_by_ddi_work(struct work_struct *work)
+{
+	mutex_lock(&idev->touch_mutex);
+
+	if (idev->gesture)
+		disable_irq_wake(idev->irq_num);
+
+	/* Set tp as demo mode and reload code if it's iram. */
+	idev->actual_tp_mode = P5_X_FW_DEMO_MODE;
+	if (idev->fw_upgrade_mode == UPGRADE_IRAM)
+		ilitek_tddi_fw_upgrade_handler(NULL);
+	else
+		ilitek_tddi_reset_ctrl(idev->reset);
+
+	ilitek_plat_irq_enable();
+	ipio_info("TP resume end by wq\n");
+	ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
+	ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
+	mutex_unlock(&idev->touch_mutex);
+}
+
+void ilitek_resume_by_ddi(void)
+{
+	if (!resume_by_ddi_wq) {
+		ipio_info("resume_by_ddi_wq is null\n");
+		return;
+	}
+
+	mutex_lock(&idev->touch_mutex);
+
+	ipio_info("TP resume start called by ddi\n");
+
+	/*
+	 * To match the timing of sleep out, the first of mipi cmd must be sent within 10ms
+	 * after TP reset. Because of that, we create a wq doing host download for resume.
+	 */
+	atomic_set(&idev->fw_stat, ENABLE);
+	ilitek_tddi_reset_ctrl(idev->reset);
+	ilitek_ice_mode_ctrl(ENABLE, OFF);
+	idev->ddi_rest_done = true;
+	idev->resume_by_ddi = true;
+	mdelay(5);
+	queue_work(resume_by_ddi_wq, &(resume_by_ddi_work));
+
+	mutex_unlock(&idev->touch_mutex);
+}
+#endif
+
 int ilitek_tddi_mp_test_handler(char *apk, bool lcm_on)
 {
 	int ret = 0;
@@ -302,6 +354,12 @@ static void ilitek_tddi_wq_init(void)
 
 	INIT_DELAYED_WORK(&esd_work, ilitek_tddi_wq_esd_check);
 	INIT_DELAYED_WORK(&bat_work, ilitek_tddi_wq_bat_check);
+
+#ifdef RESUME_BY_DDI
+	resume_by_ddi_wq = create_singlethread_workqueue("resume_by_ddi_wq");
+	WARN_ON(!resume_by_ddi_wq);
+	INIT_WORK(&resume_by_ddi_work, ilitek_resume_by_ddi_work);
+#endif
 }
 
 int ilitek_tddi_sleep_handler(int mode)
@@ -331,7 +389,7 @@ int ilitek_tddi_sleep_handler(int mode)
 		if (ilitek_tddi_ic_func_ctrl("sense", DISABLE) < 0)
 			ipio_err("Write sense stop cmd failed\n");
 
-		if (ilitek_tddi_ic_check_busy(50, 50) < 0)
+		if (ilitek_tddi_ic_check_busy(50, 20) < 0)
 			ipio_err("Check busy timeout during suspend\n");
 
 		if (idev->gesture) {
@@ -349,7 +407,7 @@ int ilitek_tddi_sleep_handler(int mode)
 		if (ilitek_tddi_ic_func_ctrl("sense", DISABLE) < 0)
 			ipio_err("Write sense stop cmd failed\n");
 
-		if (ilitek_tddi_ic_check_busy(50, 50) < 0)
+		if (ilitek_tddi_ic_check_busy(50, 20) < 0)
 			ipio_err("Check busy timeout during deep suspend\n");
 
 		if (idev->gesture) {
@@ -364,24 +422,25 @@ int ilitek_tddi_sleep_handler(int mode)
 		ipio_info("TP deep suspend end\n");
 		break;
 	case TP_RESUME:
-		ipio_info("TP resume start\n");
-		if (idev->gesture)
-			disable_irq_wake(idev->irq_num);
+		if (!idev->resume_by_ddi) {
+			ipio_info("TP resume start\n");
+			if (idev->gesture)
+				disable_irq_wake(idev->irq_num);
 
-		/* Set tp as demo mode and reload code if it's iram. */
-		idev->actual_tp_mode = P5_X_FW_AP_MODE;
-		if (idev->fw_upgrade_mode == UPGRADE_IRAM) {
-			if (ilitek_tddi_fw_upgrade_handler(NULL) < 0)
-				ipio_err("FW upgrade failed during resume\n");
-		} else {
-			if (ilitek_tddi_reset_ctrl(idev->reset) < 0)
-				ipio_err("TP Reset failed during resume\n");
+			/* Set tp as demo mode and reload code if it's iram. */
+			idev->actual_tp_mode = P5_X_FW_AP_MODE;
+			if (idev->fw_upgrade_mode == UPGRADE_IRAM) {
+				if (ilitek_tddi_fw_upgrade_handler(NULL) < 0)
+					ipio_err("FW upgrade failed during resume\n");
+			} else {
+				if (ilitek_tddi_reset_ctrl(idev->reset) < 0)
+					ipio_err("TP Reset failed during resume\n");
+			}
+			ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
+			ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
+			ipio_info("TP resume end\n");
 		}
-
 		ilitek_plat_irq_enable();
-		ipio_info("TP resume end\n");
-		ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
-		ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
 		break;
 	default:
 		ipio_err("Unknown sleep mode, %d\n", mode);
