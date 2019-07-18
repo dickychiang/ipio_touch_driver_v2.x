@@ -22,6 +22,35 @@
 
 #include "ilitek.h"
 
+/*gesture info mode*/
+struct demo_debug_info_id0 {
+	u8 id;
+	u8 app_sys_powr_state_e : 3;
+	u8 app_sys_state_e : 3;
+	u8 tp_state_e : 2;
+
+	u8 touch_palm_state_e : 2;
+	u8 app_an_statu_e : 3;
+	u8 app_sys_check_bg_abnormal : 1;
+	u8 g_b_wrong_bg: 1;
+	u8 reserved0 : 1;
+
+	u8 status_of_dynamic_th_e : 4;
+	u8 reserved1 : 4;
+
+	u32 algo_pt_status0 : 3;
+	u32 algo_pt_status1 : 3;
+	u32 algo_pt_status2 : 3;
+	u32 algo_pt_status3 : 3;
+	u32 algo_pt_status4 : 3;
+	u32 algo_pt_status5 : 3;
+	u32 algo_pt_status6 : 3;
+	u32 algo_pt_status7 : 3;
+	u32 algo_pt_status8 : 3;
+	u32 algo_pt_status9 : 3;
+	u32 reserved2 : 2;
+};
+
 void ilitek_dump_data(void *data, int type, int len, int row_len, const char *name)
 {
 	int i, row = 31;
@@ -335,7 +364,7 @@ int ilitek_tddi_proximity_far(int mode)
 			break;
 		}
 
-		ret = ilitek_tddi_switch_mode(P5_X_FW_GESTURE_MODE);
+		ret = ilitek_tddi_switch_tp_mode(P5_X_FW_GESTURE_MODE);
 		if (ret < 0)
 			ipio_err("Switch to gesture mode failed during proximity far\n");
 		break;
@@ -349,8 +378,12 @@ int ilitek_tddi_proximity_far(int mode)
 
 int ilitek_tddi_move_gesture_code_flash(int mode)
 {
-	ipio_info();
-	return ilitek_tddi_switch_mode(P5_X_FW_GESTURE_MODE);
+	int ret = 0;
+
+	ipio_info("Switch to Gesture mode, lpwg cmd = %d\n",  idev->gesture_mode);
+	ret = ilitek_tddi_switch_tp_data_format(idev->gesture_mode);
+
+	return ret;
 }
 
 int ilitek_tddi_move_gesture_code_iram(int mode)
@@ -362,8 +395,8 @@ int ilitek_tddi_move_gesture_code_iram(int mode)
 	if (ilitek_tddi_ic_func_ctrl("lpwg", 0x3) < 0)
 		ipio_err("write gesture flag failed\n");
 
-	if (ilitek_tddi_switch_mode(P5_X_FW_GESTURE_MODE) < 0)
-		ipio_err("Switch to gesture mode failed during moving code\n");
+	ipio_info("Switch to Gesture mode, lpwg cmd = %d\n",  mode);
+	ilitek_tddi_switch_tp_data_format(mode);
 
 	for (i = 0; i < timeout; i++) {
 		/* Prepare Check Ready */
@@ -520,6 +553,49 @@ int ilitek_tddi_touch_esd_gesture_iram(void)
 		ipio_err("write 0x1,0xA,0x6 error");
 
 	return ret;
+}
+
+void demo_debug_info_id0(u8 *buf, size_t len)
+{
+	struct demo_debug_info_id0 id0;
+
+	ipio_memcpy(&id0, buf, sizeof(id0), len);
+	ipio_info("id0 len = %d,strucy len = %ld", (int)len, sizeof(id0));
+
+	ipio_info("id = %d\n", id0.id);
+	ipio_info("app_sys_powr_state_e = %d\n", id0.app_sys_powr_state_e);
+	ipio_info("app_sys_state_e = %d\n", id0.app_sys_state_e);
+	ipio_info("tp_state_e = %d\n", id0.tp_state_e);
+	ipio_info("touch_palm_state_e = %d\n", id0.touch_palm_state_e);
+	ipio_info("app_an_statu_e = %d\n", id0.app_an_statu_e);
+	ipio_info("app_sys_check_bg_abnormal = %d\n", id0.app_sys_check_bg_abnormal);
+	ipio_info("g_b_wrong_bg = %d\n", id0.g_b_wrong_bg);
+	ipio_info("status_of_dynamic_th_e = %d\n", id0.status_of_dynamic_th_e);
+	ipio_info("algo_pt_status0 = %d\n", id0.algo_pt_status0);
+	ipio_info("algo_pt_status1 = %d\n", id0.algo_pt_status1);
+	ipio_info("algo_pt_status2 = %d\n", id0.algo_pt_status2);
+	ipio_info("algo_pt_status3 = %d\n", id0.algo_pt_status3);
+	ipio_info("algo_pt_status4 = %d\n", id0.algo_pt_status4);
+	ipio_info("algo_pt_status5 = %d\n", id0.algo_pt_status5);
+	ipio_info("algo_pt_status6 = %d\n", id0.algo_pt_status6);
+	ipio_info("algo_pt_status7 = %d\n", id0.algo_pt_status7);
+	ipio_info("algo_pt_status8 = %d\n", id0.algo_pt_status8);
+	ipio_info("algo_pt_status9 = %d\n", id0.algo_pt_status9);
+}
+
+void demo_debug_info_mode(u8 *buf, size_t len)
+{
+	u8 *info_ptr;
+	u8 info_id, info_len;
+
+	ilitek_tddi_report_ap_mode(buf, P5_X_DEMO_MODE_PACKET_LEN);
+	info_ptr = buf + P5_X_DEMO_MODE_PACKET_LEN;
+	info_len = info_ptr[0];
+	info_id = info_ptr[1];
+
+	ipio_info("info len = %d ,id = %d\n", info_len, info_id);
+
+	idev->demo_debug_info[info_id](&info_ptr[1] , info_len);
 }
 
 int ilitek_tddi_debug_report_alloc(void)

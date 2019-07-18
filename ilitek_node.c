@@ -89,6 +89,13 @@
 #define ILITEK_COMPAT_IOCTL_TP_FW_UART_CTRL		_IOWR(ILITEK_IOCTL_MAGIC, 22, compat_uptr_t)
 #endif
 
+struct record_state {
+	u8 touch_palm_state_e : 2;
+	u8 app_an_statu_e : 3;
+	u8 app_sys_check_bg_abnormal : 1;
+	u8 g_b_wrong_bg : 1;
+};
+
 unsigned char g_user_buf[USER_STR_BUFF] = {0};
 
 int str2hex(char *str)
@@ -764,7 +771,7 @@ static ssize_t ilitek_proc_get_debug_mode_data_read(struct file *filp, char __us
 	file_write(&csv, true);
 
 	/* change to debug mode */
-	ret = ilitek_tddi_switch_tp_data_format(P5_X_FW_DEBUG_MODE);
+	ret = ilitek_tddi_switch_tp_data_format(DATA_FORMAT_DEBUG);
 	if (ret < 0)
 		goto out;
 
@@ -787,7 +794,7 @@ static ssize_t ilitek_proc_get_debug_mode_data_read(struct file *filp, char __us
 		goto out;
 
 	/* change to demo mode */
-	ret = ilitek_tddi_switch_tp_data_format(P5_X_FW_DEMO_MODE);
+	ret = ilitek_tddi_switch_tp_data_format(DATA_FORMAT_DEMO);
 	if (ret < 0)
 		goto out;
 
@@ -986,6 +993,149 @@ static ssize_t ilitek_proc_debug_level_read(struct file *filp, char __user *buff
 	return size;
 }
 
+int get_tp_recore_ctrl(int data)
+{
+	int ret = 0;
+
+	switch((int)data) {
+
+	case ENABLE_RECORD:
+		ipio_info("recore enable");
+		ret = ilitek_tddi_ic_func_ctrl("tp_recore", 1);
+		mdelay(200);
+		break;
+	case DATA_RECORD:
+		mdelay(50);
+		ipio_info("Get data");
+		ret = ilitek_tddi_ic_func_ctrl("tp_recore", 2);
+		if (ret < 0) {
+			ipio_err("cmd fail\n");
+			goto out;
+		}
+
+		ret = get_tp_recore_data();
+		if (ret < 0)
+			ipio_err("get data fail\n");
+
+		ipio_info("recore reset");
+		ret = ilitek_tddi_ic_func_ctrl("tp_recore", 3);
+		if (ret < 0) {
+			ipio_err("cmd fail\n");
+			goto out;
+		}
+		break;
+	case DISABLE_RECORD:
+		ipio_info("recore disable");
+		ret = ilitek_tddi_ic_func_ctrl("tp_recore", 0);
+		break;
+
+	}
+out:
+	return ret;
+
+}
+
+int get_tp_recore_data(void)
+{
+	u8 buf[8] = {0}, record_case = 0;
+	s8 index;
+	u16 *raw = NULL, *raw_ptr = NULL, frame_len;
+	u32 base_addr = 0x20000, addr, len, *ptr, i, j;
+	struct record_state record_stat;
+	bool ice = atomic_read(&idev->ice_stat);
+
+	if (idev->read(buf, sizeof(buf)) < 0) {
+		ipio_err("Get info fail\n");
+		return -1;
+	}
+
+	addr = ((buf[0] << 8) | buf[1]) + base_addr;
+	len = ((buf[2] << 8) | buf[3]);
+	index = buf[4];
+	record_case = buf[6];
+	ipio_memcpy(&record_stat, &buf[7], 1, 1);
+	ipio_info("addr = 0x%x, len = %d, lndex = 0x%d, record_case = 0x%x\n",
+		addr, len, index, record_case);
+	ilitek_dump_data(buf, 8, sizeof(buf), 0, "all record bytes");
+
+	raw = kcalloc(len, sizeof(u8), GFP_ATOMIC);
+	if (ERR_ALLOC_MEM(raw)) {
+		ipio_err("Failed to allocate packet memory, %ld\n", PTR_ERR(raw));
+		return -1;
+	}
+	ptr = (u32*)raw;
+
+	if (!ice)
+		ilitek_ice_mode_ctrl(ENABLE, ON);
+
+	for (i = 0, j = 0; i < len; i += 4, j++)
+		ptr[j] = ilitek_ice_mode_read((addr + i), &ptr[j], sizeof(u32));
+
+	frame_len = (len / 6);
+	for (i = 0; i < 3; i ++) {
+		raw_ptr = raw + (index * frame_len);
+		ilitek_dump_data(raw_ptr, 16, frame_len, idev->xch_num, "recore_data");
+		index--;
+		if(index < 0)
+			index = 2;
+	}
+
+	if (!ice)
+		ilitek_ice_mode_ctrl(DISABLE, ON);
+
+	if (record_case == 2) {
+		ipio_info("tp_palm_stat = %d\n", record_stat.touch_palm_state_e);
+		ipio_info("app_an_stat = %d\n", record_stat.app_an_statu_e);
+		ipio_info("app_check_abnor = %d\n", record_stat.app_sys_check_bg_abnormal);
+		ipio_info("wrong_bg = %d\n", record_stat.g_b_wrong_bg);
+	}
+
+	ipio_kfree((void **)&raw);
+
+	return 0;
+}
+
+void gesture_fail_reason(bool enable)
+{
+
+	u8 cmd[24] = {0};
+
+	/* set symbol */
+	if (ilitek_tddi_ic_func_ctrl("knock_en", 0x8) < 0)
+		ipio_err("set symbol failed");
+
+	/* enable gesture fail reason */
+	cmd[0] = 0x01;
+	cmd[1] = 0x0A;
+	cmd[2] = 0x10;
+	if (enable)
+		cmd[3] = 0x01;
+	else
+		cmd[3] = 0x00;
+	cmd[4] = 0xFF;
+	cmd[5] = 0xFF;
+	if ((idev->write(cmd, 6)) < 0)
+		ipio_err("enable gesture fail reason failed");
+
+	/* set gesture parameters */
+	cmd[0] = 0x01;
+	cmd[1] = 0x0A;
+	cmd[2] = 0x12;
+	cmd[3] = 0x01;
+	memset(cmd + 4, 0xFF, 20);
+	if ((idev->write(cmd, 24)) < 0)
+		ipio_err("set gesture parameters failed");
+
+	/* get gesture parameters */
+	cmd[0] = 0x01;
+	cmd[1] = 0x0A;
+	cmd[2] = 0x11;
+	cmd[3] = 0x01;
+	if ((idev->write(cmd, 4)) < 0)
+		ipio_err("get gesture parameters failed");
+
+}
+
 static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size_t size, loff_t *pos)
 {
 	int i, count = 0;
@@ -1024,6 +1174,27 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 
 	if (strncmp(cmd, "hwreset", strlen(cmd)) == 0) {
 		ilitek_tddi_reset_ctrl(TP_HW_RST_ONLY);
+	}else if (strcmp(cmd, "rawdatarecore") == 0) {
+		if (data[1] == 0)
+			get_tp_recore_ctrl(ENABLE_RECORD);
+		else if (data[1] == 1)
+			get_tp_recore_ctrl(DATA_RECORD);
+		else if (data[1] == 2)
+			get_tp_recore_ctrl(DISABLE_RECORD);
+	} else if (strcmp(cmd, "switchdemodebuginfomode") == 0) {
+		ilitek_tddi_switch_tp_data_format(DATA_FORMAT_DEMO_DEBUG_INFO);
+	} else if (strcmp(cmd, "gesturedemoen") == 0) {
+		if (data[1] == 0)
+			idev->gesture_demo_ctrl = DISABLE;
+		else
+			idev->gesture_demo_ctrl = ENABLE;
+		ilitek_tddi_switch_tp_data_format(DATA_FORMAT_GESTURE_DEMO);
+	} else if (strcmp(cmd, "gesturefailrsn") == 0) {
+		if (data[1] == 0)
+			gesture_fail_reason(DISABLE);
+		else
+			gesture_fail_reason(ENABLE);
+		ipio_info("%s gesture fail reason\n", data[1] ? "ENABLE" : "DISABLE");
 	} else if (strncmp(cmd, "icwholereset", strlen(cmd)) == 0) {
 		ilitek_ice_mode_ctrl(ENABLE, OFF);
 		ilitek_tddi_reset_ctrl(TP_IC_WHOLE_RST);
@@ -1080,10 +1251,10 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 			atomic_set(&idev->ice_stat, DISABLE);
 		ipio_info("ice mode flag = %d\n", atomic_read(&idev->ice_stat));
 	} else if (strncmp(cmd, "gesturenormal", strlen(cmd)) == 0) {
-		idev->gesture_mode = P5_X_FW_GESTURE_NORMAL_MODE;
+		idev->gesture_mode = DATA_FORMAT_GESTURE_NORMAL;
 		ipio_info("gesture mode = %d\n", idev->gesture_mode);
 	} else if (strncmp(cmd, "gestureinfo", strlen(cmd)) == 0) {
-		idev->gesture_mode = P5_X_FW_GESTURE_INFO_MODE;
+		idev->gesture_mode = DATA_FORMAT_GESTURE_INFO;
 		ipio_info("gesture mode = %d\n", idev->gesture_mode);
 	} else if (strncmp(cmd, "netlink", strlen(cmd)) == 0) {
 		idev->netlink = !idev->netlink;
@@ -1091,9 +1262,9 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 	} else if (strncmp(cmd, "switchtestmode", strlen(cmd)) == 0) {
 		ilitek_tddi_switch_tp_mode(P5_X_FW_TEST_MODE);
 	} else if (strncmp(cmd, "switchdebugmode", strlen(cmd)) == 0) {
-		ilitek_tddi_switch_tp_data_format(P5_X_FW_DEBUG_MODE);
+		ilitek_tddi_switch_tp_data_format(DATA_FORMAT_DEBUG);
 	} else if (strncmp(cmd, "switchdemomode", strlen(cmd)) == 0) {
-		ilitek_tddi_switch_tp_data_format(P5_X_FW_DEMO_MODE);
+		ilitek_tddi_switch_tp_data_format(DATA_FORMAT_DEMO);
 	} else if (strncmp(cmd, "dbgflag", strlen(cmd)) == 0) {
 		idev->debug_node_open = !idev->debug_node_open;
 		ipio_info("debug flag message = %d\n", idev->debug_node_open);
@@ -1589,7 +1760,10 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 			break;
 		}
 		ipio_info("ioctl: switch fw format = %d\n", szBuf[0]);
-		ret = ilitek_tddi_switch_tp_data_format(szBuf[0]);
+		if (szBuf[0] == 0)
+			ilitek_tddi_switch_tp_data_format(DATA_FORMAT_DEMO);
+		else if (szBuf[0] == 2)
+			ilitek_tddi_switch_tp_data_format(DATA_FORMAT_DEBUG);
 		break;
 	case ILITEK_IOCTL_TP_MODE_STATUS:
 		ipio_info("ioctl: current firmware mode = %d", idev->actual_tp_mode);

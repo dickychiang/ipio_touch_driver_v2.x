@@ -613,7 +613,8 @@ static int ilitek_spi_probe(struct spi_device *spi)
 
 	idev->spi_speed = ilitek_tddi_ic_spi_speed_ctrl;
 	idev->actual_tp_mode = P5_X_FW_AP_MODE;
-	idev->actual_tp_data_format = P5_X_FW_DEMO_MODE;
+	idev->actual_tp_data_format = DATA_FORMAT_DEMO;
+	idev->tp_data_len = P5_X_DEMO_MODE_PACKET_LEN;
 
 	if (TDDI_RST_BIND)
 		idev->reset = TP_IC_WHOLE_RST;
@@ -627,7 +628,8 @@ static int ilitek_spi_probe(struct spi_device *spi)
 	idev->gesture_move_code = ilitek_tddi_move_gesture_code_iram;
 	idev->esd_recover = ilitek_tddi_wq_esd_spi_check;
 	idev->ges_recover = ilitek_tddi_touch_esd_gesture_iram;
-	idev->gesture_mode = P5_X_FW_GESTURE_INFO_MODE;
+	idev->gesture_mode = DATA_FORMAT_GESTURE_INFO;
+	idev->gesture_demo_ctrl = DISABLE;
 	idev->wtd_ctrl = ON;
 	idev->report = ENABLE;
 	idev->netlink = DISABLE;

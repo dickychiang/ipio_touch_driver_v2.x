@@ -22,7 +22,7 @@
 
 #include "ilitek.h"
 
-#define PROTOCL_VER_NUM		7
+#define PROTOCL_VER_NUM		8
 static struct ilitek_protocol_info protocol_info[PROTOCL_VER_NUM] = {
 	/* length -> fw, protocol, tp, key, panel, core, func, window, cdc, mp_info */
 	[0] = {PROTOCOL_VER_500, 4, 4, 14, 30, 5, 5, 2, 8, 3, 8},
@@ -32,9 +32,10 @@ static struct ilitek_protocol_info protocol_info[PROTOCL_VER_NUM] = {
 	[4] = {PROTOCOL_VER_540, 9, 4, 14, 30, 5, 5, 3, 8, 15, 8},
 	[5] = {PROTOCOL_VER_550, 9, 4, 14, 30, 5, 5, 3, 8, 15, 14},
 	[6] = {PROTOCOL_VER_560, 9, 4, 14, 30, 5, 5, 3, 8, 15, 14},
+	[7] = {PROTOCOL_VER_570, 9, 4, 14, 30, 5, 5, 3, 8, 15, 14},
 };
 
-#define FUNC_CTRL_NUM	16
+#define FUNC_CTRL_NUM	19
 static struct ilitek_ic_func_ctrl func_ctrl[FUNC_CTRL_NUM] = {
 	/* cmd[3] = cmd, func, ctrl */
 	[0] = {"sense", {0x1, 0x1, 0x0}, 3},
@@ -53,6 +54,9 @@ static struct ilitek_ic_func_ctrl func_ctrl[FUNC_CTRL_NUM] = {
 	[13] = {"lock_point", {0x1, 0x13, 0x0}, 3},
 	[14] = {"active", {0x1, 0x14, 0x0}, 3},
 	[15] = {"idle", {0x1, 0x19, 0x0}, 3},
+	[16] = {"gesture_demo_en", {0x1, 0x16, 0x0}, 3},
+	[17] = {"tp_recore", {0x1, 0x18, 0x0}, 3},
+	[18] = {"knock_en", {0x1, 0xA, 0x8, 0x03, 0x0, 0x0}, 6},
 };
 
 #define CHIP_SUP_NUM		6
@@ -375,6 +379,16 @@ int ilitek_tddi_ic_func_ctrl(const char *name, int ctrl)
 	if (idev->protocol->ver >= PROTOCOL_VER_560) {
 		if (strncmp(func_ctrl[i].name, "gesture", strlen("gesture")) == 0 ||
 			strncmp(func_ctrl[i].name, "phone_cover_window", strlen("phone_cover_window")) == 0) {
+			ipio_info("Non support %s function ctrl\n", func_ctrl[i].name);
+			ret = -1;
+			goto out;
+		}
+	}
+
+	if (idev->protocol->ver < PROTOCOL_VER_570) {
+		if (strncmp(func_ctrl[i].name, "gesture_demo_en", strlen("gesture_demo_en")) == 0 ||
+			strncmp(func_ctrl[i].name, "tp_recore", strlen("tp_recore")) == 0 ||
+			strncmp(func_ctrl[i].name, "knock_en", strlen("knock_en")) == 0) {
 			ipio_info("Non support %s function ctrl\n", func_ctrl[i].name);
 			ret = -1;
 			goto out;

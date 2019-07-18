@@ -236,6 +236,21 @@ enum TP_WQ_TYPE {
 	WQ_BAT,
 };
 
+enum OPPO_RECORD_DATA {
+	ENABLE_RECORD = 0,
+	DATA_RECORD,
+	DISABLE_RECORD
+};
+
+enum TP_DATA_FORMAT {
+	DATA_FORMAT_DEMO = 0,
+	DATA_FORMAT_DEBUG,
+	DATA_FORMAT_DEMO_DEBUG_INFO,
+	DATA_FORMAT_GESTURE_INFO,
+	DATA_FORMAT_GESTURE_NORMAL,
+	DATA_FORMAT_GESTURE_DEMO
+};
+
 #define TDDI_I2C_ADDR				0x41
 #define TDDI_DEV_ID				"ILITEK_TDDI"
 
@@ -417,113 +432,122 @@ enum TP_WQ_TYPE {
 #define FLASH4_reg_flash_dma_trigger_en			(BIT(24)|BIT(25)|BIT(26)|BIT(27)|BIT(28)|BIT(29)|BIT(30)|BIT(31))
 
 /* The example for the gesture virtual keys */
-#define GESTURE_DOUBLECLICK		0x58
-#define GESTURE_UP			0x60
-#define GESTURE_DOWN			0x61
-#define GESTURE_LEFT			0x62
-#define GESTURE_RIGHT			0x63
-#define GESTURE_M			0x64
-#define GESTURE_W			0x65
-#define GESTURE_C			0x66
-#define GESTURE_E			0x67
-#define GESTURE_V			0x68
-#define GESTURE_O			0x69
-#define GESTURE_S			0x6A
-#define GESTURE_Z			0x6B
-#define KEY_GESTURE_POWER		KEY_POWER
-#define KEY_GESTURE_UP			KEY_UP
-#define KEY_GESTURE_DOWN		KEY_DOWN
-#define KEY_GESTURE_LEFT		KEY_LEFT
-#define KEY_GESTURE_RIGHT		KEY_RIGHT
-#define KEY_GESTURE_O			KEY_O
-#define KEY_GESTURE_E			KEY_E
-#define KEY_GESTURE_M			KEY_M
-#define KEY_GESTURE_W			KEY_W
-#define KEY_GESTURE_S			KEY_S
-#define KEY_GESTURE_V			KEY_V
-#define KEY_GESTURE_C			KEY_C
-#define KEY_GESTURE_Z			KEY_Z
-#define KEY_GESTURE_F			KEY_F
-#define GESTURE_CODE_V_DOWN		0x6C
-#define GESTURE_CODE_V_LEFT		0x6D
-#define GESTURE_CODE_V_RIGHT		0x6E
-#define GESTURE_CODE_TWO_LINE_2_BOTTOM	0x6F
-#define GESTURE_F			0x70
-#define GESTURE_AT			0x71
-#define ESD_GESTURE_PWD			0xF38A94EF
-#define SPI_ESD_GESTURE_RUN		0x5B92E7F4
-#define I2C_ESD_GESTURE_RUN		0xA67C9DFE
-#define SPI_ESD_GESTURE_PWD_ADDR	0x25FF8
-#define I2C_ESD_GESTURE_PWD_ADDR	0x40054
+#define GESTURE_DOUBLECLICK				0x58
+#define GESTURE_UP					0x60
+#define GESTURE_DOWN					0x61
+#define GESTURE_LEFT					0x62
+#define GESTURE_RIGHT					0x63
+#define GESTURE_M					0x64
+#define GESTURE_W					0x65
+#define GESTURE_C					0x66
+#define GESTURE_E					0x67
+#define GESTURE_V					0x68
+#define GESTURE_O					0x69
+#define GESTURE_S					0x6A
+#define GESTURE_Z					0x6B
+#define KEY_GESTURE_POWER				KEY_POWER
+#define KEY_GESTURE_UP					KEY_UP
+#define KEY_GESTURE_DOWN				KEY_DOWN
+#define KEY_GESTURE_LEFT				KEY_LEFT
+#define KEY_GESTURE_RIGHT				KEY_RIGHT
+#define KEY_GESTURE_O					KEY_O
+#define KEY_GESTURE_E					KEY_E
+#define KEY_GESTURE_M					KEY_M
+#define KEY_GESTURE_W					KEY_W
+#define KEY_GESTURE_S					KEY_S
+#define KEY_GESTURE_V					KEY_V
+#define KEY_GESTURE_C					KEY_C
+#define KEY_GESTURE_Z					KEY_Z
+#define KEY_GESTURE_F					KEY_F
+#define GESTURE_CODE_V_DOWN				0x6C
+#define GESTURE_CODE_V_LEFT				0x6D
+#define GESTURE_CODE_V_RIGHT				0x6E
+#define GESTURE_CODE_TWO_LINE_2_BOTTOM			0x6F
+#define GESTURE_F					0x70
+#define GESTURE_AT					0x71
+#define ESD_GESTURE_PWD					0xF38A94EF
+#define SPI_ESD_GESTURE_RUN				0x5B92E7F4
+#define I2C_ESD_GESTURE_RUN				0xA67C9DFE
+#define SPI_ESD_GESTURE_PWD_ADDR			0x25FF8
+#define I2C_ESD_GESTURE_PWD_ADDR			0x40054
+
+/* FW data format */
+#define DATA_FORMAT_DEMO_CMD				0x00
+#define DATA_FORMAT_DEBUG_CMD				0x02
+#define DATA_FORMAT_DEMO_DEBUG_INFO_CMD 		0x04
+#define DATA_FORMAT_GESTURE_NORMAL_CMD 			0x01
+#define DATA_FORMAT_GESTURE_INFO_CMD			0x02
+#define P5_X_DEMO_MODE_PACKET_LEN			43 //SUMMER
+#define P5_X_INFO_HEADER_LENGTH				3
+#define P5_X_INFO_CHECKSUM_LENGTH			1
+#define P5_X_DEMO_DEBUG_INFO_ID0_LENGTH			10
+#define P5_X_DEBUG_MODE_PACKET_LENGTH			1280
+#define P5_X_TEST_MODE_PACKET_LENGTH			1180
+#define P5_X_GESTURE_NORMAL_LENGTH			8
+#define P5_X_GESTURE_INFO_LENGTH			170
 
 /* Protocol */
-#define PROTOCOL_VER_500		0x050000
-#define PROTOCOL_VER_510		0x050100
-#define PROTOCOL_VER_520		0x050200
-#define PROTOCOL_VER_530		0x050300
-#define PROTOCOL_VER_540		0x050400
-#define PROTOCOL_VER_550		0x050500
-#define PROTOCOL_VER_560		0x050600
-#define P5_X_READ_DATA_CTRL		0xF6
-#define P5_X_GET_TP_INFORMATION		0x20
-#define P5_X_GET_KEY_INFORMATION	0x27
-#define P5_X_GET_PANEL_INFORMATION	0x29
-#define P5_X_GET_FW_VERSION		0x21
-#define P5_X_GET_PROTOCOL_VERSION	0x22
-#define P5_X_GET_CORE_VERSION		0x23
-#define P5_X_MODE_CONTROL		0xF0
-#define P5_X_SET_CDC_INIT		0xF1
-#define P5_X_GET_CDC_DATA		0xF2
-#define P5_X_CDC_BUSY_STATE		0xF3
-#define P5_X_MP_TEST_MODE_INFO		0xFE
-#define P5_X_I2C_UART			0x40
-#define P5_X_FW_UNKNOWN_MODE		0xFF
-#define P5_X_FW_AP_MODE			0x00
-#define P5_X_FW_TEST_MODE		0x01
-#define P5_X_FW_DEMO_MODE		0x00
-#define P5_X_FW_DEBUG_MODE		0x02
-#define P5_X_FW_DEMO_DEBUG_INFO_MODE	0x04
-#define P5_X_FW_GESTURE_MODE		0x0F
-#define P5_X_FW_GESTURE_NORMAL_MODE	0x01
-#define P5_X_FW_GESTURE_INFO_MODE	0x02
-#define P5_X_FW_DELTA_DATA_MODE		0x03
-#define P5_X_FW_RAW_DATA_MODE		0x08
-#define P5_X_DEMO_MODE_PACKET_LENGTH	43
-#define P5_X_DEBUG_MODE_PACKET_LENGTH	1280
-#define P5_X_TEST_MODE_PACKET_LENGTH	1180
-#define P5_X_GESTURE_NORMAL_LENGTH	8
-#define P5_X_GESTURE_INFO_LENGTH	170
-#define P5_X_DEMO_PACKET_ID		0x5A
-#define P5_X_DEBUG_PACKET_ID		0xA7
-#define P5_X_TEST_PACKET_ID		0xF2
-#define P5_X_GESTURE_PACKET_ID		0xAA
-#define P5_X_I2CUART_PACKET_ID		0x7A
-#define P5_X_EDGE_PLAM_CTRL_1		0x01
-#define P5_X_EDGE_PLAM_CTRL_2		0x12
-#define SPI_WRITE			0x82
-#define SPI_READ			0x83
-#define SPI_ACK				0xA3
-#define TDDI_WDT_ON			0xA5
-#define TDDI_WDT_OFF			0x5A
+#define PROTOCOL_VER_500				0x050000
+#define PROTOCOL_VER_510				0x050100
+#define PROTOCOL_VER_520				0x050200
+#define PROTOCOL_VER_530				0x050300
+#define PROTOCOL_VER_540				0x050400
+#define PROTOCOL_VER_550				0x050500
+#define PROTOCOL_VER_560				0x050600
+#define PROTOCOL_VER_570				0x050700
+#define P5_X_READ_DATA_CTRL				0xF6
+#define P5_X_GET_TP_INFORMATION				0x20
+#define P5_X_GET_KEY_INFORMATION			0x27
+#define P5_X_GET_PANEL_INFORMATION			0x29
+#define P5_X_GET_FW_VERSION				0x21
+#define P5_X_GET_PROTOCOL_VERSION			0x22
+#define P5_X_GET_CORE_VERSION				0x23
+#define P5_X_MODE_CONTROL				0xF0
+#define P5_X_SET_CDC_INIT				0xF1
+#define P5_X_GET_CDC_DATA				0xF2
+#define P5_X_CDC_BUSY_STATE				0xF3
+#define P5_X_MP_TEST_MODE_INFO				0xFE
+#define P5_X_I2C_UART					0x40
+#define P5_X_FW_UNKNOWN_MODE				0xFF
+#define P5_X_FW_AP_MODE					0x00
+#define P5_X_FW_TEST_MODE				0x01
+#define P5_X_FW_GESTURE_MODE				0x0F
+#define P5_X_FW_DELTA_DATA_MODE				0x03
+#define P5_X_FW_RAW_DATA_MODE				0x08
+#define P5_X_DEMO_PACKET_ID				0x5A
+#define P5_X_DEBUG_PACKET_ID				0xA7
+#define P5_X_TEST_PACKET_ID				0xF2
+#define P5_X_GESTURE_PACKET_ID				0xAA
+#define P5_X_GESTURE_FAIL_ID				0xAE
+#define P5_X_I2CUART_PACKET_ID				0x7A
+#define P5_X_INFO_HEADER_PACKET_ID			0xB7
+#define P5_X_DEMO_DEBUG_INFO_PACKET_ID			0x5C
+#define P5_X_EDGE_PLAM_CTRL_1				0x01
+#define P5_X_EDGE_PLAM_CTRL_2				0x12
+#define SPI_WRITE					0x82
+#define SPI_READ					0x83
+#define SPI_ACK						0xA3
+#define TDDI_WDT_ON					0xA5
+#define TDDI_WDT_OFF					0x5A
 
 /* Chips */
-#define TDDI_PID_ADDR			0x4009C
-#define TDDI_OTP_ID_ADDR		0x400A0
-#define TDDI_ANA_ID_ADDR		0x400A4
-#define TDDI_PC_COUNTER_ADDR		0x44008
-#define TDDI_WDT_ADDR			0x5100C
-#define TDDI_WDT_ACTIVE_ADDR		0x51018
-#define TDDI_CHIP_RESET_ADDR		0x40050
-#define ILI9881_CHIP			0x9881
-#define ILI9881F_AA			0x98810F00
-#define ILI9881H_AD			0x98811103
-#define ILI9881H_AE			0x98811104
-#define ILI7807_CHIP			0x7807
-#define ILI7807G_AA			0x78071000
-#define ILI7807G_AB			0x78071001
-#define RAWDATA_NO_BK_SHIFT_9881H	8192
-#define RAWDATA_NO_BK_SHIFT_9881F	4096
-#define INFO_HEX_START_ADDR_64K		0xFFB4
+#define TDDI_PID_ADDR					0x4009C
+#define TDDI_OTP_ID_ADDR				0x400A0
+#define TDDI_ANA_ID_ADDR				0x400A4
+#define TDDI_PC_COUNTER_ADDR				0x44008
+#define TDDI_WDT_ADDR					0x5100C
+#define TDDI_WDT_ACTIVE_ADDR				0x51018
+#define TDDI_CHIP_RESET_ADDR				0x40050
+#define ILI9881_CHIP					0x9881
+#define ILI9881F_AA					0x98810F00
+#define ILI9881H_AD					0x98811103
+#define ILI9881H_AE					0x98811104
+#define ILI7807_CHIP					0x7807
+#define ILI7807G_AA					0x78071000
+#define ILI7807G_AB					0x78071001
+#define RAWDATA_NO_BK_SHIFT_9881H			8192
+#define RAWDATA_NO_BK_SHIFT_9881F			4096
+#define INFO_HEX_START_ADDR_64K				0xFFB4
 
 struct ilitek_tddi_dev {
 	struct i2c_client *i2c;
@@ -566,6 +590,7 @@ struct ilitek_tddi_dev {
 
 	int actual_tp_mode;
 	int actual_tp_data_format;
+	int tp_data_len;
 
 	int irq_num;
 	int irq_gpio;
@@ -589,6 +614,7 @@ struct ilitek_tddi_dev {
 	bool report;
 	bool gesture;
 	int gesture_mode;
+	int gesture_demo_ctrl;
 
 	u16 flash_mid;
 	u16 flash_devid;
@@ -635,6 +661,7 @@ struct ilitek_tddi_dev {
 	int (*esd_recover)(void);
 	void (*spi_speed)(bool enable);
 	int (*ges_recover)(void);
+	void (*demo_debug_info[5])(u8 *, size_t);
 };
 extern struct ilitek_tddi_dev *idev;
 
@@ -661,7 +688,7 @@ struct ilitek_protocol_info {
 
 struct ilitek_ic_func_ctrl {
 	const char *name;
-	u8 cmd[3];
+	u8 cmd[6];
 	int len;
 };
 
@@ -760,7 +787,7 @@ extern void ilitek_tddi_fw_uart_ctrl(u8 ctrl);
 extern int ilitek_tddi_proximity_far(int mode);
 extern int ilitek_tddi_proximity_near(int mode);
 extern int ilitek_tddi_switch_tp_mode(u8 data);
-extern int ilitek_tddi_switch_tp_data_format(u8 format);
+extern int ilitek_tddi_switch_tp_data_format(int format);
 extern int ilitek_tddi_fw_upgrade_handler(void *data);
 extern int ilitek_tddi_wq_esd_i2c_check(void);
 extern int ilitek_tddi_wq_esd_spi_check(void);
@@ -801,6 +828,13 @@ extern u8 ilitek_calc_packet_checksum(u8 *packet, int len);
 extern void netlink_reply_msg(void *raw, int size);
 extern int katoi(char *str);
 extern int str2hex(char *str);
+
+/* Prototypes for OPPO */
+extern void gesture_fail_reason(bool enable);
+extern int get_tp_recore_ctrl(int data);
+extern int get_tp_recore_data(void);
+extern void demo_debug_info_mode(u8 *buf, size_t rlen);
+extern void demo_debug_info_id0(u8 *buf, size_t len);
 
 static inline void ipio_kfree(void **mem)
 {

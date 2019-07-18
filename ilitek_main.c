@@ -81,40 +81,6 @@ out:
 	return ret;
 }
 
-int ilitek_tddi_switch_tp_data_format(u8 format)
-{
-	u8 cmd[2] = {0};
-	int ret = 0;
-
-	switch (format) {
-	case P5_X_FW_DEMO_MODE:
-		ipio_info("Switch to the format of Demo data\n");
-		break;
-	case P5_X_FW_DEBUG_MODE:
-		ipio_info("Switch to the format of Debug data\n");
-		break;
-	case P5_X_FW_DEMO_DEBUG_INFO_MODE:
-		ipio_info("Switch to the format of Demo Debug data\n");
-		break;
-	default:
-		ipio_err("Unknow TP data format\n");
-		return -1;
-	}
-
-	idev->actual_tp_data_format = format;
-	cmd[0] = P5_X_MODE_CONTROL;
-	cmd[1] = format;
-	ret = idev->write(cmd, sizeof(cmd));
-
-	if (ret < 0) {
-		ipio_err("Failed to switch TP data format (%d)\n", format);
-		if (idev->actual_tp_mode == P5_X_FW_AP_MODE)
-			ilitek_tddi_switch_tp_mode(P5_X_FW_AP_MODE);
-	}
-
-	return ret;
-}
-
 int ilitek_tddi_switch_tp_mode(u8 mode)
 {
 	int ret = 0;
@@ -134,11 +100,12 @@ int ilitek_tddi_switch_tp_mode(u8 mode)
 		}
 		if (ret < 0)
 			ipio_err("TP Reset failed\n");
-		idev->actual_tp_data_format = P5_X_FW_DEMO_MODE;
+
 		break;
 	case P5_X_FW_GESTURE_MODE:
-		ipio_info("Switch to Gesture mode, lpwg cmd = %d\n",  idev->gesture_mode);
-		ret = ilitek_tddi_ic_func_ctrl("lpwg", idev->gesture_mode);
+		ret = idev->gesture_move_code(idev->gesture_mode);
+		if (ret < 0)
+			ipio_err("Move gesture code failed\n");
 		break;
 	case P5_X_FW_TEST_MODE:
 		ipio_info("Switch to Test mode\n");
@@ -368,8 +335,7 @@ int ilitek_tddi_sleep_handler(int mode)
 			ipio_err("Check busy timeout during suspend\n");
 
 		if (idev->gesture) {
-			if (idev->gesture_move_code(idev->gesture_mode) < 0)
-				ipio_err("Move gesture code failed\n");
+			ilitek_tddi_switch_tp_mode(P5_X_FW_GESTURE_MODE);
 			enable_irq_wake(idev->irq_num);
 			ilitek_plat_irq_enable();
 		} else {
@@ -465,45 +431,78 @@ int ilitek_tddi_fw_upgrade_handler(void *data)
 	return ret;
 }
 
-int ilitek_tddi_ap_report_len(void)
+int ilitek_tddi_switch_tp_data_format(int format)
 {
-	int rlen = 0;
+	u8 cmd[2] = {0}, ctrl = 0;
 	u16 self_key = 2;
+	int ret = 0;
 
-	switch(idev->actual_tp_data_format) {
-	case P5_X_FW_DEMO_MODE:
-		rlen = P5_X_DEMO_MODE_PACKET_LENGTH;
+	switch (format) {
+	case DATA_FORMAT_DEMO:
+		idev->tp_data_len = P5_X_DEMO_MODE_PACKET_LEN;
+		ipio_info("Switch to Demo mode\n");
+		ctrl = DATA_FORMAT_DEMO_CMD;
 		break;
-	case P5_X_FW_DEBUG_MODE:
-		rlen = (2 * idev->xch_num * idev->ych_num) + (idev->stx * 2) + (idev->srx * 2);
-		rlen += 2 * self_key + (8 * 2) + 1 + 35;
+	case DATA_FORMAT_DEBUG:
+		idev->tp_data_len = (2 * idev->xch_num * idev->ych_num) + (idev->stx * 2) + (idev->srx * 2);
+		idev->tp_data_len += 2 * self_key + (8 * 2) + 1 + 35;
+		ipio_info("Switch to Debug mode\n");
+		ctrl = DATA_FORMAT_DEBUG_CMD;
 		break;
-	case P5_X_FW_DEMO_DEBUG_INFO_MODE:
+	case DATA_FORMAT_DEMO_DEBUG_INFO:
 		/*only suport SPI interface now, so defult use size 1024 buffer*/
-		rlen = 1024;
+		idev->tp_data_len = P5_X_DEMO_MODE_PACKET_LEN +
+			P5_X_DEMO_DEBUG_INFO_ID0_LENGTH + P5_X_INFO_HEADER_LENGTH;
+		ipio_info("Switch to demo debug info mode\n");
+		ctrl = DATA_FORMAT_DEMO_DEBUG_INFO_CMD;
+		break;
+	case DATA_FORMAT_GESTURE_INFO:
+		idev->tp_data_len = P5_X_GESTURE_INFO_LENGTH;
+		ctrl = DATA_FORMAT_GESTURE_INFO_CMD;
+		break;
+	case DATA_FORMAT_GESTURE_NORMAL:
+		idev->tp_data_len = P5_X_GESTURE_NORMAL_LENGTH;
+		ctrl = DATA_FORMAT_GESTURE_NORMAL_CMD;
+		break;
+	case DATA_FORMAT_GESTURE_DEMO:
+		if (idev->gesture_demo_ctrl == ENABLE) {
+			if(idev->gesture_mode == DATA_FORMAT_GESTURE_INFO)
+				idev->tp_data_len = P5_X_GESTURE_INFO_LENGTH + P5_X_INFO_HEADER_LENGTH + P5_X_INFO_CHECKSUM_LENGTH;
+			else
+				idev->tp_data_len = P5_X_DEMO_MODE_PACKET_LEN + P5_X_INFO_HEADER_LENGTH + P5_X_INFO_CHECKSUM_LENGTH;
+		} else {
+			if(idev->gesture_mode == DATA_FORMAT_GESTURE_INFO)
+				idev->tp_data_len = P5_X_GESTURE_INFO_LENGTH;
+			else
+				idev->tp_data_len = P5_X_GESTURE_NORMAL_LENGTH;
+		}
+		ipio_info("Gesture demo mode control = %d\n",  idev->gesture_demo_ctrl);
+		ilitek_tddi_ic_func_ctrl("gesture_demo_en", idev->gesture_demo_ctrl);
+		ipio_info("knock_en setting\n");
+		ilitek_tddi_ic_func_ctrl("knock_en", 0x8);
 		break;
 	default:
-		ipio_err("Unknown fw mode, %d\n", idev->actual_tp_data_format);
-		rlen = 0;
-		break;
+		ipio_err("Unknow TP data format\n");
+		return -1;
 	}
 
-	return rlen;
-}
+	if (idev->actual_tp_mode == P5_X_FW_AP_MODE) {
+		idev->actual_tp_data_format = format;
+		cmd[0] = P5_X_MODE_CONTROL;
+		cmd[1] = ctrl;
+		ret = idev->write(cmd, 2);
 
-int ilitek_tddi_gesture_report_len(void)
-{
-	int rlen = 0;
-	u16 self_key = 2;
+		if (ret < 0) {
+			ipio_err("switch to format %d failed\n", format);
+			ilitek_tddi_switch_tp_mode(P5_X_FW_AP_MODE);
+		}
+	} else if (idev->actual_tp_mode == P5_X_FW_GESTURE_MODE) {
+		ret = ilitek_tddi_ic_func_ctrl("lpwg", ctrl);
+		if (ret < 0)
+			ipio_err("write gesture mode failed\n");
+	}
 
-	if (idev->actual_tp_data_format == P5_X_FW_DEBUG_MODE)
-		rlen = (2 * idev->xch_num * idev->ych_num) + (idev->stx * 2) + (idev->srx * 2) + 2 * self_key + (8 * 2) + 1 + 35;
-	else if (idev->gesture_mode == P5_X_FW_GESTURE_INFO_MODE)
-		rlen = P5_X_GESTURE_INFO_LENGTH;
-	else
-		rlen = P5_X_GESTURE_NORMAL_LENGTH;
-
-	return rlen;
+	return ret;
 }
 
 void ilitek_tddi_report_handler(void)
@@ -530,22 +529,7 @@ void ilitek_tddi_report_handler(void)
 	ilitek_tddi_wq_ctrl(WQ_ESD, DISABLE);
 	ilitek_tddi_wq_ctrl(WQ_BAT, DISABLE);
 
-	switch (idev->actual_tp_mode) {
-	case P5_X_FW_AP_MODE:
-		rlen = ilitek_tddi_ap_report_len();
-		break;
-	case P5_X_FW_GESTURE_MODE:
-		__pm_stay_awake(idev->ws);
-		/* Waiting for pm resume completed */
-		mdelay(40);
-		rlen = ilitek_tddi_gesture_report_len();
-		break;
-	default:
-		ipio_err("Unknown fw mode, %d\n", idev->actual_tp_mode);
-		rlen = 0;
-		break;
-	}
-
+	rlen = idev->tp_data_len;
 	ipio_debug("Packget length = %d\n", rlen);
 
 	if (!rlen) {
@@ -592,6 +576,11 @@ void ilitek_tddi_report_handler(void)
 	}
 
 	pid = buf[0];
+	if (pid == P5_X_INFO_HEADER_PACKET_ID) {
+		ipio_debug("Have header PID = %x\n", pid);
+		buf = buf + P5_X_INFO_HEADER_LENGTH;
+		pid = buf[0];
+	}
 	ipio_debug("Packet ID = %x\n", pid);
 
 	switch (pid) {
@@ -606,6 +595,12 @@ void ilitek_tddi_report_handler(void)
 		break;
 	case P5_X_GESTURE_PACKET_ID:
 		ilitek_tddi_report_gesture_mode(buf, rlen);
+		break;
+	case P5_X_GESTURE_FAIL_ID:
+		ipio_info("gesture fail reason code = 0x%02x", buf[1]);
+		break;
+	case P5_X_DEMO_DEBUG_INFO_PACKET_ID:
+		demo_debug_info_mode(buf, rlen);
 		break;
 	default:
 		ipio_err("Unknown packet id, %x\n", pid);
@@ -663,7 +658,8 @@ int ilitek_tddi_reset_ctrl(int mode)
 	if (mode != TP_IC_CODE_RST)
 		atomic_set(&idev->ice_stat, DISABLE);
 	idev->fw_uart_en = DISABLE;
-	idev->actual_tp_data_format = P5_X_FW_DEMO_MODE;
+	idev->actual_tp_data_format = DATA_FORMAT_DEMO;
+	idev->tp_data_len = P5_X_DEMO_MODE_PACKET_LEN;
 	atomic_set(&idev->tp_reset, END);
 	return ret;
 }
@@ -702,6 +698,7 @@ int ilitek_tddi_init(void)
 	idev->do_otp_check = ENABLE;
 	idev->fw_uart_en = DISABLE;
 	idev->force_fw_update = DISABLE;
+	idev->demo_debug_info[0] = demo_debug_info_id0;
 
 	/*
 	 * This status of ice enable will be reset until process of fw upgrade runs.
