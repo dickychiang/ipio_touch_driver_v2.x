@@ -42,7 +42,7 @@ static void ilitek_resume_by_ddi_work(struct work_struct *work)
 		disable_irq_wake(idev->irq_num);
 
 	/* Set tp as demo mode and reload code if it's iram. */
-	idev->actual_tp_mode = P5_X_FW_DEMO_MODE;
+	idev->actual_tp_mode = P5_X_FW_AP_MODE;
 	if (idev->fw_upgrade_mode == UPGRADE_IRAM)
 		ilitek_tddi_fw_upgrade_handler(NULL);
 	else
