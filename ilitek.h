@@ -243,7 +243,7 @@ enum TP_WQ_TYPE {
 	WQ_BAT,
 };
 
-enum OPPO_RECORD_DATA {
+enum TP_RECORD_DATA {
 	ENABLE_RECORD = 0,
 	DATA_RECORD,
 	DISABLE_RECORD
@@ -843,7 +843,7 @@ extern void netlink_reply_msg(void *raw, int size);
 extern int katoi(char *str);
 extern int str2hex(char *str);
 
-/* Prototypes for OPPO */
+/* Prototypes for additional functionalities */
 extern void gesture_fail_reason(bool enable);
 extern int get_tp_recore_ctrl(int data);
 extern int get_tp_recore_data(void);
