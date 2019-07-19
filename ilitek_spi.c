@@ -379,8 +379,9 @@ static int core_spi_ice_mode_enable(void)
 
 	/* if system is suspended, wake up our spi pll clock before communication. */
 	if (idev->tp_suspend) {
+		ipio_info("Write dummy cmd to wake up spi pll clock\n");
 		if (idev->spi_write_then_read(idev->spi, cmd, sizeof(cmd), rxbuf, 0) < 0) {
-			ipio_err("spi write wakeup cmd failed\n");
+			ipio_err("spi write wake up cmd failed\n");
 			return -EIO;
 		}
 	}

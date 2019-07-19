@@ -65,6 +65,7 @@ void ilitek_resume_by_ddi(void)
 	mutex_lock(&idev->touch_mutex);
 
 	ipio_info("TP resume start called by ddi\n");
+	idev->tp_suspend = false;
 
 	/*
 	 * To match the timing of sleep out, the first of mipi cmd must be sent within 10ms

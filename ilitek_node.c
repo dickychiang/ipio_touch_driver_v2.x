@@ -1375,8 +1375,12 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 		ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
 		reinit_completion(&idev->esd_done);
 		ilitek_tddi_reset_ctrl(idev->reset);
-		if (!wait_for_completion_timeout(&idev->esd_done, msecs_to_jiffies(5000)))
+		if (!wait_for_completion_timeout(&idev->esd_done, msecs_to_jiffies(10000))) {
 			ipio_err("[AT]: spi recovery timeout\n");
+			size = -1;
+			goto out;
+		}
+
 		cmd[0] = SPI_WRITE;
 		if (idev->spi_write_then_read(idev->spi, cmd, 1, temp, 1) < 0) {
 			ipio_err("spi write 0x82 error\n");
