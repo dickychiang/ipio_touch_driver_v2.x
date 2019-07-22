@@ -859,8 +859,9 @@ static ssize_t ilitek_node_mp_lcm_on_test_read(struct file *filp, char __user *b
 	if (bat_en)
 		ilitek_tddi_wq_ctrl(WQ_BAT, DISABLE);
 
-	ret = ilitek_tddi_mp_test_handler(apk_ret, ON);
-	ipio_info("MP TEST %s\n", (ret < 0) ? "FAIL" : "PASS");
+	ret = ilitek_tddi_mp_test_handler(apk_ret, ON, NULL);
+	ipio_info("MP TEST %s, Error code = %d\n", (ret < 0) ? "FAIL" : "PASS", ret);
+	apk_ret[sizeof(apk_ret) - 1] = ret;
 
 	if (copy_to_user((char *)buff, apk_ret, sizeof(apk_ret)))
 		ipio_err("Failed to copy data to user space\n");
@@ -897,8 +898,9 @@ static ssize_t ilitek_node_mp_lcm_off_test_read(struct file *filp, char __user *
 	if (bat_en)
 		ilitek_tddi_wq_ctrl(WQ_BAT, DISABLE);
 
-	ret = ilitek_tddi_mp_test_handler(apk_ret, OFF);
-	ipio_info("MP TEST %s\n", (ret < 0) ? "FAIL" : "PASS");
+	ret = ilitek_tddi_mp_test_handler(apk_ret, OFF, NULL);
+	ipio_info("MP TEST %s, Error code = %d\n", (ret < 0) ? "FAIL" : "PASS", ret);
+	apk_ret[sizeof(apk_ret) - 1] = ret;
 
 	if (copy_to_user((char *)buff, apk_ret, sizeof(apk_ret)))
 		ipio_err("Failed to copy data to user space\n");

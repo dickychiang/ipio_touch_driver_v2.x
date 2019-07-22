@@ -754,7 +754,7 @@ extern int ilitek_tddi_fw_dump_flash_data(u32 start, u32 end, bool user);
 extern int ilitek_tddi_fw_upgrade(int upgrade_type, int file_type, int open_file_method);
 
 /* Prototypes for tddi mp test */
-extern int ilitek_tddi_mp_test_main(char *apk, bool lcm_on);
+extern int ilitek_tddi_mp_test_main(char *apk, bool lcm_on, char *single);
 
 /* Prototypes for tddi core functions */
 extern int ilitek_tddi_touch_esd_gesture_flash(void);
@@ -808,7 +808,7 @@ extern int ilitek_tddi_wq_esd_spi_check(void);
 extern int ilitek_tddi_gesture_recovery(void);
 extern void ilitek_tddi_spi_recovery(void);
 extern void ilitek_tddi_wq_ctrl(int type, int ctrl);
-extern int ilitek_tddi_mp_test_handler(char *apk, bool lcm_on);
+extern int ilitek_tddi_mp_test_handler(char *apk, bool lcm_on, char *single);
 extern void ilitek_tddi_report_handler(void);
 extern int ilitek_tddi_sleep_handler(int mode);
 extern int ilitek_tddi_reset_ctrl(int mode);
