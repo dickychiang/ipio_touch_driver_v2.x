@@ -1518,7 +1518,6 @@ static int allnode_open_cdc_data(int mode, int *buf)
 	u8 cmd[15] = {0};
 	u8 *ori = NULL;
 	char str[128] = {0};
-	char tmp[128] = {0};
 	char *key[] = {"open dac", "open raw1", "open raw2", "open raw3",
 			"open cap1 dac", "open cap1 raw"};
 
@@ -1540,8 +1539,7 @@ static int allnode_open_cdc_data(int mode, int *buf)
 		goto out;
 	}
 
-	strncpy(tmp, str, ret);
-	parser_get_u8_array(tmp, cmd, 16, sizeof(cmd));
+	parser_get_u8_array(str, cmd, 16, sizeof(cmd));
 
 	ilitek_dump_data(cmd, 8, sizeof(cmd), 0, "Open SP command");
 
@@ -3372,11 +3370,12 @@ int ilitek_tddi_mp_test_main(char *apk, bool lcm_on, char *single)
 	if (idev->protocol->ver >= PROTOCOL_VER_540) {
 		if (lcm_on) {
 			for (i = 0; i < DEF_TEST_LCM_ON; i++) {
+				ipio_info("summer %s\n", run_lcm_on[i]);
 				ret = mp_test_run(run_lcm_on[i]);
-				if (ret < 0) {
-					mp_show_result(lcm_on);
-					goto mp_failed;
-				}
+				// if (ret < 0) {
+					// mp_show_result(lcm_on);
+					// goto mp_failed;
+				// }
 			}
 		} else {
 			for (i = 0; i < DEF_TEST_LCM_OFF; i++) {
