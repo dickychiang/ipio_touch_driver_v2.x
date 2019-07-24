@@ -859,8 +859,9 @@ static ssize_t ilitek_node_mp_lcm_on_test_read(struct file *filp, char __user *b
 	if (bat_en)
 		ilitek_tddi_wq_ctrl(WQ_BAT, DISABLE);
 
-	ret = ilitek_tddi_mp_test_handler(apk_ret, ON);
-	ipio_info("MP TEST %s\n", (ret < 0) ? "FAIL" : "PASS");
+	ret = ilitek_tddi_mp_test_handler(apk_ret, ON, NULL);
+	ipio_info("MP TEST %s, Error code = %d\n", (ret < 0) ? "FAIL" : "PASS", ret);
+	apk_ret[sizeof(apk_ret) - 1] = ret;
 
 	if (copy_to_user((char *)buff, apk_ret, sizeof(apk_ret)))
 		ipio_err("Failed to copy data to user space\n");
@@ -897,8 +898,9 @@ static ssize_t ilitek_node_mp_lcm_off_test_read(struct file *filp, char __user *
 	if (bat_en)
 		ilitek_tddi_wq_ctrl(WQ_BAT, DISABLE);
 
-	ret = ilitek_tddi_mp_test_handler(apk_ret, OFF);
-	ipio_info("MP TEST %s\n", (ret < 0) ? "FAIL" : "PASS");
+	ret = ilitek_tddi_mp_test_handler(apk_ret, OFF, NULL);
+	ipio_info("MP TEST %s, Error code = %d\n", (ret < 0) ? "FAIL" : "PASS", ret);
+	apk_ret[sizeof(apk_ret) - 1] = ret;
 
 	if (copy_to_user((char *)buff, apk_ret, sizeof(apk_ret)))
 		ipio_err("Failed to copy data to user space\n");
@@ -1375,8 +1377,12 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 		ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
 		reinit_completion(&idev->esd_done);
 		ilitek_tddi_reset_ctrl(idev->reset);
-		if (!wait_for_completion_timeout(&idev->esd_done, msecs_to_jiffies(5000)))
+		if (!wait_for_completion_timeout(&idev->esd_done, msecs_to_jiffies(10000))) {
 			ipio_err("[AT]: spi recovery timeout\n");
+			size = -1;
+			goto out;
+		}
+
 		cmd[0] = SPI_WRITE;
 		if (idev->spi_write_then_read(idev->spi, cmd, 1, temp, 1) < 0) {
 			ipio_err("spi write 0x82 error\n");

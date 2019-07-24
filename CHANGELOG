@@ -1,4 +1,29 @@
 * V2.0.1.0
+1.	加入OPPO需求功能 (gesture failure reason, demo debug …etc) (驗證中)
+2.	加入 wake up (dummy) command，用來在暗屏時，喚醒SPI PLL Clock
+3.	優化TP/FW Mode state machine 寫法
+	* TP mode只會有3種模式 : AP, Gesture, MP
+	* 其餘像是Debug/Demo Debug等等，皆為不同的資料格式
+	* 一個AP mode會有多種不同資格上報格式
+	* 資料格式長度、算法集中放在ilitek_tddi_switch_tp_data_format處理
+4.	加入高通的DRM_MSM休眠/喚醒事件機制
+5.	加入讓客戶可以從DDI直接調用TP喚醒的callback function
+6.	加入保存Hex資料機制，避免系統獲取不到system的partition導致固件版本回退
+7.	修正copy_to_user和copy_from_user的返回判斷值
+8.	修改sprint-->snprintf , strcmp-->strncmp
+9.	加入mp.ini沒有benchmark的話，會產出warning檔名的csv file
+10.	加入PM stay awake/relax，避免系統(或PM)進了深層睡眠導致手勢失敗
+11.	修正MP的CSV格式 (Test Studio可直接取Golden)
+12.	修正Whole Chip Reset的資料和地址錯誤
+13.	修正Cove version取4 bytes的錯誤 (只需取3 bytes)
+14.	加入SPI R/W調試的echo (不進入spi ice)
+15.	加入在手勢模式下，可直接收取Debug資料
+16.	修正做host download時，資料長度不足2k時會計算錯誤的問題
+17.	SPI Recovery / Gesture Recovery 改成直接調用方式，不再透過workqueue來排程
+18.	新增MP的PIN測項
+19.	加入所有function的返回值判斷，避免被Coverity tool找到錯誤
+
+* V2.0.1.0
 - Optimise software structure of TP driver based on v1.x.
 - SPI Transfer 64k once (on x20).
 - Device node with dumping iram/flash data.

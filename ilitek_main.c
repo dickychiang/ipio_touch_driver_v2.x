@@ -65,6 +65,7 @@ void ilitek_resume_by_ddi(void)
 	mutex_lock(&idev->touch_mutex);
 
 	ipio_info("TP resume start called by ddi\n");
+	idev->tp_suspend = false;
 
 	/*
 	 * To match the timing of sleep out, the first of mipi cmd must be sent within 10ms
@@ -82,7 +83,7 @@ void ilitek_resume_by_ddi(void)
 }
 #endif
 
-int ilitek_tddi_mp_test_handler(char *apk, bool lcm_on)
+int ilitek_tddi_mp_test_handler(char *apk, bool lcm_on, char *single)
 {
 	int ret = 0;
 
@@ -107,7 +108,7 @@ int ilitek_tddi_mp_test_handler(char *apk, bool lcm_on)
 		}
 	}
 
-	ret = ilitek_tddi_mp_test_main(apk, lcm_on);
+	ret = ilitek_tddi_mp_test_main(apk, lcm_on, single);
 
 out:
 	/*
@@ -401,6 +402,7 @@ int ilitek_tddi_sleep_handler(int mode)
 				ipio_err("Write sleep in cmd failed\n");
 		}
 		ipio_info("TP suspend end\n");
+		idev->tp_suspend = true;
 		break;
 	case TP_DEEP_SLEEP:
 		ipio_info("TP deep suspend start\n");
@@ -420,10 +422,13 @@ int ilitek_tddi_sleep_handler(int mode)
 				ipio_err("Write deep sleep in cmd failed\n");
 		}
 		ipio_info("TP deep suspend end\n");
+		idev->tp_suspend = true;
 		break;
 	case TP_RESUME:
 		if (!idev->resume_by_ddi) {
 			ipio_info("TP resume start\n");
+			idev->tp_suspend = false;
+
 			if (idev->gesture)
 				disable_irq_wake(idev->irq_num);
 

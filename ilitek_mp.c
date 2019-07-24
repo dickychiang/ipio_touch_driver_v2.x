@@ -22,10 +22,7 @@
 
 #include "ilitek.h"
 
-#define MP_PASS			0
-#define MP_FAIL			-1
 #define VALUE			0
-
 #define RETRY_COUNT		3
 #define INT_CHECK		0
 #define POLL_CHECK		1
@@ -37,8 +34,8 @@
 #define TYPE_NO_JUGE		1
 #define TYPE_JUGE		2
 
-#define NORMAL_CSV_PASS_NAME	"mp_pass"
-#define NORMAL_CSV_FAIL_NAME	"mp_fail"
+#define NORMAL_CSV_PASS_NAME	"MP_DATA_PASS"
+#define NORMAL_CSV_FAIL_NAME	"MP_DATA_FAIL"
 #define NORMAL_CSV_WARNING_NAME	"mp_warning"
 
 #define CSV_FILE_SIZE		(1 * M)
@@ -91,6 +88,22 @@
 #define CMD_DOZE_P2P			0x32
 #define CMD_DOZE_RAW			0x33
 #define CMD_PIN_TEST			0x61
+
+#define MP_DATA_PASS			0
+#define MP_DATA_FAIL			-1
+
+/* Exception error codes */
+#define EMP_CMD				100
+#define EMP_PROTOCOL			101
+#define EMP_FILE			102
+#define EMP_INI				103
+#define EMP_TIMING_INFO			104
+#define EMP_INVAL			105
+#define EMP_PARSE			106
+#define EMP_NOMEM			107
+#define EMP_GET_CDC			108
+#define EMP_INT				109
+#define EMP_CHECK_BUY			110
 
 #define Mathabs(x) ({					\
 		long ret;				\
@@ -253,6 +266,41 @@ struct mp_test_items {
 	s32 *bench_mark_min;
 	s32 *node_type;
 	int (*do_test)(int index);
+};
+
+#define DEF_TEST_LCM_ON	11
+static char run_lcm_on[DEF_TEST_LCM_ON][64] = {
+	"pin test ( int and rst )",
+	"noise peak to peak(with panel)",
+	"noise peak to peak(ic only)",
+	"short test -ili9881",
+	"open test(integration)_sp",
+	"raw data(no bk)",
+	"raw data(have bk)",
+	"calibration data(dac)",
+	"doze raw data",
+	"open test_c",
+	"touch deltac"
+};
+
+#define DEF_TEST_LCM_OFF	6
+static char run_lcm_off[DEF_TEST_LCM_OFF][64] = {
+	"raw data(have bk) (lcm off)",
+	"raw data(no bk) (lcm off)",
+	"noise peak to peak(with panel) (lcm off)",
+	"noise peak to peak(ic only) (lcm off)",
+	"raw data_td (lcm off)",
+	"peak to peak_td (lcm off)"
+};
+
+#define DEF_OLD_TEST	6
+static char run_old_test[DEF_OLD_TEST][64] = {
+	"untouch peak to peak",
+	"open test(integration)",
+	"open test(cap)",
+	"untouch cm data",
+	"pixel raw (no bk)",
+	"pixel raw (have bk)"
 };
 
 #define MP_TEST_ITEM	49
@@ -1044,7 +1092,7 @@ static void mp_print_csv_tail(char *csv, int *csv_len, int file_size)
 
 	for (i = 0; i < ARRAY_SIZE(tItems); i++) {
 		if (tItems[i].run) {
-			if (tItems[i].item_result == MP_PASS)
+			if (tItems[i].item_result == MP_DATA_PASS)
 				tmp_len += snprintf(csv + tmp_len, (file_size - tmp_len), "	  {%s}	   ,OK\n", tItems[i].desp);
 			else
 				tmp_len += snprintf(csv + tmp_len, (file_size - tmp_len), "	  {%s}	   ,NG\n", tItems[i].desp);
@@ -1092,11 +1140,11 @@ static void mp_compare_cdc_show_result(int index, s32 *tmp, char *csv,
 				s32 *min_ts, const char *desp, int file_zise)
 {
 	int x, y, tmp_len = *csv_len;
-	int mp_result = MP_PASS;
+	int mp_result = MP_DATA_PASS;
 
 	if (ERR_ALLOC_MEM(tmp)) {
 		ipio_err("The data of test item is null (%p)\n", tmp);
-		mp_result = MP_FAIL;
+		mp_result = -EMP_INVAL;
 		goto out;
 	}
 
@@ -1125,7 +1173,7 @@ static void mp_compare_cdc_show_result(int index, s32 *tmp, char *csv,
 				if (tmp[shift] < min_ts[shift]) {
 					DUMP(" #%7d ", tmp[shift]);
 					tmp_len += snprintf(csv + tmp_len, (file_zise - tmp_len), "#%7d,", tmp[shift]);
-					mp_result = MP_FAIL;
+					mp_result = MP_DATA_FAIL;
 				} else {
 					DUMP(" %7d ", tmp[shift]);
 					tmp_len += snprintf(csv + tmp_len, (file_zise - tmp_len), " %7d, ", tmp[shift]);
@@ -1149,7 +1197,7 @@ static void mp_compare_cdc_show_result(int index, s32 *tmp, char *csv,
 					DUMP(" #%7d ", tmp[shift]);
 					tmp_len += snprintf(csv + tmp_len, (file_zise - tmp_len), "#%7d,", tmp[shift]);
 				}
-				mp_result = MP_FAIL;
+				mp_result = MP_DATA_FAIL;
 			}
 		}
 		DUMP("\n");
@@ -1158,7 +1206,7 @@ static void mp_compare_cdc_show_result(int index, s32 *tmp, char *csv,
 
 out:
 	if (type == TYPE_JUGE) {
-		if (mp_result == MP_PASS) {
+		if (mp_result == MP_DATA_PASS) {
 			pr_info("\n Result : PASS\n");
 			tmp_len += snprintf(csv + tmp_len, (file_zise - tmp_len), "Result : PASS\n");
 		} else {
@@ -1416,8 +1464,6 @@ static int mp_cdc_get_pv5_4_command(u8 *cmd, int len, int index)
 	char str[128] = {0};
 	char *key = tItems[index].desp;
 
-	ipio_info("Get cdc command for %s\n", key);
-
 	slen = parser_get_int_data("pv5_4 command", key, str, sizeof(str));
 	if (slen < 0)
 		return -1;
@@ -1483,14 +1529,14 @@ static int allnode_open_cdc_data(int mode, int *buf)
 
 	if (len <= 2) {
 		ipio_err("Length is invalid\n");
-		ret = -1;
+		ret = -EMP_INVAL;
 		goto out;
 	}
 
 	/* CDC init. Read command from ini file */
-	ret = parser_get_int_data("pv5_4 command", key[mode], str, sizeof(str));
-	if (ret < 0) {
+	if (parser_get_int_data("pv5_4 command", key[mode], str, sizeof(str)) < 0) {
 		ipio_err("Failed to parse PV54 command, ret = %d\n", ret);
+		ret = -EMP_PARSE;
 		goto out;
 	}
 
@@ -1501,9 +1547,9 @@ static int allnode_open_cdc_data(int mode, int *buf)
 
 	atomic_set(&idev->mp_int_check, ENABLE);
 
-	ret = idev->write(cmd, core_mp.cdc_len);
-	if (ret < 0) {
+	if (idev->write(cmd, core_mp.cdc_len) < 0) {
 		ipio_err("Write CDC command failed\n");
+		ret = -EMP_CMD;
 		goto out;
 	}
 
@@ -1513,25 +1559,27 @@ static int allnode_open_cdc_data(int mode, int *buf)
 	else
 		ret = ilitek_tddi_ic_check_int_stat();
 
-	if (ret < 0)
+	if (ret < 0) {
+		ret = -EMP_CHECK_BUY;
 		goto out;
+	}
 
 	/* Prepare to get cdc data */
 	cmd[0] = P5_X_READ_DATA_CTRL;
 	cmd[1] = P5_X_GET_CDC_DATA;
 
-	ret = idev->write(cmd, 2);
-	if (ret < 0) {
+	if (idev->write(cmd, 2) < 0) {
 		ipio_err("Write (0x%x, 0x%x) error\n", cmd[0], cmd[1]);
+		ret = -EMP_CMD;
 		goto out;
 	}
 
 	/* Waiting for FW to prepare cdc data */
 	mdelay(1);
 
-	ret = idev->write(&cmd[1], 1);
-	if (ret < 0) {
+	if (idev->write(&cmd[1], 1) < 0) {
 		ipio_err("Write (0x%x) error\n", cmd[1]);
+		ret = -EMP_GET_CDC;
 		goto out;
 	}
 
@@ -1542,13 +1590,14 @@ static int allnode_open_cdc_data(int mode, int *buf)
 	ori = kcalloc(len, sizeof(u8), GFP_KERNEL);
 	if (ERR_ALLOC_MEM(ori)) {
 		ipio_err("Failed to allocate ori, (%ld)\n", PTR_ERR(ori));
+		ret = -EMP_NOMEM;
 		goto out;
 	}
 
 	/* Get original frame(cdc) data */
-	ret = idev->read(ori, len);
-	if (ret < 0) {
+	if (idev->read(ori, len) < 0) {
 		ipio_err("Read cdc data error, len = %d\n", len);
+		ret = -EMP_GET_CDC;
 		goto out;
 	}
 
@@ -1608,16 +1657,16 @@ static int allnode_mutual_cdc_data(int index)
 
 	if (len <= 2) {
 		ipio_err("Length is invalid\n");
-		ret = -1;
+		ret = -EMP_INVAL;
 		goto out;
 	}
 
 	memset(cmd, 0xFF, sizeof(cmd));
 
 	/* CDC init */
-	ret = mp_cdc_init_cmd_common(cmd, sizeof(cmd), index);
-	if (ret < 0) {
+	if (mp_cdc_init_cmd_common(cmd, sizeof(cmd), index) < 0) {
 		ipio_err("Failed to get cdc command\n");
+		ret = -EMP_CMD;
 		goto out;
 	}
 
@@ -1625,9 +1674,9 @@ static int allnode_mutual_cdc_data(int index)
 
 	atomic_set(&idev->mp_int_check, ENABLE);
 
-	ret = idev->write(cmd, core_mp.cdc_len);
-	if (ret < 0) {
+	if (idev->write(cmd, core_mp.cdc_len) < 0) {
 		ipio_err("Write CDC command failed\n");
+		ret = -EMP_CMD;
 		goto out;
 	}
 
@@ -1637,25 +1686,27 @@ static int allnode_mutual_cdc_data(int index)
 	else
 		ret = ilitek_tddi_ic_check_int_stat();
 
-	if (ret < 0)
+	if (ret < 0) {
+		ret = EMP_CHECK_BUY;
 		goto out;
+	}
 
 	/* Prepare to get cdc data */
 	cmd[0] = P5_X_READ_DATA_CTRL;
 	cmd[1] = P5_X_GET_CDC_DATA;
 
-	ret = idev->write(cmd, 2);
-	if (ret < 0) {
+	if (idev->write(cmd, 2) < 0) {
 		ipio_err("Write (0x%x, 0x%x) error\n", cmd[0], cmd[1]);
+		ret = -EMP_CMD;
 		goto out;
 	}
 
 	/* Waiting for FW to prepare cdc data */
 	mdelay(1);
 
-	ret = idev->write(&cmd[1], 1);
-	if (ret < 0) {
+	if (idev->write(&cmd[1], 1) < 0) {
 		ipio_err("Write (0x%x) error\n", cmd[1]);
+		ret = -EMP_CMD;
 		goto out;
 	}
 
@@ -1666,13 +1717,14 @@ static int allnode_mutual_cdc_data(int index)
 	ori = kcalloc(len, sizeof(u8), GFP_KERNEL);
 	if (ERR_ALLOC_MEM(ori)) {
 		ipio_err("Failed to allocate ori, (%ld)\n", PTR_ERR(ori));
+		ret = -EMP_NOMEM;
 		goto out;
 	}
 
 	/* Get original frame(cdc) data */
-	ret = idev->read(ori, len);
-	if (ret < 0) {
+	if (idev->read(ori, len) < 0) {
 		ipio_err("Read cdc data error, len = %d\n", len);
+		ret = EMP_GET_CDC;
 		goto out;
 	}
 
@@ -1682,6 +1734,7 @@ static int allnode_mutual_cdc_data(int index)
 		frame_buf = kcalloc(core_mp.frame_len, sizeof(s32), GFP_KERNEL);
 		if (ERR_ALLOC_MEM(frame_buf)) {
 			ipio_err("Failed to allocate FrameBuffer mem (%ld)\n", PTR_ERR(frame_buf));
+			ret = -EMP_NOMEM;
 			goto out;
 		}
 	} else {
@@ -1724,7 +1777,7 @@ static int allnode_mutual_cdc_data(int index)
 		}
 	}
 
-	ilitek_dump_data(frame_buf, 32, core_mp.frame_len,	core_mp.xch_len, "Mutual CDC combined");
+	ilitek_dump_data(frame_buf, 32, core_mp.frame_len, core_mp.xch_len, "Mutual CDC combined");
 
 out:
 	atomic_set(&idev->mp_int_check, DISABLE);
@@ -1933,24 +1986,30 @@ static int pin_test(int index)
 		ret = idev->write(cmd, 2);
 		if (ret < 0) {
 			ipio_err("Write command failed\n");
+			ret = -EMP_CMD;
 			goto out;
 		}
 
 		ret = check_int_level(true);
-		if (ret < 0)
+		if (ret < 0) {
+			ret = -EMP_INT;
 			goto out;
+		}
 
 		/* test LOW level*/
 		cmd[1] = 0x0;
 		ret = idev->write(cmd, 2);
 		if (ret < 0) {
 			ipio_err("Write command failed\n");
+			ret = -EMP_CMD;
 			goto out;
 		}
 
 		ret = check_int_level(false);
-		if (ret < 0)
+		if (ret < 0) {
+			ret = -EMP_INT;
 			goto out;
+		}
 	}
 
 	if (tItems[index].int_pulse_test == ENABLE) {
@@ -1961,50 +2020,60 @@ static int pin_test(int index)
 
 		ilitek_plat_irq_unregister();
 		ret = ilitek_plat_irq_register(IRQF_TRIGGER_RISING);
-		if (ret < 0)
+		if (ret < 0) {
+			ret = -EMP_INT;
 			goto out;
+		}
 
 		atomic_set(&idev->mp_int_check, ENABLE);
 		ret = idev->write(cmd, 3);
 		if (ret < 0) {
 			ipio_err("Write command failed\n");
+			ret = -EMP_CMD;
 			goto out;
 		}
 
 		ret = ilitek_tddi_ic_check_int_stat();
-		if (ret < 0)
+		if (ret < 0) {
+			ret = -EMP_INT;
 			goto out;
+		}
 
 		ipio_info("MP IRQ Falling Trigger Test\n");
 		ilitek_plat_irq_unregister();
 		ret = ilitek_plat_irq_register(IRQF_TRIGGER_FALLING);
-		if (ret < 0)
+		if (ret < 0) {
+			ret = -EMP_INT;
 			goto out;
+		}
 
 		atomic_set(&idev->mp_int_check, ENABLE);
 
 		ret = idev->write(cmd, 3);
 		if (ret < 0) {
 			ipio_err("Write command failed\n");
+			ret = -EMP_CMD;
 			goto out;
 		}
 
 		ret = ilitek_tddi_ic_check_int_stat();
-		if (ret < 0)
+		if (ret < 0) {
+			ret = -EMP_INT;
 			goto out;
+		}
 	}
 
-	tItems[index].item_result = MP_PASS;
+	tItems[index].item_result = MP_DATA_PASS;
 
 out:
 	if (ret < 0)
-		tItems[index].item_result = MP_FAIL;
+		tItems[index].item_result = MP_DATA_FAIL;
 
 	ipio_info("Change to defualt IRQ trigger type\n");
 	ilitek_plat_irq_unregister();
 	ilitek_plat_irq_register(idev->irq_tirgger_type);
 
-	return tItems[index].item_result;
+	return ret;
 }
 
 static int mutual_test(int index)
@@ -2024,8 +2093,10 @@ static int mutual_test(int index)
 	}
 
 	ret = create_mp_test_frame_buffer(index, tItems[index].frame_count);
-	if (ret < 0)
+	if (ret < 0) {
+		ret = -EMP_NOMEM;
 		goto out;
+	}
 
 	/* Init Max/Min buffer */
 	for (y = 0; y < core_mp.ych_len; y++) {
@@ -2105,14 +2176,16 @@ static int open_test_sp(int index)
 	}
 
 	ret = create_mp_test_frame_buffer(index, tItems[index].frame_count);
-	if (ret < 0)
+	if (ret < 0) {
+		ret = -EMP_NOMEM;
 		goto out;
+	}
 
 	if (frame1_cbk700 == NULL) {
 		frame1_cbk700 = kcalloc(core_mp.frame_len, sizeof(s32), GFP_KERNEL);
 		if (ERR_ALLOC_MEM(frame1_cbk700)) {
 			ipio_err("Failed to allocate frame1_cbk700 buffer\n");
-			return -ENOMEM;
+			return -EMP_NOMEM;
 		}
 	} else {
 		memset(frame1_cbk700, 0x0, core_mp.frame_len);
@@ -2123,7 +2196,7 @@ static int open_test_sp(int index)
 		if (ERR_ALLOC_MEM(frame1_cbk250)) {
 			ipio_err("Failed to allocate frame1_cbk250 buffer\n");
 			ipio_kfree((void **)&frame1_cbk700);
-			return -ENOMEM;
+			return -EMP_NOMEM;
 		}
 	} else {
 		memset(frame1_cbk250, 0x0, core_mp.frame_len);
@@ -2135,7 +2208,7 @@ static int open_test_sp(int index)
 			ipio_err("Failed to allocate cbk buffer\n");
 			ipio_kfree((void **)&frame1_cbk700);
 			ipio_kfree((void **)&frame1_cbk250);
-			return -ENOMEM;
+			return -EMP_NOMEM;
 		}
 	} else {
 		memset(frame1_cbk200, 0x0, core_mp.frame_len);
@@ -2144,7 +2217,7 @@ static int open_test_sp(int index)
 	tItems[index].node_type = kcalloc(core_mp.frame_len, sizeof(s32), GFP_KERNEL);
 	if (ERR_ALLOC_MEM(tItems[index].node_type)) {
 		ipio_err("Failed to allocate node_type FRAME buffer\n");
-		return -ENOMEM;
+		return -EMP_NOMEM;
 	}
 
 	/* Init Max/Min buffer */
@@ -2182,6 +2255,7 @@ static int open_test_sp(int index)
 
 	if (ret < 0) {
 		ipio_err("Failed to get parameters from ini file\n");
+		ret = -EMP_PARSE;
 		goto out;
 	}
 
@@ -2303,15 +2377,16 @@ static int open_test_cap(int index)
 		tItems[index].frame_count = 1;
 	}
 
-	ret = create_mp_test_frame_buffer(index, tItems[index].frame_count);
-	if (ret < 0)
+	if (create_mp_test_frame_buffer(index, tItems[index].frame_count) < 0) {
+		ret = -EMP_NOMEM;
 		goto out;
+	}
 
 	if (cap_dac == NULL) {
 		cap_dac = kcalloc(core_mp.frame_len, sizeof(s32), GFP_KERNEL);
 		if (ERR_ALLOC_MEM(cap_dac)) {
 			ipio_err("Failed to allocate cap_dac buffer\n");
-			return -ENOMEM;
+			return -EMP_NOMEM;
 		}
 	} else {
 		memset(cap_dac, 0x0, core_mp.frame_len);
@@ -2322,7 +2397,7 @@ static int open_test_cap(int index)
 		if (ERR_ALLOC_MEM(cap_raw)) {
 			ipio_err("Failed to allocate cap_raw buffer\n");
 			ipio_kfree((void **)&cap_dac);
-			return -ENOMEM;
+			return -EMP_NOMEM;
 		}
 	} else {
 		memset(cap_raw, 0x0, core_mp.frame_len);
@@ -2356,6 +2431,7 @@ static int open_test_cap(int index)
 
 	if (ret < 0) {
 		ipio_err("Failed to get parameters from ini file\n");
+		ret = -EMP_PARSE;
 		goto out;
 	}
 
@@ -2578,21 +2654,21 @@ static void mp_compare_cdc_result(int index, s32 *tmp, s32 *max_ts, s32 *min_ts,
 
 	if (ERR_ALLOC_MEM(tmp)) {
 		ipio_err("The data of test item is null (%p)\n", tmp);
-		*result = MP_FAIL;
+		*result = MP_DATA_FAIL;
 		return;
 	}
 
 	if (tItems[index].catalog == SHORT_TEST) {
 		for (i = 0; i < core_mp.frame_len; i++) {
 			if (tmp[i] < min_ts[i]) {
-				*result = MP_FAIL;
+				*result = MP_DATA_FAIL;
 				return;
 			}
 		}
 	} else {
 		for (i = 0; i < core_mp.frame_len; i++) {
 			if (tmp[i] > max_ts[i] || tmp[i] < min_ts[i]) {
-				*result = MP_FAIL;
+				*result = MP_DATA_FAIL;
 				return;
 			}
 		}
@@ -2601,7 +2677,7 @@ static void mp_compare_cdc_result(int index, s32 *tmp, s32 *max_ts, s32 *min_ts,
 
 static int mp_comp_result_before_retry(int index)
 {
-	int i, test_result = MP_PASS;
+	int i, ret = 0, test_result = MP_DATA_PASS;
 	s32 *max_threshold = NULL, *min_threshold = NULL;
 
 	if (tItems[index].catalog == PIN_TEST)
@@ -2611,7 +2687,8 @@ static int mp_comp_result_before_retry(int index)
 	if (ERR_ALLOC_MEM(max_threshold)) {
 		ipio_err("Failed to allocate threshold FRAME buffer\n");
 		ipio_kfree((void **)&max_threshold);
-		test_result = MP_FAIL;
+		test_result = MP_DATA_FAIL;
+		ret = -EMP_NOMEM;
 		goto fail_alloc;
 	}
 
@@ -2619,7 +2696,8 @@ static int mp_comp_result_before_retry(int index)
 	if (ERR_ALLOC_MEM(min_threshold)) {
 		ipio_err("Failed to allocate threshold FRAME buffer\n");
 		ipio_kfree((void **)&min_threshold);
-		test_result = MP_FAIL;
+		test_result = MP_DATA_FAIL;
+		ret = -EMP_NOMEM;
 		goto fail_alloc;
 	}
 
@@ -2627,7 +2705,8 @@ static int mp_comp_result_before_retry(int index)
 	if (tItems[index].catalog == TX_RX_DELTA) {
 		if (ERR_ALLOC_MEM(core_mp.rx_delta_buf) || ERR_ALLOC_MEM(core_mp.tx_delta_buf)) {
 			ipio_err("This test item (%s) has no data inside its buffer\n", tItems[index].desp);
-			test_result = MP_FAIL;
+			test_result = MP_DATA_FAIL;
+			ret = -EMP_NOMEM;
 			goto out;
 		}
 
@@ -2649,7 +2728,7 @@ static int mp_comp_result_before_retry(int index)
 		if (ERR_ALLOC_MEM(tItems[index].buf) || ERR_ALLOC_MEM(tItems[index].max_buf) ||
 				ERR_ALLOC_MEM(tItems[index].min_buf) || ERR_ALLOC_MEM(tItems[index].result_buf)) {
 			ipio_err("This test item (%s) has no data inside its buffer\n", tItems[index].desp);
-			test_result = MP_FAIL;
+			test_result = MP_DATA_FAIL;
 			goto out;
 		}
 
@@ -2681,7 +2760,7 @@ out:
 
 fail_alloc:
 	tItems[index].item_result = test_result;
-	return test_result;
+	return ret;
 }
 
 static void mp_do_retry(int index, int count)
@@ -2695,13 +2774,13 @@ static void mp_do_retry(int index, int count)
 
 	tItems[index].do_test(index);
 
-	if (mp_comp_result_before_retry(index) == MP_FAIL)
+	if (mp_comp_result_before_retry(index) < 0)
 		return mp_do_retry(index, count - 1);
 }
 
 static int mp_show_result(bool lcm_on)
 {
-	int ret = MP_PASS;
+	int ret = MP_DATA_PASS;
 	int i, x, y, j, csv_len = 0, pass_item_count = 0, line_count = 0, get_frame_cont = 1;
 	s32 *max_threshold = NULL, *min_threshold = NULL;
 	char *csv = NULL;
@@ -2714,7 +2793,7 @@ static int mp_show_result(bool lcm_on)
 	csv = vmalloc(CSV_FILE_SIZE);
 	if (ERR_ALLOC_MEM(csv)) {
 		ipio_err("Failed to allocate CSV mem\n");
-		ret = MP_FAIL;
+		ret = -EMP_NOMEM;
 		goto fail_open;
 	}
 
@@ -2722,7 +2801,7 @@ static int mp_show_result(bool lcm_on)
 	min_threshold = kcalloc(core_mp.frame_len, sizeof(s32), GFP_KERNEL);
 	if (ERR_ALLOC_MEM(max_threshold) || ERR_ALLOC_MEM(min_threshold)) {
 		ipio_err("Failed to allocate threshold FRAME buffer\n");
-		ret = MP_FAIL;
+		ret = -EMP_NOMEM;
 		goto fail_open;
 	}
 
@@ -2734,7 +2813,7 @@ static int mp_show_result(bool lcm_on)
 		if (tItems[i].run != 1)
 			continue;
 
-		if (tItems[i].item_result == MP_PASS) {
+		if (tItems[i].item_result == MP_DATA_PASS) {
 			pr_info("\n[%s],OK \n", tItems[i].desp);
 			csv_len += snprintf(csv + csv_len, (CSV_FILE_SIZE - csv_len), "\n[%s],OK\n", tItems[i].desp);
 		} else {
@@ -2867,7 +2946,7 @@ static int mp_show_result(bool lcm_on)
 
 	for (i = 0; i < ARRAY_SIZE(tItems); i++) {
 		if (tItems[i].run) {
-			if (tItems[i].item_result == MP_FAIL) {
+			if (tItems[i].item_result < 0) {
 				pass_item_count = 0;
 				break;
 			}
@@ -2881,22 +2960,22 @@ static int mp_show_result(bool lcm_on)
 	ret_warning_name = NORMAL_CSV_WARNING_NAME;
 
 	if (core_mp.lost_benchmark) {
-		core_mp.final_result = MP_FAIL;
-		ret = MP_FAIL;
+		core_mp.final_result = MP_DATA_FAIL;
+		ret = MP_DATA_FAIL;
 		if (lcm_on)
 			snprintf(csv_name, (CSV_FILE_SIZE - csv_len), "%s/%s_%s.csv", CSV_LCM_ON_PATH, get_date_time_str(), ret_warning_name);
 		else
 			snprintf(csv_name, (CSV_FILE_SIZE - csv_len), "%s/%s_%s.csv", CSV_LCM_OFF_PATH, get_date_time_str(), ret_warning_name);
 	} else if (pass_item_count == 0) {
-		core_mp.final_result = MP_FAIL;
-		ret = MP_FAIL;
+		core_mp.final_result = MP_DATA_FAIL;
+		ret = MP_DATA_FAIL;
 		if (lcm_on)
 			snprintf(csv_name, (CSV_FILE_SIZE - csv_len), "%s/%s_%s.csv", CSV_LCM_ON_PATH, get_date_time_str(), ret_fail_name);
 		else
 			snprintf(csv_name, (CSV_FILE_SIZE - csv_len), "%s/%s_%s.csv", CSV_LCM_OFF_PATH, get_date_time_str(), ret_fail_name);
 	} else {
-		core_mp.final_result = MP_PASS;
-		ret = MP_PASS;
+		core_mp.final_result = MP_DATA_PASS;
+		ret = MP_DATA_PASS;
 		if (lcm_on)
 			snprintf(csv_name, (CSV_FILE_SIZE - csv_len), "%s/%s_%s.csv", CSV_LCM_ON_PATH, get_date_time_str(), ret_pass_name);
 		else
@@ -2910,7 +2989,7 @@ static int mp_show_result(bool lcm_on)
 
 	if (ERR_ALLOC_MEM(f)) {
 		ipio_err("Failed to open CSV file");
-		ret = MP_FAIL;
+		ret = -EMP_NOMEM;
 		goto fail_open;
 	}
 
@@ -2918,7 +2997,7 @@ static int mp_show_result(bool lcm_on)
 
 	if (csv_len >= CSV_FILE_SIZE) {
 		ipio_err("The length saved to CSV is too long !\n");
-		ret = MP_FAIL;
+		ret = -EMP_INVAL;
 		goto fail_open;
 	}
 
@@ -2959,7 +3038,7 @@ static void ilitek_tddi_mp_init_item(void)
 	core_mp.tdf = 240;
 	core_mp.busy_cdc = INT_CHECK;
 	core_mp.retry = false;
-	core_mp.final_result = MP_FAIL;
+	core_mp.final_result = MP_DATA_FAIL;
 	core_mp.lost_benchmark = false;
 
 	ipio_info("CHIP = 0x%x\n", core_mp.chip_pid);
@@ -2975,10 +3054,10 @@ static void ilitek_tddi_mp_init_item(void)
 		tItems[i].type_option = 0;
 		tItems[i].run = false;
 		tItems[i].max = 0;
-		tItems[i].max_res = MP_FAIL;
-		tItems[i].item_result = MP_PASS;
+		tItems[i].max_res = MP_DATA_FAIL;
+		tItems[i].item_result = MP_DATA_PASS;
 		tItems[i].min = 0;
-		tItems[i].min_res = MP_FAIL;
+		tItems[i].min_res = MP_DATA_FAIL;
 		tItems[i].frame_count = 0;
 		tItems[i].trimmed_mean = 0;
 		tItems[i].lowest_percentage = 0;
@@ -3069,15 +3148,16 @@ static void ilitek_tddi_mp_init_item(void)
 	tItems[48].cmd = CMD_PIN_TEST;
 }
 
-static void mp_test_run(char *item)
+static int mp_test_run(char *item)
 {
-	int i;
+	int i, ret = MP_DATA_PASS;
 	char str[512] = {0};
 
 	if (item == NULL || strncmp(item, " ", strlen(item)) == 0 || core_mp.frame_len == 0) {
-		core_mp.final_result = MP_FAIL;
+		core_mp.final_result = MP_DATA_FAIL;
+		ret = -EMP_INVAL;
 		ipio_err("Invaild string (%s) or frame length (%d)\n", item, core_mp.frame_len);
-		return;
+		goto out;
 	}
 
 	ipio_debug("Test item = %s\n", item);
@@ -3160,10 +3240,10 @@ static void mp_test_run(char *item)
 				continue;
 
 			ipio_info("Run MP Test Item : %s\n", tItems[i].desp);
-			tItems[i].do_test(i);
+			ret = tItems[i].do_test(i);
 
 			/* Check result before do retry (if enabled)  */
-			if (mp_comp_result_before_retry(i) == MP_FAIL) {
+			if (mp_comp_result_before_retry(i) < 0) {
 				if (core_mp.retry) {
 					ipio_info("MP failed, doing retry\n");
 					mp_do_retry(i, RETRY_COUNT);
@@ -3171,6 +3251,9 @@ static void mp_test_run(char *item)
 			}
 		}
 	}
+
+out:
+	return ret;
 }
 
 static void mp_test_free(void)
@@ -3179,13 +3262,13 @@ static void mp_test_free(void)
 
 	ipio_info("Free all allocated mem for MP\n");
 
-	core_mp.final_result = MP_FAIL;
+	core_mp.final_result = MP_DATA_FAIL;
 
 	for (i = 0; i < ARRAY_SIZE(tItems); i++) {
 		tItems[i].run = false;
-		tItems[i].max_res = MP_FAIL;
-		tItems[i].min_res = MP_FAIL;
-		tItems[i].item_result = MP_PASS;
+		tItems[i].max_res = MP_DATA_FAIL;
+		tItems[i].min_res = MP_DATA_FAIL;
+		tItems[i].item_result = MP_DATA_PASS;
 		snprintf(tItems[i].result, 16, "%s", "FAIL");
 
 		if (tItems[i].catalog == TX_RX_DELTA) {
@@ -3228,24 +3311,27 @@ static void mp_copy_ret_to_apk(char *buf)
 	for (i = 0; i < MP_TEST_ITEM; i++) {
 		buf[i] = 2;
 		if (tItems[i].run) {
-			if (tItems[i].item_result == MP_FAIL)
+			if (tItems[i].item_result == MP_DATA_FAIL) {
+				ipio_err("Item [%s] data fail\n", tItems[i].desp);
 				buf[i] = 1;
-			else
+			} else {
+				ipio_info("Item [%s] data pass\n", tItems[i].desp);
 				buf[i] = 0;
-
+			}
 			run++;
 		}
 	}
 }
 
-int ilitek_tddi_mp_test_main(char *apk, bool lcm_on)
+int ilitek_tddi_mp_test_main(char *apk, bool lcm_on, char *single)
 {
-	int ret = 0;
+	int i, ret = 0;
 	char str[128] = {0}, ver[128] = {0};
 
 	ilitek_ini_file_data = (struct ini_file_data *)vmalloc(sizeof(struct ini_file_data) * PARSER_MAX_KEY_NUM);
 	if (ERR_ALLOC_MEM(ilitek_ini_file_data)) {
 		ipio_info("Failed to malloc ilitek_ini_file_data\n");
+		ret = -EMP_NOMEM;
 		goto out;
 	}
 
@@ -3254,6 +3340,7 @@ int ilitek_tddi_mp_test_main(char *apk, bool lcm_on)
 	ret = ilitek_tddi_mp_ini_parser(INI_NAME_PATH);
 	if (ret < 0) {
 		ipio_err("Failed to parsing INI file\n");
+		ret = -EMP_INI;
 		goto out;
 	}
 
@@ -3262,51 +3349,57 @@ int ilitek_tddi_mp_test_main(char *apk, bool lcm_on)
 	snprintf(ver, sizeof(ver), "0x%s", str);
 	if ((str2hex(ver)) != (core_mp.protocol_ver >> 8)) {
 		ipio_err("ERROR! MP Protocol version is invaild, 0x%x\n", str2hex(ver));
-		ret = -EINVAL;
+		ret = -EMP_PROTOCOL;
 		goto out;
 	}
 
 	/* Read timing info from ini file */
-	ret = mp_get_timing_info();
-	if (ret < 0) {
+	if (mp_get_timing_info() < 0) {
 		ipio_err("Failed to get timing info from ini\n");
+		ret = -EMP_TIMING_INFO;
 		goto out;
 	}
 
+	if (single != NULL) {
+		ret = mp_test_run(single);
+		if (ret < 0) {
+			mp_show_result(lcm_on);
+			goto mp_failed;
+		}
+	}
+
 	/* Do not chang the sequence of test */
-	mp_test_run("pin test ( int and rst )");
 	if (idev->protocol->ver >= PROTOCOL_VER_540) {
 		if (lcm_on) {
-			mp_test_run("noise peak to peak(with panel)");
-			mp_test_run("noise peak to peak(ic only)");
-			mp_test_run("short test -ili9881"); //compatible with old ini version.
-			mp_test_run("short test");
-			mp_test_run("open test(integration)_sp");
-			mp_test_run("raw data(no bk)");
-			mp_test_run("raw data(have bk)");
-			mp_test_run("calibration data(dac)");
-			mp_test_run("doze raw data");
-			mp_test_run("doze peak to peak");
-			mp_test_run("open test_c");
-			mp_test_run("touch deltac");
+			for (i = 0; i < DEF_TEST_LCM_ON; i++) {
+				ret = mp_test_run(run_lcm_on[i]);
+				if (ret < 0) {
+					mp_show_result(lcm_on);
+					goto mp_failed;
+				}
+			}
 		} else {
-			mp_test_run("raw data(have bk) (lcm off)");
-			mp_test_run("raw data(no bk) (lcm off)");
-			mp_test_run("noise peak to peak(with panel) (lcm off)");
-			mp_test_run("noise peak to peak(ic only) (lcm off)");
-			mp_test_run("raw data_td (lcm off)");
-			mp_test_run("peak to peak_td (lcm off)");
+			for (i = 0; i < DEF_TEST_LCM_OFF; i++) {
+				ret = mp_test_run(run_lcm_off[i]);
+				if (ret < 0) {
+					mp_show_result(lcm_on);
+					goto mp_failed;
+				}
+			}
 		}
 	} else {
-		mp_test_run("untouch peak to peak");
-		mp_test_run("open test(integration)");
-		mp_test_run("open test(cap)");
-		mp_test_run("untouch cm data");
-		mp_test_run("pixel raw (no bk)");
-		mp_test_run("pixel raw (have bk)");
+		for (i = 0; i < DEF_OLD_TEST; i++) {
+			ret = mp_test_run(run_old_test[i]);
+			if (ret < 0) {
+				mp_show_result(true);
+				goto mp_failed;
+			}
+		}
 	}
 
 	ret = mp_show_result(lcm_on);
+
+mp_failed:
 	mp_copy_ret_to_apk(apk);
 	mp_test_free();
 

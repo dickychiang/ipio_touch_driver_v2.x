@@ -102,7 +102,7 @@
 #include "sync_write.h"
 #endif
 
-#define DRIVER_VERSION			"2.0.1.0"
+#define DRIVER_VERSION			"2.0.1.1"
 
 /* Options */
 #define TDDI_INTERFACE			BUS_SPI /* BUS_I2C(0x18) or BUS_SPI(0x1C) */
@@ -243,7 +243,7 @@ enum TP_WQ_TYPE {
 	WQ_BAT,
 };
 
-enum OPPO_RECORD_DATA {
+enum TP_RECORD_DATA {
 	ENABLE_RECORD = 0,
 	DATA_RECORD,
 	DISABLE_RECORD
@@ -484,7 +484,7 @@ enum TP_DATA_FORMAT {
 #define DATA_FORMAT_DEMO_DEBUG_INFO_CMD 		0x04
 #define DATA_FORMAT_GESTURE_NORMAL_CMD 			0x01
 #define DATA_FORMAT_GESTURE_INFO_CMD			0x02
-#define P5_X_DEMO_MODE_PACKET_LEN			43 //SUMMER
+#define P5_X_DEMO_MODE_PACKET_LEN			43
 #define P5_X_INFO_HEADER_LENGTH				3
 #define P5_X_INFO_CHECKSUM_LENGTH			1
 #define P5_X_DEMO_DEBUG_INFO_ID0_LENGTH			14
@@ -649,6 +649,7 @@ struct ilitek_tddi_dev {
 	bool irq_after_recovery;
 	bool ddi_rest_done;
 	bool resume_by_ddi;
+	bool tp_suspend;
 
 	atomic_t irq_stat;
 	atomic_t tp_reset;
@@ -754,7 +755,7 @@ extern int ilitek_tddi_fw_dump_flash_data(u32 start, u32 end, bool user);
 extern int ilitek_tddi_fw_upgrade(int upgrade_type, int file_type, int open_file_method);
 
 /* Prototypes for tddi mp test */
-extern int ilitek_tddi_mp_test_main(char *apk, bool lcm_on);
+extern int ilitek_tddi_mp_test_main(char *apk, bool lcm_on, char *single);
 
 /* Prototypes for tddi core functions */
 extern int ilitek_tddi_touch_esd_gesture_flash(void);
@@ -808,7 +809,7 @@ extern int ilitek_tddi_wq_esd_spi_check(void);
 extern int ilitek_tddi_gesture_recovery(void);
 extern void ilitek_tddi_spi_recovery(void);
 extern void ilitek_tddi_wq_ctrl(int type, int ctrl);
-extern int ilitek_tddi_mp_test_handler(char *apk, bool lcm_on);
+extern int ilitek_tddi_mp_test_handler(char *apk, bool lcm_on, char *single);
 extern void ilitek_tddi_report_handler(void);
 extern int ilitek_tddi_sleep_handler(int mode);
 extern int ilitek_tddi_reset_ctrl(int mode);
@@ -843,7 +844,7 @@ extern void netlink_reply_msg(void *raw, int size);
 extern int katoi(char *str);
 extern int str2hex(char *str);
 
-/* Prototypes for OPPO */
+/* Prototypes for additional functionalities */
 extern void gesture_fail_reason(bool enable);
 extern int get_tp_recore_ctrl(int data);
 extern int get_tp_recore_data(void);
