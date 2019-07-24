@@ -42,7 +42,7 @@ static void ilitek_resume_by_ddi_work(struct work_struct *work)
 		disable_irq_wake(idev->irq_num);
 
 	/* Set tp as demo mode and reload code if it's iram. */
-	idev->actual_tp_mode = P5_X_FW_DEMO_MODE;
+	idev->actual_tp_mode = P5_X_FW_AP_MODE;
 	if (idev->fw_upgrade_mode == UPGRADE_IRAM)
 		ilitek_tddi_fw_upgrade_handler(NULL);
 	else
@@ -545,6 +545,8 @@ int ilitek_tddi_switch_tp_data_format(int format)
 		return -1;
 	}
 
+	ipio_info("Summer switch to format %d , len = %d\n", format, idev->tp_data_len);
+
 	if (idev->actual_tp_mode == P5_X_FW_AP_MODE) {
 		idev->actual_tp_data_format = format;
 		cmd[0] = P5_X_MODE_CONTROL;
@@ -622,6 +624,7 @@ void ilitek_tddi_report_handler(void)
 
 	rlen = ret;
 
+
 	ilitek_dump_data(buf, 8, rlen, 0, "finger report");
 
 	checksum = ilitek_calc_packet_checksum(buf, rlen - 1);
@@ -637,8 +640,7 @@ void ilitek_tddi_report_handler(void)
 	pid = buf[0];
 	if (pid == P5_X_INFO_HEADER_PACKET_ID) {
 		ipio_debug("Have header PID = %x\n", pid);
-		buf = buf + P5_X_INFO_HEADER_LENGTH;
-		pid = buf[0];
+		pid = buf[3];
 	}
 	ipio_debug("Packet ID = %x\n", pid);
 
@@ -659,7 +661,7 @@ void ilitek_tddi_report_handler(void)
 		ipio_info("gesture fail reason code = 0x%02x", buf[1]);
 		break;
 	case P5_X_DEMO_DEBUG_INFO_PACKET_ID:
-		demo_debug_info_mode(buf, rlen);
+		demo_debug_info_mode(&buf[3], rlen);
 		break;
 	default:
 		ipio_err("Unknown packet id, %x\n", pid);

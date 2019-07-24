@@ -144,7 +144,7 @@
 /* Debug messages */
 #define DEBUG_NONE	0
 #define DEBUG_ALL	1
-#define DEBUG_OUTPUT	DEBUG_NONE
+#define DEBUG_OUTPUT	DEBUG_ALL
 
 #define ipio_info(fmt, arg...)						\
 ({									\
@@ -487,7 +487,8 @@ enum TP_DATA_FORMAT {
 #define P5_X_DEMO_MODE_PACKET_LEN			43 //SUMMER
 #define P5_X_INFO_HEADER_LENGTH				3
 #define P5_X_INFO_CHECKSUM_LENGTH			1
-#define P5_X_DEMO_DEBUG_INFO_ID0_LENGTH			10
+#define P5_X_DEMO_DEBUG_INFO_ID0_LENGTH			14
+// #define P5_X_DEMO_DEBUG_INFO_ID0_LENGTH			10
 #define P5_X_DEBUG_MODE_PACKET_LENGTH			1280
 #define P5_X_TEST_MODE_PACKET_LENGTH			1180
 #define P5_X_GESTURE_NORMAL_LENGTH			8

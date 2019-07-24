@@ -49,6 +49,13 @@ struct demo_debug_info_id0 {
 	u32 algo_pt_status8 : 3;
 	u32 algo_pt_status9 : 3;
 	u32 reserved2 : 2;
+
+	u16  hopping_flag : 1;
+	u16  hopping_index : 5;
+	u16  frequency_h : 2;
+	u16  frequency_l : 8;
+
+	u16  reserved3 : 16;
 };
 
 void ilitek_dump_data(void *data, int type, int len, int row_len, const char *name)
@@ -56,6 +63,7 @@ void ilitek_dump_data(void *data, int type, int len, int row_len, const char *na
 	int i, row = 31;
 	u8 *p8 = NULL;
 	s32 *p32 = NULL;
+	s16 *p16 = NULL;
 
 	if (!ipio_debug_level)
 		return;
@@ -76,6 +84,8 @@ void ilitek_dump_data(void *data, int type, int len, int row_len, const char *na
 		p8 = (u8 *) data;
 	if (type == 32 || type == 10)
 		p32 = (s32 *) data;
+	if (type == 16)
+		p16 = (s16 *) data;
 
 	for (i = 0; i < len; i++) {
 		if (type == 8)
@@ -84,6 +94,9 @@ void ilitek_dump_data(void *data, int type, int len, int row_len, const char *na
 			pr_cont(" %4x ", p32[i]);
 		else if (type == 10)
 			pr_cont(" %4d ", p32[i]);
+		else if (type == 16)
+			pr_cont(" %4d ", p16[i]);
+
 		if ((i % row) == row - 1) {
 			pr_cont("\n");
 			pr_cont("ILITEK: ");
@@ -581,6 +594,9 @@ void demo_debug_info_id0(u8 *buf, size_t len)
 	ipio_info("algo_pt_status7 = %d\n", id0.algo_pt_status7);
 	ipio_info("algo_pt_status8 = %d\n", id0.algo_pt_status8);
 	ipio_info("algo_pt_status9 = %d\n", id0.algo_pt_status9);
+	ipio_info("hopping_flag = %d\n", id0.hopping_flag);
+	ipio_info("hopping_index = %d\n", id0.hopping_index);
+	ipio_info("frequency = %d\n", (id0.frequency_h << 8 | id0.frequency_l));
 }
 
 void demo_debug_info_mode(u8 *buf, size_t len)

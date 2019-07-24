@@ -1174,7 +1174,7 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 
 	if (strncmp(cmd, "hwreset", strlen(cmd)) == 0) {
 		ilitek_tddi_reset_ctrl(TP_HW_RST_ONLY);
-	}else if (strcmp(cmd, "rawdatarecore") == 0) {
+	} else if (strcmp(cmd, "rawdatarecore") == 0) {
 		if (data[1] == 0)
 			get_tp_recore_ctrl(ENABLE_RECORD);
 		else if (data[1] == 1)
@@ -1760,10 +1760,21 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 			break;
 		}
 		ipio_info("ioctl: switch fw format = %d\n", szBuf[0]);
-		if (szBuf[0] == 0)
-			ilitek_tddi_switch_tp_data_format(DATA_FORMAT_DEMO);
-		else if (szBuf[0] == 2)
+		if (szBuf[0] == 0) {
+			if (idev->actual_tp_mode == P5_X_FW_AP_MODE)
+				ilitek_tddi_switch_tp_data_format(DATA_FORMAT_DEMO);
+			else
+				ilitek_tddi_switch_tp_mode(P5_X_FW_AP_MODE);
+
+		} else if (szBuf[0] == 1) {
+			ilitek_tddi_switch_tp_mode(P5_X_FW_TEST_MODE);
+		} else if (szBuf[0] == 2) {
+			if (idev->actual_tp_mode != P5_X_FW_AP_MODE)
+				ilitek_tddi_switch_tp_mode(P5_X_FW_AP_MODE);
+
 			ilitek_tddi_switch_tp_data_format(DATA_FORMAT_DEBUG);
+		}
+
 		break;
 	case ILITEK_IOCTL_TP_MODE_STATUS:
 		ipio_info("ioctl: current firmware mode = %d", idev->actual_tp_mode);
