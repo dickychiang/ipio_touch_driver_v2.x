@@ -385,16 +385,6 @@ int ilitek_tddi_ic_func_ctrl(const char *name, int ctrl)
 		}
 	}
 
-	// if (idev->protocol->ver < PROTOCOL_VER_570) {
-	// 	if (strncmp(func_ctrl[i].name, "gesture_demo_en", strlen("gesture_demo_en")) == 0 ||
-	// 		strncmp(func_ctrl[i].name, "tp_recore", strlen("tp_recore")) == 0 ||
-	// 		strncmp(func_ctrl[i].name, "knock_en", strlen("knock_en")) == 0) {
-	// 		ipio_info("Non support %s function ctrl\n", func_ctrl[i].name);
-	// 		ret = -1;
-	// 		goto out;
-	// 	}
-	// }
-
 	func_ctrl[i].cmd[2] = ctrl;
 
 	ipio_info("func = %s, len = %d, cmd = 0x%x, 0%x, 0x%x\n", func_ctrl[i].name, func_ctrl[i].len,
