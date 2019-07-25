@@ -3370,12 +3370,11 @@ int ilitek_tddi_mp_test_main(char *apk, bool lcm_on, char *single)
 	if (idev->protocol->ver >= PROTOCOL_VER_540) {
 		if (lcm_on) {
 			for (i = 0; i < DEF_TEST_LCM_ON; i++) {
-				ipio_info("summer %s\n", run_lcm_on[i]);
 				ret = mp_test_run(run_lcm_on[i]);
-				// if (ret < 0) {
-					// mp_show_result(lcm_on);
-					// goto mp_failed;
-				// }
+				if (ret < 0) {
+					mp_show_result(lcm_on);
+					goto mp_failed;
+				}
 			}
 		} else {
 			for (i = 0; i < DEF_TEST_LCM_OFF; i++) {

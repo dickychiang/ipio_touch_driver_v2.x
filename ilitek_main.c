@@ -550,8 +550,6 @@ int ilitek_tddi_switch_tp_data_format(int format)
 		return -1;
 	}
 
-	ipio_info("Summer switch to format %d , len = %d\n", format, idev->tp_data_len);
-
 	if (idev->actual_tp_mode == P5_X_FW_AP_MODE) {
 		idev->actual_tp_data_format = format;
 		cmd[0] = P5_X_MODE_CONTROL;
@@ -628,7 +626,6 @@ void ilitek_tddi_report_handler(void)
 	}
 
 	rlen = ret;
-
 
 	ilitek_dump_data(buf, 8, rlen, 0, "finger report");
 
