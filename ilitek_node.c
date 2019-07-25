@@ -1041,8 +1041,8 @@ int get_tp_recore_data(void)
 {
 	u8 buf[8] = {0}, record_case = 0;
 	s8 index;
-	u16 *raw = NULL, *raw_ptr = NULL, frame_len;
-	u32 base_addr = 0x20000, addr, len, *ptr, i, j;
+	u16 *raw = NULL, *raw_ptr = NULL, frame_len = 0;
+	u32 base_addr = 0x20000, addr, len, *ptr, i, fcnt;
 	struct record_state record_stat;
 	bool ice = atomic_read(&idev->ice_stat);
 
@@ -1054,10 +1054,11 @@ int get_tp_recore_data(void)
 	addr = ((buf[0] << 8) | buf[1]) + base_addr;
 	len = ((buf[2] << 8) | buf[3]);
 	index = buf[4];
+	fcnt = buf[5];
 	record_case = buf[6];
 	ipio_memcpy(&record_stat, &buf[7], 1, 1);
-	ipio_info("addr = 0x%x, len = %d, lndex = 0x%d, record_case = 0x%x\n",
-		addr, len, index, record_case);
+	ipio_info("addr = 0x%x, len = %d, lndex = 0x%d, fram num = %d, record_case = 0x%x\n",
+		addr, len, index, fcnt, record_case);
 	ilitek_dump_data(buf, 8, sizeof(buf), 0, "all record bytes");
 
 	raw = kcalloc(len, sizeof(u8), GFP_ATOMIC);
@@ -1070,16 +1071,30 @@ int get_tp_recore_data(void)
 	if (!ice)
 		ilitek_ice_mode_ctrl(ENABLE, ON);
 
-	for (i = 0, j = 0; i < len; i += 4, j++)
-		ptr[j] = ilitek_ice_mode_read((addr + i), &ptr[j], sizeof(u32));
+	buf[0] = 0x25;
+	buf[3] = (char)((addr & 0x00FF0000) >> 16);
+	buf[2] = (char)((addr & 0x0000FF00) >> 8);
+	buf[1] = (char)((addr & 0x000000FF));
 
-	frame_len = (len / 6);
-	for (i = 0; i < 3; i ++) {
+	if (idev->write(buf, 4)) {
+		ipio_err("Failed to write iram data\n");
+		return -ENODEV;
+	}
+
+	if (idev->read((u8 *)raw, len)) {
+		ipio_err("Failed to Read iram data\n");
+		return -ENODEV;
+	}
+	ilitek_dump_data(raw, 8, len, idev->xch_num * 2, "recore_data");
+
+	frame_len = (len / (fcnt * 2));
+	for (i = 0; i < fcnt; i ++) {
 		raw_ptr = raw + (index * frame_len);
+
 		ilitek_dump_data(raw_ptr, 16, frame_len, idev->xch_num, "recore_data");
 		index--;
 		if(index < 0)
-			index = 2;
+			index = fcnt - 1;
 	}
 
 	if (!ice)
