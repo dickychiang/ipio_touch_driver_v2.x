@@ -1085,7 +1085,6 @@ int get_tp_recore_data(void)
 		ipio_err("Failed to Read iram data\n");
 		return -ENODEV;
 	}
-	ilitek_dump_data(raw, 8, len, idev->xch_num * 2, "recore_data");
 
 	frame_len = (len / (fcnt * 2));
 	for (i = 0; i < fcnt; i ++) {
