@@ -731,7 +731,7 @@ int ilitek_tddi_init(void)
 {
 	struct task_struct *fw_boot_th;
 
-	ipio_info("ilitek tddi main init\n");
+	ipio_info("ilitek tddi main init, driver ver = %s\n", DRIVER_VERSION);
 
 	mutex_init(&idev->touch_mutex);
 	mutex_init(&idev->debug_mutex);
