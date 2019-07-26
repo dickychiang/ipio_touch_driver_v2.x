@@ -316,7 +316,7 @@ static int core_spi_ice_mode_lock_write(u8 *data, int size)
 
 	/* Calcuate checsum and fill it in the last byte */
 	check_sum = ilitek_calc_packet_checksum(data, size);
-	ipio_memcpy(txbuf + 5, data, size, safe_size + 9);
+	ipio_memcpy(txbuf + 5, data, size, safe_size + 4);
 	txbuf[5 + size] = check_sum;
 	size++;
 	wsize = size;
