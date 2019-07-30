@@ -178,52 +178,18 @@ static int ilitek_tddi_fw_iram_read(u8 *buf, u32 start, u32 end)
 	return 0;
 }
 
-static void ilitek_tddi_fw_print_iram_data(void)
-{
-	int i, len;
-	int tmp = ipio_debug_level;
-	u8 *buf = NULL;
-	u32 start = 0, end = 0xFFFF;
-
-	len = end - start + 1;
-
-	buf = vmalloc(len * sizeof(u8));
-	if (ERR_ALLOC_MEM(buf)) {
-		ipio_err("Failed to allocate buf memory, %ld\n", PTR_ERR(buf));
-		return;
-	}
-
-	for (i = 0; i < len; i++)
-		buf[i] = 0xFF;
-
-	if (ilitek_tddi_fw_iram_read(buf, start, end) < 0)
-		ipio_err("Read IRAM data failed\n");
-
-	ipio_debug_level = DEBUG_ALL;
-	ilitek_dump_data(buf, 8, len, 0, "IRAM");
-	ipio_debug_level = tmp;
-	ipio_vfree((void **)&buf);
-}
-
-int ilitek_tddi_fw_dump_iram_data(u32 start, u32 end)
+void ilitek_fw_dump_iram_data(u32 start, u32 end, bool save)
 {
 	struct file *f = NULL;
-	u8 *buf = NULL;
 	mm_segment_t old_fs;
 	loff_t pos = 0;
-	int ret, wdt, i;
-	int len;
+	int wdt, i;
+	int len, tmp = ipio_debug_level;
+	bool ice = atomic_read(&idev->ice_stat);
 
-	f = filp_open(DUMP_IRAM_PATH, O_WRONLY | O_CREAT | O_TRUNC, 644);
-	if (ERR_ALLOC_MEM(f)) {
-		ipio_err("Failed to open the file at %ld.\n", PTR_ERR(f));
-		return -1;
-	}
-
-	ret = ilitek_ice_mode_ctrl(ENABLE, OFF);
-	if (ret < 0) {
-		filp_close(f, NULL);
-		return ret;
+	if (!ice) {
+		if (ilitek_ice_mode_ctrl(ENABLE, OFF) < 0)
+			ipio_err("Enable ice mode failed before code reset\n");
 	}
 
 	wdt = ilitek_tddi_ic_watch_dog_ctrl(ILI_READ, DISABLE);
@@ -234,26 +200,32 @@ int ilitek_tddi_fw_dump_iram_data(u32 start, u32 end)
 
 	len = end - start + 1;
 
-	buf = vmalloc(len * sizeof(u8));
-	if (ERR_ALLOC_MEM(buf)) {
-		ipio_err("Failed to allocate buf memory, %ld\n", PTR_ERR(buf));
-		filp_close(f, NULL);
-		ret = ENOMEM;
-		goto out;
-	}
-
 	for (i = 0; i < len; i++)
-		buf[i] = 0xFF;
+		idev->fw_dma_buf[i] = 0xFF;
 
-	if (ilitek_tddi_fw_iram_read(buf, start, end) < 0)
+	if (ilitek_tddi_fw_iram_read(idev->fw_dma_buf, start, end) < 0)
 		ipio_err("Read IRAM data failed\n");
 
-	old_fs = get_fs();
-	set_fs(get_ds());
-	set_fs(KERNEL_DS);
-	pos = 0;
-	vfs_write(f, buf, len, &pos);
-	set_fs(old_fs);
+	if (save) {
+		f = filp_open(DUMP_IRAM_PATH, O_WRONLY | O_CREAT | O_TRUNC, 644);
+		if (ERR_ALLOC_MEM(f)) {
+			ipio_err("Failed to open the file at %ld.\n", PTR_ERR(f));
+			goto out;
+		}
+
+		old_fs = get_fs();
+		set_fs(get_ds());
+		set_fs(KERNEL_DS);
+		pos = 0;
+		vfs_write(f, idev->fw_dma_buf, len, &pos);
+		set_fs(old_fs);
+		filp_close(f, NULL);
+		ipio_info("Save iram data to %s\n", DUMP_IRAM_PATH);
+	} else {
+		ipio_debug_level = DEBUG_ALL;
+		ilitek_dump_data(idev->fw_dma_buf, 8, len, 0, "IRAM");
+		ipio_debug_level = tmp;
+	}
 
 out:
 	if (wdt) {
@@ -261,11 +233,12 @@ out:
 			ipio_err("Enable WDT failed during dumping iram\n");
 	}
 
-	ilitek_ice_mode_ctrl(DISABLE, OFF);
-	filp_close(f, NULL);
-	ipio_vfree((void **)&buf);
-	ipio_info("dump iram data success\n");
-	return 0;
+	if (!ice) {
+		if (ilitek_ice_mode_ctrl(DISABLE, OFF) < 0)
+			ipio_err("Enable ice mode failed after code reset\n");
+	}
+
+	ipio_info("dump iram data completed\n");
 }
 
 static int ilitek_tddi_fw_iram_program(u32 start, u8 *w_buf, u32 w_len, u32 split_len)
@@ -850,7 +823,7 @@ static int ilitek_tddi_fw_iram_upgrade(u8 *pfw)
 
 			if (crc != dma) {
 				ipio_err("CRC Failed! print iram 64k bytes for debug\n");
-				ilitek_tddi_fw_print_iram_data();
+				ilitek_fw_dump_iram_data(0x0, 0xFFFF, false);
 				return UPDATE_FAIL;
 			}
 			idev->fw_update_stat = 90;

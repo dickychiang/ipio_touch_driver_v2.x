@@ -1332,7 +1332,7 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 		ilitek_tddi_fw_dump_flash_data(data[1], data[2], false);
 	} else if (strncmp(cmd, "dumpiramdata", strlen(cmd)) == 0) {
 		ipio_info("Start = 0x%x, End = 0x%x, Dump IRAM path = %s\n", data[1], data[2], DUMP_IRAM_PATH);
-		ilitek_tddi_fw_dump_iram_data(data[1], data[2]);
+		ilitek_fw_dump_iram_data(data[1], data[2], true);
 	} else if (strncmp(cmd, "edge_palm_ctrl", strlen(cmd)) == 0) {
 		ilitek_tddi_ic_func_ctrl("edge_palm", data[1]);
 	} else if (strncmp(cmd, "uart_mode_ctrl", strlen(cmd)) == 0) {
