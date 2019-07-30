@@ -362,7 +362,7 @@ static int core_spi_ice_mode_disable(void)
 
 static int core_spi_ice_mode_enable(void)
 {
-	u8 cmd[9] = {0x82, 0x25, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3};
+	u8 cmd[10] = {0x82, 0x25, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3};
 	u8 txbuf[5] = {0x82, 0x1F, 0x62, 0x10, 0x18};
 	u8 rxbuf[2] = {0};
 
@@ -379,7 +379,7 @@ static int core_spi_ice_mode_enable(void)
 
 	/* if system is suspended, wake up our spi pll clock before communication. */
 	if (idev->tp_suspend) {
-		ipio_info("Write dummy cmd to wake up spi pll clock\n");
+		ipio_debug("Write dummy cmd to wake up spi pll clock\n");
 		if (idev->spi_write_then_read(idev->spi, cmd, sizeof(cmd), rxbuf, 0) < 0) {
 			ipio_err("spi write wake up cmd failed\n");
 			return -EIO;
