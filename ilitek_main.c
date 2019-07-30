@@ -753,7 +753,6 @@ int ilitek_tddi_init(void)
 
 	ilitek_tddi_ic_init();
 	ilitek_tddi_wq_init();
-	ilitek_tddi_node_init();
 
 	/* Must do hw reset once in first time for work normally if tp reset is avaliable */
 	if (!TDDI_RST_BIND)
@@ -777,6 +776,8 @@ int ilitek_tddi_init(void)
 		ipio_err("Not found ilitek chips\n");
 		return -ENODEV;
 	}
+
+	ilitek_tddi_node_init();
 
 	ilitek_tddi_fw_read_flash_info(idev->fw_upgrade_mode);
 
