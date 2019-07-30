@@ -612,17 +612,19 @@ void ilitek_tddi_report_handler(void)
 	ret = idev->read(buf, rlen);
 	if (ret < 0) {
 		ipio_err("Read report packet failed, ret = %d\n", ret);
-		if (idev->actual_tp_mode == P5_X_FW_GESTURE_MODE && idev->gesture) {
-			ipio_err("Gesture failed, doing gesture recovery\n");
-			if (ilitek_tddi_gesture_recovery() < 0)
-				ipio_err("Failed to recover gesture\n");
-			idev->irq_after_recovery = true;
-		} else if (ret == DO_SPI_RECOVER) {
+		if (ret == DO_SPI_RECOVER) {
+			if (idev->actual_tp_mode == P5_X_FW_GESTURE_MODE && idev->gesture) {
+				ipio_err("Gesture failed, doing gesture recovery\n");
+				if (ilitek_tddi_gesture_recovery() < 0)
+					ipio_err("Failed to recover gesture\n");
+				idev->irq_after_recovery = true;
+				goto out;
+			}
 			ipio_err("SPI ACK failed, doing spi recovery\n");
 			ilitek_tddi_spi_recovery();
 			idev->irq_after_recovery = true;
+			goto out;
 		}
-		goto out;
 	}
 
 	rlen = ret;
