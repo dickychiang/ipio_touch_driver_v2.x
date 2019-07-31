@@ -137,15 +137,16 @@ int ilitek_spi_write_then_read_direct(struct spi_device *spi,
 {
 	static DEFINE_MUTEX(lock);
 
-	int status = -1;
-	u8 cmd, temp1[1] = {0}, temp2[1] = {0};
+	int i, status = -1;
+	u8 cmd;
 	struct spi_message	message;
-	struct spi_transfer	xfer[2];
+	struct spi_transfer	xfer;
+	u8 *tmp = (u8 *)rxbuf;
 
 	mutex_trylock(&lock);
 
 	spi_message_init(&message);
-	memset(xfer, 0, sizeof(xfer));
+	memset(&xfer, 0, sizeof(xfer));
 
 	if ((n_tx == 1) && (n_rx == 1))
 		cmd = SPI_READ;
@@ -154,23 +155,24 @@ int ilitek_spi_write_then_read_direct(struct spi_device *spi,
 
 	switch (cmd) {
 	case SPI_WRITE:
-		xfer[0].len = n_tx;
-		xfer[0].tx_buf = txbuf;
-		spi_message_add_tail(&xfer[0], &message);
+		xfer.len = n_tx;
+		xfer.tx_buf = txbuf;
+		spi_message_add_tail(&xfer, &message);
 		status = spi_sync(spi, &message);
 		break;
 	case SPI_READ:
-		/* for write cmd and head */
-		xfer[0].len = n_tx;
-		xfer[0].tx_buf = txbuf;
-		xfer[0].rx_buf = temp1;
-		spi_message_add_tail(&xfer[0], &message);
+		xfer.len = n_tx + n_rx;
+		xfer.tx_buf = txbuf;
+		memset(idev->fw_dma_buf, 0x0, MAX_HEX_FILE_SIZE);
+		xfer.rx_buf = idev->fw_dma_buf;
 
-		xfer[1].len = n_rx;
-		xfer[1].tx_buf = temp2;
-		xfer[1].rx_buf = rxbuf;
-		spi_message_add_tail(&xfer[1], &message);
+		spi_message_add_tail(&xfer, &message);
 		status = spi_sync(spi, &message);
+
+		for (i = 0; i < (n_rx + n_tx); i++)
+			tmp[i] = idev->fw_dma_buf[i + 1];
+
+		memcpy((u8 *)rxbuf, tmp, n_rx);
 		break;
 	default:
 		ipio_info("Unknown command 0x%x\n", cmd);
@@ -184,17 +186,23 @@ int ilitek_spi_write_then_read_direct(struct spi_device *spi,
 static int core_rx_lock_check(int *ret_size)
 {
 	int i, count = 1;
-	u8 txbuf[5] = {SPI_WRITE, 0x25, 0x94, 0x0, 0x2};
+	u8 txbuf[5] = {0};
 	u8 rxbuf[4] = {0};
 	u16 status = 0, lock = 0x5AA5;
 
 	for (i = 0; i < count; i++) {
 		txbuf[0] = SPI_WRITE;
+		txbuf[1] = 0x25;
+		txbuf[2] = 0x94;
+		txbuf[3] = 0x0;
+		txbuf[4] = 0x2;
 		if (idev->spi_write_then_read(idev->spi, txbuf, 5, txbuf, 0) < 0) {
 			ipio_err("spi write (0x25,0x94,0x0,0x2) error\n");
 			goto out;
 		}
 
+		memset(txbuf, 0, sizeof(txbuf));
+		memset(rxbuf, 0, sizeof(rxbuf));
 		txbuf[0] = SPI_READ;
 		if (idev->spi_write_then_read(idev->spi, txbuf, 1, rxbuf, 4) < 0) {
 			ipio_err("spi read error\n");
@@ -220,17 +228,23 @@ out:
 static int core_tx_unlock_check(void)
 {
 	int i, count = 100;
-	u8 txbuf[5] = {SPI_WRITE, 0x25, 0x0, 0x0, 0x2};
+	u8 txbuf[5] = {0};
 	u8 rxbuf[4] = {0};
 	u16 status = 0, unlock = 0x9881;
 
 	for (i = 0; i < count; i++) {
 		txbuf[0] = SPI_WRITE;
+		txbuf[1] = 0x25;
+		txbuf[2] = 0x0;
+		txbuf[3] = 0x0;
+		txbuf[4] = 0x2;
 		if (idev->spi_write_then_read(idev->spi, txbuf, 5, txbuf, 0) < 0) {
 			ipio_err("spi write (0x25,0x0,0x0,0x2) error\n");
 			goto out;
 		}
 
+		memset(txbuf, 0, sizeof(txbuf));
+		memset(rxbuf, 0, sizeof(rxbuf));
 		txbuf[0] = SPI_READ;
 		if (idev->spi_write_then_read(idev->spi, txbuf, 1, rxbuf, 4) < 0) {
 			ipio_err("spi read error\n");
@@ -270,6 +284,7 @@ static int core_spi_ice_mode_unlock_read(u8 *data, int size)
 	}
 
 	/* read data */
+	memset(txbuf, 0, sizeof(txbuf));
 	txbuf[0] = SPI_READ;
 	if (idev->spi_write_then_read(idev->spi, txbuf, 1, data, size) < 0) {
 		ret = -EIO;
@@ -365,8 +380,9 @@ static int core_spi_ice_mode_enable(void)
 	u8 cmd[10] = {0x82, 0x25, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3};
 	u8 txbuf[5] = {0x82, 0x1F, 0x62, 0x10, 0x18};
 	u8 rxbuf[2] = {0};
+	u8 write = SPI_WRITE;
 
-	if (idev->spi_write_then_read(idev->spi, txbuf, 1, rxbuf, 1) < 0) {
+	if (idev->spi_write_then_read(idev->spi, &write, 1, rxbuf, 1) < 0) {
 		ipio_err("spi write 0x82 error\n");
 		return -EIO;
 	}
