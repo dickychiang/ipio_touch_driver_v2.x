@@ -593,6 +593,12 @@ void ilitek_tddi_report_handler(void)
 	ilitek_tddi_wq_ctrl(WQ_ESD, DISABLE);
 	ilitek_tddi_wq_ctrl(WQ_BAT, DISABLE);
 
+	if (idev->actual_tp_mode == P5_X_FW_GESTURE_MODE) {
+		__pm_stay_awake(idev->ws);
+		/* Waiting for pm resume completed */
+		mdelay(40);
+	}
+
 	rlen = idev->tp_data_len;
 	ipio_debug("Packget length = %d\n", rlen);
 
