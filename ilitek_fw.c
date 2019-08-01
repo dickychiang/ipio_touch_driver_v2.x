@@ -188,8 +188,10 @@ void ilitek_fw_dump_iram_data(u32 start, u32 end, bool save)
 	bool ice = atomic_read(&idev->ice_stat);
 
 	if (!ice) {
-		if (ilitek_ice_mode_ctrl(ENABLE, OFF) < 0)
-			ipio_err("Enable ice mode failed before code reset\n");
+		if (ilitek_ice_mode_ctrl(ENABLE, OFF) < 0) {
+			ipio_err("Enable ice mode failed\n");
+			return;
+		}
 	}
 
 	wdt = ilitek_tddi_ic_watch_dog_ctrl(ILI_READ, DISABLE);
