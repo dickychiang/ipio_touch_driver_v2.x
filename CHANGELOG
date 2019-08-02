@@ -1,4 +1,14 @@
-* V2.0.1.0
+* V2.0.1.2
+1.	在MP測試裡，增加錯誤返回值
+2.	修正open test c 測試異常
+3.	修正DeltaC Record修正，合入OPPO功能需求驗證完成
+4.	在喚醒SPI PLL Clock時，若SPI為15Mhz，需寫10 bytes來符合Timing，所以9 bytes 改為10 bytes
+5.	修正會誤啟動gesture recovery動作
+6.	重新改寫 dump iram data function
+7.	優化SPI通信時間  #67  (需開啟SPI_DMA_TRANSFER_SPLIT，但X20是需要切割，故只驗報點功能)
+8.	重新加入pm_stay_awake，某次改動被拿掉了。
+
+* V2.0.1.1
 1.	加入OPPO需求功能 (gesture failure reason, demo debug …etc) (驗證中)
 2.	加入 wake up (dummy) command，用來在暗屏時，喚醒SPI PLL Clock
 3.	優化TP/FW Mode state machine 寫法
