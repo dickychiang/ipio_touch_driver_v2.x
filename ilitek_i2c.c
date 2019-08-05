@@ -260,6 +260,7 @@ static int ilitek_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id *
 	idev->netlink = DISABLE;
 	idev->debug_node_open = DISABLE;
 	idev->irq_tirgger_type = IRQF_TRIGGER_FALLING;
+	idev->info_from_hex = DISABLE;
 
 	if (ENABLE_GESTURE)
 		idev->gesture = ENABLE;

@@ -474,14 +474,11 @@ int ilitek_tddi_fw_upgrade_handler(void *data)
 		idev->fw_update_stat = 100;
 
 	ipio_info("Flash FW completed ... update TP/FW info\n");
-
-	/*should get coer ver first, if core ver large than 1.4.10 , get info form hex*/
 	ilitek_tddi_ic_get_core_ver();
 	ilitek_tddi_ic_get_protocl_ver();
 	ilitek_tddi_ic_get_fw_ver();
 	ilitek_tddi_ic_get_tp_info();
 	ilitek_tddi_ic_get_panel_info();
-	idev->chip->info_from_hex = false;
 
 	if (!input_reg_once) {
 		input_reg_once = true;

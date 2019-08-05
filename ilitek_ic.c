@@ -115,7 +115,6 @@ static int ilitek_tddi_ic_check_support(u32 pid, u16 id)
 	idev->chip->max_count = 0x1FFFF;
 	idev->chip->open_c_formula = open_c_formula;
 	idev->chip->info_addr = INFO_HEX_START_ADDR_64K;
-	idev->chip->info_from_hex = false;
 	return 0;
 }
 
@@ -790,6 +789,13 @@ int ilitek_tddi_ic_get_core_ver(void)
 	u8 cmd[2] = {0};
 	u8 buf[10] = {0};
 
+	if (idev->info_from_hex) {
+		buf[1] = idev->chip->info[64];
+		buf[2] = idev->chip->info[65];
+		buf[3] = idev->chip->info[66];
+		goto out;
+	}
+
 	cmd[0] = P5_X_READ_DATA_CTRL;
 	cmd[1] = P5_X_GET_CORE_VERSION;
 
@@ -819,10 +825,6 @@ int ilitek_tddi_ic_get_core_ver(void)
 out:
 	ipio_info("Core version = %d.%d.%d\n", buf[1], buf[2], buf[3]);
 	idev->chip->core_ver = buf[1] << 16 | buf[2] << 8 | buf[3];
-
-	if ((idev->chip->core_ver >= 0x10410) && (idev->fw_upgrade_mode == UPGRADE_FLASH))
-		idev->chip->info_from_hex = true;
-
 	return ret;
 }
 
@@ -856,7 +858,7 @@ int ilitek_tddi_ic_get_fw_ver(void)
 	u8 cmd[2] = {0};
 	u8 buf[10] = {0};
 
-	if (idev->chip->info_from_hex) {
+	if (idev->info_from_hex) {
 		buf[1] = idev->chip->info[44];
 		buf[2] = idev->chip->info[45];
 		buf[3] = idev->chip->info[46];
@@ -902,7 +904,7 @@ int ilitek_tddi_ic_get_panel_info(void)
 	u8 cmd = P5_X_GET_PANEL_INFORMATION;
 	u8 buf[10] = {0};
 
-	if (idev->chip->info_from_hex) {
+	if (idev->info_from_hex) {
 		buf[1] = idev->chip->info[12];
 		buf[2] = idev->chip->info[13];
 		buf[3] = idev->chip->info[14];
@@ -939,7 +941,7 @@ int ilitek_tddi_ic_get_tp_info(void)
 	u8 cmd[2] = {0};
 	u8 buf[20] = {0};
 
-	if (idev->chip->info_from_hex) {
+	if (idev->info_from_hex  && (idev->chip->core_ver >= 0x10410)) {
 		buf[1] = idev->chip->info[1];
 		buf[2] = idev->chip->info[3];
 		buf[3] = idev->chip->info[4];
@@ -1023,7 +1025,7 @@ int ilitek_tddi_ic_get_protocl_ver(void)
 	u8 buf[10] = {0};
 	u32 ver;
 
-	if (idev->chip->info_from_hex) {
+	if (idev->info_from_hex) {
 		buf[1] = idev->chip->info[68];
 		buf[2] = idev->chip->info[69];
 		buf[3] = idev->chip->info[70];

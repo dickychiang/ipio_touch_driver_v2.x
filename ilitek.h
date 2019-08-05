@@ -649,6 +649,7 @@ struct ilitek_tddi_dev {
 	bool ddi_rest_done;
 	bool resume_by_ddi;
 	bool tp_suspend;
+	bool info_from_hex;
 
 	atomic_t irq_stat;
 	atomic_t tp_reset;
@@ -723,7 +724,6 @@ struct ilitek_ic_info {
 	u16 wtd_key;
 	u32 info_addr;
 	u8  info[75];
-	bool  info_from_hex;
 	int no_bk_shift;
 	bool spi_speed_ctrl;
 	s32 (*open_sp_formula)(int dac, int raw);
