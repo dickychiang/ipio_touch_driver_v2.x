@@ -168,6 +168,8 @@ int ilitek_spi_write_then_read_direct(struct spi_device *spi,
 
 		spi_message_add_tail(&xfer, &message);
 		status = spi_sync(spi, &message);
+		if (status != 0)
+			break;
 
 		for (i = 0; i < (n_rx + n_tx); i++)
 			tmp[i] = idev->fw_dma_buf[i + 1];
@@ -180,6 +182,10 @@ int ilitek_spi_write_then_read_direct(struct spi_device *spi,
 	}
 
 	mutex_unlock(&lock);
+
+	if (status != 0)
+		ipio_err("spi transfer failed\n");
+
 	return status;
 }
 
