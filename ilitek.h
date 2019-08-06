@@ -597,7 +597,7 @@ struct ilitek_tddi_dev {
 	struct firmware tp_fw;
 
 	int actual_tp_mode;
-	int actual_tp_data_format;
+	int tp_data_format;
 	int tp_data_len;
 
 	int irq_num;
@@ -802,7 +802,7 @@ extern void ilitek_resume_by_ddi(void);
 extern int ilitek_tddi_proximity_far(int mode);
 extern int ilitek_tddi_proximity_near(int mode);
 extern int ilitek_tddi_switch_tp_mode(u8 data);
-extern int ilitek_tddi_switch_tp_data_format(int format);
+extern int ilitek_set_tp_data_len(int format);
 extern int ilitek_tddi_fw_upgrade_handler(void *data);
 extern int ilitek_tddi_wq_esd_i2c_check(void);
 extern int ilitek_tddi_wq_esd_spi_check(void);

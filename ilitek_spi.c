@@ -645,7 +645,6 @@ static int ilitek_spi_probe(struct spi_device *spi)
 
 	idev->spi_speed = ilitek_tddi_ic_spi_speed_ctrl;
 	idev->actual_tp_mode = P5_X_FW_AP_MODE;
-	idev->actual_tp_data_format = DATA_FORMAT_DEMO;
 	idev->tp_data_len = P5_X_DEMO_MODE_PACKET_LEN;
 
 	if (TDDI_RST_BIND)

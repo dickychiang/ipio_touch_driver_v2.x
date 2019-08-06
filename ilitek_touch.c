@@ -394,7 +394,7 @@ int ilitek_tddi_move_gesture_code_flash(int mode)
 	int ret = 0;
 
 	ipio_info("Switch to Gesture mode, lpwg cmd = %d\n",  idev->gesture_mode);
-	ret = ilitek_tddi_switch_tp_data_format(idev->gesture_mode);
+	ret = ilitek_set_tp_data_len(idev->gesture_mode);
 
 	return ret;
 }
@@ -409,7 +409,8 @@ int ilitek_tddi_move_gesture_code_iram(int mode)
 		ipio_err("write gesture flag failed\n");
 
 	ipio_info("Switch to Gesture mode, lpwg cmd = %d\n",  mode);
-	ilitek_tddi_switch_tp_data_format(mode);
+	if (ilitek_set_tp_data_len(mode) < 0)
+		ipio_err("Failed to set tp data length\n");
 
 	for (i = 0; i < timeout; i++) {
 		/* Prepare Check Ready */

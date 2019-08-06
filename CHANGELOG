@@ -15,7 +15,7 @@
 	* TP mode只會有3種模式 : AP, Gesture, MP
 	* 其餘像是Debug/Demo Debug等等，皆為不同的資料格式
 	* 一個AP mode會有多種不同資格上報格式
-	* 資料格式長度、算法集中放在ilitek_tddi_switch_tp_data_format處理
+	* 資料格式長度、算法集中放在ilitek_set_tp_data_len處理
 4.	加入高通的DRM_MSM休眠/喚醒事件機制
 5.	加入讓客戶可以從DDI直接調用TP喚醒的callback function
 6.	加入保存Hex資料機制，避免系統獲取不到system的partition導致固件版本回退

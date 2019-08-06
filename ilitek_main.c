@@ -394,7 +394,7 @@ int ilitek_tddi_sleep_handler(int mode)
 			ipio_err("Check busy timeout during suspend\n");
 
 		if (idev->gesture) {
-			if (idev->actual_tp_mode == P5_X_FW_DEBUG_MODE) {
+			if (idev->tp_data_format == DATA_FORMAT_DEBUG) {
 				ipio_info("Enable gesture debug mode\n");
 				idev->gesture_debug = ENABLE;
 			}
@@ -495,7 +495,7 @@ int ilitek_tddi_fw_upgrade_handler(void *data)
 	return ret;
 }
 
-int ilitek_tddi_switch_tp_data_format(int format)
+int ilitek_set_tp_data_len(int format)
 {
 	u8 cmd[2] = {0}, ctrl = 0;
 	u16 self_key = 2;
@@ -504,20 +504,17 @@ int ilitek_tddi_switch_tp_data_format(int format)
 	switch (format) {
 	case DATA_FORMAT_DEMO:
 		idev->tp_data_len = P5_X_DEMO_MODE_PACKET_LEN;
-		ipio_info("Switch to Demo mode\n");
 		ctrl = DATA_FORMAT_DEMO_CMD;
 		break;
 	case DATA_FORMAT_DEBUG:
 		idev->tp_data_len = (2 * idev->xch_num * idev->ych_num) + (idev->stx * 2) + (idev->srx * 2);
 		idev->tp_data_len += 2 * self_key + (8 * 2) + 1 + 35;
-		ipio_info("Switch to Debug mode\n");
 		ctrl = DATA_FORMAT_DEBUG_CMD;
 		break;
 	case DATA_FORMAT_DEMO_DEBUG_INFO:
 		/*only suport SPI interface now, so defult use size 1024 buffer*/
 		idev->tp_data_len = P5_X_DEMO_MODE_PACKET_LEN +
 			P5_X_DEMO_DEBUG_INFO_ID0_LENGTH + P5_X_INFO_HEADER_LENGTH;
-		ipio_info("Switch to demo debug info mode\n");
 		ctrl = DATA_FORMAT_DEMO_DEBUG_INFO_CMD;
 		break;
 	case DATA_FORMAT_GESTURE_INFO:
@@ -550,8 +547,10 @@ int ilitek_tddi_switch_tp_data_format(int format)
 		return -1;
 	}
 
+	idev->tp_data_format = format;
+	ipio_info("Set TP data format = %d, len = %d\n", idev->tp_data_format, idev->tp_data_len);
+
 	if (idev->actual_tp_mode == P5_X_FW_AP_MODE) {
-		idev->actual_tp_data_format = format;
 		cmd[0] = P5_X_MODE_CONTROL;
 		cmd[1] = ctrl;
 		ret = idev->write(cmd, 2);
@@ -594,8 +593,10 @@ void ilitek_tddi_report_handler(void)
 	ilitek_tddi_wq_ctrl(WQ_BAT, DISABLE);
 
 	if (idev->actual_tp_mode == P5_X_FW_GESTURE_MODE) {
-		if (idev->gesture_debug)
-			ilitek_tddi_switch_tp_data_format(DATA_FORMAT_DEBUG);
+		if (idev->gesture_debug) {
+			if (ilitek_set_tp_data_len(DATA_FORMAT_DEBUG) < 0)
+				ipio_err("Failed to set tp data length\n");
+		}
 
 		__pm_stay_awake(idev->ws);
 		/* Waiting for pm resume completed */
@@ -733,7 +734,7 @@ int ilitek_tddi_reset_ctrl(int mode)
 		atomic_set(&idev->ice_stat, DISABLE);
 	idev->fw_uart_en = DISABLE;
 	idev->gesture_debug = DISABLE;
-	idev->actual_tp_data_format = DATA_FORMAT_DEMO;
+	idev->tp_data_format = DATA_FORMAT_DEMO;
 	idev->tp_data_len = P5_X_DEMO_MODE_PACKET_LEN;
 	atomic_set(&idev->tp_reset, END);
 	return ret;
@@ -743,7 +744,7 @@ int ilitek_tddi_init(void)
 {
 	struct task_struct *fw_boot_th;
 
-	ipio_info("ilitek tddi main init, driver ver = %s\n", DRIVER_VERSION);
+	ipio_info("driver version = %s\n", DRIVER_VERSION);
 
 	mutex_init(&idev->touch_mutex);
 	mutex_init(&idev->debug_mutex);
@@ -773,6 +774,7 @@ int ilitek_tddi_init(void)
 	idev->fw_uart_en = DISABLE;
 	idev->force_fw_update = DISABLE;
 	idev->demo_debug_info[0] = demo_debug_info_id0;
+	idev->tp_data_format = DATA_FORMAT_DEMO;
 
 	/*
 	 * This status of ice enable will be reset until process of fw upgrade runs.

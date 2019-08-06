@@ -771,9 +771,10 @@ static ssize_t ilitek_proc_get_debug_mode_data_read(struct file *filp, char __us
 	file_write(&csv, true);
 
 	/* change to debug mode */
-	ret = ilitek_tddi_switch_tp_data_format(DATA_FORMAT_DEBUG);
-	if (ret < 0)
+	if (ilitek_set_tp_data_len(DATA_FORMAT_DEBUG) < 0) {
+		ipio_err("Failed to set tp data length\n");
 		goto out;
+	}
 
 	/* get raw data */
 	csv.flen = 0;
@@ -794,9 +795,8 @@ static ssize_t ilitek_proc_get_debug_mode_data_read(struct file *filp, char __us
 		goto out;
 
 	/* change to demo mode */
-	ret = ilitek_tddi_switch_tp_data_format(DATA_FORMAT_DEMO);
-	if (ret < 0)
-		goto out;
+	if (ilitek_set_tp_data_len(DATA_FORMAT_DEMO) < 0)
+		ipio_err("Failed to set tp data length\n");
 
 out:
 	ipio_vfree((void **)&csv.ptr);
@@ -1198,13 +1198,13 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 		else if (data[1] == 2)
 			get_tp_recore_ctrl(DISABLE_RECORD);
 	} else if (strcmp(cmd, "switchdemodebuginfomode") == 0) {
-		ilitek_tddi_switch_tp_data_format(DATA_FORMAT_DEMO_DEBUG_INFO);
+		ilitek_set_tp_data_len(DATA_FORMAT_DEMO_DEBUG_INFO);
 	} else if (strcmp(cmd, "gesturedemoen") == 0) {
 		if (data[1] == 0)
 			idev->gesture_demo_ctrl = DISABLE;
 		else
 			idev->gesture_demo_ctrl = ENABLE;
-		ilitek_tddi_switch_tp_data_format(DATA_FORMAT_GESTURE_DEMO);
+		ilitek_set_tp_data_len(DATA_FORMAT_GESTURE_DEMO);
 	} else if (strcmp(cmd, "gesturefailrsn") == 0) {
 		if (data[1] == 0)
 			gesture_fail_reason(DISABLE);
@@ -1278,9 +1278,9 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 	} else if (strncmp(cmd, "switchtestmode", strlen(cmd)) == 0) {
 		ilitek_tddi_switch_tp_mode(P5_X_FW_TEST_MODE);
 	} else if (strncmp(cmd, "switchdebugmode", strlen(cmd)) == 0) {
-		ilitek_tddi_switch_tp_data_format(DATA_FORMAT_DEBUG);
+		ilitek_set_tp_data_len(DATA_FORMAT_DEBUG);
 	} else if (strncmp(cmd, "switchdemomode", strlen(cmd)) == 0) {
-		ilitek_tddi_switch_tp_data_format(DATA_FORMAT_DEMO);
+		ilitek_set_tp_data_len(DATA_FORMAT_DEMO);
 	} else if (strncmp(cmd, "dbgflag", strlen(cmd)) == 0) {
 		idev->debug_node_open = !idev->debug_node_open;
 		ipio_info("debug flag message = %d\n", idev->debug_node_open);
@@ -1781,20 +1781,38 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 		}
 		ipio_info("ioctl: switch fw format = %d\n", szBuf[0]);
 		if (szBuf[0] == 0) {
-			if (idev->actual_tp_mode == P5_X_FW_AP_MODE)
-				ilitek_tddi_switch_tp_data_format(DATA_FORMAT_DEMO);
-			else
-				ilitek_tddi_switch_tp_mode(P5_X_FW_AP_MODE);
-
+			if (idev->actual_tp_mode == P5_X_FW_AP_MODE) {
+				if (ilitek_set_tp_data_len(DATA_FORMAT_DEMO) < 0) {
+					ipio_err("Failed to set tp data length\n");
+					ret = -ENOTTY;
+				}
+			} else {
+				if (ilitek_tddi_switch_tp_mode(P5_X_FW_AP_MODE) < 0) {
+					ipio_err("Failed to set tp data length\n");
+					ret = -ENOTTY;
+				}
+			}
 		} else if (szBuf[0] == 1) {
-			ilitek_tddi_switch_tp_mode(P5_X_FW_TEST_MODE);
+			if (ilitek_tddi_switch_tp_mode(P5_X_FW_TEST_MODE) < 0) {
+				ipio_err("Failed to set tp data length\n");
+				ret = -ENOTTY;
+			}
 		} else if (szBuf[0] == 2) {
-			if (idev->actual_tp_mode != P5_X_FW_AP_MODE)
-				ilitek_tddi_switch_tp_mode(P5_X_FW_AP_MODE);
-
-			ilitek_tddi_switch_tp_data_format(DATA_FORMAT_DEBUG);
+			if (idev->actual_tp_mode != P5_X_FW_AP_MODE) {
+				if (ilitek_tddi_switch_tp_mode(P5_X_FW_AP_MODE) < 0) {
+					ipio_err("Failed to set tp data length\n");
+					ret = -ENOTTY;
+					break;
+				}
+			}
+			if (ilitek_set_tp_data_len(DATA_FORMAT_DEBUG) < 0) {
+				ipio_err("Failed to set tp data length\n");
+				ret = -ENOTTY;
+			}
+		} else {
+			ipio_err("Unknown TP mode ctrl\n");
+			ret = -ENOTTY;
 		}
-
 		break;
 	case ILITEK_IOCTL_TP_MODE_STATUS:
 		ipio_info("ioctl: current firmware mode = %d", idev->actual_tp_mode);
