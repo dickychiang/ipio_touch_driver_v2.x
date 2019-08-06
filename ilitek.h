@@ -621,6 +621,7 @@ struct ilitek_tddi_dev {
 	bool netlink;
 	bool report;
 	bool gesture;
+	bool gesture_debug;
 	int gesture_mode;
 	int gesture_demo_ctrl;
 
