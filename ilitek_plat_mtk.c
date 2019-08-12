@@ -276,6 +276,11 @@ static irqreturn_t ilitek_plat_isr_top_half(int irq, void *dev_id)
 		return IRQ_HANDLED;
 	}
 
+	if (idev->prox_near) {
+		ipio_info("Proximity event, ignore interrupt!\n");
+		return IRQ_HANDLED;
+	}
+
 	if (!idev->report || atomic_read(&idev->tp_reset) ||
 		atomic_read(&idev->fw_stat) || atomic_read(&idev->tp_sw_mode) ||
 		atomic_read(&idev->mp_stat) || atomic_read(&idev->tp_sleep) ||

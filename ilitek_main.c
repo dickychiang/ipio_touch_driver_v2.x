@@ -623,7 +623,7 @@ void ilitek_tddi_report_handler(void)
 	if (ret < 0) {
 		ipio_err("Read report packet failed, ret = %d\n", ret);
 		if (ret == DO_SPI_RECOVER) {
-			if (idev->actual_tp_mode == P5_X_FW_GESTURE_MODE && idev->gesture) {
+			if ((idev->actual_tp_mode == P5_X_FW_GESTURE_MODE) && idev->gesture && !idev->prox_near) {
 				ipio_err("Gesture failed, doing gesture recovery\n");
 				if (ilitek_tddi_gesture_recovery() < 0)
 					ipio_err("Failed to recover gesture\n");

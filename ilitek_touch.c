@@ -328,6 +328,8 @@ int ilitek_tddi_proximity_near(int mode)
 {
 	int ret = 0;
 
+	idev->prox_near = true;
+
 	switch (mode) {
 	case DDI_POWER_ON:
 		/*
@@ -386,6 +388,9 @@ int ilitek_tddi_proximity_far(int mode)
 		ret = -EINVAL;
 		break;
 	}
+
+	idev->prox_near = false;
+
 	return ret;
 }
 
@@ -556,6 +561,7 @@ int ilitek_tddi_touch_esd_gesture_iram(void)
 		ipio_err("Disable ice mode failed during gesture recovery\n");
 
 	idev->actual_tp_mode = P5_X_FW_GESTURE_MODE;
+	ilitek_set_tp_data_len(idev->gesture_mode);
 	if (ilitek_tddi_fw_upgrade_handler(NULL) < 0)
 		ipio_err("FW upgrade failed during gesture recovery\n");
 
