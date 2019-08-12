@@ -838,6 +838,7 @@ void ilitek_tddi_report_debug_mode(u8 *buf, int len)
 {
 	int i = 0;
 	u32 xop = 0, yop = 0;
+	static u8 p[MAX_TOUCH_NUM];
 
 	memset(touch_info, 0x0, sizeof(touch_info));
 
@@ -857,7 +858,19 @@ void ilitek_tddi_report_debug_mode(u8 *buf, int len)
 		touch_info[idev->finger].x = xop * idev->panel_wid / TPD_WIDTH;
 		touch_info[idev->finger].y = yop * idev->panel_hei / TPD_HEIGHT;
 		touch_info[idev->finger].id = i;
-		touch_info[idev->finger].pressure = 1; // no pressure report in debug mode.
+
+		if (MT_PRESSURE) {
+			/*
+			 * Since there's no pressure data in debug mode, we make fake values
+			 * for android system if pressure needs to be reported.
+			 */
+			if (p[idev->finger] == 1)
+				touch_info[idev->finger].pressure = p[idev->finger] = 2;
+			else
+				touch_info[idev->finger].pressure = p[idev->finger] = 1;
+		} else {
+			touch_info[idev->finger].pressure = 1;
+		}
 
 		ipio_debug("original x = %d, y = %d\n", xop, yop);
 		idev->finger++;
