@@ -851,11 +851,7 @@ void ilitek_tddi_report_debug_mode(u8 *buf, int len)
 		touch_info[idev->finger].x = xop * idev->panel_wid / TPD_WIDTH;
 		touch_info[idev->finger].y = yop * idev->panel_hei / TPD_HEIGHT;
 		touch_info[idev->finger].id = i;
-
-		if (MT_PRESSURE)
-			touch_info[idev->finger].pressure = buf[(4 * i) + 4];
-		else
-			touch_info[idev->finger].pressure = 1;
+		touch_info[idev->finger].pressure = 1; // no pressure report in debug mode.
 
 		ipio_debug("original x = %d, y = %d\n", xop, yop);
 		idev->finger++;
