@@ -255,6 +255,7 @@ struct mp_test_items {
 	int v_tdf_2;
 	int h_tdf_1;
 	int h_tdf_2;
+	int goldenmode;
 	u8  delay_time;
 	u8  test_int_pin;
 	u8  int_pulse_test;
@@ -471,7 +472,6 @@ void parser_ini_benchmark(s32 *max_ptr, s32 *min_ptr, int8_t type, char *desp, i
 	char str[512] = {0}, record = ',';
 	s32 data[4];
 	char benchmark_str[256] = {0};
-	bool flag = false;
 
 	/* format complete string from the name of section "_Benchmark_Data". */
 	snprintf(benchmark_str,sizeof(benchmark_str), "%s%s%s", desp, "_", BENCHMARK_KEY_NAME);
@@ -480,7 +480,6 @@ void parser_ini_benchmark(s32 *max_ptr, s32 *min_ptr, int8_t type, char *desp, i
 		if ((strncmp(ilitek_ini_file_data[i].pSectionName, benchmark_str, strlen(ilitek_ini_file_data[i].pSectionName)) != 0) ||
 			strncmp(ilitek_ini_file_data[i].pKeyName, BENCHMARK_KEY_NAME , strlen(ilitek_ini_file_data[i].pSectionName)) != 0)
 			continue;
-		flag =  true;
 		record = ',';
 		for (j = 0, index1 = 0; j <= ilitek_ini_file_data[i].iKeyValueLen; j++) {
 			if (ilitek_ini_file_data[i].pKeyValue[j] == ',' || ilitek_ini_file_data[i].pKeyValue[j] == ';' ||
@@ -519,8 +518,6 @@ void parser_ini_benchmark(s32 *max_ptr, s32 *min_ptr, int8_t type, char *desp, i
 			}
 		}
 	}
-	if (!flag)
-		core_mp.lost_benchmark = true;
 }
 
 static int parser_get_tdf_value(char *str, int catalog)
@@ -3064,6 +3061,7 @@ static void ilitek_tddi_mp_init_item(void)
 		tItems[i].v_tdf_2 = 0;
 		tItems[i].h_tdf_1 = 0;
 		tItems[i].h_tdf_2 = 0;
+		tItems[i].goldenmode = 0;
 		tItems[i].result_buf = NULL;
 		tItems[i].buf = NULL;
 		tItems[i].max_buf = NULL;
@@ -3180,6 +3178,11 @@ static int mp_test_run(char *item)
 			tItems[i].lowest_percentage = katoi(str);
 			parser_get_int_data(item, "highest percentage", str, sizeof(str));
 			tItems[i].highest_percentage = katoi(str);
+			parser_get_int_data(item, "goldenmode", str, sizeof(str));
+			tItems[i].goldenmode = katoi(str);
+
+			if (tItems[i].goldenmode && (tItems[i].spec_option != tItems[i].goldenmode))
+				core_mp.lost_benchmark = true;
 
 			/* Get pin test delay time */
 			if (tItems[i].catalog == PIN_TEST) {
