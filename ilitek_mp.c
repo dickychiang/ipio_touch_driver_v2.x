@@ -34,8 +34,8 @@
 #define TYPE_NO_JUGE		1
 #define TYPE_JUGE		2
 
-#define NORMAL_CSV_PASS_NAME	"MP_DATA_PASS"
-#define NORMAL_CSV_FAIL_NAME	"MP_DATA_FAIL"
+#define NORMAL_CSV_PASS_NAME	"mp_pass"
+#define NORMAL_CSV_FAIL_NAME	"mp_fail"
 #define NORMAL_CSV_WARNING_NAME	"mp_warning"
 
 #define CSV_FILE_SIZE		(1 * M)
@@ -173,11 +173,11 @@ struct mp_test_open_c {
 	s32 *dcl_cap;
 };
 
-struct open_test_c_spec {
+struct open_test_spec {
 	int tvch;
 	int tvcl;
 	int gain;
-} open_c_spec;
+} open_spec;
 
 struct core_mp_test_data {
 	u32 chip_pid;
@@ -1278,10 +1278,10 @@ void allnode_open_cdc_result(int index, int *buf, int *dac, int *raw)
 
 	if (strncmp(name, "open_integration_sp", strlen(name)) == 0) {
 		for (i = 0; i < core_mp.frame_len; i++)
-			buf[i] = idev->chip->open_sp_formula(dac[i], raw[i]);
+			buf[i] = idev->chip->open_sp_formula(dac[i], raw[i], open_spec.tvch, open_spec.tvcl);
 	} else if (strncmp(name, "open test_c", strlen(name)) == 0) {
 		for (i = 0; i < core_mp.frame_len; i++)
-			buf[i] = idev->chip->open_c_formula(dac[i], raw[i], open_c_spec.tvch - open_c_spec.tvcl, open_c_spec.gain);
+			buf[i] = idev->chip->open_c_formula(dac[i], raw[i], open_spec.tvch - open_spec.tvcl, open_spec.gain);
 	}
 }
 
@@ -1617,10 +1617,7 @@ static int allnode_open_cdc_data(int mode, int *buf)
 				inDACn = ori[(1 + (2 * i)) + 1] & 0x7F;
 			}
 
-			if (mode == 0)
-				buf[i] = (inDACp + inDACn) / 2;
-			else
-				buf[i] = inDACp + inDACn;
+			buf[i] = inDACp + inDACn;
 		} else {
 			/* H byte + L byte */
 			s32 tmp = (ori[(2 * i) + 1] << 8) + ori[(1 + (2 * i)) + 1];
@@ -2248,6 +2245,14 @@ static int open_test_sp(int index)
 	if (ret || ret == 0)
 		full_open_rate = katoi(str);
 
+	ret = parser_get_int_data(tItems[index].desp, "tvch", str, sizeof(str));
+	if (ret || ret == 0)
+		open_spec.tvch = katoi(str);
+
+	ret = parser_get_int_data(tItems[index].desp, "tvcl", str, sizeof(str));
+	if (ret || ret == 0)
+		open_spec.tvcl = katoi(str);
+
 	if (ret < 0) {
 		ipio_err("Failed to get parameters from ini file\n");
 		ret = -EMP_PARSE;
@@ -2414,15 +2419,15 @@ static int open_test_cap(int index)
 
 	ret = parser_get_int_data(tItems[index].desp, "gain", str, sizeof(str));
 	if (ret || ret == 0)
-		open_c_spec.gain = katoi(str);
+		open_spec.gain = katoi(str);
 
 	ret = parser_get_int_data(tItems[index].desp, "tvch", str, sizeof(str));
 	if (ret || ret == 0)
-		open_c_spec.tvch = katoi(str);
+		open_spec.tvch = katoi(str);
 
 	ret = parser_get_int_data(tItems[index].desp, "tvcl", str, sizeof(str));
 	if (ret || ret == 0)
-		open_c_spec.tvcl = katoi(str);
+		open_spec.tvcl = katoi(str);
 
 	if (ret < 0) {
 		ipio_err("Failed to get parameters from ini file\n");
@@ -2431,7 +2436,7 @@ static int open_test_cap(int index)
 	}
 
 	ipio_debug("open_test_c: frame_cont = %d, gain = %d, tvch = %d, tvcl = %d\n",
-			tItems[index].frame_count, open_c_spec.gain, open_c_spec.tvch, open_c_spec.tvcl);
+			tItems[index].frame_count, open_spec.gain, open_spec.tvch, open_spec.tvcl);
 
 	for (i = 0; i < tItems[index].frame_count; i++) {
 		open[i].cap_dac = kcalloc(core_mp.frame_len, sizeof(s32), GFP_KERNEL);

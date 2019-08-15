@@ -728,7 +728,7 @@ struct ilitek_ic_info {
 	u8  info[75];
 	int no_bk_shift;
 	bool spi_speed_ctrl;
-	s32 (*open_sp_formula)(int dac, int raw);
+	s32 (*open_sp_formula)(int dac, int raw, int tvch, int tvcl);
 	s32 (*open_c_formula)(int dac, int raw, int tvch, int gain);
 	void (*hd_dma_check_crc_off)(void);
 };
@@ -876,14 +876,14 @@ static inline void *ipio_memcpy(void *dest, const void *src, int n, int dest_siz
 	return memcpy(dest, src, n);
 }
 
-static inline s32 open_sp_formula_ili9881(int dac, int raw)
+static inline s32 open_sp_formula_ili9881(int dac, int raw, int tvch, int tvcl)
 {
-	return (int)((int)(dac * 2 * 10000 * 161 / 100) - (int)(16384 / 2 - (int)raw) * 20000 * 7 / 16384 * 36 / 10) / 31 / 2;
+	return (int)((int)(dac * 10000 * 161 / 100) - (int)(16384 / 2 - (int)raw) * 20000 * 7 / 16384 * 36 / 10) / (tvch - tvcl) / 2;
 }
 
-static inline s32 open_sp_formula_ili7807(int dac, int raw)
+static inline s32 open_sp_formula_ili7807(int dac, int raw, int tvch, int tvcl)
 {
-	return (int)((int)(dac * 2 * 10000 * 131 / 100) - (int)(16384 / 2 - (int)raw) * 20000 * 7 / 16384 * 36 / 10) / 31 / 2;
+	return (int)((int)(dac * 10000 * 131 / 100) - (int)(16384 / 2 - (int)raw) * 20000 * 7 / 16384 * 36 / 10) / (tvch - tvcl) / 2;
 }
 
 static inline s32 open_c_formula(int dac, int raw, int tvch, int gain)
