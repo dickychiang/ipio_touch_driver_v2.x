@@ -651,6 +651,7 @@ struct ilitek_tddi_dev {
 	bool resume_by_ddi;
 	bool tp_suspend;
 	bool info_from_hex;
+	bool prox_near;
 
 	atomic_t irq_stat;
 	atomic_t tp_reset;
