@@ -1057,10 +1057,12 @@ static void ilitek_tddi_fw_update_block_info(u8 *pfw, u8 type)
 			ges_area_section = (pfw[ges_info_addr + 3] << 24) + (pfw[ges_info_addr + 2] << 16) + (pfw[ges_info_addr + 1] << 8) + pfw[ges_info_addr];
 			fbi[GESTURE].mem_start = (pfw[ges_info_addr + 7] << 24) + (pfw[ges_info_addr + 6] << 16) + (pfw[ges_info_addr + 5] << 8) + pfw[ges_info_addr + 4];
 			ap_end = (pfw[ges_info_addr + 11] << 24) + (pfw[ges_info_addr + 10] << 16) + (pfw[ges_info_addr + 9] << 8) + pfw[ges_info_addr + 8];
-			ap_len = ap_end - fbi[GESTURE].mem_start + 1;
+			if (ap_end != fbi[GESTURE].mem_start)
+				ap_len = ap_end - fbi[GESTURE].mem_start + 1;
 			ges_fw_start = (pfw[ges_info_addr + 15] << 24) + (pfw[ges_info_addr + 14] << 16) + (pfw[ges_info_addr + 13] << 8) + pfw[ges_info_addr + 12];
 			ges_fw_end = (pfw[ges_info_addr + 19] << 24) + (pfw[ges_info_addr + 18] << 16) + (pfw[ges_info_addr + 17] << 8) + pfw[ges_info_addr + 16];
-			fbi[GESTURE].len = ges_fw_end - ges_fw_start + 1;
+			if (ges_fw_end != ges_fw_start)
+				fbi[GESTURE].len = ges_fw_end - ges_fw_start + 1;
 			fbi[GESTURE].start = 0;
 
 		} else {
@@ -1082,10 +1084,12 @@ static void ilitek_tddi_fw_update_block_info(u8 *pfw, u8 type)
 			ges_area_section = (pfw[ges_info_addr + 3] << 24) + (pfw[ges_info_addr + 2] << 16) + (pfw[ges_info_addr + 1] << 8) + pfw[ges_info_addr];
 			fbi[GESTURE].mem_start = (pfw[ges_info_addr + 7] << 24) + (pfw[ges_info_addr + 6] << 16) + (pfw[ges_info_addr + 5] << 8) + pfw[ges_info_addr + 4];
 			ap_end = (pfw[ges_info_addr + 11] << 24) + (pfw[ges_info_addr + 10] << 16) + (pfw[ges_info_addr + 9] << 8) + pfw[ges_info_addr + 8];
-			ap_len = ap_end - fbi[GESTURE].mem_start + 1;
+			if (ap_end != fbi[GESTURE].mem_start)
+				ap_len = ap_end - fbi[GESTURE].mem_start + 1;
 			ges_fw_start = (pfw[ges_info_addr + 15] << 24) + (pfw[ges_info_addr + 14] << 16) + (pfw[ges_info_addr + 13] << 8) + pfw[ges_info_addr + 12];
 			ges_fw_end = (pfw[ges_info_addr + 19] << 24) + (pfw[ges_info_addr + 18] << 16) + (pfw[ges_info_addr + 17] << 8) + pfw[ges_info_addr + 16];
-			fbi[GESTURE].len = ges_fw_end - ges_fw_start + 1;
+			if (ges_fw_end != ges_fw_start)
+				fbi[GESTURE].len = ges_fw_end - ges_fw_start + 1;
 			fbi[GESTURE].start = 0;
 
 		}
@@ -1168,8 +1172,16 @@ static int ilitek_tddi_fw_ili_convert(u8 *pfw)
 				fbi[num].end = (CTPM_FW[37 + i * 6] << 16) + (CTPM_FW[38 + i * 6] << 8) + (CTPM_FW[39 + i * 6]);
 				fbi[num].fix_mem_start = INT_MAX;
 			}
+
+			if (fbi[num].start == fbi[num].end)
+				continue;
 			fbi[num].len = fbi[num].end - fbi[num].start + 1;
 			ipio_info("Block[%d]: start_addr = %x, end = %x\n", num, fbi[num].start, fbi[num].end);
+
+			if (num == GESTURE) {
+				ipio_info("ili file has gesture block\n");
+				idev->gesture_load_code = true;
+			}
 		}
 	}
 
@@ -1232,6 +1244,10 @@ static int ilitek_tddi_fw_hex_convert(u8 *phex, int size, u8 *pfw)
 			fbi[num].fix_mem_start = INT_MAX;
 			fbi[num].len = fbi[num].end - fbi[num].start + 1;
 			ipio_info("Block[%d]: start_addr = %x, end = %x", num, fbi[num].start, fbi[num].end);
+			if (num == GESTURE) {
+				ipio_info("hex file has gesture block\n");
+				idev->gesture_load_code = true;
+			}
 
 			block++;
 		} else if (type == BLOCK_TAG_B0 && tfd.hex_tag == BLOCK_TAG_AF) {
@@ -1435,6 +1451,7 @@ int ilitek_tddi_fw_upgrade(int upgrade_type, int file_type, int open_file_method
 		goto out;
 	}
 
+	idev->gesture_load_code = false;
 	memset(pfw, 0xFF, MAX_HEX_FILE_SIZE * sizeof(u8));
 
 	ipio_info("Convert FW file from %s\n", (file_type == ILI_FILE ? "ILI_FILE" : "HEX_FILE"));
