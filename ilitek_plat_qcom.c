@@ -266,15 +266,6 @@ out:
 
 static irqreturn_t ilitek_plat_isr_top_half(int irq, void *dev_id)
 {
-	ipio_debug("report: %d, rst: %d, fw: %d, switch: %d, mp: %d, sleep: %d, esd: %d\n",
-			idev->report,
-			atomic_read(&idev->tp_reset),
-			atomic_read(&idev->fw_stat),
-			atomic_read(&idev->tp_sw_mode),
-			atomic_read(&idev->mp_stat),
-			atomic_read(&idev->tp_sleep),
-			atomic_read(&idev->esd_stat));
-
 	if (irq != idev->irq_num) {
 		ipio_err("Incorrect irq number (%d)\n", irq);
 		return IRQ_NONE;
@@ -282,7 +273,7 @@ static irqreturn_t ilitek_plat_isr_top_half(int irq, void *dev_id)
 
 	if (atomic_read(&idev->mp_int_check) == ENABLE) {
 		atomic_set(&idev->mp_int_check, DISABLE);
-		ipio_info("Get an INT for mp, ignore\n");
+		ipio_debug("interrupt for mp test, ignore\n");
 		wake_up(&(idev->inq));
 		return IRQ_HANDLED;
 	}
@@ -292,6 +283,15 @@ static irqreturn_t ilitek_plat_isr_top_half(int irq, void *dev_id)
 		return IRQ_HANDLED;
 	}
 
+	ipio_debug("report: %d, rst: %d, fw: %d, switch: %d, mp: %d, sleep: %d, esd: %d\n",
+			idev->report,
+			atomic_read(&idev->tp_reset),
+			atomic_read(&idev->fw_stat),
+			atomic_read(&idev->tp_sw_mode),
+			atomic_read(&idev->mp_stat),
+			atomic_read(&idev->tp_sleep),
+			atomic_read(&idev->esd_stat));
+
 	if (!idev->report || atomic_read(&idev->tp_reset) ||
 		atomic_read(&idev->fw_stat) || atomic_read(&idev->tp_sw_mode) ||
 		atomic_read(&idev->mp_stat) || atomic_read(&idev->tp_sleep) ||
@@ -299,6 +299,7 @@ static irqreturn_t ilitek_plat_isr_top_half(int irq, void *dev_id)
 			ipio_debug("ignore interrupt !\n");
 			return IRQ_HANDLED;
 	}
+
 	return IRQ_WAKE_THREAD;
 }
 
