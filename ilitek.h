@@ -652,6 +652,7 @@ struct ilitek_tddi_dev {
 	bool tp_suspend;
 	bool info_from_hex;
 	bool prox_near;
+	bool gesture_load_code;
 
 	atomic_t irq_stat;
 	atomic_t tp_reset;

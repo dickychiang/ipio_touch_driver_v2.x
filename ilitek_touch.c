@@ -410,6 +410,15 @@ int ilitek_tddi_move_gesture_code_iram(int mode)
 	int timeout = 10;
 	u8 cmd[3] = {0};
 
+	if (idev->gesture_load_code == false) {
+		ipio_info("Switch to Gesture mode, lpwg cmd = %d,\n no need to load gesture code by driver\n",  mode);
+		if (ilitek_set_tp_data_len(mode) < 0)
+			ipio_err("Failed to set tp data length\n");
+		return 0;
+	} else {
+		ipio_info("Load gesture code by driver\n");
+	}
+
 	if (ilitek_tddi_ic_func_ctrl("lpwg", 0x3) < 0)
 		ipio_err("write gesture flag failed\n");
 
