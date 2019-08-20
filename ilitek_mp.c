@@ -864,7 +864,7 @@ static int ilitek_tddi_mp_ini_parser(const char *path)
 	}
 
 	/* change all characters to lower case */
-	for (i = 0; i < strlen(tmp); i++)
+	for (i = 0; i < fsize; i++)
 		tmp[i] = tolower(tmp[i]);
 
 	ret = parser_get_ini_phy_data(tmp, fsize);
