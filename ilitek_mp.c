@@ -522,7 +522,7 @@ void parser_ini_benchmark(s32 *max_ptr, s32 *min_ptr, int8_t type, char *desp, i
 
 static int parser_get_tdf_value(char *str, int catalog)
 {
-	u32	 i, ans, index = 0, flag = 0, count = 0;
+	u32 i, ans, index = 0, flag = 0, count = 0, size;
 	char s[10] = {0};
 
 	if (!str) {
@@ -530,7 +530,8 @@ static int parser_get_tdf_value(char *str, int catalog)
 		return -1;
 	}
 
-	for (i = 0, count = 0; i < strlen(str); i++) {
+	size = strlen(str);
+	for (i = 0, count = 0; i < size; i++) {
 		if (str[i] == '.') {
 			flag = 1;
 			continue;
@@ -1040,7 +1041,7 @@ static char *get_date_time_str(void)
 
 static void mp_print_csv_header(char *csv, int *csv_len, int *csv_line, int file_size)
 {
-	int i, tmp_len = *csv_len, tmp_line = *csv_line;
+	int i, tmp_len = *csv_len, tmp_line = *csv_line, size;
 
 	/* header must has 19 line*/
 	tmp_len += snprintf(csv + tmp_len, (file_size - tmp_len), "==============================================================================\n");
@@ -1062,7 +1063,8 @@ static void mp_print_csv_header(char *csv, int *csv_len, int *csv_line, int file
 	tmp_len += snprintf(csv + tmp_len, (file_size - tmp_len), "Test Item:\n");
 	tmp_line++;
 
-	for (i = 0; i < ARRAY_SIZE(tItems); i++) {
+	size = ARRAY_SIZE(tItems);
+	for (i = 0; i < size; i++) {
 		if (tItems[i].run == 1) {
 			tmp_len += snprintf(csv + tmp_len, (file_size - tmp_len), "	  ---%s\n", tItems[i].desp);
 			tmp_line++;
@@ -1082,12 +1084,13 @@ static void mp_print_csv_header(char *csv, int *csv_len, int *csv_line, int file
 
 static void mp_print_csv_tail(char *csv, int *csv_len, int file_size)
 {
-	int i, tmp_len = *csv_len;
+	int i, tmp_len = *csv_len, size;
 
 	tmp_len += snprintf(csv + tmp_len, (file_size - tmp_len), "==============================================================================\n");
 	tmp_len += snprintf(csv + tmp_len, (file_size - tmp_len), "Result_Summary			\n");
 
-	for (i = 0; i < ARRAY_SIZE(tItems); i++) {
+	size = ARRAY_SIZE(tItems);
+	for (i = 0; i < size; i++) {
 		if (tItems[i].run) {
 			if (tItems[i].item_result == MP_DATA_PASS)
 				tmp_len += snprintf(csv + tmp_len, (file_size - tmp_len), "	  {%s}	   ,OK\n", tItems[i].desp);
@@ -1100,14 +1103,15 @@ static void mp_print_csv_tail(char *csv, int *csv_len, int file_size)
 
 static void mp_print_csv_cdc_cmd(char *csv, int *csv_len, int index, int file_size)
 {
-	int i, slen = 0, tmp_len = *csv_len;
+	int i, slen = 0, tmp_len = *csv_len, size;
 	char str[128] = {0};
 	char *open_sp_cmd[] = {"open dac", "open raw1", "open raw2", "open raw3"};
 	char *open_c_cmd[] = {"open cap1 dac", "open cap1 raw"};
 	char *name = tItems[index].desp;
 
 	if (strncmp(name, "open test(integration)_sp", strlen(name)) == 0) {
-		for (i = 0; i < ARRAY_SIZE(open_sp_cmd); i++) {
+		size = ARRAY_SIZE(open_sp_cmd);
+		for (i = 0; i < size; i++) {
 			slen = parser_get_int_data("pv5_4 command", open_sp_cmd[i], str, sizeof(str));
 			if (slen < 0)
 				ipio_err("Failed to get CDC command %s from ini\n", open_sp_cmd[i]);
@@ -1115,7 +1119,8 @@ static void mp_print_csv_cdc_cmd(char *csv, int *csv_len, int index, int file_si
 				tmp_len += snprintf(csv + tmp_len, (file_size - tmp_len), "%s = ,%s\n", open_sp_cmd[i], str);
 		}
 	} else if (strncmp(name, "open test_c", strlen(name)) == 0) {
-		for (i = 0; i < ARRAY_SIZE(open_c_cmd); i++) {
+		size = ARRAY_SIZE(open_c_cmd);
+		for (i = 0; i < size; i++) {
 			slen = parser_get_int_data("pv5_4 command", open_c_cmd[i], str, sizeof(str));
 			if (slen < 0)
 				ipio_err("Failed to get CDC command %s from ini\n", open_sp_cmd[i]);
@@ -2557,7 +2562,7 @@ static int mp_get_timing_info(void)
 
 static int mp_test_data_sort_average(s32 *oringin_data, int index, s32 *avg_result)
 {
-	int i, j, k, x, y, len = 5;
+	int i, j, k, x, y, len = 5, size;
 	s32 u32temp;
 	int u32up_frame, u32down_frame;
 	s32 *u32sum_raw_data;
@@ -2579,7 +2584,8 @@ static int mp_test_data_sort_average(s32 *oringin_data, int index, s32 *avg_resu
 		return -ENOMEM;
 	}
 
-	for (i = 0; i < core_mp.frame_len * tItems[index].frame_count; i++) {
+	size = core_mp.frame_len * tItems[index].frame_count;
+	for (i = 0; i < size; i++) {
 		u32data_buff[i] = oringin_data[i];
 	}
 
@@ -2780,7 +2786,7 @@ static void mp_do_retry(int index, int count)
 
 static int mp_show_result(bool lcm_on)
 {
-	int ret = MP_DATA_PASS;
+	int ret = MP_DATA_PASS, size;
 	int i, x, y, j, csv_len = 0, pass_item_count = 0, line_count = 0, get_frame_cont = 1;
 	s32 *max_threshold = NULL, *min_threshold = NULL;
 	char *csv = NULL;
@@ -2807,7 +2813,8 @@ static int mp_show_result(bool lcm_on)
 
 	mp_print_csv_header(csv, &csv_len, &line_count, CSV_FILE_SIZE);
 
-	for (i = 0; i < ARRAY_SIZE(tItems); i++) {
+	size = ARRAY_SIZE(tItems);
+	for (i = 0; i < size; i++) {
 
 		get_frame_cont = 1;
 		if (tItems[i].run != 1)
@@ -2944,7 +2951,8 @@ static int mp_show_result(bool lcm_on)
 
 	mp_print_csv_tail(csv, &csv_len, CSV_FILE_SIZE);
 
-	for (i = 0; i < ARRAY_SIZE(tItems); i++) {
+	size = ARRAY_SIZE(tItems);
+	for (i = 0; i < size; i++) {
 		if (tItems[i].run) {
 			if (tItems[i].item_result < 0) {
 				pass_item_count = 0;
@@ -3264,13 +3272,14 @@ out:
 
 static void mp_test_free(void)
 {
-	int i;
+	int i, size;
 
 	ipio_info("Free all allocated mem for MP\n");
 
 	core_mp.final_result = MP_DATA_FAIL;
 
-	for (i = 0; i < ARRAY_SIZE(tItems); i++) {
+	size = ARRAY_SIZE(tItems);
+	for (i = 0; i < size; i++) {
 		tItems[i].run = false;
 		tItems[i].max_res = MP_DATA_FAIL;
 		tItems[i].min_res = MP_DATA_FAIL;

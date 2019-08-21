@@ -395,7 +395,7 @@ static ssize_t ilitek_proc_fw_get_raw_data_read(struct file *pFile, char __user 
 {
 	s16 *rawdata = NULL;
 	int row = 0, col = 0,  index = 0;
-	int ret, i, x, y;
+	int ret, i, x, y, len;
 	int read_length = 0;
 	u8 cmd[2] = {0};
 	u8 *data = NULL;
@@ -452,7 +452,8 @@ static ssize_t ilitek_proc_fw_get_raw_data_read(struct file *pFile, char __user 
 		goto out;
 	}
 
-	for (i = 4, index = 0; index < row * col * 2; i += 2, index++)
+	len = row * col * 2;
+	for (i = 4, index = 0; index < len; i += 2, index++)
 		rawdata[index] = (data[i] << 8) + data[i + 1];
 
 	size = snprintf(g_user_buf, PAGE_SIZE, "======== RawData ========\n");
@@ -2055,11 +2056,12 @@ static int netlink_init(void)
 
 void ilitek_tddi_node_init(void)
 {
-	int i = 0, ret = 0;
+	int i = 0, ret = 0, size;
 
 	proc_dir_ilitek = proc_mkdir("ilitek", NULL);
 
-	for (; i < ARRAY_SIZE(proc_table); i++) {
+	size = ARRAY_SIZE(proc_table);
+	for (; i < size; i++) {
 		proc_table[i].node = proc_create(proc_table[i].name, 0644, proc_dir_ilitek, proc_table[i].fops);
 
 		if (proc_table[i].node == NULL) {

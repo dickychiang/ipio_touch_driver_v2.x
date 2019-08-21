@@ -292,8 +292,11 @@ static int ilitek_tddi_fw_check_hex_hw_crc(u8 *pfw)
 {
 	u32 i = 0, len = 0;
 	u32 hex_crc = 0, hw_crc;
+	int size;
 
-	for (i = 0; i < ARRAY_SIZE(fbi); i++) {
+	size = ARRAY_SIZE(fbi);
+
+	for (i = 0; i < size; i++) {
 		if (fbi[i].end == 0)
 			continue;
 
@@ -719,7 +722,7 @@ static void ilitek_tddi_flash_protect(bool enable)
 
 static int ilitek_tddi_fw_check_ver(u8 *pfw)
 {
-	int i, crc_byte_len = 4;
+	int i, crc_byte_len = 4, size;
 	u8 flash_crc[4] = {0};
 	u32 start_addr = 0, end_addr = 0;
 	u32 block_crc, flash_crc_cb;
@@ -734,7 +737,8 @@ static int ilitek_tddi_fw_check_ver(u8 *pfw)
 	ipio_info("FW version is the same, check Flash and HW CRC if there's corruption.\n");
 
 	/* Check Flash and HW CRC with last 4 bytes in each block */
-	for (i = 0; i < ARRAY_SIZE(fbi); i++) {
+	size = ARRAY_SIZE(fbi);
+	for (i = 0; i < size; i++) {
 		start_addr = fbi[i].start;
 		end_addr = fbi[i].end;
 
@@ -773,7 +777,7 @@ static int ilitek_tddi_fw_check_ver(u8 *pfw)
 
 static int ilitek_tddi_fw_iram_upgrade(u8 *pfw)
 {
-	int i, ret = UPDATE_PASS;
+	int i, ret = UPDATE_PASS, size;
 	u32 mode, crc, dma;
 	u8 *fw_ptr = NULL;
 
@@ -804,7 +808,8 @@ static int ilitek_tddi_fw_iram_upgrade(u8 *pfw)
 	}
 
 	/* Program data to iram acorrding to each block */
-	for (i = 0; i < ARRAY_SIZE(fbi); i++) {
+	size = ARRAY_SIZE(fbi);
+	for (i = 0; i < size; i++) {
 		if (fbi[i].mode == mode && fbi[i].len != 0) {
 			ipio_info("Download %s code from hex 0x%x to IRAM 0x%x, len = 0x%x\n",
 					fbi[i].name, fbi[i].start, fbi[i].mem_start, fbi[i].len);
@@ -1206,7 +1211,7 @@ out:
 
 static int ilitek_tddi_fw_hex_convert(u8 *phex, int size, u8 *pfw)
 {
-	int block = 0;
+	int block = 0, array_size;
 	u32 i = 0, j = 0, k = 0, num = 0;
 	u32 len = 0, addr = 0, type = 0;
 	u32 start_addr = 0x0, end_addr = 0x0, ex_addr = 0;
@@ -1287,7 +1292,8 @@ static int ilitek_tddi_fw_hex_convert(u8 *phex, int size, u8 *pfw)
 	}
 
 	/* Check the content of hex file by comparsing parsed data to the crc at last 4 bytes */
-	for (i = 0; i < ARRAY_SIZE(fbi); i++) {
+	array_size = ARRAY_SIZE(fbi);
+	for (i = 0; i < array_size; i++) {
 		if (fbi[i].end == 0)
 			continue;
 		ex_addr = fbi[i].end;
@@ -1510,7 +1516,7 @@ struct flash_table {
 
 void ilitek_tddi_fw_read_flash_info(bool mode)
 {
-	int i = 0;
+	int i = 0, size;
 	u8 buf[4] = {0};
 	u8 cmd = 0x9F;
 	u32 tmp = 0;
@@ -1533,8 +1539,8 @@ void ilitek_tddi_fw_read_flash_info(bool mode)
 
 	if (ilitek_ice_mode_write(FLASH2_ADDR, cmd, 1) < 0)
 		ipio_err("Write 0x9F failed\n");
-
-	for (i = 0; i < ARRAY_SIZE(buf); i++) {
+	size = ARRAY_SIZE(buf);
+	for (i = 0; i < size; i++) {
 		if (ilitek_ice_mode_write(FLASH2_ADDR, 0xFF, 1) < 0)
 			ipio_err("Write dummy failed\n");
 
@@ -1550,7 +1556,8 @@ void ilitek_tddi_fw_read_flash_info(bool mode)
 	flash_mid = buf[0];
 	flash_id = buf[1] << 8 | buf[2];
 
-	for (i = 0; i < ARRAY_SIZE(flashtab); i++) {
+	size = ARRAY_SIZE(flashtab);
+	for (i = 0; i < size; i++) {
 		if (flash_mid == flashtab[i].mid && flash_id == flashtab[i].dev_id) {
 			idev->flash_mid = flashtab[i].mid;
 			idev->flash_devid = flashtab[i].dev_id;
