@@ -745,18 +745,18 @@ static void ilitek_tddi_fw_check_update(int ret)
 {
 	ipio_info("FW upgrade %s\n", (ret == UPDATE_PASS ? "PASS" : "FAIL"));
 
-		if (ret == UPDATE_PASS)
-				return;
+	if (ret == UPDATE_PASS)
+			return;
 
-		if (atomic_read(&idev->mp_stat)) {
-				ipio_info("No need to erase data during mp test\n");
-				return;
-		}
+	if (atomic_read(&idev->mp_stat)) {
+			ipio_info("No need to erase data during mp test\n");
+			return;
+	}
 
-		ipio_info("Erase all fw data\n");
+	ipio_info("Erase all fw data\n");
 
-		if (ilitek_tddi_reset_ctrl(idev->reset) < 0)
-				ipio_err("TP reset failed while erasing data\n");
+	if (ilitek_tddi_reset_ctrl(idev->reset) < 0)
+			ipio_err("TP reset failed while erasing data\n");
 }
 
 int ilitek_tddi_fw_upgrade(int file_type, int open_file_method)
@@ -809,20 +809,20 @@ out:
 
 void ilitek_tddi_fw_read_flash_info(void)
 {
-		return;
+	return;
 }
 
 void ilitek_tddi_flash_clear_dma(void)
 {
-		return;
+	return;
 }
 
 void ilitek_tddi_flash_dma_write(u32 start, u32 end, u32 len)
 {
-		return;
+	return;
 }
 
 int ilitek_tddi_fw_dump_flash_data(u32 start, u32 end, bool user)
 {
-		return 0;
+	return 0;
 }
