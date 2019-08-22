@@ -119,15 +119,15 @@
 #define ENABLE_WQ_ESD			DISABLE
 #define ENABLE_WQ_BAT			DISABLE
 #define ENABLE_GESTURE			ENABLE
-#define READ_GL_INFO			DISABLE
 #define REGULATOR_POWER			DISABLE
 #define TP_SUSPEND_PRIO			ENABLE
 #define RESUME_BY_DDI			DISABLE
+#define BOOT_FW_UPDATE			ENABLE
 
 /* Plaform compatibility */
-// #define CONFIG_PLAT_SPRD
-// #define I2C_DMA_TRANSFER
-#define SPI_DMA_TRANSFER_SPLIT
+#define CONFIG_PLAT_SPRD		DISABLE
+#define I2C_DMA_TRANSFER		DISABLE
+#define SPI_DMA_TRANSFER_SPLIT		ENABLE
 
 /* Path */
 #define DEBUG_DATA_FILE_SIZE		(10*K)
@@ -798,7 +798,7 @@ extern void ilitek_tddi_ic_init(void);
 extern void ilitek_tddi_fw_uart_ctrl(u8 ctrl);
 
 /* Prototypes for tddi events */
-#ifdef RESUME_BY_DDI
+#if RESUME_BY_DDI
 extern void ilitek_resume_by_ddi(void);
 #endif
 extern int ilitek_tddi_proximity_far(int mode);

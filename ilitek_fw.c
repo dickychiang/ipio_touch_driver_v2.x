@@ -814,7 +814,7 @@ static int ilitek_tddi_fw_iram_upgrade(u8 *pfw)
 			ipio_info("Download %s code from hex 0x%x to IRAM 0x%x, len = 0x%x\n",
 					fbi[i].name, fbi[i].start, fbi[i].mem_start, fbi[i].len);
 
-#ifdef SPI_DMA_TRANSFER_SPLIT
+#if SPI_DMA_TRANSFER_SPLIT
 			if (ilitek_tddi_fw_iram_program(fbi[i].mem_start, (fw_ptr + fbi[i].start), fbi[i].len, SPI_UPGRADE_LEN) < 0)
 				ipio_err("IRAM program failed\n");
 #else

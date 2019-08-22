@@ -30,7 +30,7 @@ static struct workqueue_struct *bat_wq;
 static struct delayed_work esd_work;
 static struct delayed_work bat_work;
 
-#ifdef RESUME_BY_DDI
+#if RESUME_BY_DDI
 static struct workqueue_struct	*resume_by_ddi_wq = NULL;
 static struct work_struct	resume_by_ddi_work;
 
@@ -356,7 +356,7 @@ static void ilitek_tddi_wq_init(void)
 	INIT_DELAYED_WORK(&esd_work, ilitek_tddi_wq_esd_check);
 	INIT_DELAYED_WORK(&bat_work, ilitek_tddi_wq_bat_check);
 
-#ifdef RESUME_BY_DDI
+#if RESUME_BY_DDI
 	resume_by_ddi_wq = create_singlethread_workqueue("resume_by_ddi_wq");
 	WARN_ON(!resume_by_ddi_wq);
 	INIT_WORK(&resume_by_ddi_work, ilitek_resume_by_ddi_work);
@@ -628,13 +628,13 @@ void ilitek_tddi_report_handler(void)
 				if (ilitek_tddi_gesture_recovery() < 0)
 					ipio_err("Failed to recover gesture\n");
 				idev->irq_after_recovery = true;
-				goto out;
+			} else {
+				ipio_err("SPI ACK failed, doing spi recovery\n");
+				ilitek_tddi_spi_recovery();
+				idev->irq_after_recovery = true;
 			}
-			ipio_err("SPI ACK failed, doing spi recovery\n");
-			ilitek_tddi_spi_recovery();
-			idev->irq_after_recovery = true;
-			goto out;
 		}
+		goto out;
 	}
 
 	rlen = ret;
@@ -742,7 +742,9 @@ int ilitek_tddi_reset_ctrl(int mode)
 
 int ilitek_tddi_init(void)
 {
+#if BOOT_FW_UPDATE
 	struct task_struct *fw_boot_th;
+#endif
 
 	ipio_info("driver version = %s\n", DRIVER_VERSION);
 
@@ -793,12 +795,14 @@ int ilitek_tddi_init(void)
 
 	ilitek_tddi_fw_read_flash_info(idev->fw_upgrade_mode);
 
+#if BOOT_FW_UPDATE
 	fw_boot_th = kthread_run(ilitek_tddi_fw_upgrade_handler, NULL, "ili_fw_boot");
 	if (fw_boot_th == (struct task_struct *)ERR_PTR) {
 		fw_boot_th = NULL;
 		WARN_ON(!fw_boot_th);
 		ipio_err("Failed to create fw upgrade thread\n");
 	}
+#endif
 
 	idev->ws = wakeup_source_register("ili_wakelock");
 	if (!idev->ws)

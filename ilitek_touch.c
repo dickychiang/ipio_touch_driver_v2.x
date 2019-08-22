@@ -356,6 +356,11 @@ int ilitek_tddi_proximity_far(int mode)
 	int ret = 0;
 	u8 cmd[2] = {0};
 
+	if (!idev->prox_near) {
+		ipio_info("No proximity near event, break\n");
+		return 0;
+	}
+
 	switch (mode) {
 	case WAKE_UP_GESTURE_RECOVERY:
 		/*
@@ -545,6 +550,9 @@ int ilitek_tddi_touch_esd_gesture_iram(void)
 	idev->actual_tp_mode = P5_X_FW_AP_MODE;
 	if (ilitek_tddi_fw_upgrade_handler(NULL) < 0)
 		ipio_err("FW upgrade failed during gesture recovery\n");
+
+	/* Wait for fw running code finished. */
+	msleep(50);
 
 	if (ilitek_ice_mode_ctrl(ENABLE, ON) < 0)
 		ipio_err("Enable ice mode failed during gesture recovery\n");

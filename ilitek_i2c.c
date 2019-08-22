@@ -29,7 +29,7 @@ struct touch_bus_info {
 
 struct ilitek_tddi_dev *idev;
 
-#ifdef I2C_DMA_TRANSFER
+#if I2C_DMA_TRANSFER
 static unsigned char *ilitek_dma_va;
 static dma_addr_t ilitek_dma_pa;
 
@@ -72,7 +72,7 @@ static int core_i2c_write(void *buf, int len)
 		 },
 	};
 
-#ifdef I2C_DMA_TRANSFER
+#if I2C_DMA_TRANSFER
 	if (len > 8) {
 		msgs[0].addr = (idev->client->addr & I2C_MASK_FLAG);
 		msgs[0].ext_flag = (idev->client->ext_flag | I2C_ENEXT_FLAG | I2C_DMA_FLAG);
@@ -126,7 +126,7 @@ static int core_i2c_read(void *buf, int len)
 	};
 
 
-#ifdef I2C_DMA_TRANSFER
+#if I2C_DMA_TRANSFER
 	if (len > 8) {
 		msgs[0].addr = (idev->client->addr & I2C_MASK_FLAG);
 		msgs[0].ext_flag = (idev->client->ext_flag | I2C_ENEXT_FLAG | I2C_DMA_FLAG);
@@ -139,7 +139,7 @@ static int core_i2c_read(void *buf, int len)
 
 	ret = i2c_transfer(idev->i2c->adapter, msgs, 1);
 
-#ifdef I2C_DMA_TRANSFER
+#if I2C_DMA_TRANSFER
 	if (len > 8)
 		memcpy(rxbuf, ilitek_dma_va, len);
 #endif
@@ -233,7 +233,7 @@ static int ilitek_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id *
 	idev->write = ilitek_i2c_write;
 	idev->read = ilitek_i2c_read;
 
-#ifdef I2C_DMA_TRANSFER
+#if I2C_DMA_TRANSFER
 	if (dma_i2c_alloc(idev->i2c) < 0)
 		ipio_err("Failed to alllocate DMA mem %ld\n", PTR_ERR(idev->i2c));
 #endif
@@ -260,10 +260,11 @@ static int ilitek_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id *
 	idev->netlink = DISABLE;
 	idev->debug_node_open = DISABLE;
 	idev->irq_tirgger_type = IRQF_TRIGGER_FALLING;
-	idev->info_from_hex = DISABLE;
+	idev->info_from_hex = ENABLE;
 
-	if (ENABLE_GESTURE)
-		idev->gesture = ENABLE;
+#if ENABLE_GESTURE
+	idev->gesture = ENABLE;
+#endif
 
 	return info->hwif->plat_probe();
 }

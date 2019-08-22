@@ -637,7 +637,7 @@ static int ilitek_spi_probe(struct spi_device *spi)
 
 	idev->write = ilitek_spi_write;
 	idev->read = ilitek_spi_read;
-#ifdef SPI_DMA_TRANSFER_SPLIT
+#if SPI_DMA_TRANSFER_SPLIT
 	idev->spi_write_then_read = ilitek_spi_write_then_read_split;
 #else
 	idev->spi_write_then_read = ilitek_spi_write_then_read_direct;
@@ -668,8 +668,9 @@ static int ilitek_spi_probe(struct spi_device *spi)
 	idev->irq_tirgger_type = IRQF_TRIGGER_FALLING;
 	idev->info_from_hex = ENABLE;
 
-	if (ENABLE_GESTURE)
-		idev->gesture = ENABLE;
+#if ENABLE_GESTURE
+	idev->gesture = ENABLE;
+#endif
 
 	core_spi_setup(SPI_CLK);
 	return info->hwif->plat_probe();

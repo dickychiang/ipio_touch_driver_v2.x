@@ -108,6 +108,7 @@ void ilitek_plat_input_register(void)
 	__set_bit(KEY_GESTURE_F, idev->input->keybit);
 }
 
+#if REGULATOR_POWER
 void ilitek_plat_regulator_power_on(bool status)
 {
 	ipio_info("%s\n", status ? "POWER ON" : "POWER OFF");
@@ -134,7 +135,9 @@ void ilitek_plat_regulator_power_on(bool status)
 	atomic_set(&idev->ice_stat, DISABLE);
 	mdelay(5);
 }
+#endif
 
+#if REGULATOR_POWER
 static void ilitek_plat_regulator_power_init(void)
 {
 	const char *vdd_name = "vdd";
@@ -161,6 +164,7 @@ static void ilitek_plat_regulator_power_init(void)
 
 	ilitek_plat_regulator_power_on(true);
 }
+#endif
 
 static int ilitek_plat_gpio_register(void)
 {
@@ -360,8 +364,9 @@ static int ilitek_plat_probe(void)
 {
 	ipio_info("platform probe\n");
 
-	if (REGULATOR_POWER)
-		ilitek_plat_regulator_power_init();
+#if REGULATOR_POWER
+	ilitek_plat_regulator_power_init();
+#endif
 
 	if (ilitek_plat_gpio_register() < 0)
 		ipio_err("Register gpio failed\n");
