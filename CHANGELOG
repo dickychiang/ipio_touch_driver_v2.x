@@ -1,3 +1,24 @@
+* V2.0.1.3
+[New features]
+1.  ilitek_fw.c 拆分成 ilitek_flash.c 和 ilitek_hostdl.c
+
+[Improvements]
+1. FW更新後，從HEX讀取 TP info (SPI/I2C預設打開)
+2. 優化proximity判斷
+3. 沒有golden時，在做完MP後會產出”mp_warning”的csv
+4. 更新 open sp測試的公式
+5. 調整top half裡判斷順序
+6. SPI要load gesture code時，加入判斷是否動態load code
+7. 減少解析ini的時間
+8. SPI esd gesture位址從0x25FF8，改成0x40054
+
+[Bus fixed]
+1. 重新加入gesture debug
+2. 修正在debug mode下，Android系統未出現小白點的問題
+3. 在做 esd gesture時，load 完 ap code 會 sleep 50ms (搭配info_from_hex和core ver 1.4.1)
+4. 修正 checkpatch.pl 錯誤
+5. 修正讀取報點時，若出現錯誤(非 recovery)會沒有返回的問題
+
 * V2.0.1.2
 1.	在MP測試裡，增加錯誤返回值
 2.	修正open test c 測試異常
