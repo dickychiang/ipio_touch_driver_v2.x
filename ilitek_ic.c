@@ -909,6 +909,8 @@ int ilitek_tddi_ic_get_panel_info(void)
 		buf[2] = idev->chip->info[13];
 		buf[3] = idev->chip->info[14];
 		buf[4] = idev->chip->info[15];
+		idev->panel_wid = buf[1] << 8 | buf[2];
+		idev->panel_hei = buf[3] << 8 | buf[4];
 		goto out;
 	}
 
@@ -922,8 +924,8 @@ int ilitek_tddi_ic_get_panel_info(void)
 	if (ret < 0)
 		ipio_err("Read panel info error\n");
 
-out:
 	if (buf[0] != P5_X_GET_PANEL_INFORMATION) {
+		ipio_info("Invalid panel info, use default resolution\n");
 		idev->panel_wid = TOUCH_SCREEN_X_MAX;
 		idev->panel_hei = TOUCH_SCREEN_Y_MAX;
 	} else {
@@ -931,6 +933,7 @@ out:
 		idev->panel_hei = buf[3] << 8 | buf[4];
 	}
 
+out:
 	ipio_info("Panel info: width = %d, height = %d\n", idev->panel_wid, idev->panel_hei);
 	return ret;
 }
