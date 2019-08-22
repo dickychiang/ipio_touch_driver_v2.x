@@ -113,7 +113,7 @@ static int CalculateCRC32(u32 start_addr, u32 len, u8 *pfw)
 
 void ilitek_fw_dump_iram_data(u32 start, u32 end, bool save)
 {
-        return;
+	return;
 }
 
 static int ilitek_tddi_fw_check_hex_hw_crc(u8 *pfw)
@@ -798,11 +798,11 @@ static void ilitek_tddi_fw_update_block_info(u8 *pfw)
 {
 	ipio_info("Tag = %x\n", tfd.hex_tag);
 
-        fbi[AP].name = "AP";
-        fbi[DATA].name = "DATA";
-        fbi[TUNING].name = "TUNING";
-        fbi[MP].name = "MP";
-        fbi[GESTURE].name = "GESTURE";
+	fbi[AP].name = "AP";
+	fbi[DATA].name = "DATA";
+	fbi[TUNING].name = "TUNING";
+	fbi[MP].name = "MP";
+	fbi[GESTURE].name = "GESTURE";
 
 	/* Save fw info buffer */
 	ipio_memcpy(idev->chip->info, (pfw + idev->chip->info_addr), sizeof(idev->chip->info), sizeof(idev->chip->info));
@@ -1021,7 +1021,7 @@ static int ilitek_tdd_fw_hex_open(u8 open_file_method, u8 *pfw)
 			goto convert_hex;
 		}
 
-		ipio_vfree((void **) & (idev->tp_fw.data));
+		ipio_vfree((void **)&(idev->tp_fw.data));
 		idev->tp_fw.size = 0;
 		idev->tp_fw.data = vmalloc(fsize);
 		if (!idev->tp_fw.data) {
@@ -1053,7 +1053,7 @@ static int ilitek_tdd_fw_hex_open(u8 open_file_method, u8 *pfw)
 			goto convert_hex;
 		}
 
-		ipio_vfree((void **) & (idev->tp_fw.data));
+		ipio_vfree((void **)&(idev->tp_fw.data));
 		idev->tp_fw.size = 0;
 		idev->tp_fw.data = vmalloc(fsize);
 		if (idev->tp_fw.data == NULL) {
@@ -1099,27 +1099,27 @@ static void ilitek_tddi_fw_check_update(int ret)
 {
 	ipio_info("FW upgrade %s\n", (ret == UPDATE_PASS ? "PASS" : "FAIL"));
 
-        if (ret == UPDATE_PASS)
-                return;
+	if (ret == UPDATE_PASS)
+		return;
 
-        if (atomic_read(&idev->mp_stat)) {
-                ipio_info("No need to erase data during mp test\n");
-                return;
-        }
+	if (atomic_read(&idev->mp_stat)) {
+		ipio_info("No need to erase data during mp test\n");
+		return;
+	}
 
-        ipio_info("Erase all fw data\n");
+	ipio_info("Erase all fw data\n");
 
-        if (ilitek_ice_mode_ctrl(ENABLE, OFF) < 0)
-                ipio_err("Enable ice mode failed while erasing data\n");
+	if (ilitek_ice_mode_ctrl(ENABLE, OFF) < 0)
+		ipio_err("Enable ice mode failed while erasing data\n");
 
-        if (ilitek_tddi_fw_flash_erase() < 0)
-                ipio_err("Erase flash failed\n");
+	if (ilitek_tddi_fw_flash_erase() < 0)
+		ipio_err("Erase flash failed\n");
 
-        if (ilitek_ice_mode_ctrl(DISABLE, OFF) < 0)
-                ipio_err("Disable ice mode failed after erase data\n");
+	if (ilitek_ice_mode_ctrl(DISABLE, OFF) < 0)
+		ipio_err("Disable ice mode failed after erase data\n");
 
-        if (ilitek_tddi_reset_ctrl(idev->reset) < 0)
-                ipio_err("TP reset failed after erase data\n");
+	if (ilitek_tddi_reset_ctrl(idev->reset) < 0)
+		ipio_err("TP reset failed after erase data\n");
 }
 
 int ilitek_tddi_fw_upgrade(int file_type, int open_file_method)

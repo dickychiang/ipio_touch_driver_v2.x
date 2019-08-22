@@ -474,11 +474,11 @@ void parser_ini_benchmark(s32 *max_ptr, s32 *min_ptr, int8_t type, char *desp, i
 	char benchmark_str[256] = {0};
 
 	/* format complete string from the name of section "_Benchmark_Data". */
-	snprintf(benchmark_str,sizeof(benchmark_str), "%s%s%s", desp, "_", BENCHMARK_KEY_NAME);
+	snprintf(benchmark_str, sizeof(benchmark_str), "%s%s%s", desp, "_", BENCHMARK_KEY_NAME);
 
 	for (i = 0; i < g_ini_items; i++) {
 		if ((strncmp(ilitek_ini_file_data[i].pSectionName, benchmark_str, strlen(ilitek_ini_file_data[i].pSectionName)) != 0) ||
-			strncmp(ilitek_ini_file_data[i].pKeyName, BENCHMARK_KEY_NAME , strlen(ilitek_ini_file_data[i].pSectionName)) != 0)
+			strncmp(ilitek_ini_file_data[i].pKeyName, BENCHMARK_KEY_NAME, strlen(ilitek_ini_file_data[i].pSectionName)) != 0)
 			continue;
 		record = ',';
 		for (j = 0, index1 = 0; j <= ilitek_ini_file_data[i].iKeyValueLen; j++) {
@@ -1961,7 +1961,7 @@ int check_int_level(bool high)
 		udelay(2);
 	}
 	if (timer == 0)
-		ipio_info("check int %s fail \n", (high == true)? "High" : "Low");
+		ipio_info("check int %s fail \n", (high == true) ? "High" : "Low");
 
 	return ret;
 }

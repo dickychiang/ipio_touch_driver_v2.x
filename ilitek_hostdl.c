@@ -371,78 +371,84 @@ static void ilitek_tddi_fw_update_block_info(u8 *pfw)
 
 	ipio_info("Tag = %x\n", tfd.hex_tag);
 
-        if (tfd.hex_tag == BLOCK_TAG_AF) {
-                fbi[AP].mem_start = (fbi[AP].fix_mem_start != INT_MAX) ? fbi[AP].fix_mem_start : 0;
-                fbi[DATA].mem_start = (fbi[DATA].fix_mem_start != INT_MAX) ? fbi[DATA].fix_mem_start : DLM_START_ADDRESS;
-                fbi[TUNING].mem_start = (fbi[TUNING].fix_mem_start != INT_MAX) ? fbi[TUNING].fix_mem_start :  fbi[DATA].mem_start + fbi[DATA].len;
-                fbi[MP].mem_start = (fbi[MP].fix_mem_start != INT_MAX) ? fbi[MP].fix_mem_start :  0;
-                fbi[GESTURE].mem_start = (fbi[GESTURE].fix_mem_start != INT_MAX) ? fbi[GESTURE].fix_mem_start :	 0;
+	if (tfd.hex_tag == BLOCK_TAG_AF) {
+		fbi[AP].mem_start = (fbi[AP].fix_mem_start != INT_MAX) ? fbi[AP].fix_mem_start : 0;
+		fbi[DATA].mem_start = (fbi[DATA].fix_mem_start != INT_MAX) ? fbi[DATA].fix_mem_start : DLM_START_ADDRESS;
+		fbi[TUNING].mem_start = (fbi[TUNING].fix_mem_start != INT_MAX) ? fbi[TUNING].fix_mem_start :  fbi[DATA].mem_start + fbi[DATA].len;
+		fbi[MP].mem_start = (fbi[MP].fix_mem_start != INT_MAX) ? fbi[MP].fix_mem_start :  0;
+		fbi[GESTURE].mem_start = (fbi[GESTURE].fix_mem_start != INT_MAX) ? fbi[GESTURE].fix_mem_start :	 0;
 
-                /* Parsing gesture info form AP code */
-                ges_info_addr = (fbi[AP].end + 1 - 60);
-                ges_area_section = (pfw[ges_info_addr + 3] << 24) + (pfw[ges_info_addr + 2] << 16) + (pfw[ges_info_addr + 1] << 8) + pfw[ges_info_addr];
-                fbi[GESTURE].mem_start = (pfw[ges_info_addr + 7] << 24) + (pfw[ges_info_addr + 6] << 16) + (pfw[ges_info_addr + 5] << 8) + pfw[ges_info_addr + 4];
-                ap_end = (pfw[ges_info_addr + 11] << 24) + (pfw[ges_info_addr + 10] << 16) + (pfw[ges_info_addr + 9] << 8) + pfw[ges_info_addr + 8];
-                if (ap_end != fbi[GESTURE].mem_start)
-                        ap_len = ap_end - fbi[GESTURE].mem_start + 1;
-                ges_fw_start = (pfw[ges_info_addr + 15] << 24) + (pfw[ges_info_addr + 14] << 16) + (pfw[ges_info_addr + 13] << 8) + pfw[ges_info_addr + 12];
-                ges_fw_end = (pfw[ges_info_addr + 19] << 24) + (pfw[ges_info_addr + 18] << 16) + (pfw[ges_info_addr + 17] << 8) + pfw[ges_info_addr + 16];
-                if (ges_fw_end != ges_fw_start)
-                        fbi[GESTURE].len = ges_fw_end - ges_fw_start + 1;
-                fbi[GESTURE].start = 0;
+		/* Parsing gesture info form AP code */
+		ges_info_addr = (fbi[AP].end + 1 - 60);
+		ges_area_section = (pfw[ges_info_addr + 3] << 24) + (pfw[ges_info_addr + 2] << 16) + (pfw[ges_info_addr + 1] << 8) + pfw[ges_info_addr];
+		fbi[GESTURE].mem_start = (pfw[ges_info_addr + 7] << 24) + (pfw[ges_info_addr + 6] << 16) + (pfw[ges_info_addr + 5] << 8) + pfw[ges_info_addr + 4];
+		ap_end = (pfw[ges_info_addr + 11] << 24) + (pfw[ges_info_addr + 10] << 16) + (pfw[ges_info_addr + 9] << 8) + pfw[ges_info_addr + 8];
 
-        } else {
-                memset(fbi, 0x0, sizeof(fbi));
-                fbi[AP].start = 0;
-                fbi[AP].mem_start = 0;
-                fbi[AP].len = MAX_AP_FIRMWARE_SIZE;
+		if (ap_end != fbi[GESTURE].mem_start)
+			ap_len = ap_end - fbi[GESTURE].mem_start + 1;
 
-                fbi[DATA].start = DLM_HEX_ADDRESS;
-                fbi[DATA].mem_start = DLM_START_ADDRESS;
-                fbi[DATA].len = MAX_DLM_FIRMWARE_SIZE;
+		ges_fw_start = (pfw[ges_info_addr + 15] << 24) + (pfw[ges_info_addr + 14] << 16) + (pfw[ges_info_addr + 13] << 8) + pfw[ges_info_addr + 12];
+		ges_fw_end = (pfw[ges_info_addr + 19] << 24) + (pfw[ges_info_addr + 18] << 16) + (pfw[ges_info_addr + 17] << 8) + pfw[ges_info_addr + 16];
 
-                fbi[MP].start = MP_HEX_ADDRESS;
-                fbi[MP].mem_start = 0;
-                fbi[MP].len = MAX_MP_FIRMWARE_SIZE;
+		if (ges_fw_end != ges_fw_start)
+			fbi[GESTURE].len = ges_fw_end - ges_fw_start + 1;
 
-                /* Parsing gesture info form AP code */
-                ges_info_addr = (MAX_AP_FIRMWARE_SIZE - 60);
-                ges_area_section = (pfw[ges_info_addr + 3] << 24) + (pfw[ges_info_addr + 2] << 16) + (pfw[ges_info_addr + 1] << 8) + pfw[ges_info_addr];
-                fbi[GESTURE].mem_start = (pfw[ges_info_addr + 7] << 24) + (pfw[ges_info_addr + 6] << 16) + (pfw[ges_info_addr + 5] << 8) + pfw[ges_info_addr + 4];
-                ap_end = (pfw[ges_info_addr + 11] << 24) + (pfw[ges_info_addr + 10] << 16) + (pfw[ges_info_addr + 9] << 8) + pfw[ges_info_addr + 8];
-                if (ap_end != fbi[GESTURE].mem_start)
-                        ap_len = ap_end - fbi[GESTURE].mem_start + 1;
-                ges_fw_start = (pfw[ges_info_addr + 15] << 24) + (pfw[ges_info_addr + 14] << 16) + (pfw[ges_info_addr + 13] << 8) + pfw[ges_info_addr + 12];
-                ges_fw_end = (pfw[ges_info_addr + 19] << 24) + (pfw[ges_info_addr + 18] << 16) + (pfw[ges_info_addr + 17] << 8) + pfw[ges_info_addr + 16];
-                if (ges_fw_end != ges_fw_start)
-                        fbi[GESTURE].len = ges_fw_end - ges_fw_start + 1;
-                fbi[GESTURE].start = 0;
+		fbi[GESTURE].start = 0;
+	} else {
+		memset(fbi, 0x0, sizeof(fbi));
+		fbi[AP].start = 0;
+		fbi[AP].mem_start = 0;
+		fbi[AP].len = MAX_AP_FIRMWARE_SIZE;
 
-        }
+		fbi[DATA].start = DLM_HEX_ADDRESS;
+		fbi[DATA].mem_start = DLM_START_ADDRESS;
+		fbi[DATA].len = MAX_DLM_FIRMWARE_SIZE;
 
-        memset(gestrue_fw, 0xff, sizeof(gestrue_fw));
+		fbi[MP].start = MP_HEX_ADDRESS;
+		fbi[MP].mem_start = 0;
+		fbi[MP].len = MAX_MP_FIRMWARE_SIZE;
 
-        /* Copy gesture data */
-        if (fbi[GESTURE].mem_start != 0xffffffff && ges_fw_start != 0xffffffff && fbi[GESTURE].mem_start != 0 && ges_fw_start != 0)
-                ipio_memcpy(gestrue_fw, (pfw + ges_fw_start), fbi[GESTURE].len, sizeof(gestrue_fw));
-        else
-                ipio_err("There is no gesture data inside fw\n");
+		/* Parsing gesture info form AP code */
+		ges_info_addr = (MAX_AP_FIRMWARE_SIZE - 60);
+		ges_area_section = (pfw[ges_info_addr + 3] << 24) + (pfw[ges_info_addr + 2] << 16) + (pfw[ges_info_addr + 1] << 8) + pfw[ges_info_addr];
+		fbi[GESTURE].mem_start = (pfw[ges_info_addr + 7] << 24) + (pfw[ges_info_addr + 6] << 16) + (pfw[ges_info_addr + 5] << 8) + pfw[ges_info_addr + 4];
+		ap_end = (pfw[ges_info_addr + 11] << 24) + (pfw[ges_info_addr + 10] << 16) + (pfw[ges_info_addr + 9] << 8) + pfw[ges_info_addr + 8];
 
-        ipio_info("==== Gesture loader info ====\n");
-        ipio_info("ap_start = 0x%x, ap_end = 0x%x, ap_len = 0x%x\n", fbi[GESTURE].mem_start, ap_end, ap_len);
-        ipio_info("gesture_start = 0x%x, gesture_end = 0x%x, gesture_len = 0x%x\n", ges_fw_start, ges_fw_end, fbi[GESTURE].len);
-        ipio_info("=============================\n");
+		if (ap_end != fbi[GESTURE].mem_start)
+			ap_len = ap_end - fbi[GESTURE].mem_start + 1;
 
-        fbi[AP].name = "AP";
-        fbi[DATA].name = "DATA";
-        fbi[TUNING].name = "TUNING";
-        fbi[MP].name = "MP";
-        fbi[GESTURE].name = "GESTURE";
+		ges_fw_start = (pfw[ges_info_addr + 15] << 24) + (pfw[ges_info_addr + 14] << 16) + (pfw[ges_info_addr + 13] << 8) + pfw[ges_info_addr + 12];
+		ges_fw_end = (pfw[ges_info_addr + 19] << 24) + (pfw[ges_info_addr + 18] << 16) + (pfw[ges_info_addr + 17] << 8) + pfw[ges_info_addr + 16];
 
-        /* upgrade mode define */
-        fbi[DATA].mode = fbi[AP].mode = fbi[TUNING].mode = AP;
-        fbi[MP].mode = MP;
-        fbi[GESTURE].mode = GESTURE;
+		if (ges_fw_end != ges_fw_start)
+			fbi[GESTURE].len = ges_fw_end - ges_fw_start + 1;
+
+		fbi[GESTURE].start = 0;
+		}
+
+		memset(gestrue_fw, 0xff, sizeof(gestrue_fw));
+
+		/* Copy gesture data */
+		if (fbi[GESTURE].mem_start != 0xffffffff && ges_fw_start != 0xffffffff && fbi[GESTURE].mem_start != 0 && ges_fw_start != 0)
+				ipio_memcpy(gestrue_fw, (pfw + ges_fw_start), fbi[GESTURE].len, sizeof(gestrue_fw));
+		else
+				ipio_err("There is no gesture data inside fw\n");
+
+		ipio_info("==== Gesture loader info ====\n");
+		ipio_info("ap_start = 0x%x, ap_end = 0x%x, ap_len = 0x%x\n", fbi[GESTURE].mem_start, ap_end, ap_len);
+		ipio_info("gesture_start = 0x%x, gesture_end = 0x%x, gesture_len = 0x%x\n", ges_fw_start, ges_fw_end, fbi[GESTURE].len);
+		ipio_info("=============================\n");
+
+		fbi[AP].name = "AP";
+		fbi[DATA].name = "DATA";
+		fbi[TUNING].name = "TUNING";
+		fbi[MP].name = "MP";
+		fbi[GESTURE].name = "GESTURE";
+
+		/* upgrade mode define */
+		fbi[DATA].mode = fbi[AP].mode = fbi[TUNING].mode = AP;
+		fbi[MP].mode = MP;
+		fbi[GESTURE].mode = GESTURE;
 
 	/* Save fw info buffer */
 	ipio_memcpy(idev->chip->info, (pfw + idev->chip->info_addr), sizeof(idev->chip->info), sizeof(idev->chip->info));
@@ -661,7 +667,7 @@ static int ilitek_tdd_fw_hex_open(u8 open_file_method, u8 *pfw)
 			goto convert_hex;
 		}
 
-		ipio_vfree((void **) & (idev->tp_fw.data));
+		ipio_vfree((void **)&(idev->tp_fw.data));
 		idev->tp_fw.size = 0;
 		idev->tp_fw.data = vmalloc(fsize);
 		if (!idev->tp_fw.data) {
@@ -693,7 +699,7 @@ static int ilitek_tdd_fw_hex_open(u8 open_file_method, u8 *pfw)
 			goto convert_hex;
 		}
 
-		ipio_vfree((void **) & (idev->tp_fw.data));
+		ipio_vfree((void **)&(idev->tp_fw.data));
 		idev->tp_fw.size = 0;
 		idev->tp_fw.data = vmalloc(fsize);
 		if (idev->tp_fw.data == NULL) {
@@ -739,18 +745,18 @@ static void ilitek_tddi_fw_check_update(int ret)
 {
 	ipio_info("FW upgrade %s\n", (ret == UPDATE_PASS ? "PASS" : "FAIL"));
 
-        if (ret == UPDATE_PASS)
-                return;
+		if (ret == UPDATE_PASS)
+				return;
 
-        if (atomic_read(&idev->mp_stat)) {
-                ipio_info("No need to erase data during mp test\n");
-                return;
-        }
+		if (atomic_read(&idev->mp_stat)) {
+				ipio_info("No need to erase data during mp test\n");
+				return;
+		}
 
-        ipio_info("Erase all fw data\n");
+		ipio_info("Erase all fw data\n");
 
-        if (ilitek_tddi_reset_ctrl(idev->reset) < 0)
-                ipio_err("TP reset failed while erasing data\n");
+		if (ilitek_tddi_reset_ctrl(idev->reset) < 0)
+				ipio_err("TP reset failed while erasing data\n");
 }
 
 int ilitek_tddi_fw_upgrade(int file_type, int open_file_method)
@@ -801,22 +807,22 @@ out:
 	return ret;
 }
 
-void ilitek_tddi_fw_read_flash_info()
+void ilitek_tddi_fw_read_flash_info(void)
 {
-        return;
+		return;
 }
 
 void ilitek_tddi_flash_clear_dma(void)
 {
-        return;
+		return;
 }
 
 void ilitek_tddi_flash_dma_write(u32 start, u32 end, u32 len)
 {
-        return;
+		return;
 }
 
 int ilitek_tddi_fw_dump_flash_data(u32 start, u32 end, bool user)
 {
-        return 0;
+		return 0;
 }

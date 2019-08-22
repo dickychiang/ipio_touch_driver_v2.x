@@ -1000,7 +1000,7 @@ int get_tp_recore_ctrl(int data)
 {
 	int ret = 0;
 
-	switch((int)data) {
+	switch ((int)data) {
 
 	case ENABLE_RECORD:
 		ipio_info("recore enable");
@@ -1058,7 +1058,7 @@ int get_tp_recore_data(void)
 	fcnt = buf[5];
 	record_case = buf[6];
 	ipio_memcpy(&record_stat, &buf[7], 1, 1);
-	ipio_info("addr = 0x%x, len = %d, lndex = 0x%d, fram num = %d, record_case = 0x%x\n",
+	ipio_info("addr = 0x%x, len = %d, lndex = 0x%x, fram num = %d, record_case = 0x%x\n",
 		addr, len, index, fcnt, record_case);
 	ilitek_dump_data(buf, 8, sizeof(buf), 0, "all record bytes");
 
@@ -1067,7 +1067,7 @@ int get_tp_recore_data(void)
 		ipio_err("Failed to allocate packet memory, %ld\n", PTR_ERR(raw));
 		return -1;
 	}
-	ptr = (u32*)raw;
+	ptr = (u32 *)raw;
 
 	if (!ice)
 		ilitek_ice_mode_ctrl(ENABLE, ON);
@@ -1088,12 +1088,12 @@ int get_tp_recore_data(void)
 	}
 
 	frame_len = (len / (fcnt * 2));
-	for (i = 0; i < fcnt; i ++) {
+	for (i = 0; i < fcnt; i++) {
 		raw_ptr = raw + (index * frame_len);
 
 		ilitek_dump_data(raw_ptr, 16, frame_len, idev->xch_num, "recore_data");
 		index--;
-		if(index < 0)
+		if (index < 0)
 			index = fcnt - 1;
 	}
 

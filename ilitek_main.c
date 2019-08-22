@@ -31,7 +31,7 @@ static struct delayed_work esd_work;
 static struct delayed_work bat_work;
 
 #if RESUME_BY_DDI
-static struct workqueue_struct	*resume_by_ddi_wq = NULL;
+static struct workqueue_struct	*resume_by_ddi_wq;
 static struct work_struct	resume_by_ddi_work;
 
 static void ilitek_resume_by_ddi_work(struct work_struct *work)
@@ -527,12 +527,12 @@ int ilitek_set_tp_data_len(int format)
 		break;
 	case DATA_FORMAT_GESTURE_DEMO:
 		if (idev->gesture_demo_ctrl == ENABLE) {
-			if(idev->gesture_mode == DATA_FORMAT_GESTURE_INFO)
+			if (idev->gesture_mode == DATA_FORMAT_GESTURE_INFO)
 				idev->tp_data_len = P5_X_GESTURE_INFO_LENGTH + P5_X_INFO_HEADER_LENGTH + P5_X_INFO_CHECKSUM_LENGTH;
 			else
 				idev->tp_data_len = P5_X_DEMO_MODE_PACKET_LEN + P5_X_INFO_HEADER_LENGTH + P5_X_INFO_CHECKSUM_LENGTH;
 		} else {
-			if(idev->gesture_mode == DATA_FORMAT_GESTURE_INFO)
+			if (idev->gesture_mode == DATA_FORMAT_GESTURE_INFO)
 				idev->tp_data_len = P5_X_GESTURE_INFO_LENGTH;
 			else
 				idev->tp_data_len = P5_X_GESTURE_NORMAL_LENGTH;

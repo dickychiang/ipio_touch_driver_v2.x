@@ -635,7 +635,7 @@ void demo_debug_info_mode(u8 *buf, size_t len)
 
 	ipio_info("info len = %d ,id = %d\n", info_len, info_id);
 
-	idev->demo_debug_info[info_id](&info_ptr[1] , info_len);
+	idev->demo_debug_info[info_id](&info_ptr[1], info_len);
 }
 
 int ilitek_tddi_debug_report_alloc(void)
