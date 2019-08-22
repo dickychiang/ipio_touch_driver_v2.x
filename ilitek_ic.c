@@ -904,7 +904,7 @@ int ilitek_tddi_ic_get_panel_info(void)
 	u8 cmd = P5_X_GET_PANEL_INFORMATION;
 	u8 buf[10] = {0};
 
-	if (idev->info_from_hex) {
+	if (idev->info_from_hex && (idev->chip->core_ver >= 0x010401)) {
 		buf[1] = idev->chip->info[12];
 		buf[2] = idev->chip->info[13];
 		buf[3] = idev->chip->info[14];
