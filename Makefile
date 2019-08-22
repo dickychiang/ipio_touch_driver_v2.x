@@ -21,10 +21,12 @@ endif
 
 ifeq ($(BUILD_INFAE),i2c)
 interface=ilitek_i2c
+fwupdate=ilitek_flash
 endif
 
 ifeq ($(BUILD_INFAE),spi)
 interface=ilitek_spi
+fwupdate=ilitek_hostdl
 endif
 
 ifeq ($(BUILD_MODULE),n)
@@ -34,7 +36,7 @@ obj-y += ilitek_main.o \
 	ilitek_ic.o \
 	ilitek_touch.o \
 	ilitek_mp.o \
-	ilitek_fw.o \
+	$(fwupdate).o \
 	ilitek_node.o
 else
 	obj-m += ilitek.o
@@ -44,7 +46,7 @@ else
 		ilitek_ic.o \
 		ilitek_touch.o \
 		ilitek_mp.o \
-		ilitek_fw.o \
+		$(fwupdate).o \
 		ilitek_node.o
 
 KERNEL_DIR= /home/likewise-open/ILI/1061279/workplace/rk3288_sdk/kernel

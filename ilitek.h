@@ -749,12 +749,12 @@ struct ilitek_hwif_info {
 extern void ilitek_tddi_ic_check_otp_prog_mode(void);
 extern void ilitek_tddi_flash_dma_write(u32 start, u32 end, u32 len);
 extern void ilitek_tddi_flash_clear_dma(void);
-extern void ilitek_tddi_fw_read_flash_info(bool mode);
+extern void ilitek_tddi_fw_read_flash_info(void);
 extern u32 ilitek_tddi_fw_read_hw_crc(u32 start, u32 end);
 extern int ilitek_tddi_fw_read_flash(u32 start, u32 end, u8 *data, int len);
 extern void ilitek_fw_dump_iram_data(u32 start, u32 end, bool save);
 extern int ilitek_tddi_fw_dump_flash_data(u32 start, u32 end, bool user);
-extern int ilitek_tddi_fw_upgrade(int upgrade_type, int file_type, int open_file_method);
+extern int ilitek_tddi_fw_upgrade(int file_type, int open_file_method);
 
 /* Prototypes for tddi mp test */
 extern int ilitek_tddi_mp_test_main(char *apk, bool lcm_on, char *single);

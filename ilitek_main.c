@@ -470,7 +470,7 @@ int ilitek_tddi_fw_upgrade_handler(void *data)
 	atomic_set(&idev->fw_stat, START);
 
 	idev->fw_update_stat = 0;
-	ret = ilitek_tddi_fw_upgrade(idev->fw_upgrade_mode, HEX_FILE, idev->fw_open);
+	ret = ilitek_tddi_fw_upgrade(HEX_FILE, idev->fw_open);
 	if (ret != 0)
 		idev->fw_update_stat = -1;
 	else
@@ -793,7 +793,7 @@ int ilitek_tddi_init(void)
 
 	ilitek_tddi_node_init();
 
-	ilitek_tddi_fw_read_flash_info(idev->fw_upgrade_mode);
+	ilitek_tddi_fw_read_flash_info();
 
 #if BOOT_FW_UPDATE
 	fw_boot_th = kthread_run(ilitek_tddi_fw_upgrade_handler, NULL, "ili_fw_boot");
