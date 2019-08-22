@@ -552,7 +552,8 @@ int ilitek_tddi_touch_esd_gesture_iram(void)
 		ipio_err("FW upgrade failed during gesture recovery\n");
 
 	/* Wait for fw running code finished. */
-	msleep(50);
+	if (idev->info_from_hex || (idev->chip->core_ver >= 0x010401))
+		msleep(50);
 
 	if (ilitek_ice_mode_ctrl(ENABLE, ON) < 0)
 		ipio_err("Enable ice mode failed during gesture recovery\n");
