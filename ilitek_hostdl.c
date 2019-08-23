@@ -364,6 +364,29 @@ static int ilitek_tddi_fw_iram_upgrade(u8 *pfw)
 	return ret;
 }
 
+static int ilitek_fw_calc_file_crc(u8 *pfw)
+{
+	int i;
+	u32 ex_addr, data_crc, file_crc;
+
+	for (i = 0; i < ARRAY_SIZE(fbi); i++) {
+		if (fbi[i].end == 0)
+			continue;
+		ex_addr = fbi[i].end;
+		data_crc = CalculateCRC32(fbi[i].start, fbi[i].len - 4, pfw);
+		file_crc = pfw[ex_addr - 3] << 24 | pfw[ex_addr - 2] << 16 | pfw[ex_addr - 1] << 8 | pfw[ex_addr];
+		ipio_info("data crc = %x, file crc = %x\n", data_crc, file_crc);
+		if (data_crc != file_crc) {
+			ipio_err("Content of fw file is broken. (%d, %x, %x)\n",
+				i, data_crc, file_crc);
+			return -1;
+		}
+	}
+
+	ipio_info("Content of fw file is correct\n");
+	return 0;
+}
+
 static void ilitek_tddi_fw_update_block_info(u8 *pfw)
 {
 	u32 ges_area_section, ges_info_addr, ges_fw_start, ges_fw_end;
@@ -470,8 +493,6 @@ static int ilitek_tddi_fw_ili_convert(u8 *pfw)
 
 	ipio_info("Start to parse ILI file, type = %d, block_count = %d\n", CTPM_FW[32], CTPM_FW[33]);
 
-	memset(fbi, 0x0, sizeof(fbi));
-
 	tfd.start_addr = 0;
 	tfd.end_addr = 0;
 	tfd.hex_tag = 0;
@@ -529,21 +550,23 @@ static int ilitek_tddi_fw_ili_convert(u8 *pfw)
 	}
 
 out:
-	tfd.block_number = CTPM_FW[33];
 	memcpy(pfw, CTPM_FW + ILI_FILE_HEADER, (sizeof(CTPM_FW) - ILI_FILE_HEADER));
+
+	if (ilitek_fw_calc_file_crc(pfw) < 0)
+		return -1;
+
+	tfd.block_number = CTPM_FW[33];
 	tfd.end_addr = (sizeof(CTPM_FW) - ILI_FILE_HEADER);
 	return 0;
 }
 
 static int ilitek_tddi_fw_hex_convert(u8 *phex, int size, u8 *pfw)
 {
-	int block = 0, array_size;
+	int block = 0;
 	u32 i = 0, j = 0, k = 0, num = 0;
 	u32 len = 0, addr = 0, type = 0;
 	u32 start_addr = 0x0, end_addr = 0x0, ex_addr = 0;
-	u32 offset, hex_crc, data_crc;
-
-	memset(fbi, 0x0, sizeof(fbi));
+	u32 offset;
 
 	/* Parsing HEX file */
 	for (; i < size;) {
@@ -617,23 +640,9 @@ static int ilitek_tddi_fw_hex_convert(u8 *phex, int size, u8 *pfw)
 		i += 1 + 2 + 4 + 2 + (len * 2) + 2 + offset;
 	}
 
-	/* Check the content of hex file by comparsing parsed data to the crc at last 4 bytes */
-	array_size = ARRAY_SIZE(fbi);
-	for (i = 0; i < array_size; i++) {
-		if (fbi[i].end == 0)
-			continue;
-		ex_addr = fbi[i].end;
-		data_crc = CalculateCRC32(fbi[i].start, fbi[i].len - 4, pfw);
-		hex_crc = pfw[ex_addr - 3] << 24 | pfw[ex_addr - 2] << 16 | pfw[ex_addr - 1] << 8 | pfw[ex_addr];
-		ipio_debug("data crc = %x, hex crc = %x\n", data_crc, hex_crc);
-		if (data_crc != hex_crc) {
-			ipio_err("Content of hex file is broken. (%d, %x, %x)\n",
-				i, data_crc, hex_crc);
-			return -1;
-		}
-	}
+	if (ilitek_fw_calc_file_crc(pfw) < 0)
+		return -1;
 
-	ipio_info("Contect of hex file is correct\n");
 	tfd.start_addr = start_addr;
 	tfd.end_addr = end_addr;
 	tfd.block_number = block;
@@ -772,6 +781,7 @@ int ilitek_tddi_fw_upgrade(int file_type, int open_file_method)
 	}
 
 	idev->gesture_load_code = false;
+	memset(fbi, 0x0, sizeof(fbi));
 	memset(pfw, 0xFF, MAX_HEX_FILE_SIZE * sizeof(u8));
 
 	ipio_info("Convert FW file from %s\n", (file_type == ILI_FILE ? "ILI_FILE" : "HEX_FILE"));
