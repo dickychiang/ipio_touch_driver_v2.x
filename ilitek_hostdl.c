@@ -150,13 +150,12 @@ static int host_download_dma_check(u32 start_addr, u32 block_size)
 	return busy;
 }
 
-static int ilitek_tddi_fw_iram_read(u8 *buf, u32 start, u32 end)
+static int ilitek_tddi_fw_iram_read(u8 *buf, u32 start, int len)
 {
-	int r_len = end + 1;
 	u8 cmd[4] = {0};
 
 	if (!buf) {
-		ipio_err("buf in null\n");
+		ipio_err("buf is null\n");
 		return -ENOMEM;
 	}
 
@@ -170,7 +169,9 @@ static int ilitek_tddi_fw_iram_read(u8 *buf, u32 start, u32 end)
 		return -ENODEV;
 	}
 
-	if (idev->read(buf, r_len)) {
+	ipio_info("len = %d\n", len);
+
+	if (idev->read(buf, len)) {
 		ipio_err("Failed to Read iram data\n");
 		return -ENODEV;
 	}
@@ -204,7 +205,7 @@ void ilitek_fw_dump_iram_data(u32 start, u32 end, bool save)
 	for (i = 0; i < len; i++)
 		idev->fw_dma_buf[i] = 0xFF;
 
-	if (ilitek_tddi_fw_iram_read(idev->fw_dma_buf, start, end) < 0)
+	if (ilitek_tddi_fw_iram_read(idev->fw_dma_buf, start, len) < 0)
 		ipio_err("Read IRAM data failed\n");
 
 	if (save) {

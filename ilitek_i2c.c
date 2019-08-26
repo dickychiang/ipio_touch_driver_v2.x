@@ -232,7 +232,6 @@ static int ilitek_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id *
 
 	idev->write = ilitek_i2c_write;
 	idev->read = ilitek_i2c_read;
-
 #if I2C_DMA_TRANSFER
 	if (dma_i2c_alloc(idev->i2c) < 0)
 		ipio_err("Failed to alllocate DMA mem %ld\n", PTR_ERR(idev->i2c));
@@ -240,6 +239,7 @@ static int ilitek_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id *
 
 	idev->spi_speed = NULL;
 	idev->actual_tp_mode = P5_X_FW_AP_MODE;
+	idev->tp_data_len = P5_X_DEMO_MODE_PACKET_LEN;
 
 	if (TDDI_RST_BIND)
 		idev->reset = TP_IC_WHOLE_RST;

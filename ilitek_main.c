@@ -568,10 +568,12 @@ int ilitek_set_tp_data_len(int format)
 	return ret;
 }
 
+static u8 rep_buf[2048];
+
 void ilitek_tddi_report_handler(void)
 {
 	int ret = 0, pid = 0;
-	u8 *buf = NULL, checksum = 0;
+	u8 checksum = 0;
 	int rlen = 0, buf_size = 0;
 	int tmp = ipio_debug_level;
 
@@ -613,13 +615,9 @@ void ilitek_tddi_report_handler(void)
 
 	buf_size = (idev->fw_uart_en == DISABLE) ? rlen : 2048;
 
-	buf = kcalloc(buf_size, sizeof(u8), GFP_ATOMIC);
-	if (ERR_ALLOC_MEM(buf)) {
-		ipio_err("Failed to allocate packet memory, %ld\n", PTR_ERR(buf));
-		goto out;
-	}
+	memset(rep_buf, 0x0, sizeof(rep_buf));
 
-	ret = idev->read(buf, rlen);
+	ret = idev->read(rep_buf, rlen);
 	if (ret < 0) {
 		ipio_err("Read report packet failed, ret = %d\n", ret);
 		if (ret == DO_SPI_RECOVER) {
@@ -639,43 +637,43 @@ void ilitek_tddi_report_handler(void)
 
 	rlen = ret;
 
-	ilitek_dump_data(buf, 8, rlen, 0, "finger report");
+	ilitek_dump_data(rep_buf, 8, rlen, 0, "finger report");
 
-	checksum = ilitek_calc_packet_checksum(buf, rlen - 1);
+	checksum = ilitek_calc_packet_checksum(rep_buf, rlen - 1);
 
-	if (checksum != buf[rlen-1] && idev->fw_uart_en == DISABLE) {
-		ipio_err("Wrong checksum, checksum = %x, buf = %x, len = %d\n", checksum, buf[rlen-1], rlen);
+	if (checksum != rep_buf[rlen-1] && idev->fw_uart_en == DISABLE) {
+		ipio_err("Wrong checksum, checksum = %x, buf = %x, len = %d\n", checksum, rep_buf[rlen-1], rlen);
 		ipio_debug_level = DEBUG_ALL;
-		ilitek_dump_data(buf, 8, rlen, 0, "finger report with wrong");
+		ilitek_dump_data(rep_buf, 8, rlen, 0, "finger report with wrong");
 		ipio_debug_level = tmp;
 		goto out;
 	}
 
-	pid = buf[0];
+	pid = rep_buf[0];
 	if (pid == P5_X_INFO_HEADER_PACKET_ID) {
 		ipio_debug("Have header PID = %x\n", pid);
-		pid = buf[3];
+		pid = rep_buf[3];
 	}
 	ipio_debug("Packet ID = %x\n", pid);
 
 	switch (pid) {
 	case P5_X_DEMO_PACKET_ID:
-		ilitek_tddi_report_ap_mode(buf, rlen);
+		ilitek_tddi_report_ap_mode(rep_buf, rlen);
 		break;
 	case P5_X_DEBUG_PACKET_ID:
-		ilitek_tddi_report_debug_mode(buf, rlen);
+		ilitek_tddi_report_debug_mode(rep_buf, rlen);
 		break;
 	case P5_X_I2CUART_PACKET_ID:
-		ilitek_tddi_report_i2cuart_mode(buf, rlen);
+		ilitek_tddi_report_i2cuart_mode(rep_buf, rlen);
 		break;
 	case P5_X_GESTURE_PACKET_ID:
-		ilitek_tddi_report_gesture_mode(buf, rlen);
+		ilitek_tddi_report_gesture_mode(rep_buf, rlen);
 		break;
 	case P5_X_GESTURE_FAIL_ID:
-		ipio_info("gesture fail reason code = 0x%02x", buf[1]);
+		ipio_info("gesture fail reason code = 0x%02x", rep_buf[1]);
 		break;
 	case P5_X_DEMO_DEBUG_INFO_PACKET_ID:
-		demo_debug_info_mode(&buf[3], rlen);
+		demo_debug_info_mode(&rep_buf[3], rlen);
 		break;
 	default:
 		ipio_err("Unknown packet id, %x\n", pid);
@@ -690,8 +688,6 @@ out:
 
 	if (idev->actual_tp_mode == P5_X_FW_GESTURE_MODE)
 		__pm_relax(idev->ws);
-
-	ipio_kfree((void **)&buf);
 }
 
 int ilitek_tddi_reset_ctrl(int mode)

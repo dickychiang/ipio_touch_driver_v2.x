@@ -29,6 +29,11 @@ struct touch_bus_info {
 
 struct ilitek_tddi_dev *idev;
 
+static u8 dma_txbuf[4*K];
+static u8 dma_rxbuf[4*K];
+static u8 spi_ice_buf[1*K];
+
+#if SPI_DMA_TRANSFER_SPLIT
 #define DMA_TRANSFER_MAX_CHUNK		64   // number of chunks to be transferred.
 #define DMA_TRANSFER_MAX_LEN		1024 // length of a chunk.
 struct spi_transfer	xfer[DMA_TRANSFER_MAX_CHUNK + 1];
@@ -37,37 +42,26 @@ int ilitek_spi_write_then_read_split(struct spi_device *spi,
 		const void *txbuf, unsigned n_tx,
 		void *rxbuf, unsigned n_rx)
 {
-	static DEFINE_MUTEX(lock);
-
 	int status = -1;
 	int xfercnt = 0, xferlen = 0, xferloop = 0;
-	u8 *dma_txbuf = NULL, *dma_rxbuf = NULL;
 	u8 cmd, temp1[1] = {0}, temp2[1] = {0};
 	struct spi_message	message;
 
-	dma_txbuf = kzalloc(n_tx, GFP_KERNEL | GFP_DMA);
-	if (ERR_ALLOC_MEM(dma_txbuf)) {
-		ipio_err("Failed to allocate dma_txbuf, %ld\n", PTR_ERR(dma_txbuf));
-		goto out;
-	}
-
-	dma_rxbuf = kzalloc(n_rx, GFP_KERNEL | GFP_DMA);
-	if (ERR_ALLOC_MEM(dma_rxbuf)) {
-		ipio_err("Failed to allocate dma_rxbuf, %ld\n", PTR_ERR(dma_rxbuf));
-		goto out;
-	}
-
-	mutex_trylock(&lock);
-
 	spi_message_init(&message);
 	memset(xfer, 0, sizeof(xfer));
+	memset(dma_txbuf, 0x0, sizeof(dma_txbuf));
+	memset(dma_rxbuf, 0x0, sizeof(dma_rxbuf));
 
-	if ((n_tx == 1) && (n_rx == 1))
-		cmd = SPI_READ;
-	else if ((n_tx > 0) && (n_rx > 0))
+	if ((n_tx > sizeof(dma_txbuf)) || (n_rx > sizeof(dma_rxbuf))) {
+		ipio_err("Tx/Rx length is over than dma buf, abort\n");
+		status = -ENOMEM;
+		goto out;
+	}
+
+	if ((n_tx > 0) && (n_rx > 0))
 		cmd = SPI_READ;
 	else
-		cmd = *((u8 *)txbuf);
+		cmd = SPI_WRITE;
 
 	switch (cmd) {
 	case SPI_WRITE:
@@ -123,35 +117,30 @@ int ilitek_spi_write_then_read_split(struct spi_device *spi,
 		break;
 	}
 
-	mutex_unlock(&lock);
-
 out:
-	ipio_kfree((void **)&dma_txbuf);
-	ipio_kfree((void **)&dma_rxbuf);
+	if (status != 0)
+		ipio_err("spi transfer failed\n");
+
 	return status;
 }
-
+#else
 int ilitek_spi_write_then_read_direct(struct spi_device *spi,
 		const void *txbuf, unsigned n_tx,
 		void *rxbuf, unsigned n_rx)
 {
-	static DEFINE_MUTEX(lock);
-
 	int i, status = -1;
 	u8 cmd;
 	struct spi_message	message;
 	struct spi_transfer	xfer;
 	u8 *tmp = (u8 *)rxbuf;
 
-	mutex_trylock(&lock);
-
 	spi_message_init(&message);
 	memset(&xfer, 0, sizeof(xfer));
 
-	if ((n_tx == 1) && (n_rx == 1))
+	if ((n_tx > 0) && (n_rx > 0))
 		cmd = SPI_READ;
 	else
-		cmd = *((u8 *)txbuf);
+		cmd = SPI_WRITE;
 
 	switch (cmd) {
 	case SPI_WRITE:
@@ -161,10 +150,20 @@ int ilitek_spi_write_then_read_direct(struct spi_device *spi,
 		status = spi_sync(spi, &message);
 		break;
 	case SPI_READ:
+		if (((n_tx + n_rx) > sizeof(dma_txbuf)) ||
+			((n_tx + n_rx) > sizeof(dma_rxbuf))) {
+			ipio_err("Tx/Rx length is over than dma buf, abort\n");
+			status = -ENOMEM;
+			break;
+		}
+
+		memset(dma_txbuf, 0x0, sizeof(dma_txbuf));
+		memset(dma_rxbuf, 0x0, sizeof(dma_rxbuf));
+
 		xfer.len = n_tx + n_rx;
-		xfer.tx_buf = txbuf;
-		memset(idev->fw_dma_buf, 0x0, MAX_HEX_FILE_SIZE);
-		xfer.rx_buf = idev->fw_dma_buf;
+		memcpy(dma_txbuf, txbuf, n_tx);
+		xfer.tx_buf = dma_txbuf;
+		xfer.rx_buf = dma_rxbuf;
 
 		spi_message_add_tail(&xfer, &message);
 		status = spi_sync(spi, &message);
@@ -172,7 +171,7 @@ int ilitek_spi_write_then_read_direct(struct spi_device *spi,
 			break;
 
 		for (i = 0; i < (n_rx + n_tx); i++)
-			tmp[i] = idev->fw_dma_buf[i + 1];
+			tmp[i] = dma_rxbuf[i + 1];
 
 		memcpy((u8 *)rxbuf, tmp, n_rx);
 		break;
@@ -181,13 +180,12 @@ int ilitek_spi_write_then_read_direct(struct spi_device *spi,
 		break;
 	}
 
-	mutex_unlock(&lock);
-
 	if (status != 0)
 		ipio_err("spi transfer failed\n");
 
 	return status;
 }
+#endif
 
 static int core_rx_lock_check(int *ret_size)
 {
@@ -319,54 +317,52 @@ static int core_spi_ice_mode_lock_write(u8 *data, int size)
 	int ret = 0;
 	int safe_size = size;
 	u8 check_sum = 0, wsize = 0;
-	u8 *txbuf = NULL;
 
-	txbuf = kcalloc(size + 9, sizeof(u8), GFP_KERNEL);
-	if (ERR_ALLOC_MEM(txbuf)) {
-		ipio_err("Failed to allocate txbuf\n");
-		ret = -ENOMEM;
-		goto out;
+	if (size > sizeof(spi_ice_buf)) {
+		ipio_err("Size(%d) is greater than spi_ice_buf, abort\n", size);
+		return -EINVAL;
 	}
 
+	memset(spi_ice_buf, 0x0, sizeof(spi_ice_buf));
+
 	/* Write data */
-	txbuf[0] = SPI_WRITE;
-	txbuf[1] = 0x25;
-	txbuf[2] = 0x4;
-	txbuf[3] = 0x0;
-	txbuf[4] = 0x2;
+	spi_ice_buf[0] = SPI_WRITE;
+	spi_ice_buf[1] = 0x25;
+	spi_ice_buf[2] = 0x4;
+	spi_ice_buf[3] = 0x0;
+	spi_ice_buf[4] = 0x2;
 
 	/* Calcuate checsum and fill it in the last byte */
 	check_sum = ilitek_calc_packet_checksum(data, size);
-	ipio_memcpy(txbuf + 5, data, size, safe_size + 4);
-	txbuf[5 + size] = check_sum;
+	ipio_memcpy(spi_ice_buf + 5, data, size, safe_size + 4);
+	spi_ice_buf[5 + size] = check_sum;
 	size++;
 	wsize = size;
 	if (wsize % 4 != 0)
 		wsize += 4 - (wsize % 4);
 
-	if (idev->spi_write_then_read(idev->spi, txbuf, wsize + 5, txbuf, 0) < 0) {
+	if (idev->spi_write_then_read(idev->spi, spi_ice_buf, wsize + 5, spi_ice_buf, 0) < 0) {
 		ipio_info("spi write (0x25,0x4,0x00,0x2) error\n");
 		ret = -EIO;
 		goto out;
 	}
 
 	/* write data lock */
-	txbuf[0] = SPI_WRITE;
-	txbuf[1] = 0x25;
-	txbuf[2] = 0x0;
-	txbuf[3] = 0x0;
-	txbuf[4] = 0x2;
-	txbuf[5] = (size & 0xFF00) >> 8;
-	txbuf[6] = size & 0xFF;
-	txbuf[7] = (char)0x5A;
-	txbuf[8] = (char)0xA5;
-	if (idev->spi_write_then_read(idev->spi, txbuf, 9, txbuf, 0) < 0) {
+	spi_ice_buf[0] = SPI_WRITE;
+	spi_ice_buf[1] = 0x25;
+	spi_ice_buf[2] = 0x0;
+	spi_ice_buf[3] = 0x0;
+	spi_ice_buf[4] = 0x2;
+	spi_ice_buf[5] = (size & 0xFF00) >> 8;
+	spi_ice_buf[6] = size & 0xFF;
+	spi_ice_buf[7] = (char)0x5A;
+	spi_ice_buf[8] = (char)0xA5;
+	if (idev->spi_write_then_read(idev->spi, spi_ice_buf, 9, spi_ice_buf, 0) < 0) {
 		ipio_err("spi write lock (0x5AA5) error, ret = %d\n", ret);
 		ret = -EIO;
 	}
 
 out:
-	ipio_kfree((void **)&txbuf);
 	return ret;
 }
 
@@ -479,7 +475,6 @@ out:
 static int core_spi_write(u8 *data, int len)
 {
 	int ret = 0, count = 5;
-	u8 *txbuf = NULL;
 	int safe_size = len;
 
 	if (atomic_read(&idev->ice_stat) == DISABLE) {
@@ -491,23 +486,23 @@ static int core_spi_write(u8 *data, int len)
 		goto out;
 	}
 
-	txbuf = kcalloc(len + 1, sizeof(u8), GFP_KERNEL);
-	if (ERR_ALLOC_MEM(txbuf)) {
-		ipio_err("Failed to allocate txbuf\n");
-		return -ENOMEM;
+	if (len > sizeof(spi_ice_buf)) {
+		ipio_err("Size(%d) is greater than spi_ice_buf, abort\n", len);
+		return -EINVAL;
 	}
 
-	txbuf[0] = SPI_WRITE;
-	ipio_memcpy(txbuf+1, data, len, safe_size + 1);
+	memset(spi_ice_buf, 0x0, sizeof(spi_ice_buf));
 
-	if (idev->spi_write_then_read(idev->spi, txbuf, len+1, txbuf, 0) < 0) {
+	spi_ice_buf[0] = SPI_WRITE;
+	ipio_memcpy(spi_ice_buf+1, data, len, safe_size + 1);
+
+	if (idev->spi_write_then_read(idev->spi, spi_ice_buf, len+1, spi_ice_buf, 0) < 0) {
 		ipio_err("spi write data error in ice mode\n");
 		ret = -EIO;
 		goto out;
 	}
 
 out:
-	ipio_kfree((void **)&txbuf);
 	return ret;
 }
 
