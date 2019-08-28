@@ -44,7 +44,8 @@ int ilitek_spi_write_then_read_split(struct spi_device *spi,
 {
 	int status = -1;
 	int xfercnt = 0, xferlen = 0, xferloop = 0;
-	u8 cmd, temp1[1] = {0}, temp2[1] = {0};
+	int duplex_len = 0;
+	u8 cmd = 0x0;
 	struct spi_message	message;
 
 	spi_message_init(&message);
@@ -85,32 +86,29 @@ int ilitek_spi_write_then_read_split(struct spi_device *spi,
 		status = spi_sync(spi, &message);
 		break;
 	case SPI_READ:
-		/* for write cmd and head */
-		xfer[0].len = n_tx;
-		xfer[0].tx_buf = txbuf;
-		xfer[0].rx_buf = temp1;
-		spi_message_add_tail(&xfer[0], &message);
+		memcpy(dma_txbuf, txbuf, n_tx);
 
-		/* for read data */
-		if (n_rx % DMA_TRANSFER_MAX_LEN)
-			xferloop = (n_rx / DMA_TRANSFER_MAX_LEN) + 1;
+		duplex_len = n_tx + n_rx;
+
+		if (duplex_len % DMA_TRANSFER_MAX_LEN)
+			xferloop = (duplex_len / DMA_TRANSFER_MAX_LEN) + 1;
 		else
-			xferloop = n_rx / DMA_TRANSFER_MAX_LEN;
+			xferloop = duplex_len / DMA_TRANSFER_MAX_LEN;
 
-		xferlen = n_rx;
+		xferlen = duplex_len;
 		for (xfercnt = 0; xfercnt < xferloop; xfercnt++) {
 			if (xferlen > DMA_TRANSFER_MAX_LEN)
 				xferlen = DMA_TRANSFER_MAX_LEN;
 
-			xfer[xfercnt+1].len = xferlen;
-			xfer[xfercnt+1].tx_buf = temp2;
-			xfer[xfercnt+1].rx_buf = dma_rxbuf + xfercnt * DMA_TRANSFER_MAX_LEN;
-			spi_message_add_tail(&xfer[xfercnt+1], &message);
-			xferlen = n_rx - (xfercnt+1) * DMA_TRANSFER_MAX_LEN;
+			xfer[xfercnt + 1].len = xferlen;
+			xfer[xfercnt + 1].tx_buf = dma_txbuf;
+			xfer[xfercnt + 1].rx_buf = dma_rxbuf + xfercnt * DMA_TRANSFER_MAX_LEN;
+			spi_message_add_tail(&xfer[xfercnt + 1], &message);
+			xferlen = duplex_len - (xfercnt + 1) * DMA_TRANSFER_MAX_LEN;
 		}
 		status = spi_sync(spi, &message);
 		if (status == 0)
-			memcpy((u8 *)rxbuf, dma_rxbuf, n_rx);
+			memcpy((u8 *)rxbuf, &dma_rxbuf[1], n_rx);
 		break;
 	default:
 		ipio_info("Unknown command 0x%x\n", cmd);
@@ -128,11 +126,11 @@ int ilitek_spi_write_then_read_direct(struct spi_device *spi,
 		const void *txbuf, unsigned n_tx,
 		void *rxbuf, unsigned n_rx)
 {
-	int i, status = -1;
+	int status = -1;
+	int duplex_len = 0;
 	u8 cmd;
 	struct spi_message	message;
 	struct spi_transfer	xfer;
-	u8 *tmp = (u8 *)rxbuf;
 
 	spi_message_init(&message);
 	memset(&xfer, 0, sizeof(xfer));
@@ -150,9 +148,10 @@ int ilitek_spi_write_then_read_direct(struct spi_device *spi,
 		status = spi_sync(spi, &message);
 		break;
 	case SPI_READ:
-		if (((n_tx + n_rx) > sizeof(dma_txbuf)) ||
-			((n_tx + n_rx) > sizeof(dma_rxbuf))) {
-			ipio_err("Tx/Rx length is over than dma buf, abort\n");
+		duplex_len = n_tx + n_rx;
+		if ((duplex_len > sizeof(dma_txbuf)) ||
+			(duplex_len > sizeof(dma_rxbuf))) {
+			ipio_err("duplex_len is over than dma buf, abort\n");
 			status = -ENOMEM;
 			break;
 		}
@@ -160,7 +159,7 @@ int ilitek_spi_write_then_read_direct(struct spi_device *spi,
 		memset(dma_txbuf, 0x0, sizeof(dma_txbuf));
 		memset(dma_rxbuf, 0x0, sizeof(dma_rxbuf));
 
-		xfer.len = n_tx + n_rx;
+		xfer.len = duplex_len;
 		memcpy(dma_txbuf, txbuf, n_tx);
 		xfer.tx_buf = dma_txbuf;
 		xfer.rx_buf = dma_rxbuf;
@@ -170,10 +169,7 @@ int ilitek_spi_write_then_read_direct(struct spi_device *spi,
 		if (status != 0)
 			break;
 
-		for (i = 0; i < (n_rx + n_tx); i++)
-			tmp[i] = dma_rxbuf[i + 1];
-
-		memcpy((u8 *)rxbuf, tmp, n_rx);
+		memcpy((u8 *)rxbuf, &dma_rxbuf[1], n_rx);
 		break;
 	default:
 		ipio_info("Unknown command 0x%x\n", cmd);
@@ -612,6 +608,11 @@ static int ilitek_spi_probe(struct spi_device *spi)
 		return -ENODEV;
 	}
 
+	if (spi->master->flags & SPI_MASTER_HALF_DUPLEX) {
+		ipio_err("Full duplex not supported by master\n");
+		return -EIO;
+	}
+
 	idev = devm_kzalloc(&spi->dev, sizeof(struct ilitek_tddi_dev), GFP_KERNEL);
 	if (ERR_ALLOC_MEM(idev)) {
 		ipio_err("Failed to allocate idev memory, %ld\n", PTR_ERR(idev));
@@ -620,7 +621,7 @@ static int ilitek_spi_probe(struct spi_device *spi)
 
 	idev->fw_dma_buf = kzalloc(MAX_HEX_FILE_SIZE, GFP_KERNEL | GFP_DMA);
 	if (ERR_ALLOC_MEM(idev->fw_dma_buf)) {
-		ipio_err("fw kzalloc error\n");
+		ipio_err("Failed to allocate fw_dma_buf\n");
 		return -ENOMEM;
 	}
 
@@ -654,7 +655,7 @@ static int ilitek_spi_probe(struct spi_device *spi)
 	idev->gesture_move_code = ilitek_tddi_move_gesture_code_iram;
 	idev->esd_recover = ilitek_tddi_wq_esd_spi_check;
 	idev->ges_recover = ilitek_tddi_touch_esd_gesture_iram;
-	idev->gesture_mode = DATA_FORMAT_GESTURE_INFO;
+	idev->gesture_mode = DATA_FORMAT_GESTURE_NORMAL;
 	idev->gesture_demo_ctrl = DISABLE;
 	idev->wtd_ctrl = ON;
 	idev->report = ENABLE;

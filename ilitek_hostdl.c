@@ -323,7 +323,7 @@ static int ilitek_tddi_fw_iram_upgrade(u8 *pfw)
 	/* Program data to iram acorrding to each block */
 	size = ARRAY_SIZE(fbi);
 	for (i = 0; i < size; i++) {
-		if (fbi[i].mode == mode && fbi[i].len != 0) {
+		if ((fbi[i].mode == mode) && (fbi[i].len != 0)) {
 			ipio_info("Download %s code from hex 0x%x to IRAM 0x%x, len = 0x%x\n",
 					fbi[i].name, fbi[i].start, fbi[i].mem_start, fbi[i].len);
 
@@ -342,8 +342,8 @@ static int ilitek_tddi_fw_iram_upgrade(u8 *pfw)
 				fbi[i].name, (crc != dma ? "Invalid !" : "Correct !"), crc, dma);
 
 			if (crc != dma) {
-				ipio_err("CRC Failed! print iram 64k bytes for debug\n");
-				ilitek_fw_dump_iram_data(0x0, 0xFFFF, false);
+				ipio_err("CRC Error! print iram data with first 16 bytes\n");
+				ilitek_fw_dump_iram_data(0x0, 0xF, false);
 				return UPDATE_FAIL;
 			}
 			idev->fw_update_stat = 90;
@@ -448,31 +448,31 @@ static void ilitek_tddi_fw_update_block_info(u8 *pfw)
 			fbi[GESTURE].len = ges_fw_end - ges_fw_start + 1;
 
 		fbi[GESTURE].start = 0;
-		}
+	}
 
-		memset(gestrue_fw, 0xff, sizeof(gestrue_fw));
+	memset(gestrue_fw, 0xff, sizeof(gestrue_fw));
 
-		/* Copy gesture data */
-		if (fbi[GESTURE].mem_start != 0xffffffff && ges_fw_start != 0xffffffff && fbi[GESTURE].mem_start != 0 && ges_fw_start != 0)
-				ipio_memcpy(gestrue_fw, (pfw + ges_fw_start), fbi[GESTURE].len, sizeof(gestrue_fw));
-		else
-				ipio_err("There is no gesture data inside fw\n");
+	/* Copy gesture data */
+	if (fbi[GESTURE].mem_start != 0xffffffff && ges_fw_start != 0xffffffff && fbi[GESTURE].mem_start != 0 && ges_fw_start != 0)
+		ipio_memcpy(gestrue_fw, (pfw + ges_fw_start), fbi[GESTURE].len, sizeof(gestrue_fw));
+	else
+		ipio_err("There is no gesture data inside fw\n");
 
-		ipio_info("==== Gesture loader info ====\n");
-		ipio_info("ap_start = 0x%x, ap_end = 0x%x, ap_len = 0x%x\n", fbi[GESTURE].mem_start, ap_end, ap_len);
-		ipio_info("gesture_start = 0x%x, gesture_end = 0x%x, gesture_len = 0x%x\n", ges_fw_start, ges_fw_end, fbi[GESTURE].len);
-		ipio_info("=============================\n");
+	ipio_info("==== Gesture loader info ====\n");
+	ipio_info("ap_start = 0x%x, ap_end = 0x%x, ap_len = 0x%x\n", fbi[GESTURE].mem_start, ap_end, ap_len);
+	ipio_info("gesture_start = 0x%x, gesture_end = 0x%x, gesture_len = 0x%x\n", ges_fw_start, ges_fw_end, fbi[GESTURE].len);
+	ipio_info("=============================\n");
 
-		fbi[AP].name = "AP";
-		fbi[DATA].name = "DATA";
-		fbi[TUNING].name = "TUNING";
-		fbi[MP].name = "MP";
-		fbi[GESTURE].name = "GESTURE";
+	fbi[AP].name = "AP";
+	fbi[DATA].name = "DATA";
+	fbi[TUNING].name = "TUNING";
+	fbi[MP].name = "MP";
+	fbi[GESTURE].name = "GESTURE";
 
-		/* upgrade mode define */
-		fbi[DATA].mode = fbi[AP].mode = fbi[TUNING].mode = AP;
-		fbi[MP].mode = MP;
-		fbi[GESTURE].mode = GESTURE;
+	/* upgrade mode define */
+	fbi[DATA].mode = fbi[AP].mode = fbi[TUNING].mode = AP;
+	fbi[MP].mode = MP;
+	fbi[GESTURE].mode = GESTURE;
 
 	/* Save fw info buffer */
 	ipio_memcpy(idev->chip->info, (pfw + idev->chip->info_addr), sizeof(idev->chip->info), sizeof(idev->chip->info));
@@ -493,6 +493,8 @@ static int ilitek_tddi_fw_ili_convert(u8 *pfw)
 	u32 Addr;
 
 	ipio_info("Start to parse ILI file, type = %d, block_count = %d\n", CTPM_FW[32], CTPM_FW[33]);
+
+	memset(fbi, 0x0, sizeof(fbi));
 
 	tfd.start_addr = 0;
 	tfd.end_addr = 0;
@@ -531,10 +533,8 @@ static int ilitek_tddi_fw_ili_convert(u8 *pfw)
 			fbi[num].len = fbi[num].end - fbi[num].start + 1;
 			ipio_info("Block[%d]: start_addr = %x, end = %x\n", num, fbi[num].start, fbi[num].end);
 
-			if (num == GESTURE) {
-				ipio_info("ili file has gesture block\n");
+			if (num == GESTURE)
 				idev->gesture_load_code = true;
-			}
 		}
 	}
 
@@ -569,6 +569,8 @@ static int ilitek_tddi_fw_hex_convert(u8 *phex, int size, u8 *pfw)
 	u32 start_addr = 0x0, end_addr = 0x0, ex_addr = 0;
 	u32 offset;
 
+	memset(fbi, 0x0, sizeof(fbi));
+
 	/* Parsing HEX file */
 	for (; i < size;) {
 		len = HexToDec(&phex[i + 1], 2);
@@ -599,10 +601,9 @@ static int ilitek_tddi_fw_hex_convert(u8 *phex, int size, u8 *pfw)
 			fbi[num].fix_mem_start = INT_MAX;
 			fbi[num].len = fbi[num].end - fbi[num].start + 1;
 			ipio_info("Block[%d]: start_addr = %x, end = %x", num, fbi[num].start, fbi[num].end);
-			if (num == GESTURE) {
-				ipio_info("hex file has gesture block\n");
+
+			if (num == GESTURE)
 				idev->gesture_load_code = true;
-			}
 
 			block++;
 		} else if (type == BLOCK_TAG_B0 && tfd.hex_tag == BLOCK_TAG_AF) {
@@ -782,7 +783,6 @@ int ilitek_tddi_fw_upgrade(int file_type, int open_file_method)
 	}
 
 	idev->gesture_load_code = false;
-	memset(fbi, 0x0, sizeof(fbi));
 	memset(pfw, 0xFF, MAX_HEX_FILE_SIZE * sizeof(u8));
 
 	ipio_info("Convert FW file from %s\n", (file_type == ILI_FILE ? "ILI_FILE" : "HEX_FILE"));

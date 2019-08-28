@@ -827,6 +827,11 @@ static void ilitek_tddi_fw_update_block_info(u8 *pfw)
 	fbi[MP].name = "MP";
 	fbi[GESTURE].name = "GESTURE";
 
+	/* upgrade mode define */
+	fbi[DATA].mode = fbi[AP].mode = fbi[TUNING].mode = AP;
+	fbi[MP].mode = MP;
+	fbi[GESTURE].mode = GESTURE;
+
 	/* Save fw info buffer */
 	ipio_memcpy(idev->chip->info, (pfw + idev->chip->info_addr), sizeof(idev->chip->info), sizeof(idev->chip->info));
 
@@ -846,6 +851,8 @@ static int ilitek_tddi_fw_ili_convert(u8 *pfw)
 	u32 Addr;
 
 	ipio_info("Start to parse ILI file, type = %d, block_count = %d\n", CTPM_FW[32], CTPM_FW[33]);
+
+	memset(fbi, 0x0, sizeof(fbi));
 
 	tfd.start_addr = 0;
 	tfd.end_addr = 0;
@@ -881,13 +888,12 @@ static int ilitek_tddi_fw_ili_convert(u8 *pfw)
 
 			if (fbi[num].start == fbi[num].end)
 				continue;
+
 			fbi[num].len = fbi[num].end - fbi[num].start + 1;
 			ipio_info("Block[%d]: start_addr = %x, end = %x\n", num, fbi[num].start, fbi[num].end);
 
-			if (num == GESTURE) {
-				ipio_info("ili file has gesture block\n");
+			if (num == GESTURE)
 				idev->gesture_load_code = true;
-			}
 		}
 	}
 
@@ -922,6 +928,8 @@ static int ilitek_tddi_fw_hex_convert(u8 *phex, int size, u8 *pfw)
 	u32 start_addr = 0x0, end_addr = 0x0, ex_addr = 0;
 	u32 offset;
 
+	memset(fbi, 0x0, sizeof(fbi));
+
 	/* Parsing HEX file */
 	for (; i < size;) {
 		len = HexToDec(&phex[i + 1], 2);
@@ -952,10 +960,9 @@ static int ilitek_tddi_fw_hex_convert(u8 *phex, int size, u8 *pfw)
 			fbi[num].fix_mem_start = INT_MAX;
 			fbi[num].len = fbi[num].end - fbi[num].start + 1;
 			ipio_info("Block[%d]: start_addr = %x, end = %x", num, fbi[num].start, fbi[num].end);
-			if (num == GESTURE) {
-				ipio_info("hex file has gesture block\n");
+
+			if (num == GESTURE)
 				idev->gesture_load_code = true;
-			}
 
 			block++;
 		} else if (type == BLOCK_TAG_B0 && tfd.hex_tag == BLOCK_TAG_AF) {
@@ -1144,7 +1151,6 @@ int ilitek_tddi_fw_upgrade(int file_type, int open_file_method)
 	}
 
 	idev->gesture_load_code = false;
-	memset(fbi, 0x0, sizeof(fbi));
 	memset(pfw, 0xFF, MAX_HEX_FILE_SIZE * sizeof(u8));
 
 	ipio_info("Convert FW file from %s\n", (file_type == ILI_FILE ? "ILI_FILE" : "HEX_FILE"));

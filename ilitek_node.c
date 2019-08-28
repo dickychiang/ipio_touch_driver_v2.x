@@ -1527,7 +1527,7 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 		return -ENOTTY;
 	}
 
-	ipio_info("cmd = %d\n", _IOC_NR(cmd));
+	ipio_debug("cmd = %d\n", _IOC_NR(cmd));
 
 	mutex_lock(&idev->touch_mutex);
 
@@ -1545,7 +1545,7 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 
 	switch (cmd) {
 	case ILITEK_IOCTL_I2C_WRITE_DATA:
-		ipio_info("ioctl: write len = %d\n", i2c_rw_length);
+		ipio_debug("ioctl: write len = %d\n", i2c_rw_length);
 
 		if (i2c_rw_length > IOCTL_I2C_BUFF) {
 			ipio_err("ERROR! write len is largn than ioctl buf (%d, %ld)\n",
@@ -1565,7 +1565,7 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 			ipio_err("Failed to write data\n");
 		break;
 	case ILITEK_IOCTL_I2C_READ_DATA:
-		ipio_info("ioctl: read len = %d\n", i2c_rw_length);
+		ipio_debug("ioctl: read len = %d\n", i2c_rw_length);
 
 		if (i2c_rw_length > IOCTL_I2C_BUFF) {
 			ipio_err("ERROR! read len is largn than ioctl buf (%d, %ld)\n",
@@ -1590,11 +1590,11 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 		i2c_rw_length = arg;
 		break;
 	case ILITEK_IOCTL_TP_HW_RESET:
-		ipio_info("ioctl: hw reset\n");
+		ipio_debug("ioctl: hw reset\n");
 		ilitek_tddi_reset_ctrl(idev->reset);
 		break;
 	case ILITEK_IOCTL_TP_POWER_SWITCH:
-		ipio_info("Not implemented yet\n");
+		ipio_debug("Not implemented yet\n");
 		break;
 	case ILITEK_IOCTL_TP_REPORT_SWITCH:
 		if (copy_from_user(szBuf, (u8 *) arg, 1)) {
@@ -1603,13 +1603,13 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 			break;
 		}
 
-		ipio_info("ioctl: report switch = %d\n", szBuf[0]);
+		ipio_debug("ioctl: report switch = %d\n", szBuf[0]);
 		if (szBuf[0]) {
 			idev->report = ENABLE;
-			ipio_info("report is enabled\n");
+			ipio_debug("report is enabled\n");
 		} else {
 			idev->report = DISABLE;
-			ipio_info("report is disabled\n");
+			ipio_debug("report is disabled\n");
 		}
 		break;
 	case ILITEK_IOCTL_TP_IRQ_SWITCH:
@@ -1618,7 +1618,7 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 			ret = -ENOTTY;
 			break;
 		}
-		ipio_info("ioctl: irq switch = %d\n", szBuf[0]);
+		ipio_debug("ioctl: irq switch = %d\n", szBuf[0]);
 		if (szBuf[0])
 			ilitek_plat_irq_enable();
 		else
@@ -1641,11 +1641,11 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 			break;
 		}
 
-		ipio_info("ioctl: set func mode = %x,%x,%x\n", szBuf[0], szBuf[1], szBuf[2]);
+		ipio_debug("ioctl: set func mode = %x,%x,%x\n", szBuf[0], szBuf[1], szBuf[2]);
 		idev->write(&szBuf[0], 3);
 		break;
 	case ILITEK_IOCTL_TP_FW_VER:
-		ipio_info("ioctl: get fw version\n");
+		ipio_debug("ioctl: get fw version\n");
 		ret = ilitek_tddi_ic_get_fw_ver();
 		if (ret < 0) {
 			ipio_err("Failed to get firmware version\n");
@@ -1656,7 +1656,7 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 		szBuf[2] = (idev->chip->fw_ver >> 8) & 0xFF;
 		szBuf[1] = (idev->chip->fw_ver >> 16) & 0xFF;
 		szBuf[0] = idev->chip->fw_ver >> 24;
-		ipio_info("Firmware version = %d.%d.%d.%d\n", szBuf[0], szBuf[1], szBuf[2], szBuf[3]);
+		ipio_debug("Firmware version = %d.%d.%d.%d\n", szBuf[0], szBuf[1], szBuf[2], szBuf[3]);
 
 		if (copy_to_user((u8 *) arg, szBuf, 4)) {
 			ipio_err("Failed to copy data to user space\n");
@@ -1664,7 +1664,7 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 		}
 		break;
 	case ILITEK_IOCTL_TP_PL_VER:
-		ipio_info("ioctl: get protocl version\n");
+		ipio_debug("ioctl: get protocl version\n");
 		ret = ilitek_tddi_ic_get_protocl_ver();
 		if (ret < 0) {
 			ipio_err("Failed to get protocol version\n");
@@ -1674,7 +1674,7 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 		szBuf[2] = idev->protocol->ver & 0xFF;
 		szBuf[1] = (idev->protocol->ver >> 8) & 0xFF;
 		szBuf[0] = idev->protocol->ver >> 16;
-		ipio_info("Protocol version = %d.%d.%d\n", szBuf[0], szBuf[1], szBuf[2]);
+		ipio_debug("Protocol version = %d.%d.%d\n", szBuf[0], szBuf[1], szBuf[2]);
 
 		if (copy_to_user((u8 *) arg, szBuf, 3)) {
 			ipio_err("Failed to copy data to user space\n");
@@ -1682,7 +1682,7 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 		}
 		break;
 	case ILITEK_IOCTL_TP_CORE_VER:
-		ipio_info("ioctl: get core version\n");
+		ipio_debug("ioctl: get core version\n");
 		ret = ilitek_tddi_ic_get_core_ver();
 		if (ret < 0) {
 			ipio_err("Failed to get core version\n");
@@ -1693,7 +1693,7 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 		szBuf[2] = (idev->chip->core_ver >> 8) & 0xFF;
 		szBuf[1] = (idev->chip->core_ver >> 16) & 0xFF;
 		szBuf[0] = idev->chip->core_ver >> 24;
-		ipio_info("Core version = %d.%d.%d.%d\n", szBuf[0], szBuf[1], szBuf[2], szBuf[3]);
+		ipio_debug("Core version = %d.%d.%d.%d\n", szBuf[0], szBuf[1], szBuf[2], szBuf[3]);
 
 		if (copy_to_user((u8 *) arg, szBuf, 4)) {
 			ipio_err("Failed to copy data to user space\n");
@@ -1701,7 +1701,7 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 		}
 		break;
 	case ILITEK_IOCTL_TP_DRV_VER:
-		ipio_info("ioctl: get driver version\n");
+		ipio_debug("ioctl: get driver version\n");
 		length = snprintf(szBuf, USER_STR_BUFF * sizeof(unsigned char), "%s", DRIVER_VERSION);
 
 		if (copy_to_user((u8 *) arg, szBuf, length)) {
@@ -1710,7 +1710,7 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 		}
 		break;
 	case ILITEK_IOCTL_TP_CHIP_ID:
-		ipio_info("ioctl: get chip id\n");
+		ipio_debug("ioctl: get chip id\n");
 		ilitek_ice_mode_ctrl(ENABLE, OFF);
 		ret = ilitek_tddi_ic_get_info();
 		if (ret < 0) {
@@ -1735,17 +1735,17 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 			ret = -ENOTTY;
 			break;
 		}
-		ipio_info("ioctl: netlink ctrl = %d\n", szBuf[0]);
+		ipio_debug("ioctl: netlink ctrl = %d\n", szBuf[0]);
 		if (szBuf[0]) {
 			idev->netlink = ENABLE;
-			ipio_info("ioctl: Netlink is enabled\n");
+			ipio_debug("ioctl: Netlink is enabled\n");
 		} else {
 			idev->netlink = DISABLE;
-			ipio_info("ioctl: Netlink is disabled\n");
+			ipio_debug("ioctl: Netlink is disabled\n");
 		}
 		break;
 	case ILITEK_IOCTL_TP_NETLINK_STATUS:
-		ipio_info("ioctl: get netlink stat = %d\n", idev->netlink);
+		ipio_debug("ioctl: get netlink stat = %d\n", idev->netlink);
 		if (copy_to_user((int *)arg, &idev->netlink, sizeof(int))) {
 			ipio_err("Failed to copy driver ver to user space\n");
 			ret = -ENOTTY;
@@ -1757,7 +1757,7 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 			ret = -ENOTTY;
 			break;
 		}
-		ipio_info("ioctl: switch fw format = %d\n", szBuf[0]);
+		ipio_debug("ioctl: switch fw format = %d\n", szBuf[0]);
 		if (szBuf[0] == 0) {
 			if (idev->actual_tp_mode == P5_X_FW_AP_MODE) {
 				if (ilitek_set_tp_data_len(DATA_FORMAT_DEMO) < 0) {
@@ -1793,7 +1793,7 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 		}
 		break;
 	case ILITEK_IOCTL_TP_MODE_STATUS:
-		ipio_info("ioctl: current firmware mode = %d", idev->actual_tp_mode);
+		ipio_debug("ioctl: current firmware mode = %d", idev->actual_tp_mode);
 		if (copy_to_user((int *)arg, &idev->actual_tp_mode, sizeof(int))) {
 			ipio_err("Failed to copy driver ver to user space\n");
 			ret = -ENOTTY;
@@ -1806,13 +1806,13 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 			ret = -ENOTTY;
 			break;
 		}
-		ipio_info("ioctl: switch ice mode = %d", szBuf[0]);
+		ipio_debug("ioctl: switch ice mode = %d", szBuf[0]);
 		if (szBuf[0]) {
 			atomic_set(&idev->ice_stat, ENABLE);
-			ipio_info("ioctl: set ice mode enabled\n");
+			ipio_debug("ioctl: set ice mode enabled\n");
 		} else {
 			atomic_set(&idev->ice_stat, DISABLE);
-			ipio_info("ioctl: set ice mode disabled\n");
+			ipio_debug("ioctl: set ice mode disabled\n");
 		}
 		break;
 	case ILITEK_IOCTL_TP_INTERFACE_TYPE:
@@ -1823,7 +1823,7 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 		}
 		break;
 	case ILITEK_IOCTL_TP_DUMP_FLASH:
-		ipio_info("ioctl: dump flash data\n");
+		ipio_debug("ioctl: dump flash data\n");
 		ret = ilitek_tddi_fw_dump_flash_data(0, 0, true);
 		if (ret < 0) {
 			ipio_err("ioctl: Failed to dump flash data\n");
@@ -1835,7 +1835,7 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 			ret = -ENOTTY;
 			break;
 		}
-		ipio_info("ioctl: fw UART  = %d\n", szBuf[0]);
+		ipio_debug("ioctl: fw UART  = %d\n", szBuf[0]);
 
 		ilitek_tddi_fw_uart_ctrl(szBuf[0]);
 
