@@ -1387,29 +1387,6 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 				ipio_info("read[%d] = %x\n", i, rbuf[i]);
 		}
 		kfree(rbuf);
-	} else if (strncmp(cmd, "at_esd_test", strlen(cmd)) == 0) {
-		idev->wq_ctrl = ENABLE;
-		ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
-		reinit_completion(&idev->esd_done);
-		ilitek_tddi_reset_ctrl(idev->reset);
-		if (!wait_for_completion_timeout(&idev->esd_done, msecs_to_jiffies(10000))) {
-			ipio_err("[AT]: spi recovery timeout\n");
-			size = -1;
-			goto out;
-		}
-
-		cmd[0] = SPI_WRITE;
-		if (idev->spi_write_then_read(idev->spi, cmd, 1, temp, 1) < 0) {
-			ipio_err("spi write 0x82 error\n");
-			size = -1;
-		}
-		ipio_info("[AT]: spi ack = %x\n", temp[0]);
-		if (temp[0] != SPI_ACK) {
-			ipio_err("Check SPI_ACK failed (0x%x)\n", temp[0]);
-			size = -1;
-		}
-		ilitek_tddi_wq_ctrl(WQ_ESD, DISABLE);
-		idev->wq_ctrl = DISABLE;
 	} else {
 		ipio_err("Unknown command\n");
 		size = -1;

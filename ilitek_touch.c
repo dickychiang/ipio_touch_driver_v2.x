@@ -596,9 +596,10 @@ int ilitek_tddi_touch_esd_gesture_iram(void)
 void demo_debug_info_id0(u8 *buf, size_t len)
 {
 	struct demo_debug_info_id0 id0;
+	int size = sizeof(id0);
 
-	ipio_memcpy(&id0, buf, sizeof(id0), len);
-	ipio_info("id0 len = %d,strucy len = %ld", (int)len, sizeof(id0));
+	ipio_memcpy(&id0, buf, size, len);
+	ipio_info("id0 len = %d, struct size = %d\n", (int)len, size);
 
 	ipio_info("id = %d\n", id0.id);
 	ipio_info("app_sys_powr_state_e = %d\n", id0.app_sys_powr_state_e);

@@ -405,7 +405,7 @@ static int ilitek_plat_notifier_fb(struct notifier_block *self, unsigned long ev
 		case FB_BLANK_NORMAL:
 #endif
 
-#ifdef CONFIG_PLAT_SPRD
+#if CONFIG_PLAT_SPRD
 		case DRM_MODE_DPMS_ON:
 #endif /* CONFIG_PLAT_SPRD */
 
@@ -443,15 +443,15 @@ static void ilitek_plat_late_resume(struct early_suspend *h)
 
 static void ilitek_plat_sleep_init(void)
 {
-#ifdef CONFIG_FB || defined(CONFIG_DRM_MSM)
+#if defined(CONFIG_FB) || defined(CONFIG_DRM_MSM)
 	ipio_info("Init notifier_fb struct\n");
 	idev->notifier_fb.notifier_call = ilitek_plat_notifier_fb;
-#if defined(CONFIG_DRM_MSM)
+#ifdef CONFIG_DRM_MSM
 		if (msm_drm_register_client(&idev->notifier_fb)) {
 			ipio_err("msm_drm_register_client Unable to register fb_notifier\n");
 		}
 #else
-#ifdef CONFIG_PLAT_SPRD
+#if CONFIG_PLAT_SPRD
 	if (adf_register_client(&idev->notifier_fb))
 		ipio_err("Unable to register notifier_fb\n");
 #else

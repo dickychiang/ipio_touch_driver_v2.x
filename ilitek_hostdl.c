@@ -391,7 +391,7 @@ static int ilitek_fw_calc_file_crc(u8 *pfw)
 static void ilitek_tddi_fw_update_block_info(u8 *pfw)
 {
 	u32 ges_area_section, ges_info_addr, ges_fw_start, ges_fw_end;
-	u32 ap_end, ap_len;
+	u32 ap_end, ap_len = 0;
 
 	ipio_info("Tag = %x\n", tfd.hex_tag);
 
