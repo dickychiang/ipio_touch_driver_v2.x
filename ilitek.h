@@ -111,6 +111,7 @@
 #define SPI_CLK				(10*MEGA_HZ)
 #define SPI_RETRY			5
 #define IRQ_GPIO_NUM			66
+#define TR_BUF_SIZE			2048 /* Buffer size of touch report */
 #define WQ_ESD_DELAY			4000
 #define WQ_BAT_DELAY			2000
 #define MT_B_TYPE			ENABLE
@@ -593,7 +594,10 @@ struct ilitek_tddi_dev {
 	u8 ych_num;
 	u8 stx;
 	u8 srx;
-	u8 *fw_dma_buf;
+	u8 *update_buf;
+	u8 *tr_buf;
+	u8 *spi_tx;
+	u8 *spi_rx;
 	struct firmware tp_fw;
 
 	int actual_tp_mode;
@@ -821,7 +825,7 @@ extern void ilitek_tddi_dev_remove(void);
 
 /* Prototypes for i2c/spi interface */
 extern int ilitek_tddi_interface_dev_init(struct ilitek_hwif_info *hwif);
-extern void ilitek_tddi_interface_dev_exit(struct ilitek_hwif_info *hwif);
+extern void ilitek_tddi_interface_dev_exit(struct ilitek_tddi_dev *idev);
 extern int ilitek_spi_write_then_read_split(struct spi_device *spi,
 				const void *txbuf, unsigned n_tx,
 				void *rxbuf, unsigned n_rx);

@@ -203,9 +203,9 @@ void ilitek_fw_dump_iram_data(u32 start, u32 end, bool save)
 	len = end - start + 1;
 
 	for (i = 0; i < len; i++)
-		idev->fw_dma_buf[i] = 0xFF;
+		idev->update_buf[i] = 0xFF;
 
-	if (ilitek_tddi_fw_iram_read(idev->fw_dma_buf, start, len) < 0)
+	if (ilitek_tddi_fw_iram_read(idev->update_buf, start, len) < 0)
 		ipio_err("Read IRAM data failed\n");
 
 	if (save) {
@@ -219,13 +219,13 @@ void ilitek_fw_dump_iram_data(u32 start, u32 end, bool save)
 		set_fs(get_ds());
 		set_fs(KERNEL_DS);
 		pos = 0;
-		vfs_write(f, idev->fw_dma_buf, len, &pos);
+		vfs_write(f, idev->update_buf, len, &pos);
 		set_fs(old_fs);
 		filp_close(f, NULL);
 		ipio_info("Save iram data to %s\n", DUMP_IRAM_PATH);
 	} else {
 		ipio_debug_level = DEBUG_ALL;
-		ilitek_dump_data(idev->fw_dma_buf, 8, len, 0, "IRAM");
+		ilitek_dump_data(idev->update_buf, 8, len, 0, "IRAM");
 		ipio_debug_level = tmp;
 	}
 
@@ -249,38 +249,38 @@ static int ilitek_tddi_fw_iram_program(u32 start, u8 *w_buf, u32 w_len, u32 spli
 	u32 end = start + w_len;
 
 	for (i = 0; i < MAX_HEX_FILE_SIZE; i++)
-		idev->fw_dma_buf[i] = 0xFF;
+		idev->update_buf[i] = 0xFF;
 
 	if (split_len != 0) {
 		for (addr = start, i = 0; addr < end; addr += split_len, i += split_len) {
 			if ((addr + split_len) > end)
 				split_len = end - addr;
 
-			idev->fw_dma_buf[0] = SPI_WRITE;
-			idev->fw_dma_buf[1] = 0x25;
-			idev->fw_dma_buf[2] = (char)((addr & 0x000000FF));
-			idev->fw_dma_buf[3] = (char)((addr & 0x0000FF00) >> 8);
-			idev->fw_dma_buf[4] = (char)((addr & 0x00FF0000) >> 16);
+			idev->update_buf[0] = SPI_WRITE;
+			idev->update_buf[1] = 0x25;
+			idev->update_buf[2] = (char)((addr & 0x000000FF));
+			idev->update_buf[3] = (char)((addr & 0x0000FF00) >> 8);
+			idev->update_buf[4] = (char)((addr & 0x00FF0000) >> 16);
 
 			for (j = 0; j < split_len; j++)
-				idev->fw_dma_buf[5 + j] = w_buf[i + j];
+				idev->update_buf[5 + j] = w_buf[i + j];
 
-			if (idev->spi_write_then_read(idev->spi, idev->fw_dma_buf, split_len + 5, NULL, 0)) {
+			if (idev->spi_write_then_read(idev->spi, idev->update_buf, split_len + 5, NULL, 0)) {
 				ipio_err("Failed to write data via SPI in host download (%x)\n", split_len + 5);
 				return -EIO;
 			}
 		}
 	} else {
-		idev->fw_dma_buf[0] = SPI_WRITE;
-		idev->fw_dma_buf[1] = 0x25;
-		idev->fw_dma_buf[2] = (char)((start & 0x000000FF));
-		idev->fw_dma_buf[3] = (char)((start & 0x0000FF00) >> 8);
-		idev->fw_dma_buf[4] = (char)((start & 0x00FF0000) >> 16);
+		idev->update_buf[0] = SPI_WRITE;
+		idev->update_buf[1] = 0x25;
+		idev->update_buf[2] = (char)((start & 0x000000FF));
+		idev->update_buf[3] = (char)((start & 0x0000FF00) >> 8);
+		idev->update_buf[4] = (char)((start & 0x00FF0000) >> 16);
 
-		memcpy(&idev->fw_dma_buf[5], w_buf, w_len);
+		memcpy(&idev->update_buf[5], w_buf, w_len);
 
 		/* It must be supported by platforms that have the ability to transfer all data at once. */
-		if (idev->spi_write_then_read(idev->spi, idev->fw_dma_buf, w_len + 5, NULL, 0) < 0) {
+		if (idev->spi_write_then_read(idev->spi, idev->update_buf, w_len + 5, NULL, 0) < 0) {
 			ipio_err("Failed to write data via SPI in host download (%x)\n", w_len + 5);
 			return -EIO;
 		}

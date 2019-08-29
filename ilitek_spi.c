@@ -22,15 +22,15 @@
 
 #include "ilitek.h"
 
+#define SPI_TX_BUF_SIZE			4096
+#define SPI_RX_BUF_SIZE			4096
+
 struct touch_bus_info {
 	struct spi_driver bus_driver;
 	struct ilitek_hwif_info *hwif;
 };
 
 struct ilitek_tddi_dev *idev;
-
-static u8 dma_txbuf[4*K];
-static u8 dma_rxbuf[4*K];
 static u8 spi_ice_buf[1*K];
 
 #if SPI_DMA_TRANSFER_SPLIT
@@ -50,10 +50,10 @@ int ilitek_spi_write_then_read_split(struct spi_device *spi,
 
 	spi_message_init(&message);
 	memset(xfer, 0, sizeof(xfer));
-	memset(dma_txbuf, 0x0, sizeof(dma_txbuf));
-	memset(dma_rxbuf, 0x0, sizeof(dma_rxbuf));
+	memset(idev->spi_tx, 0x0, SPI_TX_BUF_SIZE);
+	memset(idev->spi_rx, 0x0, SPI_RX_BUF_SIZE);
 
-	if ((n_tx > sizeof(dma_txbuf)) || (n_rx > sizeof(dma_rxbuf))) {
+	if ((n_tx > SPI_TX_BUF_SIZE) || (n_rx > SPI_RX_BUF_SIZE)) {
 		ipio_err("Tx/Rx length is over than dma buf, abort\n");
 		status = -ENOMEM;
 		goto out;
@@ -72,21 +72,21 @@ int ilitek_spi_write_then_read_split(struct spi_device *spi,
 			xferloop = n_tx / DMA_TRANSFER_MAX_LEN;
 
 		xferlen = n_tx;
-		memcpy(dma_txbuf, (u8 *)txbuf, xferlen);
+		memcpy(idev->spi_tx, (u8 *)txbuf, xferlen);
 
 		for (xfercnt = 0; xfercnt < xferloop; xfercnt++) {
 			if (xferlen > DMA_TRANSFER_MAX_LEN)
 				xferlen = DMA_TRANSFER_MAX_LEN;
 
 			xfer[xfercnt].len = xferlen;
-			xfer[xfercnt].tx_buf = dma_txbuf + xfercnt * DMA_TRANSFER_MAX_LEN;
+			xfer[xfercnt].tx_buf = idev->spi_tx + xfercnt * DMA_TRANSFER_MAX_LEN;
 			spi_message_add_tail(&xfer[xfercnt], &message);
 			xferlen = n_tx - (xfercnt+1) * DMA_TRANSFER_MAX_LEN;
 		}
 		status = spi_sync(spi, &message);
 		break;
 	case SPI_READ:
-		memcpy(dma_txbuf, txbuf, n_tx);
+		memcpy(idev->spi_tx, txbuf, n_tx);
 
 		duplex_len = n_tx + n_rx;
 
@@ -101,14 +101,14 @@ int ilitek_spi_write_then_read_split(struct spi_device *spi,
 				xferlen = DMA_TRANSFER_MAX_LEN;
 
 			xfer[xfercnt + 1].len = xferlen;
-			xfer[xfercnt + 1].tx_buf = dma_txbuf;
-			xfer[xfercnt + 1].rx_buf = dma_rxbuf + xfercnt * DMA_TRANSFER_MAX_LEN;
+			xfer[xfercnt + 1].tx_buf = idev->spi_tx;
+			xfer[xfercnt + 1].rx_buf = idev->spi_rx + xfercnt * DMA_TRANSFER_MAX_LEN;
 			spi_message_add_tail(&xfer[xfercnt + 1], &message);
 			xferlen = duplex_len - (xfercnt + 1) * DMA_TRANSFER_MAX_LEN;
 		}
 		status = spi_sync(spi, &message);
 		if (status == 0)
-			memcpy((u8 *)rxbuf, &dma_rxbuf[1], n_rx);
+			memcpy((u8 *)rxbuf, &idev->spi_rx[1], n_rx);
 		break;
 	default:
 		ipio_info("Unknown command 0x%x\n", cmd);
@@ -149,27 +149,27 @@ int ilitek_spi_write_then_read_direct(struct spi_device *spi,
 		break;
 	case SPI_READ:
 		duplex_len = n_tx + n_rx;
-		if ((duplex_len > sizeof(dma_txbuf)) ||
-			(duplex_len > sizeof(dma_rxbuf))) {
+		if ((duplex_len > SPI_TX_BUF_SIZE) ||
+			(duplex_len > SPI_RX_BUF_SIZE)) {
 			ipio_err("duplex_len is over than dma buf, abort\n");
 			status = -ENOMEM;
 			break;
 		}
 
-		memset(dma_txbuf, 0x0, sizeof(dma_txbuf));
-		memset(dma_rxbuf, 0x0, sizeof(dma_rxbuf));
+		memset(idev->spi_tx, 0x0, SPI_TX_BUF_SIZE);
+		memset(idev->spi_rx, 0x0, SPI_RX_BUF_SIZE);
 
 		xfer.len = duplex_len;
-		memcpy(dma_txbuf, txbuf, n_tx);
-		xfer.tx_buf = dma_txbuf;
-		xfer.rx_buf = dma_rxbuf;
+		memcpy(idev->spi_tx, txbuf, n_tx);
+		xfer.tx_buf = idev->spi_tx;
+		xfer.rx_buf = idev->spi_rx;
 
 		spi_message_add_tail(&xfer, &message);
 		status = spi_sync(spi, &message);
 		if (status != 0)
 			break;
 
-		memcpy((u8 *)rxbuf, &dma_rxbuf[1], n_rx);
+		memcpy((u8 *)rxbuf, &idev->spi_rx[1], n_rx);
 		break;
 	default:
 		ipio_info("Unknown command 0x%x\n", cmd);
@@ -619,9 +619,28 @@ static int ilitek_spi_probe(struct spi_device *spi)
 		return -ENOMEM;
 	}
 
-	idev->fw_dma_buf = kzalloc(MAX_HEX_FILE_SIZE, GFP_KERNEL | GFP_DMA);
-	if (ERR_ALLOC_MEM(idev->fw_dma_buf)) {
-		ipio_err("Failed to allocate fw_dma_buf\n");
+	idev->update_buf = kzalloc(MAX_HEX_FILE_SIZE, GFP_KERNEL | GFP_DMA);
+	if (ERR_ALLOC_MEM(idev->update_buf)) {
+		ipio_err("Failed to allocate update_buf\n");
+		return -ENOMEM;
+	}
+
+	/* Used for receiving touch data only, do not mix up with others. */
+	idev->tr_buf = kzalloc(TR_BUF_SIZE, GFP_ATOMIC);
+	if (ERR_ALLOC_MEM(idev->tr_buf)) {
+		ipio_err("failed to allocate touch report buffer\n");
+		return -ENOMEM;
+	}
+
+	idev->spi_tx = kzalloc(SPI_TX_BUF_SIZE, GFP_KERNEL | GFP_DMA);
+	if (ERR_ALLOC_MEM(idev->spi_tx)) {
+		ipio_err("Failed to allocate spi tx buffer\n");
+		return -ENOMEM;
+	}
+
+	idev->spi_rx = kzalloc(SPI_RX_BUF_SIZE, GFP_KERNEL | GFP_DMA);
+	if (ERR_ALLOC_MEM(idev->spi_rx)) {
+		ipio_err("Failed to allocate spi rx buffer\n");
 		return -ENOMEM;
 	}
 
@@ -711,11 +730,14 @@ int ilitek_tddi_interface_dev_init(struct ilitek_hwif_info *hwif)
 	return spi_register_driver(&info->bus_driver);
 }
 
-void ilitek_tddi_interface_dev_exit(struct ilitek_hwif_info *hwif)
+void ilitek_tddi_interface_dev_exit(struct ilitek_tddi_dev *idev)
 {
-	struct touch_bus_info *info = (struct touch_bus_info *)hwif->info;
+	struct touch_bus_info *info = (struct touch_bus_info *)idev->hwif->info;
 
 	ipio_info("remove spi dev\n");
+	kfree(idev->update_buf);
+	kfree(idev->spi_tx);
+	kfree(idev->spi_rx);
 	spi_unregister_driver(&info->bus_driver);
 	ipio_kfree((void **)&info);
 }

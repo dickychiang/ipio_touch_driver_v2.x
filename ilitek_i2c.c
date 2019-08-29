@@ -224,6 +224,13 @@ static int ilitek_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id *
 		return -ENOMEM;
 	}
 
+	/* Used for receiving touch data only, do not mix up with others. */
+	idev->tr_buf = kzalloc(TR_BUF_SIZE, GFP_ATOMIC);
+	if (ERR_ALLOC_MEM(idev->tr_buf)) {
+		ipio_err("failed to allocate touch report buffer\n");
+		return -ENOMEM;
+	}
+
 	idev->i2c = i2c;
 	idev->spi = NULL;
 	idev->dev = &i2c->dev;
@@ -308,7 +315,7 @@ int ilitek_tddi_interface_dev_init(struct ilitek_hwif_info *hwif)
 	return i2c_add_driver(&info->bus_driver);
 }
 
-void ilitek_tddi_interface_dev_exit(struct ilitek_hwif_info *hwif)
+void ilitek_tddi_interface_dev_exit(struct ilitek_tddi_dev *idev)
 {
 	struct touch_bus_info *info = (struct touch_bus_info *)hwif->info;
 
