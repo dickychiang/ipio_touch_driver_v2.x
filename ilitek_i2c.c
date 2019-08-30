@@ -317,7 +317,7 @@ int ilitek_tddi_interface_dev_init(struct ilitek_hwif_info *hwif)
 
 void ilitek_tddi_interface_dev_exit(struct ilitek_tddi_dev *idev)
 {
-	struct touch_bus_info *info = (struct touch_bus_info *)hwif->info;
+	struct touch_bus_info *info = (struct touch_bus_info *)idev->hwif->info;
 
 	ipio_info("remove i2c dev\n");
 	i2c_del_driver(&info->bus_driver);

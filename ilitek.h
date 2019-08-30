@@ -105,7 +105,7 @@
 #define DRIVER_VERSION			"2.0.1.3.190822.p0"
 
 /* Options */
-#define TDDI_INTERFACE			BUS_SPI /* BUS_I2C(0x18) or BUS_SPI(0x1C) */
+#define TDDI_INTERFACE			BUS_I2C /* BUS_I2C(0x18) or BUS_SPI(0x1C) */
 #define VDD_VOLTAGE			1800000
 #define VCC_VOLTAGE			1800000
 #define SPI_CLK				(10*MEGA_HZ)
@@ -193,11 +193,6 @@ enum TP_RST_METHOD {
 enum TP_FW_UPGRADE_TYPE {
 	UPGRADE_FLASH = 0,
 	UPGRADE_IRAM
-};
-
-enum TP_FW_UPGRADE_TARGET {
-	ILI_FILE = 0,
-	HEX_FILE
 };
 
 enum TP_FW_OPEN_METHOD {
@@ -289,7 +284,7 @@ enum TP_DATA_FORMAT {
 #define MP_HEX_ADDRESS				0x13000
 #define RESERVE_BLOCK_START_ADDR		0x1D000
 #define RESERVE_BLOCK_END_ADDR			0x1DFFF
-#define FW_VER_ADDR				0xFFE0
+#define INFO_HEX_ST_ADDR			0x4B
 #define FW_BLOCK_INFO_NUM			7
 #define SPI_UPGRADE_LEN				2048
 
@@ -555,7 +550,6 @@ enum TP_DATA_FORMAT {
 #define ILI7807G_AB					0x78071001
 #define RAWDATA_NO_BK_SHIFT_9881H			8192
 #define RAWDATA_NO_BK_SHIFT_9881F			4096
-#define INFO_HEX_START_ADDR_64K				0xFFB4
 
 struct ilitek_tddi_dev {
 	struct i2c_client *i2c;
@@ -583,6 +577,8 @@ struct ilitek_tddi_dev {
 
 	/* physical path to the input device in the system hierarchy */
 	const char *phys;
+
+	bool boot;
 
 	u16 max_x;
 	u16 max_y;
@@ -618,6 +614,7 @@ struct ilitek_tddi_dev {
 	int fw_retry;
 	int fw_update_stat;
 	int fw_open;
+	u8  fw_info[75];
 	bool wq_ctrl;
 	bool wq_esd_ctrl;
 	bool wq_bat_ctrl;
@@ -729,8 +726,6 @@ struct ilitek_ic_info {
 	u32 max_count;
 	u32 reset_key;
 	u16 wtd_key;
-	u32 info_addr;
-	u8  info[75];
 	int no_bk_shift;
 	bool spi_speed_ctrl;
 	s32 (*open_sp_formula)(int dac, int raw, int tvch, int tvcl);
@@ -758,7 +753,7 @@ extern u32 ilitek_tddi_fw_read_hw_crc(u32 start, u32 end);
 extern int ilitek_tddi_fw_read_flash(u32 start, u32 end, u8 *data, int len);
 extern void ilitek_fw_dump_iram_data(u32 start, u32 end, bool save);
 extern int ilitek_tddi_fw_dump_flash_data(u32 start, u32 end, bool user);
-extern int ilitek_tddi_fw_upgrade(int file_type, int open_file_method);
+extern int ilitek_tddi_fw_upgrade(int op);
 
 /* Prototypes for tddi mp test */
 extern int ilitek_tddi_mp_test_main(char *apk, bool lcm_on, char *single);

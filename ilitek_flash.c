@@ -51,7 +51,7 @@
 #define TIMEOUT_PAGE		3500
 #define TIMEOUT_PROGRAM		10
 
-struct touch_fw_data {
+static struct touch_fw_data {
 	u8 block_number;
 	u32 start_addr;
 	u32 end_addr;
@@ -62,7 +62,7 @@ struct touch_fw_data {
 	int hex_tag;
 } tfd;
 
-struct flash_block_info {
+static struct flash_block_info {
 	char *name;
 	u32 start;
 	u32 end;
@@ -71,6 +71,8 @@ struct flash_block_info {
 	u32 fix_mem_start;
 	u8 mode;
 } fbi[FW_BLOCK_INFO_NUM];
+
+u8 *pfw;
 
 static u32 HexToDec(char *phex, s32 len)
 {
@@ -120,11 +122,8 @@ static int ilitek_tddi_fw_check_hex_hw_crc(u8 *pfw)
 {
 	u32 i = 0, len = 0;
 	u32 hex_crc = 0, hw_crc;
-	int size;
 
-	size = ARRAY_SIZE(fbi);
-
-	for (i = 0; i < size; i++) {
+	for (i = 0; i < FW_BLOCK_INFO_NUM; i++) {
 		if (fbi[i].end == 0)
 			continue;
 
@@ -133,7 +132,7 @@ static int ilitek_tddi_fw_check_hex_hw_crc(u8 *pfw)
 		hex_crc = CalculateCRC32(fbi[i].start, len, pfw);
 		hw_crc = ilitek_tddi_fw_read_hw_crc(fbi[i].start, len);
 
-		ipio_info("Block = %d, Hex CRC = %x, HW CRC = %x\n", i, hex_crc, hw_crc);
+		ipio_debug("Block = %d, Hex CRC = %x, HW CRC = %x\n", i, hex_crc, hw_crc);
 
 		if (hex_crc != hw_crc) {
 			ipio_err("Hex and HW CRC NO matched !!!\n");
@@ -550,23 +549,14 @@ static void ilitek_tddi_flash_protect(bool enable)
 
 static int ilitek_tddi_fw_check_ver(u8 *pfw)
 {
-	int i, crc_byte_len = 4, size;
+	int i, len = 0, crc_byte_len = 4;
 	u8 flash_crc[4] = {0};
 	u32 start_addr = 0, end_addr = 0;
-	u32 block_crc, flash_crc_cb;
+	u32 hw_crc[FW_BLOCK_INFO_NUM];
+	u32 flash_crc_cb = 0, hex_crc = 0;
 
-	/* Check FW version */
-	ipio_info("New FW ver = 0x%x, Current FW ver = 0x%x\n", tfd.new_fw_cb, idev->chip->fw_ver);
-	if (tfd.new_fw_cb != idev->chip->fw_ver) {
-		ipio_info("FW version is different, do upgrade\n");
-		return UPDATE_FAIL;
-	}
-
-	ipio_info("FW version is the same, check Flash and HW CRC if there's corruption.\n");
-
-	/* Check Flash and HW CRC with last 4 bytes in each block */
-	size = ARRAY_SIZE(fbi);
-	for (i = 0; i < size; i++) {
+	/* Check Flash and HW CRC */
+	for (i = 0; i < FW_BLOCK_INFO_NUM; i++) {
 		start_addr = fbi[i].start;
 		end_addr = fbi[i].end;
 
@@ -582,24 +572,39 @@ static int ilitek_tddi_fw_check_ver(u8 *pfw)
 
 		flash_crc_cb = flash_crc[0] << 24 | flash_crc[1] << 16 | flash_crc[2] << 8 | flash_crc[3];
 
-		block_crc = ilitek_tddi_fw_read_hw_crc(start_addr, end_addr - start_addr - crc_byte_len + 1);
+		hw_crc[i] = ilitek_tddi_fw_read_hw_crc(start_addr, end_addr - start_addr - crc_byte_len + 1);
 
-		ipio_info("Block = %d, HW CRC = 0x%06x, Flash CRC = 0x%06x\n", i, block_crc, flash_crc_cb);
+		ipio_info("Block = %d, HW CRC = 0x%06x, Flash CRC = 0x%06x\n", i, hw_crc[i], flash_crc_cb);
 
 		/* Compare Flash CRC with HW CRC */
-		if (flash_crc_cb != block_crc) {
-			ipio_info("Both are different, do update\n");
+		if (flash_crc_cb != hw_crc[i]) {
+			ipio_info("HW and Flash CRc not matched, do upgrade\n");
 			return UPDATE_FAIL;
 		}
 		memset(flash_crc, 0, sizeof(flash_crc));
 	}
 
-	if (idev->force_fw_update == ENABLE) {
-		ipio_info("update by node, force update\n");
+	/* Check FW version */
+	ipio_info("New FW ver = 0x%x, Current FW ver = 0x%x\n", tfd.new_fw_cb, idev->chip->fw_ver);
+	if (tfd.new_fw_cb != idev->chip->fw_ver) {
+		ipio_info("FW version not matched, do upgrade\n");
 		return UPDATE_FAIL;
-	}
+	} else {
+		/* Check Hex and HW CRC */
+		for (i = 0; i < FW_BLOCK_INFO_NUM; i++) {
+			if (fbi[i].end == 0)
+				continue;
 
-	ipio_info("Both are the same, no need to update\n");
+			len = fbi[i].end - fbi[i].start + 1 - 4;
+			hex_crc = CalculateCRC32(fbi[i].start, len, pfw);
+			ipio_info("Block = %d, HW CRC = 0x%06x, Hex CRC = 0x%06x\n", i, hw_crc[i], hex_crc);
+			if (hex_crc != hw_crc[i]) {
+				ipio_err("Hex and HW CRC not matched, do upgrade\n");
+				return UPDATE_FAIL;
+			}
+		}
+	}
+	ipio_info("Firmware is the newest version, upgrade abort\n");
 	return UPDATE_PASS;
 }
 
@@ -751,8 +756,10 @@ static int ilitek_tddi_fw_flash_upgrade(u8 *pfw)
 		ipio_err("TP reset failed during flash progam\n");
 
 	/* Get current fw version before comparing. */
+	idev->info_from_hex = DISABLE;
 	if (ilitek_tddi_ic_get_fw_ver() < 0)
 		ipio_err("Get firmware ver failed before upgrade\n");
+	idev->info_from_hex = ENABLE;
 
 	ret = ilitek_ice_mode_ctrl(ENABLE, OFF);
 	if (ret < 0)
@@ -799,7 +806,7 @@ static int ilitek_fw_calc_file_crc(u8 *pfw)
 	int i;
 	u32 ex_addr, data_crc, file_crc;
 
-	for (i = 0; i < ARRAY_SIZE(fbi); i++) {
+	for (i = 0; i < FW_BLOCK_INFO_NUM; i++) {
 		if (fbi[i].end == 0)
 			continue;
 		ex_addr = fbi[i].end;
@@ -819,7 +826,7 @@ static int ilitek_fw_calc_file_crc(u8 *pfw)
 
 static void ilitek_tddi_fw_update_block_info(u8 *pfw)
 {
-	ipio_info("Tag = %x\n", tfd.hex_tag);
+	u32 fw_info_addr = 0;
 
 	fbi[AP].name = "AP";
 	fbi[DATA].name = "DATA";
@@ -832,12 +839,14 @@ static void ilitek_tddi_fw_update_block_info(u8 *pfw)
 	fbi[MP].mode = MP;
 	fbi[GESTURE].mode = GESTURE;
 
-	/* Save fw info buffer */
-	ipio_memcpy(idev->chip->info, (pfw + idev->chip->info_addr), sizeof(idev->chip->info), sizeof(idev->chip->info));
+	/* copy fw info */
+	fw_info_addr = fbi[AP].end - INFO_HEX_ST_ADDR;
+	ipio_info("Parsing hex info start addr = 0x%x\n", fw_info_addr);
+	ipio_memcpy(idev->fw_info, pfw + fw_info_addr, sizeof(idev->fw_info), sizeof(idev->fw_info));
 
 	/* Get hex fw vers */
-	tfd.new_fw_cb = (pfw[FW_VER_ADDR] << 24) | (pfw[FW_VER_ADDR + 1] << 16) |
-			(pfw[FW_VER_ADDR + 2] << 8) | (pfw[FW_VER_ADDR + 3]);
+	tfd.new_fw_cb = (idev->fw_info[44] << 24) | (idev->fw_info[45] << 16) |
+			(idev->fw_info[46] << 8) | idev->fw_info[47];
 
 	/* Calculate update address */
 	ipio_info("New FW ver = 0x%x\n", tfd.new_fw_cb);
@@ -849,6 +858,11 @@ static int ilitek_tddi_fw_ili_convert(u8 *pfw)
 	int i = 0, block_enable = 0, num = 0;
 	u8 block;
 	u32 Addr;
+
+	if (sizeof(CTPM_FW) < ILI_FILE_HEADER) {
+		ipio_err("size of ILI file is invalid\n");
+		return -EINVAL;
+	}
 
 	ipio_info("Start to parse ILI file, type = %d, block_count = %d\n", CTPM_FW[32], CTPM_FW[33]);
 
@@ -1010,7 +1024,7 @@ static int ilitek_tddi_fw_hex_convert(u8 *phex, int size, u8 *pfw)
 	return 0;
 }
 
-static int ilitek_tdd_fw_hex_open(u8 open_file_method, u8 *pfw)
+static int ilitek_tdd_fw_hex_open(u8 op, u8 *pfw)
 {
 	int fsize = 0;
 	const struct firmware *fw = NULL;
@@ -1019,10 +1033,10 @@ static int ilitek_tdd_fw_hex_open(u8 open_file_method, u8 *pfw)
 	loff_t pos = 0;
 
 	ipio_info("Open file method = %s, path = %s\n",
-		open_file_method ? "FILP_OPEN" : "REQUEST_FIRMWARE",
-		open_file_method ? UPDATE_FW_FILP_PATH : UPDATE_FW_REQUEST_PATH);
+		op ? "FILP_OPEN" : "REQUEST_FIRMWARE",
+		op ? UPDATE_FW_FILP_PATH : UPDATE_FW_REQUEST_PATH);
 
-	switch (open_file_method) {
+	switch (op) {
 	case REQUEST_FIRMWARE:
 		if (request_firmware(&fw, UPDATE_FW_REQUEST_PATH, idev->dev) < 0) {
 			ipio_err("Request firmware failed\n");
@@ -1093,7 +1107,7 @@ static int ilitek_tdd_fw_hex_open(u8 open_file_method, u8 *pfw)
 		idev->tp_fw.size = fsize;
 		break;
 	default:
-		ipio_err("Unknown open file method, %d\n", open_file_method);
+		ipio_err("Unknown open file method, %d\n", op);
 		break;
 	}
 
@@ -1111,52 +1125,23 @@ convert_hex:
 	return 0;
 }
 
-static void ilitek_tddi_fw_check_update(int ret)
-{
-	ipio_info("FW upgrade %s\n", (ret == UPDATE_PASS ? "PASS" : "FAIL"));
-
-	if (ret == UPDATE_PASS)
-		return;
-
-	if (atomic_read(&idev->mp_stat)) {
-		ipio_info("No need to erase data during mp test\n");
-		return;
-	}
-
-	ipio_info("Erase all fw data\n");
-
-	if (ilitek_ice_mode_ctrl(ENABLE, OFF) < 0)
-		ipio_err("Enable ice mode failed while erasing data\n");
-
-	if (ilitek_tddi_fw_flash_erase() < 0)
-		ipio_err("Erase flash failed\n");
-
-	if (ilitek_ice_mode_ctrl(DISABLE, OFF) < 0)
-		ipio_err("Disable ice mode failed after erase data\n");
-
-	if (ilitek_tddi_reset_ctrl(idev->reset) < 0)
-		ipio_err("TP reset failed after erase data\n");
-}
-
-int ilitek_tddi_fw_upgrade(int file_type, int open_file_method)
+int ilitek_tddi_fw_upgrade(int op)
 {
 	int ret = 0, retry = 3;
-	u8 *pfw = NULL;
 
-	pfw = vmalloc(MAX_HEX_FILE_SIZE * sizeof(u8));
-	if (ERR_ALLOC_MEM(pfw)) {
-		ipio_err("Failed to allocate pfw memory, %ld\n", PTR_ERR(pfw));
-		ret = -ENOMEM;
-		goto out;
-	}
+	if (!idev->boot || idev->force_fw_update) {
+		ipio_vfree((void **)&pfw);
 
-	idev->gesture_load_code = false;
-	memset(pfw, 0xFF, MAX_HEX_FILE_SIZE * sizeof(u8));
+		pfw = vmalloc(MAX_HEX_FILE_SIZE * sizeof(u8));
+		if (ERR_ALLOC_MEM(pfw)) {
+			ipio_err("Failed to allocate pfw memory, %ld\n", PTR_ERR(pfw));
+			ret = -ENOMEM;
+			goto out;
+		}
 
-	ipio_info("Convert FW file from %s\n", (file_type == ILI_FILE ? "ILI_FILE" : "HEX_FILE"));
+		memset(pfw, 0xFF, MAX_HEX_FILE_SIZE * sizeof(u8));
 
-	if (idev->actual_tp_mode != P5_X_FW_GESTURE_MODE) {
-		if (ilitek_tdd_fw_hex_open(open_file_method, pfw) < 0) {
+		if (ilitek_tdd_fw_hex_open(op, pfw) < 0) {
 			ipio_err("Open hex file fail, try upgrade from ILI file\n");
 			if (ilitek_tddi_fw_ili_convert(pfw) < 0) {
 				ipio_err("Convert ILI file error\n");
@@ -1176,13 +1161,23 @@ int ilitek_tddi_fw_upgrade(int file_type, int open_file_method)
 	} while (--retry > 0);
 
 	if (ret != UPDATE_PASS) {
-		ipio_err("Upgrade firmware failed after retry 3 times\n");
+		ipio_err("Failed to upgrade fw %d times, abort\n", retry);
 		ret = UPDATE_FAIL;
 	}
 
 out:
-	ilitek_tddi_fw_check_update(ret);
-	ipio_vfree((void **)&pfw);
+	if (ret < 0)
+		idev->info_from_hex = DISABLE;
+
+	ilitek_tddi_ic_get_core_ver();
+	ilitek_tddi_ic_get_protocl_ver();
+	ilitek_tddi_ic_get_fw_ver();
+	ilitek_tddi_ic_get_tp_info();
+	ilitek_tddi_ic_get_panel_info();
+
+	if (!idev->info_from_hex)
+		idev->info_from_hex = ENABLE;
+
 	return ret;
 }
 
