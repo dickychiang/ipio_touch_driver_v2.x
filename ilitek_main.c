@@ -189,7 +189,9 @@ int ilitek_tddi_gesture_recovery(void)
 		mutex_lock(&idev->touch_mutex);
 
 	ipio_info("Doing gesture recovery\n");
+	idev->force_fw_update = true;
 	ret = idev->ges_recover();
+	idev->force_fw_update = false;
 
 	if (!lock)
 		mutex_unlock(&idev->touch_mutex);
@@ -208,8 +210,10 @@ void ilitek_tddi_spi_recovery(void)
 		mutex_lock(&idev->touch_mutex);
 
 	ipio_info("Doing spi recovery\n");
+	idev->force_fw_update = true;
 	if (ilitek_tddi_fw_upgrade_handler(NULL) < 0)
 		ipio_err("FW upgrade failed\n");
+	idev->force_fw_update = false;
 
 	if (!lock)
 		mutex_unlock(&idev->touch_mutex);
@@ -465,26 +469,21 @@ int ilitek_tddi_sleep_handler(int mode)
 int ilitek_tddi_fw_upgrade_handler(void *data)
 {
 	int ret = 0;
-	static bool input_reg_once;
 
 	atomic_set(&idev->fw_stat, START);
 
 	idev->fw_update_stat = 0;
-	ret = ilitek_tddi_fw_upgrade(HEX_FILE, idev->fw_open);
-	if (ret != 0)
+	ret = ilitek_tddi_fw_upgrade(idev->fw_open);
+	if (ret != 0) {
+		ipio_info("FW upgrade fail\n");
 		idev->fw_update_stat = -1;
-	else
+	} else {
+		ipio_info("FW upgrade pass\n");
 		idev->fw_update_stat = 100;
+	}
 
-	ipio_info("Flash FW completed ... update TP/FW info\n");
-	ilitek_tddi_ic_get_core_ver();
-	ilitek_tddi_ic_get_protocl_ver();
-	ilitek_tddi_ic_get_fw_ver();
-	ilitek_tddi_ic_get_tp_info();
-	ilitek_tddi_ic_get_panel_info();
-
-	if (!input_reg_once) {
-		input_reg_once = true;
+	if (!idev->boot) {
+		idev->boot = true;
 		ipio_info("Registre touch to input subsystem\n");
 		ilitek_plat_input_register();
 		ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
@@ -774,6 +773,7 @@ int ilitek_tddi_init(void)
 	idev->force_fw_update = DISABLE;
 	idev->demo_debug_info[0] = demo_debug_info_id0;
 	idev->tp_data_format = DATA_FORMAT_DEMO;
+	idev->boot = false;
 
 	/*
 	 * This status of ice enable will be reset until process of fw upgrade runs.
@@ -799,6 +799,26 @@ int ilitek_tddi_init(void)
 		WARN_ON(!fw_boot_th);
 		ipio_err("Failed to create fw upgrade thread\n");
 	}
+#else
+#if (TDDI_INTERFACE == BUS_I2C)
+	idev->info_from_hex = DISABLE;
+#endif
+	if (ilitek_tddi_ic_get_core_ver() < 0 ||
+		ilitek_tddi_ic_get_protocl_ver() < 0 ||
+		ilitek_tddi_ic_get_fw_ver() < 0 ||
+		ilitek_tddi_ic_get_tp_info() < 0 ||
+		ilitek_tddi_ic_get_panel_info() < 0) {
+		ipio_err("Get TP infomration error\n");
+	}
+#if (TDDI_INTERFACE == BUS_I2C)
+	idev->info_from_hex = ENABLE;
+#endif
+
+	ipio_info("Registre touch to input subsystem\n");
+	ilitek_plat_input_register();
+	ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
+	ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
+	idev->boot = true;
 #endif
 
 	idev->ws = wakeup_source_register("ili_wakelock");

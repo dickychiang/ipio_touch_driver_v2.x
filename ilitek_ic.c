@@ -114,7 +114,6 @@ static int ilitek_tddi_ic_check_support(u32 pid, u16 id)
 
 	idev->chip->max_count = 0x1FFFF;
 	idev->chip->open_c_formula = open_c_formula;
-	idev->chip->info_addr = INFO_HEX_START_ADDR_64K;
 	return 0;
 }
 
@@ -790,9 +789,9 @@ int ilitek_tddi_ic_get_core_ver(void)
 	u8 buf[10] = {0};
 
 	if (idev->info_from_hex) {
-		buf[1] = idev->chip->info[64];
-		buf[2] = idev->chip->info[65];
-		buf[3] = idev->chip->info[66];
+		buf[1] = idev->fw_info[64];
+		buf[2] = idev->fw_info[65];
+		buf[3] = idev->fw_info[66];
 		goto out;
 	}
 
@@ -859,10 +858,10 @@ int ilitek_tddi_ic_get_fw_ver(void)
 	u8 buf[10] = {0};
 
 	if (idev->info_from_hex) {
-		buf[1] = idev->chip->info[44];
-		buf[2] = idev->chip->info[45];
-		buf[3] = idev->chip->info[46];
-		buf[4] = idev->chip->info[47];
+		buf[1] = idev->fw_info[44];
+		buf[2] = idev->fw_info[45];
+		buf[3] = idev->fw_info[46];
+		buf[4] = idev->fw_info[47];
 		goto out;
 	}
 
@@ -905,10 +904,10 @@ int ilitek_tddi_ic_get_panel_info(void)
 	u8 buf[10] = {0};
 
 	if (idev->info_from_hex && (idev->chip->core_ver >= 0x010401)) {
-		buf[1] = idev->chip->info[12];
-		buf[2] = idev->chip->info[13];
-		buf[3] = idev->chip->info[14];
-		buf[4] = idev->chip->info[15];
+		buf[1] = idev->fw_info[12];
+		buf[2] = idev->fw_info[13];
+		buf[3] = idev->fw_info[14];
+		buf[4] = idev->fw_info[15];
 		idev->panel_wid = buf[1] << 8 | buf[2];
 		idev->panel_hei = buf[3] << 8 | buf[4];
 		goto out;
@@ -945,14 +944,14 @@ int ilitek_tddi_ic_get_tp_info(void)
 	u8 buf[20] = {0};
 
 	if (idev->info_from_hex  && (idev->chip->core_ver >= 0x010401)) {
-		buf[1] = idev->chip->info[1];
-		buf[2] = idev->chip->info[3];
-		buf[3] = idev->chip->info[4];
-		buf[4] = idev->chip->info[5];
-		buf[5] = idev->chip->info[6];
-		buf[6] = idev->chip->info[7];
-		buf[7] = idev->chip->info[8];
-		buf[8] = idev->chip->info[10];
+		buf[1] = idev->fw_info[1];
+		buf[2] = idev->fw_info[3];
+		buf[3] = idev->fw_info[4];
+		buf[4] = idev->fw_info[5];
+		buf[5] = idev->fw_info[6];
+		buf[6] = idev->fw_info[7];
+		buf[7] = idev->fw_info[8];
+		buf[8] = idev->fw_info[10];
 		buf[11] = buf[7];
 		buf[12] = buf[8];
 		goto out;
@@ -1029,9 +1028,9 @@ int ilitek_tddi_ic_get_protocl_ver(void)
 	u32 ver;
 
 	if (idev->info_from_hex) {
-		buf[1] = idev->chip->info[68];
-		buf[2] = idev->chip->info[69];
-		buf[3] = idev->chip->info[70];
+		buf[1] = idev->fw_info[68];
+		buf[2] = idev->fw_info[69];
+		buf[3] = idev->fw_info[70];
 		goto out;
 	}
 
