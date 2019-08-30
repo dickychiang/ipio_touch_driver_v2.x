@@ -903,7 +903,7 @@ int ilitek_tddi_ic_get_panel_info(void)
 	u8 cmd = P5_X_GET_PANEL_INFORMATION;
 	u8 buf[10] = {0};
 
-	if (idev->info_from_hex && (idev->chip->core_ver >= 0x010401)) {
+	if (idev->info_from_hex && (idev->chip->core_ver >= CORE_VER_V1410)) {
 		buf[1] = idev->fw_info[12];
 		buf[2] = idev->fw_info[13];
 		buf[3] = idev->fw_info[14];
@@ -943,7 +943,7 @@ int ilitek_tddi_ic_get_tp_info(void)
 	u8 cmd[2] = {0};
 	u8 buf[20] = {0};
 
-	if (idev->info_from_hex  && (idev->chip->core_ver >= 0x010401)) {
+	if (idev->info_from_hex  && (idev->chip->core_ver >= CORE_VER_V1410)) {
 		buf[1] = idev->fw_info[1];
 		buf[2] = idev->fw_info[3];
 		buf[3] = idev->fw_info[4];

@@ -362,7 +362,7 @@ static int ilitek_tddi_fw_iram_upgrade(u8 *pfw)
 		ipio_err("Disable ice mode failed after code reset\n");
 
 	/* Waiting for fw ready sending first cmd */
-	if (!idev->info_from_hex || !(idev->chip->core_ver >= 0x010401))
+	if (!idev->info_from_hex || (idev->chip->core_ver < CORE_VER_V1410))
 		mdelay(100);
 
 	return ret;

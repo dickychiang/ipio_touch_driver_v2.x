@@ -36,7 +36,7 @@ static u8 spi_ice_buf[1*K];
 #if SPI_DMA_TRANSFER_SPLIT
 #define DMA_TRANSFER_MAX_CHUNK		64   // number of chunks to be transferred.
 #define DMA_TRANSFER_MAX_LEN		1024 // length of a chunk.
-struct spi_transfer	xfer[DMA_TRANSFER_MAX_CHUNK + 1];
+struct spi_transfer	xfer[DMA_TRANSFER_MAX_CHUNK];
 
 int ilitek_spi_write_then_read_split(struct spi_device *spi,
 		const void *txbuf, unsigned n_tx,
@@ -86,6 +86,12 @@ int ilitek_spi_write_then_read_split(struct spi_device *spi,
 		status = spi_sync(spi, &message);
 		break;
 	case SPI_READ:
+		if (n_tx > DMA_TRANSFER_MAX_LEN) {
+			ipio_err("Tx length must be lower than transfer length (%d).\n", DMA_TRANSFER_MAX_LEN);
+			status = -EINVAL;
+			break;
+		}
+
 		memcpy(idev->spi_tx, txbuf, n_tx);
 
 		duplex_len = n_tx + n_rx;
@@ -100,10 +106,10 @@ int ilitek_spi_write_then_read_split(struct spi_device *spi,
 			if (xferlen > DMA_TRANSFER_MAX_LEN)
 				xferlen = DMA_TRANSFER_MAX_LEN;
 
-			xfer[xfercnt + 1].len = xferlen;
-			xfer[xfercnt + 1].tx_buf = idev->spi_tx;
-			xfer[xfercnt + 1].rx_buf = idev->spi_rx + xfercnt * DMA_TRANSFER_MAX_LEN;
-			spi_message_add_tail(&xfer[xfercnt + 1], &message);
+			xfer[xfercnt].len = xferlen;
+			xfer[xfercnt].tx_buf = idev->spi_tx;
+			xfer[xfercnt].rx_buf = idev->spi_rx + xfercnt * DMA_TRANSFER_MAX_LEN;
+			spi_message_add_tail(&xfer[xfercnt], &message);
 			xferlen = duplex_len - (xfercnt + 1) * DMA_TRANSFER_MAX_LEN;
 		}
 		status = spi_sync(spi, &message);

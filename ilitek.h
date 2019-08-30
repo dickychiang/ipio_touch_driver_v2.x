@@ -105,7 +105,7 @@
 #define DRIVER_VERSION			"2.0.1.3.190822.p0"
 
 /* Options */
-#define TDDI_INTERFACE			BUS_I2C /* BUS_I2C(0x18) or BUS_SPI(0x1C) */
+#define TDDI_INTERFACE			BUS_SPI /* BUS_I2C(0x18) or BUS_SPI(0x1C) */
 #define VDD_VOLTAGE			1800000
 #define VCC_VOLTAGE			1800000
 #define SPI_CLK				(10*MEGA_HZ)
@@ -269,6 +269,8 @@ enum TP_DATA_FORMAT {
 #define TPD_WIDTH				2048
 
 /* Firmware upgrade */
+#define CORE_VER_V1410				0x010401
+#define CORE_VER_V1420				0x010402
 #define MAX_HEX_FILE_SIZE			(160*K)
 #define MAX_FLASH_FIRMWARE_SIZE			(256*K)
 #define MAX_IRAM_FIRMWARE_SIZE			(60*K)
@@ -471,7 +473,6 @@ enum TP_DATA_FORMAT {
 #define ESD_GESTURE_PWD					0xF38A94EF
 #define SPI_ESD_GESTURE_RUN				0x5B92E7F4
 #define I2C_ESD_GESTURE_RUN				0xA67C9DFE
-#define SPI_ESD_GESTURE_PWD_ADDR			0x40054
 #define I2C_ESD_GESTURE_PWD_ADDR			0x40054
 
 /* FW data format */

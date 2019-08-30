@@ -534,16 +534,22 @@ int ilitek_tddi_touch_esd_gesture_iram(void)
 {
 	int ret = 0, retry = 100;
 	u32 answer = 0;
+	u32 esd_ges_pwd_addr = 0x0;
 	u8 cmd[3] = {0};
 
 	if (ilitek_ice_mode_ctrl(ENABLE, OFF) < 0)
 		ipio_err("Enable ice mode failed during gesture recovery\n");
 
+	if (idev->chip->core_ver >= CORE_VER_V1420)
+		esd_ges_pwd_addr = 0x40045;
+	else
+		esd_ges_pwd_addr = 0x25FF8;
+
 	ipio_info("ESD Gesture PWD Addr = 0x%x, Answer = 0x%x\n",
-		SPI_ESD_GESTURE_PWD_ADDR, SPI_ESD_GESTURE_RUN);
+		esd_ges_pwd_addr, SPI_ESD_GESTURE_RUN);
 
 	/* write a special password to inform FW go back into gesture mode */
-	if (ilitek_ice_mode_write(SPI_ESD_GESTURE_PWD_ADDR, ESD_GESTURE_PWD, 4) < 0)
+	if (ilitek_ice_mode_write(esd_ges_pwd_addr, ESD_GESTURE_PWD, 4) < 0)
 		ipio_err("write password failed\n");
 
 	/* Host download gives effect to FW receives password successed */
@@ -552,7 +558,7 @@ int ilitek_tddi_touch_esd_gesture_iram(void)
 		ipio_err("FW upgrade failed during gesture recovery\n");
 
 	/* Wait for fw running code finished. */
-	if (idev->info_from_hex || (idev->chip->core_ver >= 0x010401))
+	if (idev->info_from_hex || (idev->chip->core_ver >= CORE_VER_V1410))
 		msleep(50);
 
 	if (ilitek_ice_mode_ctrl(ENABLE, ON) < 0)
@@ -560,7 +566,7 @@ int ilitek_tddi_touch_esd_gesture_iram(void)
 
 	/* polling another specific register to see if gesutre is enabled properly */
 	do {
-		if (ilitek_ice_mode_read(SPI_ESD_GESTURE_PWD_ADDR, &answer, sizeof(u32)) < 0)
+		if (ilitek_ice_mode_read(esd_ges_pwd_addr, &answer, sizeof(u32)) < 0)
 			ipio_err("Read gesture answer error\n");
 
 		if (answer != SPI_ESD_GESTURE_RUN)
