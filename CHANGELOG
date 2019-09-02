@@ -1,4 +1,17 @@
-* V2.0.1.3
+* v2.0.1.4
+[New features]
+
+[Improvements]
+1. Chech size and crc while parsing ILI file.
+2. Allocated larger buffers at probe in advance
+3. Optimized the handle of exepction erros with fw upgrade.
+3. Add duplex in spi split.
+
+[Bus fixed]
+1. Fix compling error with qcom.
+2. Fix error of loading gesture code in last version.
+
+* v2.0.1.3
 [New features]
 1.  ilitek_fw.c 拆分成 ilitek_flash.c 和 ilitek_hostdl.c
 
@@ -19,7 +32,7 @@
 4. 修正 checkpatch.pl 錯誤
 5. 修正讀取報點時，若出現錯誤(非 recovery)會沒有返回的問題
 
-* V2.0.1.2
+* v2.0.1.2
 1.	在MP測試裡，增加錯誤返回值
 2.	修正open test c 測試異常
 3.	修正DeltaC Record修正，合入OPPO功能需求驗證完成
@@ -29,7 +42,7 @@
 7.	優化SPI通信時間  #67  (需開啟SPI_DMA_TRANSFER_SPLIT，但X20是需要切割，故只驗報點功能)
 8.	重新加入pm_stay_awake，某次改動被拿掉了。
 
-* V2.0.1.1
+* v2.0.1.1
 1.	加入OPPO需求功能 (gesture failure reason, demo debug …etc) (驗證中)
 2.	加入 wake up (dummy) command，用來在暗屏時，喚醒SPI PLL Clock
 3.	優化TP/FW Mode state machine 寫法
@@ -54,7 +67,7 @@
 18.	新增MP的PIN測項
 19.	加入所有function的返回值判斷，避免被Coverity tool找到錯誤
 
-* V2.0.1.0
+* v2.0.1.0
 - Optimise software structure of TP driver based on v1.x.
 - SPI Transfer 64k once (on x20).
 - Device node with dumping iram/flash data.
