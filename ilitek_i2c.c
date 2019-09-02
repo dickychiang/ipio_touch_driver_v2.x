@@ -231,6 +231,12 @@ static int ilitek_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id *
 		return -ENOMEM;
 	}
 
+	idev->gcoord = kzalloc(sizeof(struct gesture_coordinate), GFP_KERNEL);
+	if (ERR_ALLOC_MEM(idev->gcoord)) {
+		ipio_err("Failed to allocate gresture coordinate buffer\n");
+		return -ENOMEM;
+	}
+
 	idev->i2c = i2c;
 	idev->spi = NULL;
 	idev->dev = &i2c->dev;

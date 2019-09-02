@@ -853,6 +853,7 @@ void ilitek_tddi_dev_remove(void)
 		wakeup_source_unregister(idev->ws);
 
 	kfree(idev->tr_buf);
+	kfree(idev->gcoord);
 	ilitek_tddi_interface_dev_exit(idev);
 }
 
