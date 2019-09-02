@@ -796,8 +796,12 @@ int ilitek_tddi_fw_upgrade(int op)
 	} while (--retry > 0);
 
 	if (ret != UPDATE_PASS) {
-		ret = UPDATE_FAIL;
-		ipio_err("Failed to upgrade fw %d times, abort\n", retry);
+		ipio_err("Failed to upgrade fw %d times, erasing iram\n", retry);
+		if (ilitek_tddi_reset_ctrl(idev->reset) < 0)
+				ipio_err("TP reset failed while erasing data\n");
+		idev->xch_num = 0;
+		idev->ych_num = 0;
+		return ret;
 	}
 
 out:
