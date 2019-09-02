@@ -1164,13 +1164,10 @@ int ilitek_tddi_fw_upgrade(int op)
 		ipio_err("Failed to upgrade fw %d times, erasing flash\n", retry);
 		if (ilitek_ice_mode_ctrl(ENABLE, OFF) < 0)
 			ipio_err("Enable ice mode failed while erasing flash\n");
-
 		if (ilitek_tddi_fw_flash_erase() < 0)
 			ipio_err("Failed to erase flash\n");
-
 		if (ilitek_ice_mode_ctrl(DISABLE, OFF) < 0)
 			ipio_err("Disable ice mode failed after erase flash\n");
-
 		if (ilitek_tddi_reset_ctrl(idev->reset) < 0)
 			ipio_err("TP reset failed after erase flash\n");
 	}

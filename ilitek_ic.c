@@ -914,10 +914,8 @@ int ilitek_tddi_ic_get_panel_info(void)
 	}
 
 	ret = idev->write(&cmd, sizeof(u8));
-	if (ret < 0) {
+	if (ret < 0)
 		ipio_err("Write panel info error\n");
-		goto out;
-	}
 
 	ret = idev->read(buf, idev->protocol->panel_info_len);
 	if (ret < 0)

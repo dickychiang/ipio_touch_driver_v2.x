@@ -110,7 +110,7 @@ int ilitek_spi_write_then_read_split(struct spi_device *spi,
 			xfer[xfercnt].tx_buf = idev->spi_tx;
 			xfer[xfercnt].rx_buf = idev->spi_rx + xfercnt * DMA_TRANSFER_MAX_LEN;
 			spi_message_add_tail(&xfer[xfercnt], &message);
-			xferlen = duplex_len - (xfercnt + 1) * DMA_TRANSFER_MAX_LEN;
+			xferlen = duplex_len - xfercnt * DMA_TRANSFER_MAX_LEN;
 		}
 		status = spi_sync(spi, &message);
 		if (status == 0)
@@ -650,6 +650,12 @@ static int ilitek_spi_probe(struct spi_device *spi)
 		return -ENOMEM;
 	}
 
+	idev->gcoord = kzalloc(sizeof(struct gesture_coordinate), GFP_KERNEL);
+	if (ERR_ALLOC_MEM(idev->gcoord)) {
+		ipio_err("Failed to allocate gresture coordinate buffer\n");
+		return -ENOMEM;
+	}
+
 	idev->i2c = NULL;
 	idev->spi = spi;
 	idev->dev = &spi->dev;
@@ -680,7 +686,7 @@ static int ilitek_spi_probe(struct spi_device *spi)
 	idev->gesture_move_code = ilitek_tddi_move_gesture_code_iram;
 	idev->esd_recover = ilitek_tddi_wq_esd_spi_check;
 	idev->ges_recover = ilitek_tddi_touch_esd_gesture_iram;
-	idev->gesture_mode = DATA_FORMAT_GESTURE_NORMAL;
+	idev->gesture_mode = DATA_FORMAT_GESTURE_INFO;
 	idev->gesture_demo_ctrl = DISABLE;
 	idev->wtd_ctrl = ON;
 	idev->report = ENABLE;

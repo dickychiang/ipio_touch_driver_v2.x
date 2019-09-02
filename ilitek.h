@@ -562,6 +562,7 @@ struct ilitek_tddi_dev {
 	struct ilitek_hwif_info *hwif;
 	struct ilitek_ic_info *chip;
 	struct ilitek_protocol_info *protocol;
+	struct gesture_coordinate *gcoord;
 	struct regulator *vdd;
 	struct regulator *vcc;
 
@@ -687,6 +688,16 @@ struct ilitek_touch_info {
 	u16 x;
 	u16 y;
 	u16 pressure;
+};
+
+struct gesture_coordinate {
+	u16 code;
+	struct ilitek_touch_info pos_start;
+	struct ilitek_touch_info pos_end;
+	struct ilitek_touch_info pos_1st;
+	struct ilitek_touch_info pos_2nd;
+	struct ilitek_touch_info pos_3rd;
+	struct ilitek_touch_info pos_4th;
 };
 
 struct ilitek_protocol_info {

@@ -947,7 +947,10 @@ void ilitek_tddi_report_gesture_mode(u8 *buf, int len)
 {
 	ipio_info("gesture code = 0x%x\n", buf[1]);
 
-	switch (buf[1]) {
+	memset(idev->gcoord, 0x0, sizeof(struct gesture_coordinate));
+	idev->gcoord->code = buf[1];
+
+	switch (idev->gcoord->code) {
 	case GESTURE_DOUBLECLICK:
 		ipio_info("Double Click key event\n");
 		input_report_key(idev->input, KEY_GESTURE_POWER, 1);
@@ -956,34 +959,47 @@ void ilitek_tddi_report_gesture_mode(u8 *buf, int len)
 		input_sync(idev->input);
 		break;
 	case GESTURE_LEFT:
-		break;
 	case GESTURE_RIGHT:
-		break;
 	case GESTURE_UP:
-		break;
 	case GESTURE_DOWN:
-		break;
 	case GESTURE_O:
-		break;
 	case GESTURE_W:
-		break;
 	case GESTURE_M:
-		break;
 	case GESTURE_E:
-		break;
 	case GESTURE_S:
-		break;
 	case GESTURE_V:
-		break;
 	case GESTURE_Z:
-		break;
 	case GESTURE_C:
-		break;
 	case GESTURE_F:
 		break;
 	default:
 		break;
 	}
+
+	/* Parsing gesture coordinate */
+	if (idev->gesture_mode == DATA_FORMAT_GESTURE_INFO) {
+		idev->gcoord->pos_start.x = ((buf[4] & 0xF0) << 4) | buf[5];
+		idev->gcoord->pos_start.y = ((buf[4] & 0x0F) << 8) | buf[6];
+		idev->gcoord->pos_end.x   = ((buf[7] & 0xF0) << 4) | buf[8];
+		idev->gcoord->pos_end.y   = ((buf[7] & 0x0F) << 8) | buf[9];
+
+		idev->gcoord->pos_1st.x   = ((buf[16] & 0xF0) << 4) | buf[17];
+		idev->gcoord->pos_1st.y   = ((buf[16] & 0x0F) << 8) | buf[18];
+		idev->gcoord->pos_2nd.x   = ((buf[19] & 0xF0) << 4) | buf[20];
+		idev->gcoord->pos_2nd.y   = ((buf[19] & 0x0F) << 8) | buf[21];
+		idev->gcoord->pos_3rd.x   = ((buf[22] & 0xF0) << 4) | buf[23];
+		idev->gcoord->pos_3rd.y   = ((buf[22] & 0x0F) << 8) | buf[24];
+		idev->gcoord->pos_4th.x   = ((buf[25] & 0xF0) << 4) | buf[26];
+		idev->gcoord->pos_4th.y   = ((buf[25] & 0x0F) << 8) | buf[27];
+
+		ipio_info("pos_start.x = %d, pos_start.y = %d\n", idev->gcoord->pos_start.x, idev->gcoord->pos_start.y);
+		ipio_info("pos_end.x = %d, pos_end.y = %d\n", idev->gcoord->pos_end.x, idev->gcoord->pos_end.y);
+		ipio_info("pos_1st.x = %d, pos_1st.y = %d\n", idev->gcoord->pos_1st.x, idev->gcoord->pos_1st.y);
+		ipio_info("pos_2nd.x = %d, pos_2nd.y = %d\n", idev->gcoord->pos_2nd.x ,idev->gcoord->pos_2nd.y);
+		ipio_info("pos_3rd.x = %d, pos_3rd.y = %d\n", idev->gcoord->pos_3rd.x, idev->gcoord->pos_3rd.y);
+		ipio_info("pos_4th.x = %d, pos_4th.y = %d\n", idev->gcoord->pos_4th.x, idev->gcoord->pos_4th.y);
+	}
+
 	ilitek_tddi_touch_send_debug_data(buf, len);
 }
 
