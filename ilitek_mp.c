@@ -269,17 +269,19 @@ struct mp_test_items {
 	int (*do_test)(int index);
 };
 
-#define DEF_TEST_LCM_ON	11
+#define DEF_TEST_LCM_ON	13
 static char run_lcm_on[DEF_TEST_LCM_ON][64] = {
 	"pin test ( int and rst )",
 	"noise peak to peak(with panel)",
 	"noise peak to peak(ic only)",
-	"short test -ili9881",
 	"open test(integration)_sp",
 	"raw data(no bk)",
 	"raw data(have bk)",
 	"calibration data(dac)",
+	"short test -ili9881",
+	"short test",
 	"doze raw data",
+	"doze peak to peak",
 	"open test_c",
 	"touch deltac"
 };
