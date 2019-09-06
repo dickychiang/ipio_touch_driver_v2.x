@@ -456,8 +456,7 @@ int ilitek_tddi_move_gesture_code_iram(int mode)
 
 	if (i >= timeout) {
 		ipio_err("Gesture is not ready (0x%x), try to run its recovery\n", cmd[0]);
-		ilitek_tddi_gesture_recovery();
-		return 0;
+		return ilitek_tddi_gesture_recovery();
 	}
 
 	if (ilitek_tddi_fw_upgrade_handler(NULL) < 0)
@@ -540,8 +539,8 @@ int ilitek_tddi_touch_esd_gesture_iram(void)
 	if (ilitek_ice_mode_ctrl(ENABLE, OFF) < 0)
 		ipio_err("Enable ice mode failed during gesture recovery\n");
 
-	if (idev->chip->core_ver >= CORE_VER_V1420)
-		esd_ges_pwd_addr = 0x40045;
+	if (idev->chip->core_ver >= CORE_VER_1420)
+		esd_ges_pwd_addr = 0x40054;
 	else
 		esd_ges_pwd_addr = 0x25FF8;
 
@@ -558,7 +557,7 @@ int ilitek_tddi_touch_esd_gesture_iram(void)
 		ipio_err("FW upgrade failed during gesture recovery\n");
 
 	/* Wait for fw running code finished. */
-	if (idev->info_from_hex || (idev->chip->core_ver >= CORE_VER_V1410))
+	if (idev->info_from_hex || (idev->chip->core_ver >= CORE_VER_1410))
 		msleep(50);
 
 	if (ilitek_ice_mode_ctrl(ENABLE, ON) < 0)
@@ -576,7 +575,7 @@ int ilitek_tddi_touch_esd_gesture_iram(void)
 
 	if (retry <= 0) {
 		ipio_err("Enter gesture failed\n");
-		ret = -1;
+		return -ETIME;
 	} else {
 		ipio_info("Enter gesture successfully\n");
 	}

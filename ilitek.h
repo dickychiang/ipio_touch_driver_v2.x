@@ -269,8 +269,9 @@ enum TP_DATA_FORMAT {
 #define TPD_WIDTH				2048
 
 /* Firmware upgrade */
-#define CORE_VER_V1410				0x010401
-#define CORE_VER_V1420				0x010402
+#define CORE_VER_1410				0x010401
+#define CORE_VER_1420				0x010402
+#define CORE_VER_1430				0x010403
 #define MAX_HEX_FILE_SIZE			(160*K)
 #define MAX_FLASH_FIRMWARE_SIZE			(256*K)
 #define MAX_IRAM_FIRMWARE_SIZE			(60*K)
@@ -539,6 +540,7 @@ enum TP_DATA_FORMAT {
 #define TDDI_OTP_ID_ADDR				0x400A0
 #define TDDI_ANA_ID_ADDR				0x400A4
 #define TDDI_PC_COUNTER_ADDR				0x44008
+#define TDDI_PC_LATCH_ADDR				0x51010
 #define TDDI_WDT_ADDR					0x5100C
 #define TDDI_WDT_ACTIVE_ADDR				0x51018
 #define TDDI_CHIP_RESET_ADDR				0x40050
@@ -724,6 +726,7 @@ struct ilitek_ic_info {
 	u32 pid_addr;
 	u32 wdt_addr;
 	u32 pc_counter_addr;
+	u32 pc_latch_addr;
 	u32 reset_addr;
 	u32 otp_addr;
 	u32 ana_addr;

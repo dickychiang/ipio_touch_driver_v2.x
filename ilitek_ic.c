@@ -657,6 +657,7 @@ u32 ilitek_tddi_ic_get_pc_counter(void)
 {
 	bool ice = atomic_read(&idev->ice_stat);
 	u32 pc = 0;
+	u32 latch = 0;
 
 	if (!ice)
 		if (ilitek_ice_mode_ctrl(ENABLE, OFF) < 0)
@@ -665,7 +666,12 @@ u32 ilitek_tddi_ic_get_pc_counter(void)
 	if (ilitek_ice_mode_read(idev->chip->pc_counter_addr, &pc, sizeof(u32)) < 0)
 		ipio_err("Read pc conter error\n");
 
-	ipio_info("pc counter = 0x%x\n", pc);
+	ipio_info("read pc counter (addr: 0x%x) = 0x%x\n", idev->chip->pc_counter_addr, pc);
+
+	if (ilitek_ice_mode_read(idev->chip->pc_latch_addr, &latch, sizeof(u32)) < 0)
+		ipio_err("Read pc conter error\n");
+
+	ipio_info("read pc latch (addr: 0x%x) = 0x%x\n", idev->chip->pc_latch_addr, latch);
 
 	if (!ice)
 		if (ilitek_ice_mode_ctrl(DISABLE, OFF) < 0)
@@ -682,8 +688,6 @@ int ilitek_tddi_ic_check_int_stat(void)
 		atomic_set(&idev->mp_int_check, DISABLE);
 		return -1;
 	}
-
-	ipio_info("Interrupt for MP is active\n");
 	return 0;
 }
 
@@ -903,13 +907,13 @@ int ilitek_tddi_ic_get_panel_info(void)
 	u8 cmd = P5_X_GET_PANEL_INFORMATION;
 	u8 buf[10] = {0};
 
-	if (idev->info_from_hex && (idev->chip->core_ver >= CORE_VER_V1410)) {
+	if (idev->info_from_hex && (idev->chip->core_ver >= CORE_VER_1410)) {
 		buf[1] = idev->fw_info[12];
 		buf[2] = idev->fw_info[13];
 		buf[3] = idev->fw_info[14];
 		buf[4] = idev->fw_info[15];
-		idev->panel_wid = buf[1] << 8 | buf[2];
-		idev->panel_hei = buf[3] << 8 | buf[4];
+		idev->panel_wid = buf[2] << 8 | buf[1];
+		idev->panel_hei = buf[4] << 8 | buf[3];
 		goto out;
 	}
 
@@ -941,7 +945,7 @@ int ilitek_tddi_ic_get_tp_info(void)
 	u8 cmd[2] = {0};
 	u8 buf[20] = {0};
 
-	if (idev->info_from_hex  && (idev->chip->core_ver >= CORE_VER_V1410)) {
+	if (idev->info_from_hex  && (idev->chip->core_ver >= CORE_VER_1410)) {
 		buf[1] = idev->fw_info[1];
 		buf[2] = idev->fw_info[3];
 		buf[3] = idev->fw_info[4];
@@ -1111,6 +1115,7 @@ void ilitek_tddi_ic_init(void)
 	chip.pid_addr =		   	TDDI_PID_ADDR;
 	chip.wdt_addr =		   	TDDI_WDT_ADDR;
 	chip.pc_counter_addr = 		TDDI_PC_COUNTER_ADDR;
+	chip.pc_latch_addr =		TDDI_PC_LATCH_ADDR;
 	chip.otp_addr =		   	TDDI_OTP_ID_ADDR;
 	chip.ana_addr =		   	TDDI_ANA_ID_ADDR;
 	chip.reset_addr =	   	TDDI_CHIP_RESET_ADDR;

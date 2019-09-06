@@ -183,6 +183,7 @@ struct core_mp_test_data {
 	u32 chip_pid;
 	u32 fw_ver;
 	u32 protocol_ver;
+	u32 core_ver;
 	int no_bk_shift;
 	bool retry;
 	bool m_signal;
@@ -1686,31 +1687,33 @@ static int allnode_mutual_cdc_data(int index)
 		ret = ilitek_tddi_ic_check_int_stat();
 
 	if (ret < 0) {
-		ret = EMP_CHECK_BUY;
+		ret = -EMP_CHECK_BUY;
 		goto out;
 	}
 
-	/* Prepare to get cdc data */
-	cmd[0] = P5_X_READ_DATA_CTRL;
-	cmd[1] = P5_X_GET_CDC_DATA;
+	if (core_mp.core_ver < CORE_VER_1430) {
+		/* Prepare to get cdc data */
+		cmd[0] = P5_X_READ_DATA_CTRL;
+		cmd[1] = P5_X_GET_CDC_DATA;
 
-	if (idev->write(cmd, 2) < 0) {
-		ipio_err("Write (0x%x, 0x%x) error\n", cmd[0], cmd[1]);
-		ret = -EMP_CMD;
-		goto out;
+		if (idev->write(cmd, 2) < 0) {
+			ipio_err("Write (0x%x, 0x%x) error\n", cmd[0], cmd[1]);
+			ret = -EMP_CMD;
+			goto out;
+		}
+
+		/* Waiting for FW to prepare cdc data */
+		mdelay(1);
+
+		if (idev->write(&cmd[1], 1) < 0) {
+			ipio_err("Write (0x%x) error\n", cmd[1]);
+			ret = -EMP_CMD;
+			goto out;
+		}
+
+		/* Waiting for FW to prepare cdc data */
+		mdelay(1);
 	}
-
-	/* Waiting for FW to prepare cdc data */
-	mdelay(1);
-
-	if (idev->write(&cmd[1], 1) < 0) {
-		ipio_err("Write (0x%x) error\n", cmd[1]);
-		ret = -EMP_CMD;
-		goto out;
-	}
-
-	/* Waiting for FW to prepare cdc data */
-	mdelay(1);
 
 	/* Allocate a buffer for the original */
 	ori = kcalloc(len, sizeof(u8), GFP_KERNEL);
@@ -1723,7 +1726,7 @@ static int allnode_mutual_cdc_data(int index)
 	/* Get original frame(cdc) data */
 	if (idev->read(ori, len) < 0) {
 		ipio_err("Read cdc data error, len = %d\n", len);
-		ret = EMP_GET_CDC;
+		ret = -EMP_GET_CDC;
 		goto out;
 	}
 
@@ -3036,6 +3039,7 @@ static void ilitek_tddi_mp_init_item(void)
 	core_mp.chip_pid = idev->chip->pid;
 	core_mp.fw_ver = idev->chip->fw_ver;
 	core_mp.protocol_ver = idev->protocol->ver;
+	core_mp.core_ver = idev->chip->core_ver;
 	core_mp.cdc_len = idev->protocol->cdc_len;
 	core_mp.no_bk_shift = idev->chip->no_bk_shift;
 	core_mp.xch_len = idev->xch_num;
@@ -3051,13 +3055,16 @@ static void ilitek_tddi_mp_init_item(void)
 	core_mp.final_result = MP_DATA_FAIL;
 	core_mp.lost_benchmark = false;
 
+	ipio_info("============== TP & Panel info ================\n");
 	ipio_info("CHIP = 0x%x\n", core_mp.chip_pid);
 	ipio_info("Firmware version = %x\n", core_mp.fw_ver);
 	ipio_info("Protocol version = %x\n", core_mp.protocol_ver);
+	ipio_info("Core version = %x\n", core_mp.core_ver);
 	ipio_info("Read CDC Length = %d\n", core_mp.cdc_len);
 	ipio_info("X length = %d, Y length = %d\n", core_mp.xch_len, core_mp.ych_len);
 	ipio_info("Frame length = %d\n", core_mp.frame_len);
 	ipio_info("Check busy method = %d\n", core_mp.busy_cdc);
+	ipio_info("===============================================\n");
 
 	for (i = 0; i < MP_TEST_ITEM; i++) {
 		tItems[i].spec_option = 0;
@@ -3386,7 +3393,7 @@ int ilitek_tddi_mp_test_main(char *apk, bool lcm_on, char *single)
 	}
 
 	/* Do not chang the sequence of test */
-	if (idev->protocol->ver >= PROTOCOL_VER_540) {
+	if (core_mp.protocol_ver >= PROTOCOL_VER_540) {
 		if (lcm_on) {
 			for (i = 0; i < DEF_TEST_LCM_ON; i++) {
 				ret = mp_test_run(run_lcm_on[i]);
