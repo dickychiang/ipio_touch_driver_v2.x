@@ -1,3 +1,18 @@
+* v2.0.2.0
+[New features]
+1. Add parsing gesture coordinate.
+2. Remove pre command before getting cdcd data if core ver is 1.4.3
+above.
+
+[Improvements]
+1. Add reading pc latch in pc counter.
+
+[Bus fixed]
+1. Add back short test and doez p2p test
+2. Fix error of getting panel info from hex.
+3. Fix kernel panic while mp test failed in timeout of int.
+4. Correct the address of esd gesture with iram.
+
 * v2.0.1.4
 [New features]
 
