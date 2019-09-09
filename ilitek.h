@@ -112,6 +112,7 @@
 #define SPI_RETRY			5
 #define IRQ_GPIO_NUM			66
 #define TR_BUF_SIZE			2048 /* Buffer size of touch report */
+#define TR_BUF_LIST_SIZE		(1*K) /* Buffer size of touch report */
 #define WQ_ESD_DELAY			4000
 #define WQ_BAT_DELAY			2000
 #define MT_B_TYPE			ENABLE
@@ -554,6 +555,11 @@ enum TP_DATA_FORMAT {
 #define RAWDATA_NO_BK_SHIFT_9881H			8192
 #define RAWDATA_NO_BK_SHIFT_9881F			4096
 
+struct debug_buf_list {
+	bool mark;
+	unsigned char *data;
+};
+
 struct ilitek_tddi_dev {
 	struct i2c_client *i2c;
 	struct spi_device *spi;
@@ -638,8 +644,9 @@ struct ilitek_tddi_dev {
 	/* Sending report data to users for the debug */
 	bool debug_node_open;
 	int debug_data_frame;
+	int out_data_index;
 	wait_queue_head_t inq;
-	unsigned char **debug_buf;
+	struct debug_buf_list *debug_buf;
 	int raw_count;
 	int delta_count;
 	int bg_count;
