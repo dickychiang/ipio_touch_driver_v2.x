@@ -645,58 +645,10 @@ void demo_debug_info_mode(u8 *buf, size_t len)
 	idev->demo_debug_info[info_id](&info_ptr[1], info_len);
 }
 
-int ilitek_tddi_debug_report_alloc(void)
-{
-	int i, ret = 0;
-	int row_size = 1 * K + 1, col_size = 2 * K + 1;
-
-	if (!idev->debug_node_open && !idev->debug_buf)
-		return ret;
-
-	if (!idev->debug_node_open && idev->debug_buf != NULL)
-		goto out;
-
-	if (idev->debug_node_open && !idev->debug_buf) {
-		idev->debug_buf = (unsigned char **)kzalloc(row_size * sizeof(unsigned char *), GFP_KERNEL);
-		if (ERR_ALLOC_MEM(idev->debug_buf)) {
-			ipio_err("Failed to allocate debug_buf mem, %ld\n", PTR_ERR(idev->debug_buf));
-			ret = -ENOMEM;
-			goto out;
-		}
-
-		for (i = 0; i < row_size; i++) {
-			idev->debug_buf[i] = (unsigned char *)kzalloc(col_size * sizeof(unsigned char), GFP_KERNEL);
-			if (ERR_ALLOC_MEM(idev->debug_buf[i])) {
-				ipio_err("Failed to allocate debug_buf[%d] mem, %ld\n", i, PTR_ERR(idev->debug_buf[i]));
-				ret = -ENOMEM;
-				goto out;
-			}
-		}
-	}
-	return ret;
-
-out:
-	/* Note that it might be freed by next touch event */
-	if (idev->debug_buf != NULL) {
-		idev->debug_data_frame = 0;
-		for (i = 0; i < row_size; i++) {
-			if (idev->debug_buf[i] != NULL) {
-				kfree(idev->debug_buf[i]);
-				idev->debug_buf[i] = NULL;
-			}
-		}
-		kfree(idev->debug_buf);
-		idev->debug_buf = NULL;
-	}
-	return ret;
-}
-
 static void ilitek_tddi_touch_send_debug_data(u8 *buf, int len)
 {
+	int index;
 	mutex_lock(&idev->debug_mutex);
-
-	if (ilitek_tddi_debug_report_alloc() < 0)
-		goto out;
 
 	if (!idev->netlink && !idev->debug_node_open)
 		goto out;
@@ -709,16 +661,21 @@ static void ilitek_tddi_touch_send_debug_data(u8 *buf, int len)
 
 	/* Sending data to apk via the node of debug_message node */
 	if (idev->debug_node_open) {
-		memset(idev->debug_buf[idev->debug_data_frame], 0x00, (u8)sizeof(u8) * 2048);
-		ipio_memcpy(idev->debug_buf[idev->debug_data_frame], buf, len, 2048);
-		idev->debug_data_frame++;
-		if (idev->debug_data_frame > 1)
-			ipio_debug("idev->debug_data_frame = %d\n", idev->debug_data_frame);
-		if (idev->debug_data_frame > 1023) {
-			ipio_err("idev->debug_data_frame = %d > 1024\n",
-				idev->debug_data_frame);
-			idev->debug_data_frame = 1023;
+		index = idev->debug_data_frame;
+		if (!idev->debug_buf[idev->debug_data_frame].mark) {
+			idev->debug_data_frame = ((idev->debug_data_frame + 1) % TR_BUF_LIST_SIZE);
+		} else {
+			if (idev->debug_data_frame == 0)
+				index = TR_BUF_LIST_SIZE -1;
+			else
+				index = idev->debug_data_frame -1;
 		}
+		if (idev->debug_buf[index].data == NULL) {
+			ipio_info("BUFFER %d error\n", index);
+			goto out;
+		}
+		ipio_memcpy(idev->debug_buf[index].data, buf, len, 2048);
+		idev->debug_buf[index].mark = true;
 		wake_up(&(idev->inq));
 		goto out;
 	}
