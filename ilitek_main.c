@@ -781,7 +781,7 @@ int ilitek_tddi_init(void)
 	 * codes inside touch ic.
 	 */
 	if (ilitek_ice_mode_ctrl(ENABLE, OFF) < 0)
-		ipio_err("Enable ice mode failed during init\n");
+		ipio_err("Failed to enable ice mode failed during init\n");
 
 	if (ilitek_tddi_ic_get_info() < 0) {
 		ipio_err("Not found ilitek chips\n");
@@ -800,6 +800,9 @@ int ilitek_tddi_init(void)
 		ipio_err("Failed to create fw upgrade thread\n");
 	}
 #else
+	if (ilitek_ice_mode_ctrl(DISABLE, OFF) < 0)
+		ipio_err("Failed to disable ice mode failed during init\n");
+
 #if (TDDI_INTERFACE == BUS_I2C)
 	idev->info_from_hex = DISABLE;
 #endif
