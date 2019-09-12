@@ -630,6 +630,9 @@ void ilitek_tddi_report_handler(void)
 		goto out;
 	}
 
+	if (ret == SPI_IS_LOCKED)
+		goto out;
+
 	if (ret > TR_BUF_SIZE) {
 		ipio_err("Returned length (%d) is invaild\n", ret);
 		goto out;

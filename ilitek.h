@@ -179,6 +179,8 @@ do {									\
 #define OFF			0
 #define NONE			-1
 #define DO_SPI_RECOVER		-2
+#define SPI_ICE_FAILED		-3
+#define SPI_IS_LOCKED		INT_MAX
 
 enum TP_PLAT_TYPE {
 	TP_PLAT_MTK = 0,
@@ -811,6 +813,7 @@ extern int ilitek_tddi_ic_get_core_ver(void);
 extern int ilitek_tddi_ic_get_protocl_ver(void);
 extern int ilitek_tddi_ic_get_fw_ver(void);
 extern int ilitek_tddi_ic_get_info(void);
+extern int ilitek_tddi_ic_check_support(u32 pid, u16 id);
 extern int ilitek_ice_mode_bit_mask_write(u32 addr, u32 mask, u32 value);
 extern int ilitek_ice_mode_write(u32 addr, u32 data, int len);
 extern int ilitek_ice_mode_read(u32 addr, u32 *data, int len);

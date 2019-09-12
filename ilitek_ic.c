@@ -69,7 +69,7 @@ static u32 ic_sup_list[CHIP_SUP_NUM] = {
 	[5] = ILI7807G_AB,
 };
 
-static int ilitek_tddi_ic_check_support(u32 pid, u16 id)
+int ilitek_tddi_ic_check_support(u32 pid, u16 id)
 {
 	int i = 0;
 
@@ -82,8 +82,6 @@ static int ilitek_tddi_ic_check_support(u32 pid, u16 id)
 		ipio_info("ERROR, ILITEK CHIP (%x, %x) Not found !!\n", pid, id);
 		return -1;
 	}
-
-	ipio_info("ILITEK CHIP (%x, %x) found.\n", pid, id);
 
 	if (id == ILI9881_CHIP) {
 		idev->chip->reset_key = 0x00019881;
@@ -215,7 +213,7 @@ int ilitek_ice_mode_ctrl(bool enable, bool mcu)
 	u8 cmd_close[4] = {0x1B, 0x62, 0x10, 0x18};
 	u32 pid;
 
-	ipio_info("%s ICE mode, mcu on = %d\n", (enable ? "Enable" : "Disable"), mcu);
+	ipio_debug("%s ICE mode, mcu on = %d\n", (enable ? "Enable" : "Disable"), mcu);
 
 	if (enable) {
 		if (atomic_read(&idev->ice_stat)) {
@@ -251,8 +249,10 @@ int ilitek_ice_mode_ctrl(bool enable, bool mcu)
 		}
 
 		/* Patch to resolve the issue of i2c nack after exit to ice mode */
+#if (TDDI_INTERFACE == BUS_I2C)
 		if (ilitek_ice_mode_write(0x47002, 0x00, 1) < 0)
 			ipio_err("Write 0x0 at 0x47002 failed\n");
+#endif
 	} else {
 		if (!atomic_read(&idev->ice_stat)) {
 			ipio_info("ice mode already disabled\n");

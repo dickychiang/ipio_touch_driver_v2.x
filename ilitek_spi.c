@@ -227,8 +227,8 @@ static int core_rx_lock_check(int *ret_size)
 	}
 
 out:
-	ipio_err("Rx check lock error, lock = 0x%x\n", status);
-	return -EIO;
+	ipio_info("Rx buf is locked, 0x%x\n", status);
+	return SPI_IS_LOCKED;
 }
 
 static int core_tx_unlock_check(void)
@@ -268,7 +268,7 @@ static int core_tx_unlock_check(void)
 	}
 
 out:
-	ipio_err("Tx check unlock error, unlock = 0x%x\n", status);
+	ipio_err("Tx buf is locked, 0x%x\n", status);
 	return -EIO;
 }
 
@@ -370,19 +370,17 @@ out:
 
 static int core_spi_ice_mode_disable(void)
 {
-	u8 txbuf[5] = {0x82, 0x1B, 0x62, 0x10, 0x18};
-
-	if (idev->spi_write_then_read(idev->spi, txbuf, 5, txbuf, 0) < 0) {
+	if (ilitek_ice_mode_ctrl(DISABLE, ON) < 0) {
 		ipio_err("spi write ice mode disable failed\n");
 		return -EIO;
 	}
+
 	return 0;
 }
 
 static int core_spi_ice_mode_enable(void)
 {
 	u8 cmd[10] = {0x82, 0x25, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3};
-	u8 txbuf[5] = {0x82, 0x1F, 0x62, 0x10, 0x18};
 	u8 rxbuf[2] = {0};
 	u8 write = SPI_WRITE;
 
@@ -406,10 +404,11 @@ static int core_spi_ice_mode_enable(void)
 		}
 	}
 
-	if (idev->spi_write_then_read(idev->spi, txbuf, 5, rxbuf, 0) < 0) {
-		ipio_err("spi write ice mode enable failed\n");
-		return -EIO;
+	if (ilitek_ice_mode_ctrl(ENABLE, ON) < 0) {
+		ipio_err("Failed to enable ice mode in spi\n");
+		return SPI_ICE_FAILED;
 	}
+
 	return 0;
 }
 
@@ -454,7 +453,7 @@ static int core_spi_ice_mode_read(u8 *data, int len)
 	 * They change lock status from 0x9881 to 0x5AA5 if they did.
 	 */
 	ret = core_rx_lock_check(&size);
-	if (ret < 0)
+	if (ret < 0 || ret == SPI_IS_LOCKED)
 		goto out;
 
 	if (len < size && idev->fw_uart_en == DISABLE) {
@@ -470,6 +469,9 @@ static int core_spi_ice_mode_read(u8 *data, int len)
 out:
 	if (core_spi_ice_mode_disable() < 0)
 		ret = -EIO;
+
+	if (ret == SPI_IS_LOCKED)
+		return ret;
 
 	return (ret >= 0) ? size : ret;
 }
@@ -510,20 +512,21 @@ out:
 
 static int core_spi_read(u8 *rxbuf, int len)
 {
-	int ret = 0, count = 5;
+	int ret = 0, retry = 5;
 	u8 txbuf[1] = {0};
-
-	txbuf[0] = SPI_READ;
 
 	if (atomic_read(&idev->ice_stat) == DISABLE) {
 		do {
 			ret = core_spi_ice_mode_read(rxbuf, len);
-			if (ret >= 0)
+			if (ret == SPI_ICE_FAILED)
+				retry--;
+			else
 				break;
-		} while (--count > 0);
+		} while (retry > 0);
 		goto out;
 	}
 
+	txbuf[0] = SPI_READ;
 	if (idev->spi_write_then_read(idev->spi, txbuf, 1, rxbuf, len) < 0) {
 		ipio_err("spi read data error in ice mode\n");
 		ret = -EIO;
