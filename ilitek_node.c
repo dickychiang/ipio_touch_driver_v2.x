@@ -25,7 +25,7 @@
 #define USER_STR_BUFF		PAGE_SIZE
 #define IOCTL_I2C_BUFF		PAGE_SIZE
 #define ILITEK_IOCTL_MAGIC	100
-#define ILITEK_IOCTL_MAXNR	22
+#define ILITEK_IOCTL_MAXNR	23
 
 #define ILITEK_IOCTL_I2C_WRITE_DATA		_IOWR(ILITEK_IOCTL_MAGIC, 0, u8*)
 #define ILITEK_IOCTL_I2C_SET_WRITE_LENGTH	_IOWR(ILITEK_IOCTL_MAGIC, 1, int)
@@ -56,6 +56,7 @@
 #define ILITEK_IOCTL_TP_INTERFACE_TYPE		_IOWR(ILITEK_IOCTL_MAGIC, 20, u8*)
 #define ILITEK_IOCTL_TP_DUMP_FLASH		_IOWR(ILITEK_IOCTL_MAGIC, 21, int)
 #define ILITEK_IOCTL_TP_FW_UART_CTRL		_IOWR(ILITEK_IOCTL_MAGIC, 22, u8*)
+#define ILITEK_IOCTL_TP_PANEL_INFO		_IOWR(ILITEK_IOCTL_MAGIC, 23, u32*)
 
 #ifdef CONFIG_COMPAT
 #define ILITEK_COMPAT_IOCTL_I2C_WRITE_DATA		_IOWR(ILITEK_IOCTL_MAGIC, 0, compat_uptr_t)
@@ -1902,6 +1903,22 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 		if_to_user = idev->fw_uart_en;
 
 		if (copy_to_user((u8 *) arg, &if_to_user, sizeof(if_to_user))) {
+			ipio_err("Failed to copy driver ver to user space\n");
+			ret = -ENOTTY;
+		}
+		break;
+	case ILITEK_IOCTL_TP_PANEL_INFO:
+		ipio_debug("ioctl: get panel resolution\n");
+		ret = ilitek_tddi_ic_get_panel_info();
+		if (ret < 0) {
+			ipio_err("Failed to get resolution\n");
+			break;
+		}
+
+		id_to_user[0] = idev->panel_wid;
+		id_to_user[1] = idev->panel_hei;
+
+		if (copy_to_user((u32 *) arg, id_to_user, sizeof(u32) * 2)) {
 			ipio_err("Failed to copy driver ver to user space\n");
 			ret = -ENOTTY;
 		}
