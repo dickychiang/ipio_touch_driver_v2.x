@@ -273,6 +273,9 @@ int ilitek_ice_mode_ctrl(bool enable, bool mcu)
 					continue;
 				}
 
+				if (!idev->spi_ack)
+					break;
+
 				ack = idev->spi_ack();
 				if (ack == SPI_ACK)
 					break;
