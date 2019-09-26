@@ -108,6 +108,12 @@ int ilitek_tddi_ic_check_support(u32 pid, u16 id)
 		idev->chip->open_sp_formula = open_sp_formula_ili7807;
 		idev->chip->hd_dma_check_crc_off = firmware_hd_dma_crc_off_ili7807;
 		idev->chip->no_bk_shift = RAWDATA_NO_BK_SHIFT_9881H;
+
+		if (pid != ILI7807G_AA && pid != ILI7807G_AB)
+			idev->chip->spi_speed_ctrl = DISABLE;
+
+		if (pid >= ILI7807G_AA && pid <= ILI7807G_AH)
+			idev->fix_ice = ENABLE;
 	}
 
 	idev->chip->max_count = 0x1FFFF;
@@ -208,7 +214,7 @@ out:
 
 int ilitek_ice_mode_ctrl(bool enable, bool mcu)
 {
-	int ret = 0, retry = 3;
+	int ret = 0, retry = 3, ack = 0;
 	u8 cmd_open[4] = {0x25, 0x62, 0x10, 0x18};
 	u8 cmd_close[4] = {0x1B, 0x62, 0x10, 0x18};
 	u32 pid;
@@ -259,9 +265,33 @@ int ilitek_ice_mode_ctrl(bool enable, bool mcu)
 			return 0;
 		}
 
-		ret = idev->write(cmd_close, sizeof(cmd_close));
-		if (ret < 0)
-			ipio_err("Exit to ICE Mode failed !!\n");
+		if (idev->fix_ice) {
+			while (retry > 0) {
+				if (idev->write(cmd_close, sizeof(cmd_close)) < 0) {
+					ipio_err("write ice mode disable failed\n");
+					retry--;
+					continue;
+				}
+
+				ack = idev->spi_ack();
+				if (ack == SPI_ACK)
+					break;
+
+				usleep_range(1000, 1000);
+
+				retry--;
+			}
+
+			if (retry <= 0) {
+				ipio_err("Failed to exit ice mode\n");
+				atomic_set(&idev->ice_stat, DISABLE);
+				return -EIO;
+			}
+		} else {
+			ret = idev->write(cmd_close, sizeof(cmd_close));
+			if (ret < 0)
+				ipio_err("Exit to ICE Mode failed !!\n");
+		}
 
 		atomic_set(&idev->ice_stat, DISABLE);
 	}

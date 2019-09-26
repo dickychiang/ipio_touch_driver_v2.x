@@ -554,6 +554,8 @@ enum TP_DATA_FORMAT {
 #define ILI7807_CHIP					0x7807
 #define ILI7807G_AA					0x78071000
 #define ILI7807G_AB					0x78071001
+#define ILI7807G_AH					0x78071007
+#define ILI7807R_AA					0x78071B00
 #define RAWDATA_NO_BK_SHIFT_9881H			8192
 #define RAWDATA_NO_BK_SHIFT_9881F			4096
 
@@ -667,6 +669,7 @@ struct ilitek_tddi_dev {
 	bool info_from_hex;
 	bool prox_near;
 	bool gesture_load_code;
+	bool fix_ice;
 
 	atomic_t irq_stat;
 	atomic_t tp_reset;
@@ -685,6 +688,7 @@ struct ilitek_tddi_dev {
 	int (*read)(void *data, int len);
 	int (*spi_write_then_read)(struct spi_device *spi, const void *txbuf,
 				unsigned n_tx, void *rxbuf, unsigned n_rx);
+	int (*spi_ack)(void);
 	int (*mp_move_code)(void);
 	int (*gesture_move_code)(int mode);
 	int (*esd_recover)(void);

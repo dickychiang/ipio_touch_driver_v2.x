@@ -368,11 +368,53 @@ out:
 	return ret;
 }
 
+static int ilitek_spi_check_ack(void)
+{
+	u8 ack = 0;
+	u8 write = SPI_WRITE;
+
+	if (idev->spi_write_then_read(idev->spi, &write, 1, &ack, 1) < 0) {
+		ipio_err("spi write 0x82 error\n");
+		return -EIO;
+	}
+
+	ipio_debug("spi ack = %x\n", ack);
+	return ack;
+}
+
 static int core_spi_ice_mode_disable(void)
 {
-	if (ilitek_ice_mode_ctrl(DISABLE, ON) < 0) {
-		ipio_err("spi write ice mode disable failed\n");
-		return -EIO;
+	int ack, retry = 3;
+	u8 ex_ice[5] = {0x82, 0x1B, 0x62, 0x10, 0x18};
+
+	if (idev->fix_ice) {
+		while (retry > 0) {
+			if (idev->spi_write_then_read(idev->spi, ex_ice, sizeof(ex_ice), NULL, 0) < 0) {
+				ipio_err("spi write ice mode disable failed\n");
+				retry--;
+				continue;
+			}
+
+			ack = idev->spi_ack();
+			if (ack == SPI_ACK) {
+				break;
+			} else if (ack == SPI_WRITE) {
+				ipio_err("SPI ACK error (0x%x)\n", ack);
+				return DO_SPI_RECOVER;
+			} else {
+				retry--;
+			}
+		}
+
+		if (retry <= 0) {
+			ipio_err("Failed to exit ice mode with spi comm\n");
+			return -EIO;
+		}
+	} else {
+		if (idev->spi_write_then_read(idev->spi, ex_ice, sizeof(ex_ice), NULL, 0) < 0) {
+			ipio_err("spi write ice mode disable failed\n");
+			return -EIO;
+		}
 	}
 
 	return 0;
@@ -380,33 +422,71 @@ static int core_spi_ice_mode_disable(void)
 
 static int core_spi_ice_mode_enable(void)
 {
-	u8 cmd[10] = {0x82, 0x25, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3};
-	u8 rxbuf[2] = {0};
-	u8 write = SPI_WRITE;
+	int ack, retry = 3;
+	u8 wakeup[10] = {0x82, 0x25, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3};
+	u8 en_ice[5] = {0x82, 0x1F, 0x62, 0x10, 0x18};
+	u8 pid_cmd[5] = {0};
+	u32 pid = 0;
 
-	if (idev->spi_write_then_read(idev->spi, &write, 1, rxbuf, 1) < 0) {
-		ipio_err("spi write 0x82 error\n");
-		return -EIO;
-	}
-
-	/* check recover data */
-	if (rxbuf[0] != SPI_ACK) {
-		ipio_err("Check SPI_ACK failed (0x%x)\n", rxbuf[0]);
+	ack = idev->spi_ack();
+	if (ack != SPI_ACK) {
+		ipio_err("SPI ACK error (0x%x)\n", ack);
 		return DO_SPI_RECOVER;
 	}
 
 	/* if system is suspended, wake up our spi pll clock before communication. */
 	if (idev->tp_suspend) {
 		ipio_debug("Write dummy cmd to wake up spi pll clock\n");
-		if (idev->spi_write_then_read(idev->spi, cmd, sizeof(cmd), rxbuf, 0) < 0) {
+		if (idev->spi_write_then_read(idev->spi, wakeup, sizeof(wakeup), NULL, 0) < 0) {
 			ipio_err("spi write wake up cmd failed\n");
 			return -EIO;
 		}
 	}
 
-	if (ilitek_ice_mode_ctrl(ENABLE, ON) < 0) {
-		ipio_err("Failed to enable ice mode in spi\n");
-		return SPI_ICE_FAILED;
+	if (idev->fix_ice) {
+		while (retry > 0) {
+			if (idev->spi_write_then_read(idev->spi, en_ice, sizeof(en_ice), NULL, 0) < 0) {
+				ipio_err("write ice mode cmd error\n");
+				retry--;
+				continue;
+			}
+
+			pid_cmd[0] = SPI_WRITE;
+			pid_cmd[1] = 0x25;
+			pid_cmd[2] = ((idev->chip->pid_addr & 0x000000FF) >> 0);
+			pid_cmd[3] = ((idev->chip->pid_addr & 0x0000FF00) >> 8);
+			pid_cmd[4] = ((idev->chip->pid_addr & 0x00FF0000) >> 16);
+
+			if (idev->spi_write_then_read(idev->spi, pid_cmd, sizeof(pid_cmd), NULL, 0) < 0) {
+				ipio_err("write pid cmd error\n");
+				retry--;
+				continue;
+			}
+
+			pid_cmd[0] = SPI_READ;
+			if (idev->spi_write_then_read(idev->spi, &pid_cmd[0], sizeof(u8), &pid, sizeof(pid)) < 0) {
+				ipio_err("write pid cmd error\n");
+				retry--;
+				continue;
+			}
+
+			ipio_debug("check pid = 0x%x\n", pid);
+
+			if (ilitek_tddi_ic_check_support(pid, pid >> 16) == 0)
+				break;
+
+			retry--;
+		}
+
+		if (retry <= 0) {
+			ipio_err("Failed to enter ice mode with spi comm\n");
+			return -EIO;
+		}
+	} else {
+		if (idev->spi_write_then_read(idev->spi, en_ice, sizeof(en_ice), NULL, 0) < 0) {
+			ipio_err("write ice mode cmd error\n");
+			return SPI_ICE_FAILED;
+		}
 	}
 
 	return 0;
@@ -674,6 +754,7 @@ static int ilitek_spi_probe(struct spi_device *spi)
 #endif
 
 	idev->spi_speed = ilitek_tddi_ic_spi_speed_ctrl;
+	idev->spi_ack = ilitek_spi_check_ack;
 	idev->actual_tp_mode = P5_X_FW_AP_MODE;
 	idev->tp_data_len = P5_X_DEMO_MODE_PACKET_LEN;
 

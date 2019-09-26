@@ -251,6 +251,7 @@ static int ilitek_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id *
 #endif
 
 	idev->spi_speed = NULL;
+	idev->spi_ack = NULL;
 	idev->actual_tp_mode = P5_X_FW_AP_MODE;
 	idev->tp_data_len = P5_X_DEMO_MODE_PACKET_LEN;
 

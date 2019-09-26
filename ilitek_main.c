@@ -223,15 +223,7 @@ void ilitek_tddi_spi_recovery(void)
 
 int ilitek_tddi_wq_esd_spi_check(void)
 {
-	u8 tx = SPI_WRITE, rx = 0;
-
-	idev->spi_write_then_read(idev->spi, &tx, 1, &rx, 1);
-	ipio_debug("spi esd check = 0x%x\n", rx);
-	if (rx != SPI_ACK) {
-		ipio_err("rx = 0x%x\n", rx);
-		return -1;
-	}
-	return 0;
+	return (idev->spi_ack() != SPI_ACK) ? -1 : 0;
 }
 
 int ilitek_tddi_wq_esd_i2c_check(void)
@@ -772,6 +764,7 @@ int ilitek_tddi_init(void)
 			ipio_err("TP Reset failed during init\n");
 
 	idev->do_otp_check = ENABLE;
+	idev->fix_ice = DISABLE;
 	idev->fw_uart_en = DISABLE;
 	idev->force_fw_update = DISABLE;
 	idev->demo_debug_info[0] = demo_debug_info_id0;
