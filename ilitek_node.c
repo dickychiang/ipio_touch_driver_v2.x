@@ -25,7 +25,7 @@
 #define USER_STR_BUFF		PAGE_SIZE
 #define IOCTL_I2C_BUFF		PAGE_SIZE
 #define ILITEK_IOCTL_MAGIC	100
-#define ILITEK_IOCTL_MAXNR	23
+#define ILITEK_IOCTL_MAXNR	24
 
 #define ILITEK_IOCTL_I2C_WRITE_DATA		_IOWR(ILITEK_IOCTL_MAGIC, 0, u8*)
 #define ILITEK_IOCTL_I2C_SET_WRITE_LENGTH	_IOWR(ILITEK_IOCTL_MAGIC, 1, int)
@@ -57,6 +57,7 @@
 #define ILITEK_IOCTL_TP_DUMP_FLASH		_IOWR(ILITEK_IOCTL_MAGIC, 21, int)
 #define ILITEK_IOCTL_TP_FW_UART_CTRL		_IOWR(ILITEK_IOCTL_MAGIC, 22, u8*)
 #define ILITEK_IOCTL_TP_PANEL_INFO		_IOWR(ILITEK_IOCTL_MAGIC, 23, u32*)
+#define ILITEK_IOCTL_TP_INFO			_IOWR(ILITEK_IOCTL_MAGIC, 24, u32*)
 
 #ifdef CONFIG_COMPAT
 #define ILITEK_COMPAT_IOCTL_I2C_WRITE_DATA		_IOWR(ILITEK_IOCTL_MAGIC, 0, compat_uptr_t)
@@ -88,6 +89,8 @@
 #define ILITEK_COMPAT_IOCTL_TP_INTERFACE_TYPE		_IOWR(ILITEK_IOCTL_MAGIC, 20, compat_uptr_t)
 #define ILITEK_COMPAT_IOCTL_TP_DUMP_FLASH		_IOWR(ILITEK_IOCTL_MAGIC, 21, compat_uptr_t)
 #define ILITEK_COMPAT_IOCTL_TP_FW_UART_CTRL		_IOWR(ILITEK_IOCTL_MAGIC, 22, compat_uptr_t)
+#define ILITEK_COMPAT_IOCTL_TP_PANEL_INFO		_IOWR(ILITEK_IOCTL_MAGIC, 23, compat_uptr_t)
+#define ILITEK_COMPAT_IOCTL_TP_INFO			_IOWR(ILITEK_IOCTL_MAGIC, 24, compat_uptr_t)
 #endif
 
 struct record_state {
@@ -1563,6 +1566,14 @@ static long ilitek_node_compat_ioctl(struct file *filp, unsigned int cmd, unsign
 		ipio_info("compat_ioctl: convert fw uart\n");
 		ret = filp->f_op->unlocked_ioctl(filp, ILITEK_IOCTL_TP_FW_UART_CTRL, (unsigned long)compat_ptr(arg));
 		return ret;
+	case ILITEK_COMPAT_IOCTL_TP_PANEL_INFO:
+		ipio_info("compat_ioctl: convert resolution\n");
+		ret = filp->f_op->unlocked_ioctl(filp, ILITEK_COMPAT_IOCTL_TP_PANEL_INFO, (unsigned long)compat_ptr(arg));
+		return ret;
+	case ILITEK_COMPAT_IOCTL_TP_INFO:
+		ipio_info("compat_ioctl: convert resolution\n");
+		ret = filp->f_op->unlocked_ioctl(filp, ILITEK_COMPAT_IOCTL_TP_INFO, (unsigned long)compat_ptr(arg));
+		return ret;
 	default:
 		ipio_err("no ioctl cmd, return ilitek_node_ioctl\n");
 		return -ENOIOCTLCMD;
@@ -1575,7 +1586,7 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 	int ret = 0, length = 0;
 	u8 *szBuf = NULL, if_to_user = 0;
 	static u16 i2c_rw_length;
-	u32 id_to_user[3] = {0};
+	u32 id_to_user[256] = {0};
 	bool esd_en = idev->wq_esd_ctrl, bat_en = idev->wq_bat_ctrl;
 
 	if (_IOC_TYPE(cmd) != ILITEK_IOCTL_MAGIC) {
@@ -1919,6 +1930,28 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 		id_to_user[1] = idev->panel_hei;
 
 		if (copy_to_user((u32 *) arg, id_to_user, sizeof(u32) * 2)) {
+			ipio_err("Failed to copy driver ver to user space\n");
+			ret = -ENOTTY;
+		}
+		break;
+	case ILITEK_IOCTL_TP_INFO:
+		ipio_debug("ioctl: get tp info\n");
+		ret = ilitek_tddi_ic_get_tp_info();
+		if (ret < 0) {
+			ipio_err("Failed to get tp info\n");
+			break;
+		}
+
+		id_to_user[0] = idev->min_x;
+		id_to_user[1] = idev->min_y;
+		id_to_user[2] = idev->max_x;
+		id_to_user[3] = idev->max_y;
+		id_to_user[4] = idev->xch_num;
+		id_to_user[5] = idev->ych_num;
+		id_to_user[6] = idev->stx;
+		id_to_user[7] = idev->srx;
+
+		if (copy_to_user((u32 *) arg, id_to_user, sizeof(u32) * 8)) {
 			ipio_err("Failed to copy driver ver to user space\n");
 			ret = -ENOTTY;
 		}
