@@ -2796,7 +2796,7 @@ static int mp_show_result(bool lcm_on)
 	s32 *max_threshold = NULL, *min_threshold = NULL;
 	char *csv = NULL;
 	char csv_name[128] = { 0 };
-	char *ret_pass_name = NULL, *ret_fail_name = NULL, *ret_warning_name = NULL;
+	char *ret_pass_name = NULL, *ret_fail_name = NULL;
 	struct file *f = NULL;
 	mm_segment_t fs;
 	loff_t pos;
@@ -2970,16 +2970,8 @@ static int mp_show_result(bool lcm_on)
 	/* define csv file name */
 	ret_pass_name = NORMAL_CSV_PASS_NAME;
 	ret_fail_name = NORMAL_CSV_FAIL_NAME;
-	ret_warning_name = NORMAL_CSV_WARNING_NAME;
 
-	if (core_mp.lost_benchmark) {
-		core_mp.final_result = MP_DATA_FAIL;
-		ret = MP_DATA_FAIL;
-		if (lcm_on)
-			snprintf(csv_name, (CSV_FILE_SIZE - csv_len), "%s/%s_%s.csv", CSV_LCM_ON_PATH, get_date_time_str(), ret_warning_name);
-		else
-			snprintf(csv_name, (CSV_FILE_SIZE - csv_len), "%s/%s_%s.csv", CSV_LCM_OFF_PATH, get_date_time_str(), ret_warning_name);
-	} else if (pass_item_count == 0) {
+	if (pass_item_count == 0) {
 		core_mp.final_result = MP_DATA_FAIL;
 		ret = MP_DATA_FAIL;
 		if (lcm_on)
@@ -2989,6 +2981,13 @@ static int mp_show_result(bool lcm_on)
 	} else {
 		core_mp.final_result = MP_DATA_PASS;
 		ret = MP_DATA_PASS;
+
+		if (core_mp.lost_benchmark) {
+			ret_pass_name = NULL;
+			ret_pass_name = NORMAL_CSV_WARNING_NAME;
+			ipio_err("WARNING! Golden and SPEC in ini file aren't matched!!\n");
+		}
+
 		if (lcm_on)
 			snprintf(csv_name, (CSV_FILE_SIZE - csv_len), "%s/%s_%s.csv", CSV_LCM_ON_PATH, get_date_time_str(), ret_pass_name);
 		else
