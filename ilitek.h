@@ -179,7 +179,6 @@ do {									\
 #define OFF			0
 #define NONE			-1
 #define DO_SPI_RECOVER		-2
-#define SPI_ICE_FAILED		-3
 #define SPI_IS_LOCKED		INT_MAX
 
 enum TP_PLAT_TYPE {
