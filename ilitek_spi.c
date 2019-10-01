@@ -387,34 +387,30 @@ static int core_spi_ice_mode_disable(void)
 	int ack, retry = 3;
 	u8 ex_ice[5] = {0x82, 0x1B, 0x62, 0x10, 0x18};
 
-	if (idev->fix_ice) {
-		while (retry > 0) {
-			if (idev->spi_write_then_read(idev->spi, ex_ice, sizeof(ex_ice), NULL, 0) < 0) {
-				ipio_err("spi write ice mode disable failed\n");
-				retry--;
-				continue;
-			}
-
-			ack = idev->spi_ack();
-			if (ack == SPI_ACK) {
-				break;
-			} else if (ack == SPI_WRITE) {
-				ipio_err("SPI ACK error (0x%x)\n", ack);
-				return DO_SPI_RECOVER;
-			} else {
-				retry--;
-			}
-		}
-
-		if (retry <= 0) {
-			ipio_err("Failed to exit ice mode with spi comm\n");
-			return -EIO;
-		}
-	} else {
+	while (retry > 0) {
 		if (idev->spi_write_then_read(idev->spi, ex_ice, sizeof(ex_ice), NULL, 0) < 0) {
 			ipio_err("spi write ice mode disable failed\n");
-			return -EIO;
+			retry--;
+			continue;
 		}
+
+		if (!idev->fix_ice)
+			break;
+
+		ack = idev->spi_ack();
+		if (ack == SPI_ACK) {
+			break;
+		} else if (ack == SPI_WRITE) {
+			ipio_err("SPI ACK error (0x%x)\n", ack);
+			return DO_SPI_RECOVER;
+		} else {
+			retry--;
+		}
+	}
+
+	if (retry <= 0) {
+		ipio_err("Failed to exit ice mode with spi comm\n");
+		return -EIO;
 	}
 
 	return 0;
@@ -422,11 +418,60 @@ static int core_spi_ice_mode_disable(void)
 
 static int core_spi_ice_mode_enable(void)
 {
-	int ack, retry = 3;
-	u8 wakeup[10] = {0x82, 0x25, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3};
+	int retry = 3, ret = 0;
 	u8 en_ice[5] = {0x82, 0x1F, 0x62, 0x10, 0x18};
 	u8 pid_cmd[5] = {0};
 	u32 pid = 0;
+
+	while (retry > 0) {
+		if (idev->spi_write_then_read(idev->spi, en_ice, sizeof(en_ice), NULL, 0) < 0) {
+			ipio_err("write ice mode cmd error\n");
+			retry--;
+			continue;
+		}
+
+		if (!idev->fix_ice)
+			break;
+
+		pid_cmd[0] = SPI_WRITE;
+		pid_cmd[1] = 0x25;
+		pid_cmd[2] = ((idev->chip->pid_addr & 0x000000FF) >> 0);
+		pid_cmd[3] = ((idev->chip->pid_addr & 0x0000FF00) >> 8);
+		pid_cmd[4] = ((idev->chip->pid_addr & 0x00FF0000) >> 16);
+
+		if (idev->spi_write_then_read(idev->spi, pid_cmd, sizeof(pid_cmd), NULL, 0) < 0) {
+			ipio_err("write pid cmd error\n");
+			retry--;
+			continue;
+		}
+
+		pid_cmd[0] = SPI_READ;
+		if (idev->spi_write_then_read(idev->spi, &pid_cmd[0], sizeof(u8), &pid, sizeof(pid)) < 0) {
+			ipio_err("write pid cmd error\n");
+			retry--;
+			continue;
+		}
+
+		ipio_debug("check pid = 0x%x\n", pid);
+
+		if (ilitek_tddi_ic_check_support(pid, pid >> 16) == 0)
+			break;
+
+		retry--;
+	}
+
+	if (retry <= 0) {
+		ipio_err("Failed to enter ice mode with spi comm\n");
+		ret = -EIO;
+	}
+
+	return ret;
+}
+
+static int core_spi_ice_mode_write(u8 *data, int len)
+{
+	int ack = 0, ret = 0;
+	u8 wakeup[10] = {0x82, 0x25, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3};
 
 	ack = idev->spi_ack();
 	if (ack != SPI_ACK) {
@@ -442,59 +487,6 @@ static int core_spi_ice_mode_enable(void)
 			return -EIO;
 		}
 	}
-
-	if (idev->fix_ice) {
-		while (retry > 0) {
-			if (idev->spi_write_then_read(idev->spi, en_ice, sizeof(en_ice), NULL, 0) < 0) {
-				ipio_err("write ice mode cmd error\n");
-				retry--;
-				continue;
-			}
-
-			pid_cmd[0] = SPI_WRITE;
-			pid_cmd[1] = 0x25;
-			pid_cmd[2] = ((idev->chip->pid_addr & 0x000000FF) >> 0);
-			pid_cmd[3] = ((idev->chip->pid_addr & 0x0000FF00) >> 8);
-			pid_cmd[4] = ((idev->chip->pid_addr & 0x00FF0000) >> 16);
-
-			if (idev->spi_write_then_read(idev->spi, pid_cmd, sizeof(pid_cmd), NULL, 0) < 0) {
-				ipio_err("write pid cmd error\n");
-				retry--;
-				continue;
-			}
-
-			pid_cmd[0] = SPI_READ;
-			if (idev->spi_write_then_read(idev->spi, &pid_cmd[0], sizeof(u8), &pid, sizeof(pid)) < 0) {
-				ipio_err("write pid cmd error\n");
-				retry--;
-				continue;
-			}
-
-			ipio_debug("check pid = 0x%x\n", pid);
-
-			if (ilitek_tddi_ic_check_support(pid, pid >> 16) == 0)
-				break;
-
-			retry--;
-		}
-
-		if (retry <= 0) {
-			ipio_err("Failed to enter ice mode with spi comm\n");
-			return -EIO;
-		}
-	} else {
-		if (idev->spi_write_then_read(idev->spi, en_ice, sizeof(en_ice), NULL, 0) < 0) {
-			ipio_err("write ice mode cmd error\n");
-			return SPI_ICE_FAILED;
-		}
-	}
-
-	return 0;
-}
-
-static int core_spi_ice_mode_write(u8 *data, int len)
-{
-	int ret = 0;
 
 	ret = core_spi_ice_mode_enable();
 	if (ret < 0)
@@ -522,7 +514,13 @@ out:
 
 static int core_spi_ice_mode_read(u8 *data, int len)
 {
-	int size = 0, ret = 0;
+	int size = 0, ret = 0, ack = 0;
+
+	ack = idev->spi_ack();
+	if (ack != SPI_ACK) {
+		ipio_err("SPI ACK error (0x%x)\n", ack);
+		return DO_SPI_RECOVER;
+	}
 
 	ret = core_spi_ice_mode_enable();
 	if (ret < 0)
@@ -558,7 +556,7 @@ out:
 
 static int core_spi_write(u8 *data, int len)
 {
-	int ret = 0, count = 5;
+	int ret = 0, retry = 5;
 	int safe_size = len;
 
 	if (atomic_read(&idev->ice_stat) == DISABLE) {
@@ -566,7 +564,7 @@ static int core_spi_write(u8 *data, int len)
 			ret = core_spi_ice_mode_write(data, len);
 			if (ret >= 0)
 				break;
-		} while (--count > 0);
+		} while (--retry > 0);
 		goto out;
 	}
 
@@ -592,17 +590,11 @@ out:
 
 static int core_spi_read(u8 *rxbuf, int len)
 {
-	int ret = 0, retry = 5;
+	int ret = 0;
 	u8 txbuf[1] = {0};
 
 	if (atomic_read(&idev->ice_stat) == DISABLE) {
-		do {
-			ret = core_spi_ice_mode_read(rxbuf, len);
-			if (ret == SPI_ICE_FAILED)
-				retry--;
-			else
-				break;
-		} while (retry > 0);
+		ret = core_spi_ice_mode_read(rxbuf, len);
 		goto out;
 	}
 
