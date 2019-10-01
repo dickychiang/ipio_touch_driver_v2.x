@@ -107,109 +107,107 @@ void ilitek_dump_data(void *data, int type, int len, int row_len, const char *na
 
 static void dma_clear_reg_setting(void)
 {
-	ipio_info("[Clear register setting]\n");
+	/* 1. interrupt t0/t1 enable flag */
+	if (ilitek_ice_mode_bit_mask_write(INTR32_ADDR, INTR32_reg_t0_int_en | INTR32_reg_t1_int_en, (0 << 24)) < 0)
+		ipio_err("Write %lu at %x failed\n", INTR32_reg_t0_int_en | INTR32_reg_t1_int_en, INTR32_ADDR);
 
-	ipio_info("interrupt t0/t1 enable flag\n");
-	if (ilitek_ice_mode_bit_mask_write(INTR32_ADDR, INTR32_reg_t0_int_en, (0 << 24)) < 0)
-		ipio_err("Write %lu at %x failed\n", INTR32_reg_t0_int_en, INTR32_ADDR);
-	if (ilitek_ice_mode_bit_mask_write(INTR32_ADDR, INTR32_reg_t1_int_en, (0 << 25)) < 0)
-		ipio_err("Write %lu at %x failed\n", INTR32_reg_t1_int_en, INTR32_ADDR);
-
-	ipio_info("clear tdi_err_int_flag\n");
+	/* 2. clear tdi_err_int_flag */
 	if (ilitek_ice_mode_bit_mask_write(INTR2_ADDR, INTR2_tdi_err_int_flag_clear, (1 << 18)) < 0)
 		ipio_err("Write %lu at %x failed\n", INTR2_tdi_err_int_flag_clear, INTR2_ADDR);
 
-	ipio_info("clear dma channel 0 src1 info\n");
+	/* 3. clear dma channel 0 src1 info */
 	if (ilitek_ice_mode_write(DMA49_reg_dma_ch0_src1_addr, 0x00000000, 4) < 0)
 		ipio_err("Write 0x00000000 at %x failed\n", DMA49_reg_dma_ch0_src1_addr);
 	if (ilitek_ice_mode_write(DMA50_reg_dma_ch0_src1_step_inc, 0x00, 1) < 0)
 		ipio_err("Write 0x0 at %x failed\n", DMA50_reg_dma_ch0_src1_step_inc);
-	if (ilitek_ice_mode_bit_mask_write(DMA50_ADDR, DMA50_reg_dma_ch0_src1_format, (0 << 24)) < 0)
-		ipio_err("Write %lu at %x failed\n", DMA50_reg_dma_ch0_src1_format, DMA50_ADDR);
-	if (ilitek_ice_mode_bit_mask_write(DMA50_ADDR, DMA50_reg_dma_ch0_src1_en, (1 << 31)) < 0)
-		ipio_err("Write %lu at %x failed\n", DMA50_reg_dma_ch0_src1_en, DMA50_ADDR);
+	if (ilitek_ice_mode_bit_mask_write(DMA50_ADDR, DMA50_reg_dma_ch0_src1_format | DMA50_reg_dma_ch0_src1_en, BIT(31)) < 0)
+		ipio_err("Write %lu at %x failed\n", DMA50_reg_dma_ch0_src1_format | DMA50_reg_dma_ch0_src1_en, DMA50_ADDR);
 
-	ipio_info("clear dma channel 0 src2 info\n");
-	if (ilitek_ice_mode_bit_mask_write(DMA52_ADDR, DMA52_reg_dma_ch0_src2_en, (0 << 31)) < 0)
-		ipio_err("Write %lu at %x failed\n", DMA52_reg_dma_ch0_src2_en, DMA52_ADDR);
-
-	ipio_info("clear dma channel 0 trafer info\n");
-	if (ilitek_ice_mode_write(DMA55_reg_dma_ch0_trafer_counts, 0x00000000, 4) < 0)
-		ipio_err("Write 0x00000000 at %x failed\n", DMA55_reg_dma_ch0_trafer_counts);
-	if (ilitek_ice_mode_bit_mask_write(DMA55_ADDR, DMA55_reg_dma_ch0_trafer_mode, (0 << 24)) < 0)
-		ipio_err("Write %lu at %x failed\n", DMA55_reg_dma_ch0_trafer_mode, DMA55_ADDR);
-
-	ipio_info("clear dma channel 0 trigger select\n");
+	/* 4. clear dma channel 0 trigger select */
 	if (ilitek_ice_mode_bit_mask_write(DMA48_ADDR, DMA48_reg_dma_ch0_trigger_sel, (0 << 16)) < 0)
 		ipio_err("Write %lu at %x failed\n", DMA48_reg_dma_ch0_trigger_sel, DMA48_ADDR);
-
 	if (ilitek_ice_mode_bit_mask_write(INTR1_ADDR, INTR1_reg_flash_int_flag, (1 << 25)) < 0)
 		ipio_err("Write %lu at %x failed\n", INTR1_reg_flash_int_flag, INTR1_ADDR);
 
-	ipio_info("clear dma flash setting\n");
+	/* 5. clear dma flash setting */
 	ilitek_tddi_flash_clear_dma();
 }
 
 static void dma_trigger_reg_setting(u32 reg_dest_addr, u32 flash_start_addr, u32 copy_size)
 {
-	ipio_info("set dma channel 0 clear\n");
-	if (ilitek_ice_mode_bit_mask_write(DMA48_ADDR, DMA48_reg_dma_ch0_start_clear, (1 << 25)) < 0)
+	int retry = 30;
+	u32 stat = 0;
+
+	/* 1. set dma channel 0 clear */
+	if (ilitek_ice_mode_bit_mask_write(DMA48_ADDR, DMA48_reg_dma_ch0_start_clear, BIT(25)) < 0)
 		ipio_err("Write %lu at %x failed\n", DMA48_reg_dma_ch0_start_clear, DMA48_ADDR);
 
-	ipio_info("set dma channel 0 src1 info\n");
+	/* 2. set dma channel 0 src1 info */
 	if (ilitek_ice_mode_write(DMA49_reg_dma_ch0_src1_addr, 0x00041010, 4) < 0)
 		ipio_err("Write 0x00041010 at %x failed\n", DMA49_reg_dma_ch0_src1_addr);
 	if (ilitek_ice_mode_write(DMA50_reg_dma_ch0_src1_step_inc, 0x00, 1) < 0)
 		ipio_err("Write 0x00 at %x failed\n", DMA50_reg_dma_ch0_src1_step_inc);
-	if (ilitek_ice_mode_bit_mask_write(DMA50_ADDR, DMA50_reg_dma_ch0_src1_format, (0 << 24)) < 0)
-		ipio_err("Write %lu at %x failed\n", DMA50_reg_dma_ch0_src1_format, DMA50_ADDR);
-	if (ilitek_ice_mode_bit_mask_write(DMA50_ADDR, DMA50_reg_dma_ch0_src1_en, (1 << 31)) < 0)
-		ipio_err("Write %lu at %x failed\n", DMA50_reg_dma_ch0_src1_en, DMA50_ADDR);
+	if (ilitek_ice_mode_bit_mask_write(DMA50_ADDR, DMA50_reg_dma_ch0_src1_format | DMA50_reg_dma_ch0_src1_en, BIT(31)) < 0)
+		ipio_err("Write %lu at %x failed\n", DMA50_reg_dma_ch0_src1_format | DMA50_reg_dma_ch0_src1_en, DMA50_ADDR);
 
-	ipio_info("set dma channel 0 src2 info\n");
+	/* 3. set dma channel 0 src2 info */
 	if (ilitek_ice_mode_bit_mask_write(DMA52_ADDR, DMA52_reg_dma_ch0_src2_en, (0 << 31)) < 0)
 		ipio_err("Write %lu at %x failed\n", DMA52_reg_dma_ch0_src2_en, DMA52_ADDR);
 
-	ipio_info("set dma channel 0 dest info\n");
+	/* 4. set dma channel 0 dest info */
 	if (ilitek_ice_mode_write(DMA53_reg_dma_ch0_dest_addr, reg_dest_addr, 3) < 0)
 		ipio_err("Write %x at %x failed\n", reg_dest_addr, DMA53_reg_dma_ch0_dest_addr);
 	if (ilitek_ice_mode_write(DMA54_reg_dma_ch0_dest_step_inc, 0x01, 1) < 0)
 		ipio_err("Write 0x01 at %x failed\n", DMA54_reg_dma_ch0_dest_step_inc);
-	if (ilitek_ice_mode_bit_mask_write(DMA54_ADDR, DMA54_reg_dma_ch0_dest_format, (0 << 24)) < 0)
-		ipio_err("Write %lu at %x failed\n", DMA54_reg_dma_ch0_dest_format, DMA54_ADDR);
-	if (ilitek_ice_mode_bit_mask_write(DMA54_ADDR, DMA54_reg_dma_ch0_dest_en, (1 << 31)) < 0)
-		ipio_err("Write %lu at %x failed\n", DMA54_reg_dma_ch0_dest_en, DMA54_ADDR);
+	if (ilitek_ice_mode_write(DMA54_ADDR, DMA54_reg_dma_ch0_dest_format | DMA54_reg_dma_ch0_dest_en, BIT(31)) < 0)
+		ipio_err("Write %lu at %x failed\n", DMA54_reg_dma_ch0_dest_format | DMA54_reg_dma_ch0_dest_en, DMA54_ADDR);
 
-	ipio_info("set dma channel 0 trafer info\n");
+	/* 5. set dma channel 0 trafer info */
 	if (ilitek_ice_mode_write(DMA55_reg_dma_ch0_trafer_counts, copy_size, 4) < 0)
 		ipio_err("Write %x at %x failed\n", copy_size, DMA55_reg_dma_ch0_trafer_counts);
 	if (ilitek_ice_mode_bit_mask_write(DMA55_ADDR, DMA55_reg_dma_ch0_trafer_mode, (0 << 24)) < 0)
 		ipio_err("Write %lu at %x failed\n", DMA55_reg_dma_ch0_trafer_mode, DMA55_ADDR);
 
-	ipio_info("set dma channel 0 int info\n");
+	/* 6. set dma channel 0 int info */
 	if (ilitek_ice_mode_bit_mask_write(INTR33_ADDR, INTR33_reg_dma_ch0_int_en, (1 << 17)) < 0)
 		ipio_err("Write %lu at %x failed\n", INTR33_reg_dma_ch0_int_en, INTR33_ADDR);
 
-	ipio_info("set dma channel 0 trigger select\n");
+	/* 7. set dma channel 0 trigger select */
 	if (ilitek_ice_mode_bit_mask_write(DMA48_ADDR, DMA48_reg_dma_ch0_trigger_sel, (1 << 16)) < 0)
 		ipio_err("Write %lu at %x failed\n", DMA48_reg_dma_ch0_trigger_sel, DMA48_ADDR);
 
-	ipio_info("set dma flash setting, FlashAddr = 0x%x\n", flash_start_addr);
 	ilitek_tddi_flash_dma_write(flash_start_addr, (flash_start_addr+copy_size), copy_size);
 
-	ipio_info("clear flash and dma ch0 int flag\n");
-	if (ilitek_ice_mode_bit_mask_write(INTR1_ADDR, INTR1_reg_flash_int_flag, (1 << 25)) < 0)
-		ipio_err("Write %lu at %x failed\n", INTR1_reg_flash_int_flag, INTR1_ADDR);
-	if (ilitek_ice_mode_bit_mask_write(INTR1_ADDR, INTR1_reg_dma_ch0_int_flag, (1 << 17)) < 0)
-		ipio_err("Write %lu at %x failed\n", INTR1_reg_dma_ch0_int_flag, INTR1_ADDR);
+	/* 9. clear flash and dma ch0 int flag */
+	if (ilitek_ice_mode_bit_mask_write(INTR1_ADDR, INTR1_reg_dma_ch0_int_flag | INTR1_reg_flash_int_flag, BIT(17) | BIT(25)) < 0)
+		ipio_err("Write %lu at %x failed\n", INTR1_reg_dma_ch0_int_flag | INTR1_reg_flash_int_flag, INTR1_ADDR);
 	if (ilitek_ice_mode_bit_mask_write(0x041013, BIT(0), 1) < 0) //patch
 		ipio_err("Write %lu at %x failed\n", BIT(0), 0x041013);
 
 	/* DMA Trigger */
 	if (ilitek_ice_mode_write(FLASH4_reg_rcv_data, 0xFF, 1) < 0)
 		ipio_err("Trigger DMA failed\n");
+
 	/* waiting for fw reload code completed. */
-	mdelay(30);
+	while (retry > 0) {
+		if (ilitek_ice_mode_read(INTR1_ADDR, &stat, sizeof(u32)) < 0) {
+			ipio_err("Read 0x%x error\n", INTR1_ADDR);
+			retry--;
+			continue;
+		}
+
+		ipio_debug("fw dma stat = %x\n", stat);
+
+		if ((stat & BIT(17)) == BIT(17))
+			break;
+
+		retry--;
+		usleep_range(1000, 1000);
+	}
+
+	if (retry <= 0)
+		ipio_err("DMA fail: Regsiter = 0x%x Flash = 0x%x, Size = %d\n",
+			reg_dest_addr, flash_start_addr, copy_size);
 
 	/* CS High */
 	if (ilitek_ice_mode_write(FLASH0_reg_flash_csb, 0x1, 1) < 0)

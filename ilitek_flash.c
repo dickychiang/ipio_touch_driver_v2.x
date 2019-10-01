@@ -185,14 +185,8 @@ static int ilitek_tddi_flash_poll_busy(int timer)
 
 void ilitek_tddi_flash_clear_dma(void)
 {
-	if (ilitek_ice_mode_bit_mask_write(INTR1_ADDR, INTR1_reg_flash_int_flag, (1 << 25)) < 0)
-		ipio_err("Write %lu at %x failed\n", INTR1_reg_flash_int_flag, INTR1_ADDR);
-
 	if (ilitek_ice_mode_bit_mask_write(FLASH0_ADDR, FLASH0_reg_preclk_sel, (2 << 16)) < 0)
 		ipio_err("Write %lu at %x failed\n", FLASH0_reg_preclk_sel, FLASH0_ADDR);
-
-	if (ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x01, 1) < 0)
-		ipio_err("Pull cs high failed\n");
 
 	if (ilitek_ice_mode_bit_mask_write(FLASH4_ADDR, FLASH4_reg_flash_dma_trigger_en, (0 << 24)) < 0)
 		ipio_err("Write %lu at %x failed\n", FLASH4_reg_flash_dma_trigger_en, FLASH4_ADDR);
