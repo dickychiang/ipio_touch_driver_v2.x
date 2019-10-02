@@ -572,7 +572,7 @@ static int ilitek_tddi_fw_check_ver(u8 *pfw)
 
 		/* Compare Flash CRC with HW CRC */
 		if (flash_crc_cb != hw_crc[i]) {
-			ipio_info("HW and Flash CRc not matched, do upgrade\n");
+			ipio_info("HW and Flash CRC not matched, do upgrade\n");
 			return UPDATE_FAIL;
 		}
 		memset(flash_crc, 0, sizeof(flash_crc));
@@ -583,21 +583,22 @@ static int ilitek_tddi_fw_check_ver(u8 *pfw)
 	if (tfd.new_fw_cb != idev->chip->fw_ver) {
 		ipio_info("FW version not matched, do upgrade\n");
 		return UPDATE_FAIL;
-	} else {
-		/* Check Hex and HW CRC */
-		for (i = 0; i < FW_BLOCK_INFO_NUM; i++) {
-			if (fbi[i].end == 0)
-				continue;
+	}
 
-			len = fbi[i].end - fbi[i].start + 1 - 4;
-			hex_crc = CalculateCRC32(fbi[i].start, len, pfw);
-			ipio_info("Block = %d, HW CRC = 0x%06x, Hex CRC = 0x%06x\n", i, hw_crc[i], hex_crc);
-			if (hex_crc != hw_crc[i]) {
-				ipio_err("Hex and HW CRC not matched, do upgrade\n");
-				return UPDATE_FAIL;
-			}
+	/* Check Hex and HW CRC */
+	for (i = 0; i < FW_BLOCK_INFO_NUM; i++) {
+		if (fbi[i].end == 0)
+			continue;
+
+		len = fbi[i].end - fbi[i].start + 1 - 4;
+		hex_crc = CalculateCRC32(fbi[i].start, len, pfw);
+		ipio_info("Block = %d, HW CRC = 0x%06x, Hex CRC = 0x%06x\n", i, hw_crc[i], hex_crc);
+		if (hex_crc != hw_crc[i]) {
+			ipio_err("Hex and HW CRC not matched, do upgrade\n");
+			return UPDATE_FAIL;
 		}
 	}
+
 	ipio_info("Firmware is the newest version, upgrade abort\n");
 	return UPDATE_PASS;
 }

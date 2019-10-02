@@ -723,6 +723,7 @@ int ilitek_tddi_reset_ctrl(int mode)
 	 */
 	if (mode != TP_IC_CODE_RST)
 		atomic_set(&idev->ice_stat, DISABLE);
+
 	idev->fw_uart_en = DISABLE;
 	idev->gesture_debug = DISABLE;
 	idev->tp_data_format = DATA_FORMAT_DEMO;
@@ -802,13 +803,13 @@ int ilitek_tddi_init(void)
 #if (TDDI_INTERFACE == BUS_I2C)
 	idev->info_from_hex = DISABLE;
 #endif
-	if (ilitek_tddi_ic_get_core_ver() < 0 ||
-		ilitek_tddi_ic_get_protocl_ver() < 0 ||
-		ilitek_tddi_ic_get_fw_ver() < 0 ||
-		ilitek_tddi_ic_get_tp_info() < 0 ||
-		ilitek_tddi_ic_get_panel_info() < 0) {
-		ipio_err("Get TP infomration error\n");
-	}
+
+	ilitek_tddi_ic_get_core_ver();
+	ilitek_tddi_ic_get_protocl_ver();
+	ilitek_tddi_ic_get_fw_ver();
+	ilitek_tddi_ic_get_tp_info();
+	ilitek_tddi_ic_get_panel_info();
+
 #if (TDDI_INTERFACE == BUS_I2C)
 	idev->info_from_hex = ENABLE;
 #endif

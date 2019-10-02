@@ -1385,27 +1385,29 @@ static int allnode_key_cdc_data(int index)
 	if (ret < 0)
 		goto out;
 
-	/* Prepare to get cdc data */
-	cmd[0] = P5_X_READ_DATA_CTRL;
-	cmd[1] = P5_X_GET_CDC_DATA;
+	if (core_mp.core_ver < CORE_VER_1420) {
+		/* Prepare to get cdc data */
+		cmd[0] = P5_X_READ_DATA_CTRL;
+		cmd[1] = P5_X_GET_CDC_DATA;
 
-	ret = idev->write(cmd, 2);
-	if (ret < 0) {
-		ipio_err("Write (0x%x, 0x%x) error\n", cmd[0], cmd[1]);
-		goto out;
+		ret = idev->write(cmd, 2);
+		if (ret < 0) {
+			ipio_err("Write (0x%x, 0x%x) error\n", cmd[0], cmd[1]);
+			goto out;
+		}
+
+		/* Waiting for FW to prepare cdc data */
+		mdelay(1);
+
+		ret = idev->write(&cmd[1], 1);
+		if (ret < 0) {
+			ipio_err("Write (0x%x) error\n", cmd[1]);
+			goto out;
+		}
+
+		/* Waiting for FW to prepare cdc data */
+		mdelay(1);
 	}
-
-	/* Waiting for FW to prepare cdc data */
-	mdelay(1);
-
-	ret = idev->write(&cmd[1], 1);
-	if (ret < 0) {
-		ipio_err("Write (0x%x) error\n", cmd[1]);
-		goto out;
-	}
-
-	/* Waiting for FW to prepare cdc data */
-	mdelay(1);
 
 	/* Allocate a buffer for the original */
 	ori = kcalloc(len, sizeof(u8), GFP_KERNEL);
@@ -1567,27 +1569,29 @@ static int allnode_open_cdc_data(int mode, int *buf)
 		goto out;
 	}
 
-	/* Prepare to get cdc data */
-	cmd[0] = P5_X_READ_DATA_CTRL;
-	cmd[1] = P5_X_GET_CDC_DATA;
+	if (core_mp.core_ver < CORE_VER_1420) {
+		/* Prepare to get cdc data */
+		cmd[0] = P5_X_READ_DATA_CTRL;
+		cmd[1] = P5_X_GET_CDC_DATA;
 
-	if (idev->write(cmd, 2) < 0) {
-		ipio_err("Write (0x%x, 0x%x) error\n", cmd[0], cmd[1]);
-		ret = -EMP_CMD;
-		goto out;
+		if (idev->write(cmd, 2) < 0) {
+			ipio_err("Write (0x%x, 0x%x) error\n", cmd[0], cmd[1]);
+			ret = -EMP_CMD;
+			goto out;
+		}
+
+		/* Waiting for FW to prepare cdc data */
+		mdelay(1);
+
+		if (idev->write(&cmd[1], 1) < 0) {
+			ipio_err("Write (0x%x) error\n", cmd[1]);
+			ret = -EMP_GET_CDC;
+			goto out;
+		}
+
+		/* Waiting for FW to prepare cdc data */
+		mdelay(1);
 	}
-
-	/* Waiting for FW to prepare cdc data */
-	mdelay(1);
-
-	if (idev->write(&cmd[1], 1) < 0) {
-		ipio_err("Write (0x%x) error\n", cmd[1]);
-		ret = -EMP_GET_CDC;
-		goto out;
-	}
-
-	/* Waiting for FW to prepare cdc data */
-	mdelay(1);
 
 	/* Allocate a buffer for the original */
 	ori = kcalloc(len, sizeof(u8), GFP_KERNEL);
@@ -1691,7 +1695,7 @@ static int allnode_mutual_cdc_data(int index)
 		goto out;
 	}
 
-	if (core_mp.core_ver < CORE_VER_1430) {
+	if (core_mp.core_ver < CORE_VER_1420) {
 		/* Prepare to get cdc data */
 		cmd[0] = P5_X_READ_DATA_CTRL;
 		cmd[1] = P5_X_GET_CDC_DATA;
@@ -3062,7 +3066,7 @@ static void ilitek_tddi_mp_init_item(void)
 	ipio_info("Read CDC Length = %d\n", core_mp.cdc_len);
 	ipio_info("X length = %d, Y length = %d\n", core_mp.xch_len, core_mp.ych_len);
 	ipio_info("Frame length = %d\n", core_mp.frame_len);
-	ipio_info("Check busy method = %d\n", core_mp.busy_cdc);
+	ipio_info("Check busy method = %s\n", (core_mp.busy_cdc ? "Polling" : "Interrupt"));
 	ipio_info("===============================================\n");
 
 	for (i = 0; i < MP_TEST_ITEM; i++) {
