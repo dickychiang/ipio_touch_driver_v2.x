@@ -1471,107 +1471,107 @@ static long ilitek_node_compat_ioctl(struct file *filp, unsigned int cmd, unsign
 		return -ENOTTY;
 	}
 
-	ipio_info("cmd = %d\n", _IOC_NR(cmd));
+	ipio_debug("cmd = %d\n", _IOC_NR(cmd));
 
 	switch (cmd) {
 	case ILITEK_COMPAT_IOCTL_I2C_WRITE_DATA:
-		ipio_info("compat_ioctl: convert i2c/spi write\n");
+		ipio_debug("compat_ioctl: convert i2c/spi write\n");
 		ret = filp->f_op->unlocked_ioctl(filp, ILITEK_IOCTL_I2C_WRITE_DATA, (unsigned long)compat_ptr(arg));
 		return ret;
 	case ILITEK_COMPAT_IOCTL_I2C_READ_DATA:
-		ipio_info("compat_ioctl: convert i2c/spi read\n");
+		ipio_debug("compat_ioctl: convert i2c/spi read\n");
 		ret = filp->f_op->unlocked_ioctl(filp, ILITEK_IOCTL_I2C_READ_DATA, (unsigned long)compat_ptr(arg));
 		return ret;
 	case ILITEK_COMPAT_IOCTL_I2C_SET_WRITE_LENGTH:
-		ipio_info("compat_ioctl: convert set write length\n");
+		ipio_debug("compat_ioctl: convert set write length\n");
 		ret = filp->f_op->unlocked_ioctl(filp, ILITEK_IOCTL_I2C_SET_WRITE_LENGTH, (unsigned long)compat_ptr(arg));
 		return ret;
 	case ILITEK_COMPAT_IOCTL_I2C_SET_READ_LENGTH:
-		ipio_info("compat_ioctl: convert set read length\n");
+		ipio_debug("compat_ioctl: convert set read length\n");
 		ret = filp->f_op->unlocked_ioctl(filp, ILITEK_IOCTL_I2C_SET_READ_LENGTH, (unsigned long)compat_ptr(arg));
 		return ret;
 	case ILITEK_COMPAT_IOCTL_TP_HW_RESET:
-		ipio_info("compat_ioctl: convert hw reset\n");
+		ipio_debug("compat_ioctl: convert hw reset\n");
 		ret = filp->f_op->unlocked_ioctl(filp, ILITEK_IOCTL_TP_HW_RESET, (unsigned long)compat_ptr(arg));
 		return ret;
 	case ILITEK_COMPAT_IOCTL_TP_POWER_SWITCH:
-		ipio_info("compat_ioctl: convert power switch\n");
+		ipio_debug("compat_ioctl: convert power switch\n");
 		ret = filp->f_op->unlocked_ioctl(filp, ILITEK_IOCTL_TP_POWER_SWITCH, (unsigned long)compat_ptr(arg));
 		return ret;
 	case ILITEK_COMPAT_IOCTL_TP_REPORT_SWITCH:
-		ipio_info("compat_ioctl: convert report switch\n");
+		ipio_debug("compat_ioctl: convert report switch\n");
 		ret = filp->f_op->unlocked_ioctl(filp, ILITEK_IOCTL_TP_REPORT_SWITCH, (unsigned long)compat_ptr(arg));
 		return ret;
 	case ILITEK_COMPAT_IOCTL_TP_IRQ_SWITCH:
-		ipio_info("compat_ioctl: convert irq switch\n");
+		ipio_debug("compat_ioctl: convert irq switch\n");
 		ret = filp->f_op->unlocked_ioctl(filp, ILITEK_IOCTL_TP_IRQ_SWITCH, (unsigned long)compat_ptr(arg));
 		return ret;
 	case ILITEK_COMPAT_IOCTL_TP_DEBUG_LEVEL:
-		ipio_info("compat_ioctl: convert debug level\n");
+		ipio_debug("compat_ioctl: convert debug level\n");
 		ret = filp->f_op->unlocked_ioctl(filp, ILITEK_IOCTL_TP_DEBUG_LEVEL, (unsigned long)compat_ptr(arg));
 		return ret;
 	case ILITEK_COMPAT_IOCTL_TP_FUNC_MODE:
-		ipio_info("compat_ioctl: convert format mode\n");
+		ipio_debug("compat_ioctl: convert format mode\n");
 		ret = filp->f_op->unlocked_ioctl(filp, ILITEK_IOCTL_TP_FUNC_MODE, (unsigned long)compat_ptr(arg));
 		return ret;
 	case ILITEK_COMPAT_IOCTL_TP_FW_VER:
-		ipio_info("compat_ioctl: convert set read length\n");
+		ipio_debug("compat_ioctl: convert set read length\n");
 		ret = filp->f_op->unlocked_ioctl(filp, ILITEK_IOCTL_TP_FW_VER, (unsigned long)compat_ptr(arg));
 		return ret;
 	case ILITEK_COMPAT_IOCTL_TP_PL_VER:
-		ipio_info("compat_ioctl: convert fw version\n");
+		ipio_debug("compat_ioctl: convert fw version\n");
 		ret = filp->f_op->unlocked_ioctl(filp, ILITEK_IOCTL_TP_PL_VER, (unsigned long)compat_ptr(arg));
 		return ret;
 	case ILITEK_COMPAT_IOCTL_TP_CORE_VER:
-		ipio_info("compat_ioctl: convert core version\n");
+		ipio_debug("compat_ioctl: convert core version\n");
 		ret = filp->f_op->unlocked_ioctl(filp, ILITEK_IOCTL_TP_CORE_VER, (unsigned long)compat_ptr(arg));
 		return ret;
 	case ILITEK_COMPAT_IOCTL_TP_DRV_VER:
-		ipio_info("compat_ioctl: convert driver version\n");
+		ipio_debug("compat_ioctl: convert driver version\n");
 		ret = filp->f_op->unlocked_ioctl(filp, ILITEK_IOCTL_TP_DRV_VER, (unsigned long)compat_ptr(arg));
 		return ret;
 	case ILITEK_COMPAT_IOCTL_TP_CHIP_ID:
-		ipio_info("compat_ioctl: convert chip id\n");
+		ipio_debug("compat_ioctl: convert chip id\n");
 		ret = filp->f_op->unlocked_ioctl(filp, ILITEK_IOCTL_TP_CHIP_ID, (unsigned long)compat_ptr(arg));
 		return ret;
 	case ILITEK_COMPAT_IOCTL_TP_NETLINK_CTRL:
-		ipio_info("compat_ioctl: convert netlink ctrl\n");
+		ipio_debug("compat_ioctl: convert netlink ctrl\n");
 		ret = filp->f_op->unlocked_ioctl(filp, ILITEK_IOCTL_TP_NETLINK_CTRL, (unsigned long)compat_ptr(arg));
 		return ret;
 	case ILITEK_COMPAT_IOCTL_TP_NETLINK_STATUS:
-		ipio_info("compat_ioctl: convert netlink status\n");
+		ipio_debug("compat_ioctl: convert netlink status\n");
 		ret = filp->f_op->unlocked_ioctl(filp, ILITEK_IOCTL_TP_NETLINK_STATUS, (unsigned long)compat_ptr(arg));
 		return ret;
 	case ILITEK_COMPAT_IOCTL_TP_MODE_CTRL:
-		ipio_info("compat_ioctl: convert tp mode ctrl\n");
+		ipio_debug("compat_ioctl: convert tp mode ctrl\n");
 		ret = filp->f_op->unlocked_ioctl(filp, ILITEK_IOCTL_TP_MODE_CTRL, (unsigned long)compat_ptr(arg));
 		return ret;
 	case ILITEK_COMPAT_IOCTL_TP_MODE_STATUS:
-		ipio_info("compat_ioctl: convert tp mode status\n");
+		ipio_debug("compat_ioctl: convert tp mode status\n");
 		ret = filp->f_op->unlocked_ioctl(filp, ILITEK_IOCTL_TP_MODE_STATUS, (unsigned long)compat_ptr(arg));
 		return ret;
 	case ILITEK_COMPAT_IOCTL_ICE_MODE_SWITCH:
-		ipio_info("compat_ioctl: convert tp mode switch\n");
+		ipio_debug("compat_ioctl: convert tp mode switch\n");
 		ret = filp->f_op->unlocked_ioctl(filp, ILITEK_IOCTL_ICE_MODE_SWITCH, (unsigned long)compat_ptr(arg));
 		return ret;
 	case ILITEK_COMPAT_IOCTL_TP_INTERFACE_TYPE:
-		ipio_info("compat_ioctl: convert interface type\n");
+		ipio_debug("compat_ioctl: convert interface type\n");
 		ret = filp->f_op->unlocked_ioctl(filp, ILITEK_IOCTL_TP_INTERFACE_TYPE, (unsigned long)compat_ptr(arg));
 		return ret;
 	case ILITEK_COMPAT_IOCTL_TP_DUMP_FLASH:
-		ipio_info("compat_ioctl: convert dump flash\n");
+		ipio_debug("compat_ioctl: convert dump flash\n");
 		ret = filp->f_op->unlocked_ioctl(filp, ILITEK_IOCTL_TP_DUMP_FLASH, (unsigned long)compat_ptr(arg));
 		return ret;
 	case ILITEK_COMPAT_IOCTL_TP_FW_UART_CTRL:
-		ipio_info("compat_ioctl: convert fw uart\n");
+		ipio_debug("compat_ioctl: convert fw uart\n");
 		ret = filp->f_op->unlocked_ioctl(filp, ILITEK_IOCTL_TP_FW_UART_CTRL, (unsigned long)compat_ptr(arg));
 		return ret;
 	case ILITEK_COMPAT_IOCTL_TP_PANEL_INFO:
-		ipio_info("compat_ioctl: convert resolution\n");
+		ipio_debug("compat_ioctl: convert resolution\n");
 		ret = filp->f_op->unlocked_ioctl(filp, ILITEK_COMPAT_IOCTL_TP_PANEL_INFO, (unsigned long)compat_ptr(arg));
 		return ret;
 	case ILITEK_COMPAT_IOCTL_TP_INFO:
-		ipio_info("compat_ioctl: convert resolution\n");
+		ipio_debug("compat_ioctl: convert tp info\n");
 		ret = filp->f_op->unlocked_ioctl(filp, ILITEK_COMPAT_IOCTL_TP_INFO, (unsigned long)compat_ptr(arg));
 		return ret;
 	default:
@@ -1718,11 +1718,6 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 		break;
 	case ILITEK_IOCTL_TP_FW_VER:
 		ipio_debug("ioctl: get fw version\n");
-		ret = ilitek_tddi_ic_get_fw_ver();
-		if (ret < 0) {
-			ipio_err("Failed to get firmware version\n");
-			break;
-		}
 
 		szBuf[3] = idev->chip->fw_ver & 0xFF;
 		szBuf[2] = (idev->chip->fw_ver >> 8) & 0xFF;
@@ -1737,11 +1732,6 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 		break;
 	case ILITEK_IOCTL_TP_PL_VER:
 		ipio_debug("ioctl: get protocl version\n");
-		ret = ilitek_tddi_ic_get_protocl_ver();
-		if (ret < 0) {
-			ipio_err("Failed to get protocol version\n");
-			break;
-		}
 
 		szBuf[2] = idev->protocol->ver & 0xFF;
 		szBuf[1] = (idev->protocol->ver >> 8) & 0xFF;
@@ -1755,11 +1745,6 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 		break;
 	case ILITEK_IOCTL_TP_CORE_VER:
 		ipio_debug("ioctl: get core version\n");
-		ret = ilitek_tddi_ic_get_core_ver();
-		if (ret < 0) {
-			ipio_err("Failed to get core version\n");
-			break;
-		}
 
 		szBuf[3] = idev->chip->core_ver & 0xFF;
 		szBuf[2] = (idev->chip->core_ver >> 8) & 0xFF;
@@ -1783,23 +1768,16 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 		break;
 	case ILITEK_IOCTL_TP_CHIP_ID:
 		ipio_debug("ioctl: get chip id\n");
-		ilitek_ice_mode_ctrl(ENABLE, OFF);
-		ret = ilitek_tddi_ic_get_info();
-		if (ret < 0) {
-			ipio_err("Failed to get chip id\n");
-			break;
-		}
 
 		id_to_user[0] = idev->chip->pid;
 		id_to_user[1] = idev->chip->otp_id;
 		id_to_user[2] = idev->chip->ana_id;
 
-		if (copy_to_user((u32 *) arg, id_to_user, sizeof(id_to_user))) {
+		if (copy_to_user((u32 *) arg, id_to_user, sizeof(u32) * 3)) {
 			ipio_err("Failed to copy driver ver to user space\n");
 			ret = -ENOTTY;
 		}
 
-		ilitek_ice_mode_ctrl(DISABLE, OFF);
 		break;
 	case ILITEK_IOCTL_TP_NETLINK_CTRL:
 		if (copy_from_user(szBuf, (u8 *) arg, 1)) {
@@ -1920,11 +1898,6 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 		break;
 	case ILITEK_IOCTL_TP_PANEL_INFO:
 		ipio_debug("ioctl: get panel resolution\n");
-		ret = ilitek_tddi_ic_get_panel_info();
-		if (ret < 0) {
-			ipio_err("Failed to get resolution\n");
-			break;
-		}
 
 		id_to_user[0] = idev->panel_wid;
 		id_to_user[1] = idev->panel_hei;
@@ -1936,11 +1909,6 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 		break;
 	case ILITEK_IOCTL_TP_INFO:
 		ipio_debug("ioctl: get tp info\n");
-		ret = ilitek_tddi_ic_get_tp_info();
-		if (ret < 0) {
-			ipio_err("Failed to get tp info\n");
-			break;
-		}
 
 		id_to_user[0] = idev->min_x;
 		id_to_user[1] = idev->min_y;
