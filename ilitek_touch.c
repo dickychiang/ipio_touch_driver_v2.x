@@ -557,7 +557,7 @@ int ilitek_tddi_touch_esd_gesture_iram(void)
 
 	/* Wait for fw running code finished. */
 	if (idev->info_from_hex || (idev->chip->core_ver >= CORE_VER_1410))
-		usleep_range(50000, 50000);
+		msleep(50);
 
 	if (ilitek_ice_mode_ctrl(ENABLE, ON) < 0)
 		ipio_err("Enable ice mode failed during gesture recovery\n");
