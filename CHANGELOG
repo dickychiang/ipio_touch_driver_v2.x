@@ -1,3 +1,17 @@
+* v2.0.3.0
+[New features]
+1. Add panel/tp info with ioctl for apk
+
+[Improvements]
+1. If IC is 7807G from AA to AH version, it must be checking chip id/spi ack while entering/exiting ice mode.
+2. Optimized the progress of operating DMA.
+
+[Bus fixed]
+1. Fix the issue of not getting versions when auto upgrade is disabled.
+2. Skips an interrupt and remove retry when occuring rx lock error.
+3. Remove sending dummy cmd in spi read during system suspend.
+4. Change the result from fail to pass and the name of csv file as 'warning' if the settings of Golden mode and spec option in ini file aren't matched.
+
 * v2.0.2.0
 [New features]
 1. Add parsing gesture coordinate.
