@@ -176,6 +176,7 @@ static void dma_trigger_reg_setting(u32 reg_dest_addr, u32 flash_start_addr, u32
 	if (ilitek_ice_mode_bit_mask_write(DMA48_ADDR, DMA48_reg_dma_ch0_trigger_sel, (1 << 16)) < 0)
 		ipio_err("Write %lu at %x failed\n", DMA48_reg_dma_ch0_trigger_sel, DMA48_ADDR);
 
+	/* 8. set dma flash setting */
 	ilitek_tddi_flash_dma_write(flash_start_addr, (flash_start_addr+copy_size), copy_size);
 
 	/* 9. clear flash and dma ch0 int flag */
@@ -556,7 +557,7 @@ int ilitek_tddi_touch_esd_gesture_iram(void)
 
 	/* Wait for fw running code finished. */
 	if (idev->info_from_hex || (idev->chip->core_ver >= CORE_VER_1410))
-		msleep(50);
+		usleep_range(50000, 50000);
 
 	if (ilitek_ice_mode_ctrl(ENABLE, ON) < 0)
 		ipio_err("Enable ice mode failed during gesture recovery\n");
