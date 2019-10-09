@@ -1,3 +1,8 @@
+* v2.0.3.1
+[Bug fixed]
+1. Fix the issue of compiling error in rk3288.
+2. Dummy cmd for waking up the clk of spi pll should be placed in very first in write.
+
 * v2.0.3.0
 [New features]
 1. Add panel/tp info with ioctl for apk
