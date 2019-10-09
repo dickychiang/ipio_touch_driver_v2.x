@@ -1586,7 +1586,7 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 	int ret = 0, length = 0;
 	u8 *szBuf = NULL, if_to_user = 0;
 	static u16 i2c_rw_length;
-	u32 id_to_user[256] = {0};
+	u32 id_to_user[64] = {0};
 	bool esd_en = idev->wq_esd_ctrl, bat_en = idev->wq_bat_ctrl;
 
 	if (_IOC_TYPE(cmd) != ILITEK_IOCTL_MAGIC) {
