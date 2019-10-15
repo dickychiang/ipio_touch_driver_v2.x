@@ -555,6 +555,8 @@ int ilitek_tddi_touch_esd_gesture_iram(void)
 	if (ilitek_tddi_fw_upgrade_handler(NULL) < 0)
 		ipio_err("FW upgrade failed during gesture recovery\n");
 
+	idev->skip_wake = true;
+
 	/* Wait for fw running code finished. */
 	if (idev->info_from_hex || (idev->chip->core_ver >= CORE_VER_1410))
 		msleep(50);
@@ -594,6 +596,8 @@ int ilitek_tddi_touch_esd_gesture_iram(void)
 	if ((idev->write(cmd, sizeof(cmd))) < 0)
 		ipio_err("write 0x1,0xA,0x6 error");
 
+	/* Set it back after gesture was recovered. */
+	idev->skip_wake = false;
 	return ret;
 }
 

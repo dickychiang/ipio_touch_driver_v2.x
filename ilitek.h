@@ -676,6 +676,7 @@ struct ilitek_tddi_dev {
 	bool prox_near;
 	bool gesture_load_code;
 	bool fix_ice;
+	bool skip_wake;
 
 	/* module info */
 	int tp_module;

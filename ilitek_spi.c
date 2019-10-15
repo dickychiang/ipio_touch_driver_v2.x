@@ -551,8 +551,8 @@ static int core_spi_write(u8 *data, int len)
 	u8 wakeup[10] = {0x82, 0x25, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3};
 
 	/* if system is suspended, wake up our spi pll clock before communication. */
-	if (idev->tp_suspend) {
-		ipio_info("Write dummy cmd to wake up spi pll clock\n");
+	if (idev->tp_suspend && !idev->skip_wake) {
+		ipio_info("wake up spi pll clk\n");
 		if (idev->spi_write_then_read(idev->spi, wakeup, sizeof(wakeup), NULL, 0) < 0) {
 			ipio_err("spi write wake up cmd failed\n");
 			return -EIO;

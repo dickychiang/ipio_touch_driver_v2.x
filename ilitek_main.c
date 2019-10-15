@@ -53,6 +53,8 @@ static void ilitek_resume_by_ddi_work(struct work_struct *work)
 	ipio_info("TP resume end by wq\n");
 	ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
 	ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
+	idev->tp_suspend = false;
+	idev->skip_wake = true;
 	mutex_unlock(&idev->touch_mutex);
 }
 
@@ -66,7 +68,6 @@ void ilitek_resume_by_ddi(void)
 	mutex_lock(&idev->touch_mutex);
 
 	ipio_info("TP resume start called by ddi\n");
-	idev->tp_suspend = false;
 
 	/*
 	 * To match the timing of sleep out, the first of mipi cmd must be sent within 10ms
@@ -404,6 +405,7 @@ int ilitek_tddi_sleep_handler(int mode)
 		}
 		ipio_info("TP suspend end\n");
 		idev->tp_suspend = true;
+		idev->skip_wake = false;
 		break;
 	case TP_DEEP_SLEEP:
 		ipio_info("TP deep suspend start\n");
@@ -423,11 +425,11 @@ int ilitek_tddi_sleep_handler(int mode)
 		}
 		ipio_info("TP deep suspend end\n");
 		idev->tp_suspend = true;
+		idev->skip_wake = false;
 		break;
 	case TP_RESUME:
 		if (!idev->resume_by_ddi) {
 			ipio_info("TP resume start\n");
-			idev->tp_suspend = false;
 
 			if (idev->gesture)
 				disable_irq_wake(idev->irq_num);
@@ -443,6 +445,8 @@ int ilitek_tddi_sleep_handler(int mode)
 			}
 			ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
 			ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
+			idev->tp_suspend = false;
+			idev->skip_wake = true;
 			ipio_info("TP resume end\n");
 		}
 		ilitek_plat_irq_enable();
@@ -692,8 +696,10 @@ int ilitek_tddi_reset_ctrl(int mode)
 
 	atomic_set(&idev->tp_reset, START);
 
-	if (mode != TP_IC_CODE_RST)
+	if (mode != TP_IC_CODE_RST) {
+		idev->skip_wake = false;
 		ilitek_tddi_ic_check_otp_prog_mode();
+	}
 
 	switch (mode) {
 	case TP_IC_CODE_RST:
@@ -730,6 +736,7 @@ int ilitek_tddi_reset_ctrl(int mode)
 	idev->tp_data_format = DATA_FORMAT_DEMO;
 	idev->tp_data_len = P5_X_DEMO_MODE_PACKET_LEN;
 	atomic_set(&idev->tp_reset, END);
+	idev->skip_wake = true;
 	return ret;
 }
 
