@@ -42,8 +42,6 @@
  */
 
 #include "ilitek.h"
-/* Firmware data with static array */
-#include "ilitek_fw.h"
 
 #define UPDATE_PASS		0
 #define UPDATE_FAIL		-1
@@ -72,7 +70,8 @@ static struct flash_block_info {
 	u8 mode;
 } fbi[FW_BLOCK_INFO_NUM];
 
-u8 *pfw;
+u8 *pfw = NULL;
+u8 *CTPM_FW = NULL;
 
 static u32 HexToDec(char *phex, s32 len)
 {
@@ -850,11 +849,17 @@ static void ilitek_tddi_fw_update_block_info(u8 *pfw)
 
 static int ilitek_tddi_fw_ili_convert(u8 *pfw)
 {
-	int i = 0, block_enable = 0, num = 0;
+	int i = 0, block_enable = 0, num = 0, size;
 	u8 block;
 	u32 Addr;
 
-	if (sizeof(CTPM_FW) < ILI_FILE_HEADER) {
+	if (ERR_ALLOC_MEM(idev->md_fw_ili))
+		return -ENOMEM;
+
+	CTPM_FW = idev->md_fw_ili;
+	size = idev->md_fw_ili_size;
+
+	if (size < ILI_FILE_HEADER || size > MAX_HEX_FILE_SIZE) {
 		ipio_err("size of ILI file is invalid\n");
 		return -EINVAL;
 	}
@@ -919,13 +924,13 @@ static int ilitek_tddi_fw_ili_convert(u8 *pfw)
 	}
 
 out:
-	memcpy(pfw, CTPM_FW + ILI_FILE_HEADER, (sizeof(CTPM_FW) - ILI_FILE_HEADER));
+	memcpy(pfw, CTPM_FW + ILI_FILE_HEADER, size - ILI_FILE_HEADER);
 
 	if (ilitek_fw_calc_file_crc(pfw) < 0)
 		return -1;
 
 	tfd.block_number = CTPM_FW[33];
-	tfd.end_addr = (sizeof(CTPM_FW) - ILI_FILE_HEADER);
+	tfd.end_addr = size - ILI_FILE_HEADER;
 	return 0;
 }
 
@@ -1029,11 +1034,11 @@ static int ilitek_tdd_fw_hex_open(u8 op, u8 *pfw)
 
 	ipio_info("Open file method = %s, path = %s\n",
 		op ? "FILP_OPEN" : "REQUEST_FIRMWARE",
-		op ? UPDATE_FW_FILP_PATH : UPDATE_FW_REQUEST_PATH);
+		op ? idev->md_fw_filp_path : idev->md_fw_rq_path);
 
 	switch (op) {
 	case REQUEST_FIRMWARE:
-		if (request_firmware(&fw, UPDATE_FW_REQUEST_PATH, idev->dev) < 0) {
+		if (request_firmware(&fw, idev->md_fw_rq_path, idev->dev) < 0) {
 			ipio_err("Request firmware failed\n");
 			goto convert_hex;
 		}
@@ -1064,7 +1069,7 @@ static int ilitek_tdd_fw_hex_open(u8 op, u8 *pfw)
 		release_firmware(fw);
 		break;
 	case FILP_OPEN:
-		f = filp_open(UPDATE_FW_FILP_PATH, O_RDONLY, 0644);
+		f = filp_open(idev->md_fw_filp_path, O_RDONLY, 0644);
 		if (ERR_ALLOC_MEM(f)) {
 			ipio_err("Failed to open the file at %ld, try to load it from tp_fw\n", PTR_ERR(f));
 			goto convert_hex;
@@ -1170,6 +1175,9 @@ int ilitek_tddi_fw_upgrade(int op)
 out:
 	if (ret < 0)
 		idev->info_from_hex = DISABLE;
+
+	if (atomic_read(&idev->ice_stat))
+		ilitek_ice_mode_ctrl(DISABLE, OFF);
 
 	ilitek_tddi_ic_get_core_ver();
 	ilitek_tddi_ic_get_protocl_ver();

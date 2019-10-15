@@ -815,6 +815,7 @@ static int ilitek_tddi_mp_ini_parser(const char *path)
 {
 	int i, ret = 0, fsize = 0;
 	char *tmp = NULL;
+	const struct firmware *ini = NULL;
 	struct file *f = NULL;
 	struct inode *inode;
 	mm_segment_t old_fs;
@@ -824,17 +825,27 @@ static int ilitek_tddi_mp_ini_parser(const char *path)
 
 	f = filp_open(path, O_RDONLY, 644);
 	if (ERR_ALLOC_MEM(f)) {
-		ipio_err("Failed to open ini file at %ld.\n", PTR_ERR(f));
-		return -ENOENT;
+		ipio_err("Failed to open ini file at %ld, trying to request\n", PTR_ERR(f));
+		f = NULL;
+		path = idev->md_ini_rq_path;
+		ipio_info("request path = %s\n", path);
+		if (request_firmware(&ini, path, idev->dev) < 0) {
+			ipio_err("Request ini file failed\n");
+			return -EINVAL;
+		}
 	}
 
+	if (f != NULL) {
 #if KERNEL_VERSION(3, 18, 0) >= LINUX_VERSION_CODE
-	inode = f->f_dentry->d_inode;
+		inode = f->f_dentry->d_inode;
 #else
-	inode = f->f_path.dentry->d_inode;
+		inode = f->f_path.dentry->d_inode;
 #endif
+		fsize = inode->i_size;
+	} else {
+		fsize = ini->size;
+	}
 
-	fsize = inode->i_size;
 	ipio_info("ini file size = %d\n", fsize);
 	if (fsize <= 0) {
 		ipio_err("The size of file is invaild\n");
@@ -3059,6 +3070,8 @@ static void ilitek_tddi_mp_init_item(void)
 	core_mp.lost_benchmark = false;
 
 	ipio_info("============== TP & Panel info ================\n");
+	ipio_info("Driver version = %s\n", DRIVER_VERSION);
+	ipio_info("TP Module = %s\n", idev->md_name);
 	ipio_info("CHIP = 0x%x\n", core_mp.chip_pid);
 	ipio_info("Firmware version = %x\n", core_mp.fw_ver);
 	ipio_info("Protocol version = %x\n", core_mp.protocol_ver);
@@ -3364,7 +3377,7 @@ int ilitek_tddi_mp_test_main(char *apk, bool lcm_on, char *single)
 
 	ilitek_tddi_mp_init_item();
 
-	ret = ilitek_tddi_mp_ini_parser(INI_NAME_PATH);
+	ret = ilitek_tddi_mp_ini_parser(idev->md_ini_path);
 	if (ret < 0) {
 		ipio_err("Failed to parsing INI file\n");
 		ret = -EMP_INI;

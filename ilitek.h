@@ -136,9 +136,6 @@
 #define DEBUG_DATA_FILE_PATH		"/sdcard/ILITEK_log.csv"
 #define CSV_LCM_ON_PATH			"/sdcard/ilitek_mp_lcm_on_log"
 #define CSV_LCM_OFF_PATH		"/sdcard/ilitek_mp_lcm_off_log"
-#define INI_NAME_PATH			"/sdcard/mp.ini"
-#define UPDATE_FW_FILP_PATH		"/sdcard/ILITEK_FW"
-#define UPDATE_FW_REQUEST_PATH		"ILITEK_FW"
 #define POWER_STATUS_PATH		"/sys/class/power_supply/battery/status"
 #define DUMP_FLASH_PATH			"/sdcard/flash_dump"
 #define DUMP_IRAM_PATH			"/sdcard/iram_dump"
@@ -254,6 +251,16 @@ enum TP_DATA_FORMAT {
 	DATA_FORMAT_GESTURE_INFO,
 	DATA_FORMAT_GESTURE_NORMAL,
 	DATA_FORMAT_GESTURE_DEMO
+};
+
+enum TP_MODEL {
+	MODEL_DEF = 0,
+	MODEL_CSOT,
+	MODEL_AUO,
+	MODEL_BOE,
+	MODEL_INX,
+	MODEL_DJ,
+	MODEL_TXD
 };
 
 #define TDDI_I2C_ADDR				0x41
@@ -670,6 +677,16 @@ struct ilitek_tddi_dev {
 	bool gesture_load_code;
 	bool fix_ice;
 
+	/* module info */
+	int tp_module;
+	int md_fw_ili_size;
+	char *md_name;
+	char *md_fw_filp_path;
+	char *md_fw_rq_path;
+	char *md_ini_path;
+	char *md_ini_rq_path;
+	u8 *md_fw_ili;
+
 	atomic_t irq_stat;
 	atomic_t tp_reset;
 	atomic_t ice_stat;
@@ -821,6 +838,7 @@ extern int ilitek_ice_mode_bit_mask_write(u32 addr, u32 mask, u32 value);
 extern int ilitek_ice_mode_write(u32 addr, u32 data, int len);
 extern int ilitek_ice_mode_read(u32 addr, u32 *data, int len);
 extern int ilitek_ice_mode_ctrl(bool enable, bool mcu);
+extern void ilitek_update_tp_module_info(int module);
 extern void ilitek_tddi_ic_init(void);
 extern void ilitek_tddi_fw_uart_ctrl(u8 ctrl);
 

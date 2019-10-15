@@ -1293,6 +1293,7 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 		ilitek_tddi_ic_get_tp_info();
 		ilitek_tddi_ic_get_panel_info();
 		ipio_info("Driver version = %s\n", DRIVER_VERSION);
+		ipio_info("TP module = %s\n", idev->md_name);
 	} else if (strncmp(cmd, "enableicemode", strlen(cmd)) == 0) {
 		if (data[1] == ON)
 			ilitek_ice_mode_ctrl(ENABLE, ON);
@@ -1349,6 +1350,9 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 	} else if (strncmp(cmd, "dbgflag", strlen(cmd)) == 0) {
 		idev->debug_node_open = !idev->debug_node_open;
 		ipio_info("debug flag message = %d\n", idev->debug_node_open);
+	} else if (strncmp(cmd, "module", strlen(cmd)) == 0) {
+		ipio_info("module = %d\n", data[1]);
+		ilitek_update_tp_module_info(data[1]);
 	} else if (strncmp(cmd, "iow", strlen(cmd)) == 0) {
 		int w_len = 0;
 		w_len = data[1];

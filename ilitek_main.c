@@ -19,6 +19,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
+#include "firmware/ilitek_fw.h"
 #include "ilitek.h"
 
 /* Debug level */
@@ -732,6 +733,90 @@ int ilitek_tddi_reset_ctrl(int mode)
 	return ret;
 }
 
+static int ilitek_get_tp_module(void)
+{
+	/*
+	 * TODO: users should implement this function
+	 * if there are various tp modules been used in projects.
+	 */
+
+	return 0;
+}
+
+void ilitek_update_tp_module_info(int module)
+{
+	switch(module) {
+	case MODEL_CSOT:
+		idev->md_name = "CSOT";
+		idev->md_fw_filp_path = CSOT_FW_FILP_PATH;
+		idev->md_fw_rq_path = CSOT_FW_REQUEST_PATH;
+		idev->md_ini_path = CSOT_INI_NAME_PATH;
+		idev->md_ini_rq_path = CSOT_INI_REQUEST_PATH;
+		idev->md_fw_ili = CTPM_FW_CSOT;
+		idev->md_fw_ili_size = sizeof(CTPM_FW_CSOT);
+		break;
+	case MODEL_AUO:
+		idev->md_name = "AUO";
+		idev->md_fw_filp_path = AUO_FW_FILP_PATH;
+		idev->md_fw_rq_path = AUO_FW_REQUEST_PATH;
+		idev->md_ini_path = AUO_INI_NAME_PATH;
+		idev->md_ini_rq_path = AUO_INI_REQUEST_PATH;
+		idev->md_fw_ili = CTPM_FW_AUO;
+		idev->md_fw_ili_size = sizeof(CTPM_FW_AUO);
+		break;
+	case MODEL_BOE:
+		idev->md_name = "BOE";
+		idev->md_fw_filp_path = BOE_FW_FILP_PATH;
+		idev->md_fw_rq_path = BOE_FW_REQUEST_PATH;
+		idev->md_ini_path = BOE_INI_NAME_PATH;
+		idev->md_ini_rq_path = BOE_INI_REQUEST_PATH;
+		idev->md_fw_ili = CTPM_FW_BOE;
+		idev->md_fw_ili_size = sizeof(CTPM_FW_BOE);
+		break;
+	case MODEL_INX:
+		idev->md_name = "INX";
+		idev->md_fw_filp_path = INX_FW_FILP_PATH;
+		idev->md_fw_rq_path = INX_FW_REQUEST_PATH;
+		idev->md_ini_path = INX_INI_NAME_PATH;
+		idev->md_ini_rq_path = INX_INI_REQUEST_PATH;
+		idev->md_fw_ili = CTPM_FW_INX;
+		idev->md_fw_ili_size = sizeof(CTPM_FW_INX);
+		break;
+	case MODEL_DJ:
+		idev->md_name = "DJ";
+		idev->md_fw_filp_path = DJ_FW_FILP_PATH;
+		idev->md_fw_rq_path = DJ_FW_REQUEST_PATH;
+		idev->md_ini_path = DJ_INI_NAME_PATH;
+		idev->md_ini_rq_path = DJ_INI_REQUEST_PATH;
+		idev->md_fw_ili = CTPM_FW_DJ;
+		idev->md_fw_ili_size = sizeof(CTPM_FW_DJ);
+		break;
+	case MODEL_TXD:
+		idev->md_name = "TXD";
+		idev->md_fw_filp_path = TXD_FW_FILP_PATH;
+		idev->md_fw_rq_path = TXD_FW_REQUEST_PATH;
+		idev->md_ini_path = TXD_INI_NAME_PATH;
+		idev->md_ini_rq_path = TXD_FW_REQUEST_PATH;
+		idev->md_fw_ili = CTPM_FW_TXD;
+		idev->md_fw_ili_size = sizeof(CTPM_FW_TXD);
+		break;
+	default:
+		module = 0;
+		idev->md_name = "DEF";
+		idev->md_fw_filp_path = DEF_FW_FILP_PATH;
+		idev->md_fw_rq_path = DEF_FW_REQUEST_PATH;
+		idev->md_ini_path = DEF_INI_NAME_PATH;
+		idev->md_ini_rq_path = DEF_INI_REQUEST_PATH;
+		idev->md_fw_ili = CTPM_FW_DEF;
+		idev->md_fw_ili_size = sizeof(CTPM_FW_DEF);
+		ipio_err("Couldn't find any tp modules, applying default settings\n");
+		break;
+	}
+
+	ipio_info("Found %s module\n", idev->md_name);
+	idev->tp_module = module;
+}
+
 int ilitek_tddi_init(void)
 {
 #if BOOT_FW_UPDATE
@@ -788,6 +873,8 @@ int ilitek_tddi_init(void)
 	ilitek_tddi_node_init();
 
 	ilitek_tddi_fw_read_flash_info();
+
+	ilitek_update_tp_module_info(ilitek_get_tp_module());
 
 #if BOOT_FW_UPDATE
 	fw_boot_th = kthread_run(ilitek_tddi_fw_upgrade_handler, NULL, "ili_fw_boot");
