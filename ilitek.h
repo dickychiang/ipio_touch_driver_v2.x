@@ -296,7 +296,7 @@ enum TP_MODEL {
 #define MP_HEX_ADDRESS				0x13000
 #define RESERVE_BLOCK_START_ADDR		0x1D000
 #define RESERVE_BLOCK_END_ADDR			0x1DFFF
-#define INFO_HEX_ST_ADDR			0x4B
+#define INFO_HEX_ST_ADDR			0x4F
 #define FW_BLOCK_INFO_NUM			7
 #define SPI_UPGRADE_LEN				2048
 
@@ -677,6 +677,7 @@ struct ilitek_tddi_dev {
 	bool gesture_load_code;
 	bool fix_ice;
 	bool skip_wake;
+	bool trans_xy;
 
 	/* module info */
 	int tp_module;

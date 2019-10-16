@@ -826,9 +826,9 @@ int ilitek_tddi_ic_get_core_ver(void)
 	u8 buf[10] = {0};
 
 	if (idev->info_from_hex) {
-		buf[1] = idev->fw_info[64];
-		buf[2] = idev->fw_info[65];
-		buf[3] = idev->fw_info[66];
+		buf[1] = idev->fw_info[68];
+		buf[2] = idev->fw_info[69];
+		buf[3] = idev->fw_info[70];
 		goto out;
 	}
 
@@ -895,10 +895,10 @@ int ilitek_tddi_ic_get_fw_ver(void)
 	u8 buf[10] = {0};
 
 	if (idev->info_from_hex) {
-		buf[1] = idev->fw_info[44];
-		buf[2] = idev->fw_info[45];
-		buf[3] = idev->fw_info[46];
-		buf[4] = idev->fw_info[47];
+		buf[1] = idev->fw_info[48];
+		buf[2] = idev->fw_info[49];
+		buf[3] = idev->fw_info[50];
+		buf[4] = idev->fw_info[51];
 		goto out;
 	}
 
@@ -941,14 +941,17 @@ int ilitek_tddi_ic_get_panel_info(void)
 	u8 buf[10] = {0};
 
 	if (idev->info_from_hex && (idev->chip->core_ver >= CORE_VER_1410)) {
-		buf[1] = idev->fw_info[12];
-		buf[2] = idev->fw_info[13];
-		buf[3] = idev->fw_info[14];
-		buf[4] = idev->fw_info[15];
+		buf[1] = idev->fw_info[16];
+		buf[2] = idev->fw_info[17];
+		buf[3] = idev->fw_info[18];
+		buf[4] = idev->fw_info[19];
 		idev->panel_wid = buf[2] << 8 | buf[1];
 		idev->panel_hei = buf[4] << 8 | buf[3];
 		goto out;
 	}
+
+	if (idev->chip->core_ver >= CORE_VER_1430)
+		idev->protocol->panel_info_len = 6;
 
 	ret = idev->write(&cmd, sizeof(u8));
 	if (ret < 0)
@@ -962,9 +965,15 @@ int ilitek_tddi_ic_get_panel_info(void)
 		ipio_info("Invalid panel info, use default resolution\n");
 		idev->panel_wid = TOUCH_SCREEN_X_MAX;
 		idev->panel_hei = TOUCH_SCREEN_Y_MAX;
+		idev->trans_xy = OFF;
 	} else {
 		idev->panel_wid = buf[1] << 8 | buf[2];
 		idev->panel_hei = buf[3] << 8 | buf[4];
+
+		if (idev->chip->core_ver >= CORE_VER_1430) {
+			idev->trans_xy = buf[5];
+			ipio_info("Transfer touch coordinate = %s\n", idev->trans_xy ? "ON" : "OFF");
+		}
 	}
 
 out:
@@ -979,14 +988,14 @@ int ilitek_tddi_ic_get_tp_info(void)
 	u8 buf[20] = {0};
 
 	if (idev->info_from_hex  && (idev->chip->core_ver >= CORE_VER_1410)) {
-		buf[1] = idev->fw_info[1];
-		buf[2] = idev->fw_info[3];
-		buf[3] = idev->fw_info[4];
-		buf[4] = idev->fw_info[5];
-		buf[5] = idev->fw_info[6];
-		buf[6] = idev->fw_info[7];
-		buf[7] = idev->fw_info[8];
-		buf[8] = idev->fw_info[10];
+		buf[1] = idev->fw_info[5];
+		buf[2] = idev->fw_info[7];
+		buf[3] = idev->fw_info[8];
+		buf[4] = idev->fw_info[9];
+		buf[5] = idev->fw_info[10];
+		buf[6] = idev->fw_info[11];
+		buf[7] = idev->fw_info[12];
+		buf[8] = idev->fw_info[14];
 		buf[11] = buf[7];
 		buf[12] = buf[8];
 		goto out;
@@ -1063,9 +1072,9 @@ int ilitek_tddi_ic_get_protocl_ver(void)
 	u32 ver;
 
 	if (idev->info_from_hex) {
-		buf[1] = idev->fw_info[68];
-		buf[2] = idev->fw_info[69];
-		buf[3] = idev->fw_info[70];
+		buf[1] = idev->fw_info[72];
+		buf[2] = idev->fw_info[73];
+		buf[3] = idev->fw_info[74];
 		goto out;
 	}
 

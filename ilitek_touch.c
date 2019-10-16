@@ -763,8 +763,14 @@ void ilitek_tddi_report_ap_mode(u8 *buf, int len)
 		xop = (((buf[(4 * i) + 1] & 0xF0) << 4) | (buf[(4 * i) + 2]));
 		yop = (((buf[(4 * i) + 1] & 0x0F) << 8) | (buf[(4 * i) + 3]));
 
-		touch_info[idev->finger].x = xop * idev->panel_wid / TPD_WIDTH;
-		touch_info[idev->finger].y = yop * idev->panel_hei / TPD_HEIGHT;
+		if (idev->trans_xy) {
+			touch_info[idev->finger].x = xop;
+			touch_info[idev->finger].y = yop;
+		} else {
+			touch_info[idev->finger].x = xop * idev->panel_wid / TPD_WIDTH;
+			touch_info[idev->finger].y = yop * idev->panel_hei / TPD_HEIGHT;
+		}
+
 		touch_info[idev->finger].id = i;
 
 		if (MT_PRESSURE)
@@ -839,8 +845,14 @@ void ilitek_tddi_report_debug_mode(u8 *buf, int len)
 		xop = (((buf[(3 * i) + 5] & 0xF0) << 4) | (buf[(3 * i) + 6]));
 		yop = (((buf[(3 * i) + 5] & 0x0F) << 8) | (buf[(3 * i) + 7]));
 
-		touch_info[idev->finger].x = xop * idev->panel_wid / TPD_WIDTH;
-		touch_info[idev->finger].y = yop * idev->panel_hei / TPD_HEIGHT;
+		if (idev->trans_xy) {
+			touch_info[idev->finger].x = xop;
+			touch_info[idev->finger].y = yop;
+		} else {
+			touch_info[idev->finger].x = xop * idev->panel_wid / TPD_WIDTH;
+			touch_info[idev->finger].y = yop * idev->panel_hei / TPD_HEIGHT;
+		}
+
 		touch_info[idev->finger].id = i;
 
 		if (MT_PRESSURE) {

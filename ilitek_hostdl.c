@@ -478,9 +478,12 @@ static void ilitek_tddi_fw_update_block_info(u8 *pfw)
 	ipio_info("Parsing hex info start addr = 0x%x\n", fw_info_addr);
 	ipio_memcpy(idev->fw_info, pfw + fw_info_addr, sizeof(idev->fw_info), sizeof(idev->fw_info));
 
+	idev->trans_xy = idev->fw_info[0];
+	ipio_info("Transfer touch coordinate = %s\n", idev->trans_xy ? "ON" : "OFF");
+
 	/* Get hex fw vers */
-	tfd.new_fw_cb = (idev->fw_info[44] << 24) | (idev->fw_info[45] << 16) |
-			(idev->fw_info[46] << 8) | idev->fw_info[47];
+	tfd.new_fw_cb = (idev->fw_info[48] << 24) | (idev->fw_info[49] << 16) |
+			(idev->fw_info[50] << 8) | idev->fw_info[51];
 
 	/* Calculate update address */
 	ipio_info("New FW ver = 0x%x\n", tfd.new_fw_cb);
@@ -499,8 +502,14 @@ static int ilitek_tddi_fw_ili_convert(u8 *pfw)
 	CTPM_FW = idev->md_fw_ili;
 	size = idev->md_fw_ili_size;
 
-	if (size < ILI_FILE_HEADER) {
+	if (size < ILI_FILE_HEADER || size > MAX_HEX_FILE_SIZE) {
 		ipio_err("size of ILI file is invalid\n");
+		return -EINVAL;
+	}
+
+	if (CTPM_FW[22] != 0xFF && CTPM_FW[23] != 0xFF &&
+		CTPM_FW[24] != 0xFF && CTPM_FW[25] != 0xFF) {
+		ipio_err("Invaild ILI format, abort!\n");
 		return -EINVAL;
 	}
 
