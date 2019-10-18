@@ -1,23 +1,23 @@
-# include header files for MTK
+BUILD_INFAE := i2c
+BUILD_PLATFORM := qcom
+BUILD_MODULE := n
+
+ccflags-y += -Wall
+
+ifeq ($(BUILD_PLATFORM),mtk)
+platform=ilitek_plat_mtk
 ccflags-y += -I$(srctree)/drivers/spi/mediatek/mt6797/
 ccflags-y += -I$(srctree)/drivers/input/touchscreen/mediatek/oreo/
 ccflags-y += -I$(srctree)/drivers/input/touchscreen/mediatek/oreo/firmware/
 ccflags-y += -I$(srctree)/drivers/input/touchscreen/mediatek/
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/
-
-ccflags-y += -Wall
-
-BUILD_INFAE := spi
-BUILD_PLATFORM := mtk
-BUILD_MODULE := n
-
-ifeq ($(BUILD_PLATFORM),mtk)
-platform=ilitek_plat_mtk
 endif
 
 ifeq ($(BUILD_PLATFORM),qcom)
 platform=ilitek_plat_qcom
+ccflags-y += -I$(srctree)/drivers/input/touchscreen/oreo/
+ccflags-y += -I$(srctree)/drivers/input/touchscreen/oreo/firmware/
 endif
 
 ifeq ($(BUILD_INFAE),i2c)
