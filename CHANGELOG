@@ -1,3 +1,17 @@
+v2.0.4.0
+[New features]
+1. Add the option of transferring touch position, which is supported by core version 1.4.3 above.
+
+[Improvements]
+1. Add the definitions for various tp modules. Users must implement the function that is called by driver to assign a proper define.
+2. Driver sends the results of mp test with the format of strings to apk.
+
+[Bus fixed]
+1. Fixed compiled error on rk3288.
+2. Wake up spi clock should be called in the first parst of function of spi write.
+3. As there is a hw reset action in esd gesture, it won't commad waking spi up in spi write until they finished.
+4. The format of sequence of csv log and execution in driver will be the same.
+
 * v2.0.3.1
 [Bug fixed]
 1. Fix the issue of compiling error in rk3288.
