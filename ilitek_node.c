@@ -904,8 +904,7 @@ static ssize_t ilitek_proc_get_debug_mode_data_write(struct file *filp, const ch
 
 static ssize_t ilitek_node_mp_lcm_on_test_read(struct file *filp, char __user *buff, size_t size, loff_t *pos)
 {
-	int ret = 0;
-	char apk_ret[100] = {0};
+	int ret = 0, len = 0;
 	bool esd_en = idev->wq_esd_ctrl, bat_en = idev->wq_bat_ctrl;
 
 	ipio_info("Run MP test with LCM on\n");
@@ -924,11 +923,31 @@ static ssize_t ilitek_node_mp_lcm_on_test_read(struct file *filp, char __user *b
 	if (bat_en)
 		ilitek_tddi_wq_ctrl(WQ_BAT, DISABLE);
 
-	ret = ilitek_tddi_mp_test_handler(apk_ret, ON, NULL);
-	ipio_info("MP TEST %s, Error code = %d\n", (ret < 0) ? "FAIL" : "PASS", ret);
-	apk_ret[sizeof(apk_ret) - 1] = ret;
+	memset(g_user_buf, 0, USER_STR_BUFF * sizeof(unsigned char));
 
-	if (copy_to_user((char *)buff, apk_ret, sizeof(apk_ret)))
+	ret = ilitek_tddi_mp_test_handler(g_user_buf, ON, NULL);
+	ipio_info("MP TEST %s, Error code = %d\n", (ret < 0) ? "FAIL" : "PASS", ret);
+
+	g_user_buf[0] = 3;
+	g_user_buf[1] = (ret < 0) ? -ret : ret;
+
+	if (g_user_buf[1] == EMP_MODE) {
+		len += snprintf(g_user_buf + 2 + len, USER_STR_BUFF - len, "%s\n", "Failed to switch MP mode, abort!");
+	} else if (g_user_buf[1] == EMP_FW_PROC) {
+		len += snprintf(g_user_buf + 2 + len, USER_STR_BUFF - len, "%s\n", "FW still upgrading, abort!");
+	} else if (g_user_buf[1] == EMP_FORMUL_NULL) {
+		len += snprintf(g_user_buf + 2 + len, USER_STR_BUFF - len, "%s\n", "MP formula is null, abort!");
+	} else if (g_user_buf[1] == EMP_INI) {
+		len += snprintf(g_user_buf + 2 + len, USER_STR_BUFF - len, "%s\n", "Not found ini file, abort!");
+	} else if (g_user_buf[1] == EMP_NOMEM) {
+		len += snprintf(g_user_buf + 2 + len, USER_STR_BUFF - len, "%s\n", "Failed to allocated memory, abort!");
+	} else if (g_user_buf[1] == EMP_PROTOCOL) {
+		len += snprintf(g_user_buf + 2 + len, USER_STR_BUFF - len, "%s\n", "Protocol version isn't matched, abort!");
+	} else if (g_user_buf[1] == EMP_TIMING_INFO) {
+		len += snprintf(g_user_buf + 2 + len, USER_STR_BUFF - len, "%s\n", "Failed to get timing info, abort!");
+	}
+
+	if (copy_to_user((char *)buff, g_user_buf, USER_STR_BUFF))
 		ipio_err("Failed to copy data to user space\n");
 
 	if (esd_en)
@@ -937,7 +956,7 @@ static ssize_t ilitek_node_mp_lcm_on_test_read(struct file *filp, char __user *b
 		ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
 
 	mutex_unlock(&idev->touch_mutex);
-	return ret;
+	return 0;
 }
 
 static ssize_t ilitek_node_mp_lcm_off_test_read(struct file *filp, char __user *buff, size_t size, loff_t *pos)

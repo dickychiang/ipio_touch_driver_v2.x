@@ -92,19 +92,6 @@
 #define MP_DATA_PASS			0
 #define MP_DATA_FAIL			-1
 
-/* Exception error codes */
-#define EMP_CMD				100
-#define EMP_PROTOCOL			101
-#define EMP_FILE			102
-#define EMP_INI				103
-#define EMP_TIMING_INFO			104
-#define EMP_INVAL			105
-#define EMP_PARSE			106
-#define EMP_NOMEM			107
-#define EMP_GET_CDC			108
-#define EMP_INT				109
-#define EMP_CHECK_BUY			110
-
 #define Mathabs(x) ({					\
 		long ret;				\
 		if (sizeof(x) == sizeof(long)) {	\
@@ -309,11 +296,8 @@ static char run_old_test[DEF_OLD_TEST][64] = {
 
 #define MP_TEST_ITEM	49
 static struct mp_test_items tItems[MP_TEST_ITEM] = {
-	{.name = "mutual_dac", .desp = "calibration data(dac)", .result = "FAIL", .catalog = MUTUAL_TEST},
 	{.name = "mutual_bg", .desp = "baseline data(bg)", .result = "FAIL", .catalog = MUTUAL_TEST},
 	{.name = "mutual_signal", .desp = "untouch signal data(bg-raw-4096) - mutual", .result = "FAIL", .catalog = MUTUAL_TEST},
-	{.name = "mutual_no_bk", .desp = "raw data(no bk)", .result = "FAIL", .catalog = MUTUAL_TEST},
-	{.name = "mutual_has_bk", .desp = "raw data(have bk)", .result = "FAIL", .catalog = MUTUAL_TEST},
 	{.name = "mutual_bk_dac", .desp = "manual bk data(mutual)", .result = "FAIL", .catalog = MUTUAL_TEST},
 	{.name = "self_dac", .desp = "calibration data(dac) - self", .result = "FAIL", .catalog = SELF_TEST},
 	{.name = "self_bg", .desp = "baselin data(bg,self_tx,self_r)", .result = "FAIL", .catalog = SELF_TEST},
@@ -333,7 +317,6 @@ static struct mp_test_items tItems[MP_TEST_ITEM] = {
 	{.name = "st_has_bk", .desp = "st raw(have bk)", .result = "FAIL", .catalog = ST_TEST},
 	{.name = "st_open", .desp = "st open data", .result = "FAIL", .catalog = ST_TEST},
 	{.name = "tx_short", .desp = "tx short test", .result = "FAIL", .catalog = MUTUAL_TEST},
-	{.name = "rx_short", .desp = "short test -ili9881", .result = "FAIL", .catalog = SHORT_TEST},
 	{.name = "rx_open", .desp = "rx open", .result = "FAIL", .catalog = MUTUAL_TEST},
 	{.name = "cm_data", .desp = "untouch cm data", .result = "FAIL", .catalog = MUTUAL_TEST},
 	{.name = "cs_data", .desp = "untouch cs data", .result = "FAIL", .catalog = MUTUAL_TEST},
@@ -344,21 +327,26 @@ static struct mp_test_items tItems[MP_TEST_ITEM] = {
 	{.name = "open_integration", .desp = "open test(integration)", .result = "FAIL", .catalog = OPEN_TEST},
 	{.name = "open_cap", .desp = "open test(cap)", .result = "FAIL", .catalog = OPEN_TEST},
 	/* New test items for protocol 5.4.0 as below */
-	{.name = "noise_peak_to_peak_ic", .desp = "noise peak to peak(ic only)", .result = "FAIL", .catalog = PEAK_TO_PEAK_TEST},
+	{.name = "pin test", .desp = "pin test ( int and rst )", .result = "FAIL", .catalog = PIN_TEST},
 	{.name = "noise_peak_to_peak_panel", .desp = "noise peak to peak(with panel)", .result = "FAIL", .catalog = PEAK_TO_PEAK_TEST},
-	{.name = "noise_peak_to_peak_ic_lcm_off", .desp = "noise peak to peak(ic only) (lcm off)", .result = "FAIL", .catalog = PEAK_TO_PEAK_TEST},
-	{.name = "noise_peak_to_peak_panel_lcm_off", .desp = "noise peak to peak(with panel) (lcm off)", .result = "FAIL", .catalog = PEAK_TO_PEAK_TEST},
-	{.name = "mutual_no_bk_lcm_off", .desp = "raw data(no bk) (lcm off)", .result = "FAIL", .catalog = MUTUAL_TEST},
-	{.name = "mutual_has_bk_lcm_off", .desp = "raw data(have bk) (lcm off)", .result = "FAIL", .catalog = MUTUAL_TEST},
+	{.name = "noise_peak_to_peak_ic", .desp = "noise peak to peak(ic only)", .result = "FAIL", .catalog = PEAK_TO_PEAK_TEST},
 	{.name = "open_integration_sp", .desp = "open test(integration)_sp", .result = "FAIL", .catalog = OPEN_TEST},
+	{.name = "mutual_no_bk", .desp = "raw data(no bk)", .result = "FAIL", .catalog = MUTUAL_TEST},
+	{.name = "mutual_has_bk", .desp = "raw data(have bk)", .result = "FAIL", .catalog = MUTUAL_TEST},
+	{.name = "mutual_dac", .desp = "calibration data(dac)", .result = "FAIL", .catalog = MUTUAL_TEST},
+	{.name = "rx_short", .desp = "short test -ili9881", .result = "FAIL", .catalog = SHORT_TEST},
+	{.name = "rx_short", .desp = "short test", .result = "FAIL", .catalog = SHORT_TEST},
 	{.name = "doze_raw", .desp = "doze raw data", .result = "FAIL", .catalog = MUTUAL_TEST},
 	{.name = "doze_p2p", .desp = "doze peak to peak", .result = "FAIL", .catalog = PEAK_TO_PEAK_TEST},
-	{.name = "doze_raw_td_lcm_off", .desp = "raw data_td (lcm off)", .result = "FAIL", .catalog = MUTUAL_TEST},
-	{.name = "doze_p2p_td_lcm_off", .desp = "peak to peak_td (lcm off)", .result = "FAIL", .catalog = PEAK_TO_PEAK_TEST},
-	{.name = "rx_short", .desp = "short test", .result = "FAIL", .catalog = SHORT_TEST},
 	{.name = "open test_c", .desp = "open test_c", .result = "FAIL", .catalog = OPEN_TEST},
 	{.name = "touch deltac", .desp = "touch deltac", .result = "FAIL", .catalog = MUTUAL_TEST},
-	{.name = "pin test", .desp = "pin test ( int and rst )", .result = "FAIL", .catalog = PIN_TEST},
+	/* LCM OFF */
+	{.name = "mutual_has_bk_lcm_off", .desp = "raw data(have bk) (lcm off)", .result = "FAIL", .catalog = MUTUAL_TEST},
+	{.name = "mutual_no_bk_lcm_off", .desp = "raw data(no bk) (lcm off)", .result = "FAIL", .catalog = MUTUAL_TEST},
+	{.name = "noise_peak_to_peak_panel_lcm_off", .desp = "noise peak to peak(with panel) (lcm off)", .result = "FAIL", .catalog = PEAK_TO_PEAK_TEST},
+	{.name = "noise_peak_to_peak_ic_lcm_off", .desp = "noise peak to peak(ic only) (lcm off)", .result = "FAIL", .catalog = PEAK_TO_PEAK_TEST},
+	{.name = "doze_raw_td_lcm_off", .desp = "raw data_td (lcm off)", .result = "FAIL", .catalog = MUTUAL_TEST},
+	{.name = "doze_p2p_td_lcm_off", .desp = "peak to peak_td (lcm off)", .result = "FAIL", .catalog = PEAK_TO_PEAK_TEST},
 };
 
 s32 *frame_buf;
@@ -366,6 +354,7 @@ s32 *key_buf;
 s32 *frame1_cbk700, *frame1_cbk250, *frame1_cbk200;
 s32 *cap_dac, *cap_raw;
 int g_ini_items;
+char csv_name[128] = {0};
 
 static int isspace_t(int x)
 {
@@ -2810,7 +2799,6 @@ static int mp_show_result(bool lcm_on)
 	int i, x, y, j, csv_len = 0, pass_item_count = 0, line_count = 0, get_frame_cont = 1;
 	s32 *max_threshold = NULL, *min_threshold = NULL;
 	char *csv = NULL;
-	char csv_name[128] = { 0 };
 	char *ret_pass_name = NULL, *ret_fail_name = NULL;
 	struct file *f = NULL;
 	mm_segment_t fs;
@@ -3341,24 +3329,23 @@ static void mp_test_free(void)
 /* The method to copy results to user depends on what APK needs */
 static void mp_copy_ret_to_apk(char *buf)
 {
-	int i, run = 0;
+	int i, len = 2;
 
 	if (!buf) {
 		ipio_err("apk buffer is null\n");
 		return;
 	}
 
+	len += snprintf(buf + len, PAGE_SIZE - len, "CSV path: %s\n\n", csv_name);
 	for (i = 0; i < MP_TEST_ITEM; i++) {
-		buf[i] = 2;
 		if (tItems[i].run) {
 			if (tItems[i].item_result == MP_DATA_FAIL) {
-				ipio_err("Item [%s] data fail\n", tItems[i].desp);
-				buf[i] = 1;
+				ipio_err("[%s] = FAIL\n", tItems[i].desp);
+				len += snprintf(buf + len, PAGE_SIZE - len, "[%s] = FAIL\n", tItems[i].desp);
 			} else {
-				ipio_info("Item [%s] data pass\n", tItems[i].desp);
-				buf[i] = 0;
+				ipio_info("[%s] = PASS\n", tItems[i].desp);
+				len += snprintf(buf + len, PAGE_SIZE - len, "[%s] = PASS\n", tItems[i].desp);
 			}
-			run++;
 		}
 	}
 }

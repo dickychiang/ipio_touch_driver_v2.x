@@ -939,6 +939,7 @@ int ilitek_tddi_ic_get_panel_info(void)
 	int ret = 0;
 	u8 cmd = P5_X_GET_PANEL_INFORMATION;
 	u8 buf[10] = {0};
+	u8 len  = idev->protocol->panel_info_len;
 
 	if (idev->info_from_hex && (idev->chip->core_ver >= CORE_VER_1410)) {
 		buf[1] = idev->fw_info[16];
@@ -950,14 +951,13 @@ int ilitek_tddi_ic_get_panel_info(void)
 		goto out;
 	}
 
-	if (idev->chip->core_ver >= CORE_VER_1430)
-		idev->protocol->panel_info_len = 6;
+	len = (idev->chip->core_ver >= CORE_VER_1430) ? 6 : len;
 
 	ret = idev->write(&cmd, sizeof(u8));
 	if (ret < 0)
 		ipio_err("Write panel info error\n");
 
-	ret = idev->read(buf, idev->protocol->panel_info_len);
+	ret = idev->read(buf, len);
 	if (ret < 0)
 		ipio_err("Read panel info error\n");
 
@@ -969,11 +969,8 @@ int ilitek_tddi_ic_get_panel_info(void)
 	} else {
 		idev->panel_wid = buf[1] << 8 | buf[2];
 		idev->panel_hei = buf[3] << 8 | buf[4];
-
-		if (idev->chip->core_ver >= CORE_VER_1430) {
-			idev->trans_xy = buf[5];
-			ipio_info("Transfer touch coordinate = %s\n", idev->trans_xy ? "ON" : "OFF");
-		}
+		idev->trans_xy = (idev->chip->core_ver >= CORE_VER_1430) ? buf[5] : OFF;
+		ipio_info("Transfer touch coordinate = %s\n", idev->trans_xy ? "ON" : "OFF");
 	}
 
 out:

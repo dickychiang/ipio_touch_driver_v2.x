@@ -91,13 +91,13 @@ int ilitek_tddi_mp_test_handler(char *apk, bool lcm_on, char *single)
 
 	if (atomic_read(&idev->fw_stat)) {
 		ipio_err("fw upgrade processing, ignore\n");
-		return 0;
+		return -EMP_FW_PROC;
 	}
 
 	if (!idev->chip->open_c_formula ||
 		!idev->chip->open_sp_formula) {
 		ipio_err("formula is null\n");
-		return -1;
+		return -EMP_FORMUL_NULL;
 	}
 
 	atomic_set(&idev->mp_stat, ENABLE);
@@ -106,6 +106,7 @@ int ilitek_tddi_mp_test_handler(char *apk, bool lcm_on, char *single)
 		ret = ilitek_tddi_switch_tp_mode(P5_X_FW_TEST_MODE);
 		if (ret < 0) {
 			ipio_err("Switch MP mode failed\n");
+			ret = -EMP_MODE;
 			goto out;
 		}
 	}
@@ -806,6 +807,15 @@ void ilitek_update_tp_module_info(int module)
 		idev->md_ini_rq_path = TXD_FW_REQUEST_PATH;
 		idev->md_fw_ili = CTPM_FW_TXD;
 		idev->md_fw_ili_size = sizeof(CTPM_FW_TXD);
+		break;
+	case MODEL_TM:
+		idev->md_name = "TM";
+		idev->md_fw_filp_path = TM_FW_REQUEST_PATH;
+		idev->md_fw_rq_path = TM_FW_REQUEST_PATH;
+		idev->md_ini_path = TM_INI_NAME_PATH;
+		idev->md_ini_rq_path = TM_INI_REQUEST_PATH;
+		idev->md_fw_ili = CTPM_FW_TM;
+		idev->md_fw_ili_size = sizeof(CTPM_FW_TM);
 		break;
 	default:
 		module = 0;
