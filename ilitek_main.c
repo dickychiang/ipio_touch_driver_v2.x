@@ -365,6 +365,7 @@ static void ilitek_tddi_wq_init(void)
 int ilitek_tddi_sleep_handler(int mode)
 {
 	int ret = 0;
+	bool sense_stop = true;
 
 	mutex_lock(&idev->touch_mutex);
 	atomic_set(&idev->tp_sleep, START);
@@ -383,14 +384,23 @@ int ilitek_tddi_sleep_handler(int mode)
 
 	ipio_info("Sleep Mode = %d\n", mode);
 
+	if (idev->ss_ctrl)
+		sense_stop = true;
+	else if ((idev->chip->core_ver >= CORE_VER_1430))
+		sense_stop = false;
+	else
+		sense_stop = true;
+
 	switch (mode) {
 	case TP_SUSPEND:
 		ipio_info("TP suspend start\n");
-		if (ilitek_tddi_ic_func_ctrl("sense", DISABLE) < 0)
-			ipio_err("Write sense stop cmd failed\n");
+		if (sense_stop) {
+			if (ilitek_tddi_ic_func_ctrl("sense", DISABLE) < 0)
+				ipio_err("Write sense stop cmd failed\n");
 
-		if (ilitek_tddi_ic_check_busy(50, 20) < 0)
-			ipio_err("Check busy timeout during suspend\n");
+			if (ilitek_tddi_ic_check_busy(50, 20) < 0)
+				ipio_err("Check busy timeout during suspend\n");
+		}
 
 		if (idev->gesture) {
 			if (idev->tp_data_format == DATA_FORMAT_DEBUG) {
@@ -410,11 +420,13 @@ int ilitek_tddi_sleep_handler(int mode)
 		break;
 	case TP_DEEP_SLEEP:
 		ipio_info("TP deep suspend start\n");
-		if (ilitek_tddi_ic_func_ctrl("sense", DISABLE) < 0)
-			ipio_err("Write sense stop cmd failed\n");
+		if (sense_stop) {
+			if (ilitek_tddi_ic_func_ctrl("sense", DISABLE) < 0)
+				ipio_err("Write sense stop cmd failed\n");
 
-		if (ilitek_tddi_ic_check_busy(50, 20) < 0)
-			ipio_err("Check busy timeout during deep suspend\n");
+			if (ilitek_tddi_ic_check_busy(50, 20) < 0)
+				ipio_err("Check busy timeout during suspend\n");
+		}
 
 		if (idev->gesture) {
 			ilitek_tddi_switch_tp_mode(P5_X_FW_GESTURE_MODE);

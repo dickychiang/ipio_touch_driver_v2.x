@@ -301,7 +301,7 @@ static int ilitek_tddi_fw_iram_upgrade(u8 *pfw)
 
 		ret = ilitek_ice_mode_ctrl(ENABLE, OFF);
 		if (ret < 0)
-			return ret;
+			return -EFW_ICE_MODE;
 	} else {
 		/* Restore it if the wq of load_fw_ddi has been called. */
 		idev->ddi_rest_done = false;
@@ -309,7 +309,7 @@ static int ilitek_tddi_fw_iram_upgrade(u8 *pfw)
 
 	ret = ilitek_tddi_ic_watch_dog_ctrl(ILI_WRITE, DISABLE);
 	if (ret < 0)
-		return ret;
+		return -EFW_WDT;
 
 	/* Point to pfw with different addresses for getting its block data. */
 	if (idev->actual_tp_mode == P5_X_FW_TEST_MODE) {
@@ -347,19 +347,23 @@ static int ilitek_tddi_fw_iram_upgrade(u8 *pfw)
 			if (crc != dma) {
 				ipio_err("CRC Error! print iram data with first 16 bytes\n");
 				ilitek_fw_dump_iram_data(0x0, 0xF, false);
-				return UPDATE_FAIL;
+				return -EFW_IRAM_CRC;
 			}
 			idev->fw_update_stat = 90;
 		}
 	}
 
 	if (idev->actual_tp_mode != P5_X_FW_GESTURE_MODE) {
-		if (ilitek_tddi_reset_ctrl(TP_IC_CODE_RST) < 0)
+		if (ilitek_tddi_reset_ctrl(TP_IC_CODE_RST) < 0) {
 			ipio_err("TP Code reset failed during iram programming\n");
+			ret = -EFW_REST;
+		}
 	}
 
-	if (ilitek_ice_mode_ctrl(DISABLE, OFF) < 0)
+	if (ilitek_ice_mode_ctrl(DISABLE, OFF) < 0) {
 		ipio_err("Disable ice mode failed after code reset\n");
+		ret = -EFW_ICE_MODE;
+	}
 
 	/* Waiting for fw ready sending first cmd */
 	if (!idev->info_from_hex || (idev->chip->core_ver < CORE_VER_1410))
@@ -793,9 +797,10 @@ int ilitek_tddi_fw_upgrade(int op)
 
 		if (ilitek_tdd_fw_hex_open(op, pfw) < 0) {
 			ipio_err("Open hex file fail, try upgrade from ILI file\n");
+			idev->hex_fail = true;
 			if (ilitek_tddi_fw_ili_convert(pfw) < 0) {
 				ipio_err("Convert ILI file error\n");
-				ret = UPDATE_FAIL;
+				ret = -EFW_CONVERT_FILE;
 				goto out;
 			}
 		}

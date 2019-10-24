@@ -746,8 +746,10 @@ static int ilitek_tddi_fw_flash_upgrade(u8 *pfw)
 {
 	int ret = UPDATE_PASS;
 
-	if (ilitek_tddi_reset_ctrl(idev->reset) < 0)
+	if (ilitek_tddi_reset_ctrl(idev->reset) < 0) {
 		ipio_err("TP reset failed during flash progam\n");
+		return -EFW_REST;
+	}
 
 	/* Get current fw version before comparing. */
 	idev->info_from_hex = DISABLE;
@@ -757,11 +759,11 @@ static int ilitek_tddi_fw_flash_upgrade(u8 *pfw)
 
 	ret = ilitek_ice_mode_ctrl(ENABLE, OFF);
 	if (ret < 0)
-		return UPDATE_FAIL;
+		return -EFW_ICE_MODE;
 
 	ret = ilitek_tddi_ic_watch_dog_ctrl(ILI_WRITE, DISABLE);
 	if (ret < 0)
-		return ret;
+		return -EFW_WDT;
 
 	ret = ilitek_tddi_fw_check_ver(pfw);
 	if (ret == UPDATE_PASS) {
@@ -769,7 +771,7 @@ static int ilitek_tddi_fw_flash_upgrade(u8 *pfw)
 			ipio_err("Disable ice mode failed, call reset instead\n");
 			if (ilitek_tddi_reset_ctrl(idev->reset) < 0) {
 				ipio_err("TP reset failed during flash progam\n");
-				return UPDATE_FAIL;
+				return -EFW_REST;
 			}
 			return UPDATE_PASS;
 		}
@@ -778,19 +780,21 @@ static int ilitek_tddi_fw_flash_upgrade(u8 *pfw)
 
 	ret = ilitek_tddi_fw_flash_erase();
 	if (ret == UPDATE_FAIL)
-		return UPDATE_FAIL;
+		return -EFW_ERASE;
 
 	ret = ilitek_tddi_fw_flash_program(pfw);
 	if (ret == UPDATE_FAIL)
-		return UPDATE_FAIL;
+		return -EFW_PROGRAM;
 
 	ret = ilitek_tddi_fw_check_hex_hw_crc(pfw);
 	if (ret == UPDATE_FAIL)
-		return UPDATE_FAIL;
+		return -EFW_CRC;
 
 	/* We do have to reset chip in order to move new code from flash to iram. */
-	if (ilitek_tddi_reset_ctrl(idev->reset) < 0)
+	if (ilitek_tddi_reset_ctrl(idev->reset) < 0) {
 		ipio_err("TP reset failed after flash progam\n");
+		ret = -EFW_REST;
+	}
 
 	return ret;
 }
@@ -1152,9 +1156,10 @@ int ilitek_tddi_fw_upgrade(int op)
 
 		if (ilitek_tdd_fw_hex_open(op, pfw) < 0) {
 			ipio_err("Open hex file fail, try upgrade from ILI file\n");
+			idev->hex_fail = true;
 			if (ilitek_tddi_fw_ili_convert(pfw) < 0) {
 				ipio_err("Convert ILI file error\n");
-				ret = UPDATE_FAIL;
+				ret = -EFW_CONVERT_FILE;
 				goto out;
 			}
 		}

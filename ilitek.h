@@ -264,7 +264,7 @@ enum TP_MODEL {
 	MODEL_TM
 };
 
-enum MP_ERR_CODE {
+enum TP_ERR_CODE {
 	EMP_CMD = 100,
 	EMP_PROTOCOL,
 	EMP_FILE,
@@ -278,7 +278,14 @@ enum MP_ERR_CODE {
 	EMP_CHECK_BUY,
 	EMP_MODE,
 	EMP_FW_PROC,
-	EMP_FORMUL_NULL
+	EMP_FORMUL_NULL,
+	EFW_CONVERT_FILE,
+	EFW_ICE_MODE,
+	EFW_WDT,
+	EFW_CRC,
+	EFW_REST,
+	EFW_ERASE,
+	EFW_PROGRAM,
 };
 
 #define TDDI_I2C_ADDR				0x41
@@ -696,6 +703,8 @@ struct ilitek_tddi_dev {
 	bool fix_ice;
 	bool skip_wake;
 	bool trans_xy;
+	bool ss_ctrl;
+	bool hex_fail;
 
 	/* module info */
 	int tp_module;

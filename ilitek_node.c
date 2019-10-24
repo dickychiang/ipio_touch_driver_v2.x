@@ -450,7 +450,7 @@ out:
 	ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
 	ipio_kfree((void **)&data);
 	ipio_kfree((void **)&delta);
-	return 0;
+	return size;
 }
 
 static ssize_t ilitek_proc_fw_get_raw_data_read(struct file *pFile, char __user *buf, size_t size, loff_t *pos)
@@ -497,7 +497,6 @@ static ssize_t ilitek_proc_fw_get_raw_data_read(struct file *pFile, char __user 
 		goto out;
 	}
 
-	//msleep(20);
 	msleep(120);
 
 	/* read debug packet header */
@@ -550,7 +549,7 @@ out:
 	ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
 	ipio_kfree((void **)&data);
 	ipio_kfree((void **)&rawdata);
-	return 0;
+	return size;
 }
 
 static ssize_t ilitek_proc_fw_pc_counter_read(struct file *pFile, char __user *buf, size_t size, loff_t *pos)
@@ -947,7 +946,7 @@ static ssize_t ilitek_node_mp_lcm_on_test_read(struct file *filp, char __user *b
 		len += snprintf(g_user_buf + 2 + len, USER_STR_BUFF - len, "%s\n", "Failed to get timing info, abort!");
 	}
 
-	if (copy_to_user((char *)buff, g_user_buf, USER_STR_BUFF))
+	if (copy_to_user((char *)buff, g_user_buf, len))
 		ipio_err("Failed to copy data to user space\n");
 
 	if (esd_en)
@@ -956,13 +955,14 @@ static ssize_t ilitek_node_mp_lcm_on_test_read(struct file *filp, char __user *b
 		ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
 
 	mutex_unlock(&idev->touch_mutex);
-	return 0;
+
+	*pos += len;
+	return len;
 }
 
 static ssize_t ilitek_node_mp_lcm_off_test_read(struct file *filp, char __user *buff, size_t size, loff_t *pos)
 {
-	int ret = 0;
-	char apk_ret[100] = {0};
+	int ret = 0, len = 0;
 	bool esd_en = idev->wq_esd_ctrl, bat_en = idev->wq_bat_ctrl;
 
 	ipio_info("Run MP test with LCM off\n");
@@ -982,11 +982,31 @@ static ssize_t ilitek_node_mp_lcm_off_test_read(struct file *filp, char __user *
 	if (bat_en)
 		ilitek_tddi_wq_ctrl(WQ_BAT, DISABLE);
 
-	ret = ilitek_tddi_mp_test_handler(apk_ret, OFF, NULL);
-	ipio_info("MP TEST %s, Error code = %d\n", (ret < 0) ? "FAIL" : "PASS", ret);
-	apk_ret[sizeof(apk_ret) - 1] = ret;
+	memset(g_user_buf, 0, USER_STR_BUFF * sizeof(unsigned char));
 
-	if (copy_to_user((char *)buff, apk_ret, sizeof(apk_ret)))
+	ret = ilitek_tddi_mp_test_handler(g_user_buf, OFF, NULL);
+	ipio_info("MP TEST %s, Error code = %d\n", (ret < 0) ? "FAIL" : "PASS", ret);
+
+	g_user_buf[0] = 3;
+	g_user_buf[1] = (ret < 0) ? -ret : ret;
+
+	if (g_user_buf[1] == EMP_MODE) {
+		len += snprintf(g_user_buf + 2 + len, USER_STR_BUFF - len, "%s\n", "Failed to switch MP mode, abort!");
+	} else if (g_user_buf[1] == EMP_FW_PROC) {
+		len += snprintf(g_user_buf + 2 + len, USER_STR_BUFF - len, "%s\n", "FW still upgrading, abort!");
+	} else if (g_user_buf[1] == EMP_FORMUL_NULL) {
+		len += snprintf(g_user_buf + 2 + len, USER_STR_BUFF - len, "%s\n", "MP formula is null, abort!");
+	} else if (g_user_buf[1] == EMP_INI) {
+		len += snprintf(g_user_buf + 2 + len, USER_STR_BUFF - len, "%s\n", "Not found ini file, abort!");
+	} else if (g_user_buf[1] == EMP_NOMEM) {
+		len += snprintf(g_user_buf + 2 + len, USER_STR_BUFF - len, "%s\n", "Failed to allocated memory, abort!");
+	} else if (g_user_buf[1] == EMP_PROTOCOL) {
+		len += snprintf(g_user_buf + 2 + len, USER_STR_BUFF - len, "%s\n", "Protocol version isn't matched, abort!");
+	} else if (g_user_buf[1] == EMP_TIMING_INFO) {
+		len += snprintf(g_user_buf + 2 + len, USER_STR_BUFF - len, "%s\n", "Failed to get timing info, abort!");
+	}
+
+	if (copy_to_user((char *)buff, g_user_buf, len))
 		ipio_err("Failed to copy data to user space\n");
 
 	if (esd_en)
@@ -995,7 +1015,9 @@ static ssize_t ilitek_node_mp_lcm_off_test_read(struct file *filp, char __user *
 		ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
 
 	mutex_unlock(&idev->touch_mutex);
-	return ret;
+
+	*pos += len;
+	return len;
 }
 
 static ssize_t ilitek_proc_fw_process_read(struct file *filp, char __user *buff, size_t size, loff_t *pos)
@@ -1039,13 +1061,44 @@ static ssize_t ilitek_node_fw_upgrade_read(struct file *filp, char __user *buff,
 		ilitek_tddi_wq_ctrl(WQ_BAT, DISABLE);
 
 	idev->force_fw_update = ENABLE;
+	idev->hex_fail = false;
 
 	ret = ilitek_tddi_fw_upgrade_handler(NULL);
-	len = snprintf(g_user_buf, USER_STR_BUFF * sizeof(unsigned char), "upgrade firwmare %s\n", (ret != 0) ? "failed" : "succeed");
 
 	idev->force_fw_update = DISABLE;
 
-	if (copy_to_user((u32 *) buff, g_user_buf, len))
+	if (idev->hex_fail)
+		g_user_buf[0] = 0xFF;
+	else
+		g_user_buf[0] = 0x0;
+
+	g_user_buf[1] = (ret < 0) ? -ret : ret;
+
+	if (g_user_buf[1] == 0)
+		len += snprintf(g_user_buf + 2 + len, USER_STR_BUFF - len, "%s\n", "Upgrade firmware = PASS");
+	else
+		len += snprintf(g_user_buf + 2 + len, USER_STR_BUFF - len, "%s\n", "Upgrade firmware = FAIL");
+
+	/* Reason for fail */
+	if (g_user_buf[1] == EFW_CONVERT_FILE) {
+		len += snprintf(g_user_buf + 2 + len, USER_STR_BUFF - len, "%s\n", "Failed to convert hex/ili file, abort!");
+	} else if (g_user_buf[1] == ENOMEM) {
+		len += snprintf(g_user_buf + 2 + len, USER_STR_BUFF - len, "%s\n", "Failed to allocate memory, abort!");
+	} else if (g_user_buf[1] == EFW_ICE_MODE) {
+		len += snprintf(g_user_buf + 2 + len, USER_STR_BUFF - len, "%s\n", "Failed to operate ice mode, abort!");
+	} else if (g_user_buf[1] == EFW_WDT) {
+		len += snprintf(g_user_buf + 2 + len, USER_STR_BUFF - len, "%s\n", "Failed to operate watch dog, abort!");
+	} else if (g_user_buf[1] == EFW_CRC) {
+		len += snprintf(g_user_buf + 2 + len, USER_STR_BUFF - len, "%s\n", "CRC not matched, abort!");
+	} else if (g_user_buf[1] == EFW_REST) {
+		len += snprintf(g_user_buf + 2 + len, USER_STR_BUFF - len, "%s\n", "Failed to do reset, abort!");
+	} else if (g_user_buf[1] == EFW_ERASE) {
+		len += snprintf(g_user_buf + 2 + len, USER_STR_BUFF - len, "%s\n", "Failed to erase flash, abort!");
+	} else if (g_user_buf[1] == EFW_PROGRAM) {
+		len += snprintf(g_user_buf + 2 + len, USER_STR_BUFF - len, "%s\n", "Failed to program flash, abort!");
+	}
+
+	if (copy_to_user((u32 *) buff, g_user_buf, len + 2))
 		ipio_err("Failed to copy data to user space\n");
 
 	if (esd_en)
@@ -1055,7 +1108,8 @@ static ssize_t ilitek_node_fw_upgrade_read(struct file *filp, char __user *buff,
 
 	mutex_unlock(&idev->touch_mutex);
 
-	return ret;
+	*pos += len;
+	return len;
 }
 
 static ssize_t ilitek_proc_debug_level_read(struct file *filp, char __user *buff, size_t size, loff_t *pos)
@@ -1372,6 +1426,9 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 	} else if (strncmp(cmd, "module", strlen(cmd)) == 0) {
 		ipio_info("module = %d\n", data[1]);
 		ilitek_update_tp_module_info(data[1]);
+	} else if (strncmp(cmd, "ss", strlen(cmd)) == 0) {
+		ipio_info("sense_stop = %d\n", data[1]);
+		idev->ss_ctrl = data[1];
 	} else if (strncmp(cmd, "iow", strlen(cmd)) == 0) {
 		int w_len = 0;
 		w_len = data[1];
