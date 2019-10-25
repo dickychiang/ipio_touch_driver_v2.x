@@ -916,60 +916,129 @@ void ilitek_tddi_report_debug_mode(u8 *buf, int len)
 
 void ilitek_tddi_report_gesture_mode(u8 *buf, int len)
 {
-	ipio_info("gesture code = 0x%x\n", buf[1]);
+	int i, lu_x = 0, lu_y = 0, rd_x = 0, rd_y = 0, score = 0;
+	u8 ges[P5_X_GESTURE_INFO_LENGTH] = {0};
+	struct gesture_coordinate *gc = idev->gcoord;
+	struct input_dev *input = idev->input;
+	bool transfer = idev->trans_xy;
 
-	memset(idev->gcoord, 0x0, sizeof(struct gesture_coordinate));
-	idev->gcoord->code = buf[1];
+	for (i = 0; i < len; i++)
+		ges[i] = buf[i];
 
-	switch (idev->gcoord->code) {
-	case GESTURE_DOUBLECLICK:
-		ipio_info("Double Click key event\n");
-		input_report_key(idev->input, KEY_GESTURE_POWER, 1);
-		input_sync(idev->input);
-		input_report_key(idev->input, KEY_GESTURE_POWER, 0);
-		input_sync(idev->input);
-		break;
-	case GESTURE_LEFT:
-	case GESTURE_RIGHT:
-	case GESTURE_UP:
-	case GESTURE_DOWN:
-	case GESTURE_O:
-	case GESTURE_W:
-	case GESTURE_M:
-	case GESTURE_E:
-	case GESTURE_S:
-	case GESTURE_V:
-	case GESTURE_Z:
-	case GESTURE_C:
-	case GESTURE_F:
-		break;
-	default:
-		break;
-	}
+	memset(gc, 0x0, sizeof(struct gesture_coordinate));
+
+	gc->code = ges[1];
+	score = ges[36];
+	ipio_info("gesture code = 0x%x, score = %d\n", gc->code, score);
 
 	/* Parsing gesture coordinate */
-	if (idev->gesture_mode == DATA_FORMAT_GESTURE_INFO) {
-		idev->gcoord->pos_start.x = ((buf[4] & 0xF0) << 4) | buf[5];
-		idev->gcoord->pos_start.y = ((buf[4] & 0x0F) << 8) | buf[6];
-		idev->gcoord->pos_end.x   = ((buf[7] & 0xF0) << 4) | buf[8];
-		idev->gcoord->pos_end.y   = ((buf[7] & 0x0F) << 8) | buf[9];
+	gc->pos_start.x = ((ges[4] & 0xF0) << 4) | ges[5];
+	gc->pos_start.y = ((ges[4] & 0x0F) << 8) | ges[6];
+	gc->pos_end.x   = ((ges[7] & 0xF0) << 4) | ges[8];
+	gc->pos_end.y   = ((ges[7] & 0x0F) << 8) | ges[9];
+	gc->pos_1st.x   = ((ges[16] & 0xF0) << 4) | ges[17];
+	gc->pos_1st.y   = ((ges[16] & 0x0F) << 8) | ges[18];
+	gc->pos_2nd.x   = ((ges[19] & 0xF0) << 4) | ges[20];
+	gc->pos_2nd.y   = ((ges[19] & 0x0F) << 8) | ges[21];
+	gc->pos_3rd.x   = ((ges[22] & 0xF0) << 4) | ges[23];
+	gc->pos_3rd.y   = ((ges[22] & 0x0F) << 8) | ges[24];
+	gc->pos_4th.x   = ((ges[25] & 0xF0) << 4) | ges[26];
+	gc->pos_4th.y   = ((ges[25] & 0x0F) << 8) | ges[27];
 
-		idev->gcoord->pos_1st.x   = ((buf[16] & 0xF0) << 4) | buf[17];
-		idev->gcoord->pos_1st.y   = ((buf[16] & 0x0F) << 8) | buf[18];
-		idev->gcoord->pos_2nd.x   = ((buf[19] & 0xF0) << 4) | buf[20];
-		idev->gcoord->pos_2nd.y   = ((buf[19] & 0x0F) << 8) | buf[21];
-		idev->gcoord->pos_3rd.x   = ((buf[22] & 0xF0) << 4) | buf[23];
-		idev->gcoord->pos_3rd.y   = ((buf[22] & 0x0F) << 8) | buf[24];
-		idev->gcoord->pos_4th.x   = ((buf[25] & 0xF0) << 4) | buf[26];
-		idev->gcoord->pos_4th.y   = ((buf[25] & 0x0F) << 8) | buf[27];
+	switch (gc->code) {
+	case GESTURE_DOUBLECLICK:
+		ipio_info("Double Click key event\n");
+		input_report_key(input, KEY_GESTURE_POWER, 1);
+		input_sync(input);
+		input_report_key(input, KEY_GESTURE_POWER, 0);
+		input_sync(input);
+		gc->type  = GESTURE_DOUBLECLICK;
+		gc->clockwise = 1;
+		gc->pos_end.x = gc->pos_start.x;
+		gc->pos_end.y = gc->pos_start.y;
+		break;
+	case GESTURE_LEFT:
+		gc->type  = GESTURE_LEFT;
+		gc->clockwise = 1;
+		break;
+	case GESTURE_RIGHT:
+		gc->type  = GESTURE_RIGHT;
+		gc->clockwise = 1;
+		break;
+	case GESTURE_UP:
+		gc->type  = GESTURE_UP;
+		gc->clockwise = 1;
+		break;
+	case GESTURE_DOWN:
+		gc->type  = GESTURE_DOWN;
+		gc->clockwise = 1;
+		break;
+	case GESTURE_O:
+		gc->type  = GESTURE_O;
+		gc->clockwise = (ges[34] > 1) ? 0 : ges[34];
 
-		ipio_info("pos_start.x = %d, pos_start.y = %d\n", idev->gcoord->pos_start.x, idev->gcoord->pos_start.y);
-		ipio_info("pos_end.x = %d, pos_end.y = %d\n", idev->gcoord->pos_end.x, idev->gcoord->pos_end.y);
-		ipio_info("pos_1st.x = %d, pos_1st.y = %d\n", idev->gcoord->pos_1st.x, idev->gcoord->pos_1st.y);
-		ipio_info("pos_2nd.x = %d, pos_2nd.y = %d\n", idev->gcoord->pos_2nd.x ,idev->gcoord->pos_2nd.y);
-		ipio_info("pos_3rd.x = %d, pos_3rd.y = %d\n", idev->gcoord->pos_3rd.x, idev->gcoord->pos_3rd.y);
-		ipio_info("pos_4th.x = %d, pos_4th.y = %d\n", idev->gcoord->pos_4th.x, idev->gcoord->pos_4th.y);
+		lu_x = (((ges[28] & 0xF0) << 4) | (ges[29]));
+		lu_y = (((ges[28] & 0x0F) << 8) | (ges[30]));
+		rd_x = (((ges[31] & 0xF0) << 4) | (ges[32]));
+		rd_y = (((ges[31] & 0x0F) << 8) | (ges[33]));
+
+		gc->pos_1st.x = ((rd_x + lu_x) / 2);
+		gc->pos_1st.y = lu_y;
+		gc->pos_2nd.x = lu_x;
+		gc->pos_2nd.y = ((rd_y + lu_y) / 2);
+		gc->pos_3rd.x = ((rd_x + lu_x) / 2);
+		gc->pos_3rd.y = rd_y;
+		gc->pos_4th.x = rd_x;
+		gc->pos_4th.y = ((rd_y + lu_y) / 2);
+		break;
+	case GESTURE_W:
+		gc->type  = GESTURE_W;
+		gc->clockwise = 1;
+		break;
+	case GESTURE_M:
+		gc->type  = GESTURE_M;
+		gc->clockwise = 1;
+		break;
+	case GESTURE_V:
+		gc->type  = GESTURE_V;
+		gc->clockwise = 1;
+		break;
+	case GESTURE_TWOLINE_DOWN:
+		gc->type  = GESTURE_TWOLINE_DOWN;
+		gc->clockwise = 1;
+		gc->pos_1st.x  = (((ges[10] & 0xF0) << 4) | (ges[11]));
+		gc->pos_1st.y  = (((ges[10] & 0x0F) << 8) | (ges[12]));
+		gc->pos_2nd.x  = (((ges[13] & 0xF0) << 4) | (ges[14]));
+		gc->pos_2nd.y  = (((ges[13] & 0x0F) << 8) | (ges[15]));
+		break;
+	default:
+		ipio_err("Unknown gesture code\n");
+		break;
 	}
+
+	if (!transfer) {
+		gc->pos_start.x	= gc->pos_start.x * idev->panel_wid / TPD_WIDTH;
+		gc->pos_start.y = gc->pos_start.y * idev->panel_hei / TPD_HEIGHT;
+		gc->pos_end.x   = gc->pos_end.x * idev->panel_wid / TPD_WIDTH;
+		gc->pos_end.y   = gc->pos_end.y * idev->panel_hei / TPD_HEIGHT;
+		gc->pos_1st.x   = gc->pos_1st.x * idev->panel_wid / TPD_WIDTH;
+		gc->pos_1st.y   = gc->pos_1st.y * idev->panel_hei / TPD_HEIGHT;
+		gc->pos_2nd.x   = gc->pos_2nd.x * idev->panel_wid / TPD_WIDTH;
+		gc->pos_2nd.y   = gc->pos_2nd.y * idev->panel_hei / TPD_HEIGHT;
+		gc->pos_3rd.x   = gc->pos_3rd.x * idev->panel_wid / TPD_WIDTH;
+		gc->pos_3rd.y   = gc->pos_3rd.y * idev->panel_hei / TPD_HEIGHT;
+		gc->pos_4th.x   = gc->pos_4th.x * idev->panel_wid / TPD_WIDTH;
+		gc->pos_4th.y   = gc->pos_4th.y * idev->panel_hei / TPD_HEIGHT;
+	}
+
+	ipio_info("Transfer = %d, Type = %d, clockwise = %d\n", transfer, gc->type, gc->clockwise);
+	ipio_info("Gesture Points: (%d, %d)(%d, %d)(%d, %d)(%d, %d)(%d, %d)(%d, %d)\n",
+			gc->pos_start.x, gc->pos_start.y,
+			gc->pos_end.x, gc->pos_end.y,
+			gc->pos_1st.x, gc->pos_1st.y,
+			gc->pos_2nd.x ,gc->pos_2nd.y,
+			gc->pos_3rd.x, gc->pos_3rd.y,
+			gc->pos_4th.x, gc->pos_4th.y);
 
 	ilitek_tddi_touch_send_debug_data(buf, len);
 }

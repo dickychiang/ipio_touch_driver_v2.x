@@ -22,9 +22,6 @@
 
 #include "ilitek.h"
 
-#define SPI_TX_BUF_SIZE			4096
-#define SPI_RX_BUF_SIZE			4096
-
 struct touch_bus_info {
 	struct spi_driver bus_driver;
 	struct ilitek_hwif_info *hwif;
@@ -524,9 +521,9 @@ static int core_spi_ice_mode_read(u8 *data, int len)
 	if (ret < 0 || ret == SPI_IS_LOCKED)
 		goto out;
 
-	if (len < size && idev->fw_uart_en == DISABLE) {
-		ipio_info("WARRING! size(%d) > len(%d), use len to get data\n", size, len);
+	if (len < size && (!idev->fw_uart_en && !idev->gesture_demo_ctrl)) {
 		size = len;
+		ipio_info("WARRING! size(%d) > len(%d), use len to get data\n", size, len);
 	}
 
 	/* receive data from rxbuf and change lock status to 0x9881. */

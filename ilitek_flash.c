@@ -1140,23 +1140,30 @@ convert_hex:
 
 int ilitek_tddi_fw_upgrade(int op)
 {
-	int ret = 0, retry = 3;
+	int i, ret = 0, retry = 3;
 
-	if (!idev->boot || idev->force_fw_update) {
-		ipio_vfree((void **)&pfw);
-
-		pfw = vmalloc(MAX_HEX_FILE_SIZE * sizeof(u8));
-		if (ERR_ALLOC_MEM(pfw)) {
-			ipio_err("Failed to allocate pfw memory, %ld\n", PTR_ERR(pfw));
-			ret = -ENOMEM;
-			goto out;
+	if (!idev->boot || idev->force_fw_update || !pfw) {
+		if (!pfw) {
+			pfw = vmalloc(MAX_HEX_FILE_SIZE * sizeof(u8));
+			if (ERR_ALLOC_MEM(pfw)) {
+				ipio_err("Failed to allocate pfw memory, %ld\n", PTR_ERR(pfw));
+				ipio_vfree((void **)&pfw);
+				ret = -ENOMEM;
+				goto out;
+			}
 		}
 
-		memset(pfw, 0xFF, MAX_HEX_FILE_SIZE * sizeof(u8));
+		for (i = 0; i < MAX_HEX_FILE_SIZE; i++)
+			pfw[i] = 0xFF;
 
 		if (ilitek_tdd_fw_hex_open(op, pfw) < 0) {
 			ipio_err("Open hex file fail, try upgrade from ILI file\n");
-			idev->hex_fail = true;
+
+			if (idev->node_update) {
+				ipio_vfree((void **)&pfw);
+				return -EFW_CONVERT_FILE;
+			}
+
 			if (ilitek_tddi_fw_ili_convert(pfw) < 0) {
 				ipio_err("Convert ILI file error\n");
 				ret = -EFW_CONVERT_FILE;

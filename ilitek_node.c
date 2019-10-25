@@ -723,6 +723,7 @@ static ssize_t ilitek_proc_debug_message_read(struct file *filp, char __user *bu
 	ipio_debug("f_count= %d, index = %d, mark = %d\n", idev->debug_data_frame, idev->out_data_index, idev->debug_buf[idev->out_data_index].mark);
 	if (!wait_event_interruptible_timeout(idev->inq, idev->debug_buf[idev->out_data_index].mark, msecs_to_jiffies(3000))) {
 		ipio_err("Error! get debug data fail\n");
+		mutex_unlock(&idev->debug_read_mutex);
 		*pos = send_data_len;
 		return send_data_len;
 	}
@@ -1043,7 +1044,7 @@ static ssize_t ilitek_proc_fw_process_read(struct file *filp, char __user *buff,
 static ssize_t ilitek_node_fw_upgrade_read(struct file *filp, char __user *buff, size_t size, loff_t *pos)
 {
 	int ret = 0;
-	u32 len = 0;
+	u32 len = 2;
 	bool esd_en = idev->wq_esd_ctrl, bat_en = idev->wq_bat_ctrl;
 
 	ipio_info("Preparing to upgarde firmware\n");
@@ -1061,44 +1062,42 @@ static ssize_t ilitek_node_fw_upgrade_read(struct file *filp, char __user *buff,
 		ilitek_tddi_wq_ctrl(WQ_BAT, DISABLE);
 
 	idev->force_fw_update = ENABLE;
-	idev->hex_fail = false;
+	idev->node_update = true;
 
 	ret = ilitek_tddi_fw_upgrade_handler(NULL);
 
+	idev->node_update = false;
 	idev->force_fw_update = DISABLE;
 
-	if (idev->hex_fail)
-		g_user_buf[0] = 0xFF;
-	else
-		g_user_buf[0] = 0x0;
-
+	g_user_buf[0] = 0x0;
 	g_user_buf[1] = (ret < 0) ? -ret : ret;
 
 	if (g_user_buf[1] == 0)
-		len += snprintf(g_user_buf + 2 + len, USER_STR_BUFF - len, "%s\n", "Upgrade firmware = PASS");
+		len += snprintf(g_user_buf + len, USER_STR_BUFF - len, "%s\n", "Upgrade firmware = PASS");
 	else
-		len += snprintf(g_user_buf + 2 + len, USER_STR_BUFF - len, "%s\n", "Upgrade firmware = FAIL");
+		len += snprintf(g_user_buf + len, USER_STR_BUFF - len, "%s\n", "Upgrade firmware = FAIL");
 
 	/* Reason for fail */
 	if (g_user_buf[1] == EFW_CONVERT_FILE) {
-		len += snprintf(g_user_buf + 2 + len, USER_STR_BUFF - len, "%s\n", "Failed to convert hex/ili file, abort!");
+		g_user_buf[0] = 0xFF;
+		len += snprintf(g_user_buf + len, USER_STR_BUFF - len, "%s\n", "Failed to convert hex/ili file, abort!");
 	} else if (g_user_buf[1] == ENOMEM) {
-		len += snprintf(g_user_buf + 2 + len, USER_STR_BUFF - len, "%s\n", "Failed to allocate memory, abort!");
+		len += snprintf(g_user_buf + len, USER_STR_BUFF - len, "%s\n", "Failed to allocate memory, abort!");
 	} else if (g_user_buf[1] == EFW_ICE_MODE) {
-		len += snprintf(g_user_buf + 2 + len, USER_STR_BUFF - len, "%s\n", "Failed to operate ice mode, abort!");
+		len += snprintf(g_user_buf + len, USER_STR_BUFF - len, "%s\n", "Failed to operate ice mode, abort!");
 	} else if (g_user_buf[1] == EFW_WDT) {
-		len += snprintf(g_user_buf + 2 + len, USER_STR_BUFF - len, "%s\n", "Failed to operate watch dog, abort!");
+		len += snprintf(g_user_buf + len, USER_STR_BUFF - len, "%s\n", "Failed to operate watch dog, abort!");
 	} else if (g_user_buf[1] == EFW_CRC) {
-		len += snprintf(g_user_buf + 2 + len, USER_STR_BUFF - len, "%s\n", "CRC not matched, abort!");
+		len += snprintf(g_user_buf + len, USER_STR_BUFF - len, "%s\n", "CRC not matched, abort!");
 	} else if (g_user_buf[1] == EFW_REST) {
-		len += snprintf(g_user_buf + 2 + len, USER_STR_BUFF - len, "%s\n", "Failed to do reset, abort!");
+		len += snprintf(g_user_buf + len, USER_STR_BUFF - len, "%s\n", "Failed to do reset, abort!");
 	} else if (g_user_buf[1] == EFW_ERASE) {
-		len += snprintf(g_user_buf + 2 + len, USER_STR_BUFF - len, "%s\n", "Failed to erase flash, abort!");
+		len += snprintf(g_user_buf + len, USER_STR_BUFF - len, "%s\n", "Failed to erase flash, abort!");
 	} else if (g_user_buf[1] == EFW_PROGRAM) {
-		len += snprintf(g_user_buf + 2 + len, USER_STR_BUFF - len, "%s\n", "Failed to program flash, abort!");
+		len += snprintf(g_user_buf + len, USER_STR_BUFF - len, "%s\n", "Failed to program flash, abort!");
 	}
 
-	if (copy_to_user((u32 *) buff, g_user_buf, len + 2))
+	if (copy_to_user((u32 *) buff, g_user_buf, len))
 		ipio_err("Failed to copy data to user space\n");
 
 	if (esd_en)

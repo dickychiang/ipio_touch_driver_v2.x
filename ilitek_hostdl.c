@@ -153,6 +153,8 @@ static int host_download_dma_check(u32 start_addr, u32 block_size)
 
 static int ilitek_tddi_fw_iram_read(u8 *buf, u32 start, int len)
 {
+	int i, limit = SPI_RX_BUF_SIZE;
+	int addr = 0, end = len - 1;
 	u8 cmd[4] = {0};
 
 	if (!buf) {
@@ -160,21 +162,24 @@ static int ilitek_tddi_fw_iram_read(u8 *buf, u32 start, int len)
 		return -ENOMEM;
 	}
 
-	cmd[0] = 0x25;
-	cmd[3] = (char)((start & 0x00FF0000) >> 16);
-	cmd[2] = (char)((start & 0x0000FF00) >> 8);
-	cmd[1] = (char)((start & 0x000000FF));
+	for (i = 0, addr = start; addr < end; i += limit, addr += limit) {
+		if ((addr + limit) > len)
+			limit = end % limit;
 
-	if (idev->write(cmd, 4)) {
-		ipio_err("Failed to write iram data\n");
-		return -ENODEV;
-	}
+		cmd[0] = 0x25;
+		cmd[3] = (char)((addr & 0x00FF0000) >> 16);
+		cmd[2] = (char)((addr & 0x0000FF00) >> 8);
+		cmd[1] = (char)((addr & 0x000000FF));
 
-	ipio_info("len = %d\n", len);
+		if (idev->write(cmd, 4)) {
+			ipio_err("Failed to write iram data\n");
+			return -ENODEV;
+		}
 
-	if (idev->read(buf, len)) {
-		ipio_err("Failed to Read iram data\n");
-		return -ENODEV;
+		if (idev->read(buf + i, limit)) {
+			ipio_err("Failed to Read iram data\n");
+			return -ENODEV;
+		}
 	}
 	return 0;
 }
@@ -202,6 +207,11 @@ void ilitek_fw_dump_iram_data(u32 start, u32 end, bool save)
 	}
 
 	len = end - start + 1;
+
+	if (len > MAX_HEX_FILE_SIZE) {
+		ipio_err("len is larger than buffer, abort\n");
+		goto out;
+	}
 
 	for (i = 0; i < len; i++)
 		idev->update_buf[i] = 0xFF;
@@ -347,7 +357,7 @@ static int ilitek_tddi_fw_iram_upgrade(u8 *pfw)
 			if (crc != dma) {
 				ipio_err("CRC Error! print iram data with first 16 bytes\n");
 				ilitek_fw_dump_iram_data(0x0, 0xF, false);
-				return -EFW_IRAM_CRC;
+				return -EFW_CRC;
 			}
 			idev->fw_update_stat = 90;
 		}
@@ -779,25 +789,32 @@ convert_hex:
 
 int ilitek_tddi_fw_upgrade(int op)
 {
-	int ret = 0, retry = 3;
+	int i, ret = 0, retry = 3;
 
-	if (!idev->boot || idev->force_fw_update) {
+	if (!idev->boot || idev->force_fw_update || !pfw) {
 		idev->gesture_load_code = false;
 
-		ipio_vfree((void **)&pfw);
-
-		pfw = vmalloc(MAX_HEX_FILE_SIZE * sizeof(u8));
-		if (ERR_ALLOC_MEM(pfw)) {
-			ipio_err("Failed to allocate pfw memory, %ld\n", PTR_ERR(pfw));
-			ret = -ENOMEM;
-			goto out;
+		if (!pfw) {
+			pfw = vmalloc(MAX_HEX_FILE_SIZE * sizeof(u8));
+			if (ERR_ALLOC_MEM(pfw)) {
+				ipio_err("Failed to allocate pfw memory, %ld\n", PTR_ERR(pfw));
+				ipio_vfree((void **)&pfw);
+				ret = -ENOMEM;
+				goto out;
+			}
 		}
 
-		memset(pfw, 0xFF, MAX_HEX_FILE_SIZE * sizeof(u8));
+		for (i = 0; i < MAX_HEX_FILE_SIZE; i++)
+			pfw[i] = 0xFF;
 
 		if (ilitek_tdd_fw_hex_open(op, pfw) < 0) {
 			ipio_err("Open hex file fail, try upgrade from ILI file\n");
-			idev->hex_fail = true;
+
+			if (idev->node_update) {
+				ipio_vfree((void **)&pfw);
+				return -EFW_CONVERT_FILE;
+			}
+
 			if (ilitek_tddi_fw_ili_convert(pfw) < 0) {
 				ipio_err("Convert ILI file error\n");
 				ret = -EFW_CONVERT_FILE;

@@ -105,7 +105,7 @@
 #define DRIVER_VERSION			"2.0.4.0.191018"
 
 /* Options */
-#define TDDI_INTERFACE			BUS_SPI /* BUS_I2C(0x18) or BUS_SPI(0x1C) */
+#define TDDI_INTERFACE			BUS_I2C /* BUS_I2C(0x18) or BUS_SPI(0x1C) */
 #define VDD_VOLTAGE			1800000
 #define VCC_VOLTAGE			1800000
 #define SPI_CLK				(10*MEGA_HZ)
@@ -113,6 +113,8 @@
 #define IRQ_GPIO_NUM			66
 #define TR_BUF_SIZE			2048 /* Buffer size of touch report */
 #define TR_BUF_LIST_SIZE		(1*K) /* Buffer size of touch report */
+#define SPI_TX_BUF_SIZE  		4096
+#define SPI_RX_BUF_SIZE  		4096
 #define WQ_ESD_DELAY			4000
 #define WQ_BAT_DELAY			2000
 #define MT_B_TYPE			ENABLE
@@ -479,12 +481,8 @@ enum TP_ERR_CODE {
 #define GESTURE_RIGHT					0x63
 #define GESTURE_M					0x64
 #define GESTURE_W					0x65
-#define GESTURE_C					0x66
-#define GESTURE_E					0x67
 #define GESTURE_V					0x68
 #define GESTURE_O					0x69
-#define GESTURE_S					0x6A
-#define GESTURE_Z					0x6B
 #define KEY_GESTURE_POWER				KEY_POWER
 #define KEY_GESTURE_UP					KEY_UP
 #define KEY_GESTURE_DOWN				KEY_DOWN
@@ -499,10 +497,10 @@ enum TP_ERR_CODE {
 #define KEY_GESTURE_C					KEY_C
 #define KEY_GESTURE_Z					KEY_Z
 #define KEY_GESTURE_F					KEY_F
-#define GESTURE_CODE_V_DOWN				0x6C
-#define GESTURE_CODE_V_LEFT				0x6D
-#define GESTURE_CODE_V_RIGHT				0x6E
-#define GESTURE_CODE_TWO_LINE_2_BOTTOM			0x6F
+#define GESTURE_V_DOWN					0x6C
+#define GESTURE_V_LEFT					0x6D
+#define GESTURE_V_RIGHT  				0x6E
+#define GESTURE_TWOLINE_DOWN				0x6F
 #define GESTURE_F					0x70
 #define GESTURE_AT					0x71
 #define ESD_GESTURE_PWD					0xF38A94EF
@@ -704,7 +702,7 @@ struct ilitek_tddi_dev {
 	bool skip_wake;
 	bool trans_xy;
 	bool ss_ctrl;
-	bool hex_fail;
+	bool node_update;
 
 	/* module info */
 	int tp_module;
@@ -752,6 +750,8 @@ struct ilitek_touch_info {
 
 struct gesture_coordinate {
 	u16 code;
+	u8 clockwise;
+	int type;
 	struct ilitek_touch_info pos_start;
 	struct ilitek_touch_info pos_end;
 	struct ilitek_touch_info pos_1st;

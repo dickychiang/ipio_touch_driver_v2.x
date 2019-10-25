@@ -581,6 +581,7 @@ void ilitek_tddi_report_handler(void)
 {
 	int ret = 0, pid = 0;
 	u8 checksum = 0;
+	u8 *trdata = NULL;
 	int rlen = 0;
 	int tmp = ipio_debug_level;
 
@@ -663,30 +664,31 @@ void ilitek_tddi_report_handler(void)
 	}
 
 	pid = idev->tr_buf[0];
-	if (pid == P5_X_INFO_HEADER_PACKET_ID) {
-		ipio_debug("Have header PID = %x\n", pid);
-		pid = idev->tr_buf[3];
-	}
 	ipio_debug("Packet ID = %x\n", pid);
+	trdata = idev->tr_buf;
+	if (pid == P5_X_INFO_HEADER_PACKET_ID) {
+		trdata = idev->tr_buf + P5_X_INFO_HEADER_LENGTH;
+		pid = trdata[0];
+	}
 
 	switch (pid) {
 	case P5_X_DEMO_PACKET_ID:
-		ilitek_tddi_report_ap_mode(idev->tr_buf, rlen);
+		ilitek_tddi_report_ap_mode(trdata, rlen);
 		break;
 	case P5_X_DEBUG_PACKET_ID:
-		ilitek_tddi_report_debug_mode(idev->tr_buf, rlen);
+		ilitek_tddi_report_debug_mode(trdata, rlen);
 		break;
 	case P5_X_I2CUART_PACKET_ID:
-		ilitek_tddi_report_i2cuart_mode(idev->tr_buf, rlen);
+		ilitek_tddi_report_i2cuart_mode(trdata, rlen);
 		break;
 	case P5_X_GESTURE_PACKET_ID:
-		ilitek_tddi_report_gesture_mode(idev->tr_buf, rlen);
+		ilitek_tddi_report_gesture_mode(trdata, rlen);
 		break;
 	case P5_X_GESTURE_FAIL_ID:
-		ipio_info("gesture fail reason code = 0x%02x", idev->tr_buf[1]);
+		ipio_info("gesture fail reason code = 0x%02x", trdata[1]);
 		break;
 	case P5_X_DEMO_DEBUG_INFO_PACKET_ID:
-		demo_debug_info_mode(&idev->tr_buf[3], rlen);
+		demo_debug_info_mode(trdata, rlen);
 		break;
 	default:
 		ipio_err("Unknown packet id, %x\n", pid);
