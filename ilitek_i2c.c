@@ -288,6 +288,7 @@ static int ilitek_i2c_remove(struct i2c_client *i2c)
 
 static const struct i2c_device_id tp_i2c_id[] = {
 	{TDDI_DEV_ID, 0},
+	{},
 };
 
 int ilitek_tddi_interface_dev_init(struct ilitek_hwif_info *hwif)
