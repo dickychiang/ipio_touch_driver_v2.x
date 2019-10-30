@@ -3348,6 +3348,7 @@ static void mp_copy_ret_to_apk(char *buf)
 			}
 		}
 	}
+	idev->mp_ret_len = len;
 }
 
 int ilitek_tddi_mp_test_main(char *apk, bool lcm_on, char *single)

@@ -391,7 +391,7 @@ u32 ilitek_tddi_fw_read_hw_crc(u32 start, u32 end)
 
 int ilitek_tddi_fw_read_flash_data(u32 start, u32 end, u8 *data, int len)
 {
-	u32 i, index = 0, precent;
+	u32 i, index = 0;
 	u32 tmp;
 
 	if (end - start > len) {
@@ -426,8 +426,8 @@ int ilitek_tddi_fw_read_flash_data(u32 start, u32 end, u8 *data, int len)
 
 		data[index] = tmp;
 		index++;
-		precent = (i * 100) / end;
-		ipio_debug("Reading flash data .... %d%c", precent, '%');
+		idev->fw_update_stat = (i * 100) / end;
+		ipio_debug("Reading flash data .... %d%c", idev->fw_update_stat, '%');
 	}
 
 	if (ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x1, 1) < 0)
@@ -445,15 +445,18 @@ int ilitek_tddi_fw_dump_flash_data(u32 start, u32 end, bool user)
 	u32 start_addr, end_addr;
 	int ret, length;
 
+	idev->fw_update_stat = 0;
+
 	f = filp_open(DUMP_FLASH_PATH, O_WRONLY | O_CREAT | O_TRUNC, 644);
 	if (ERR_ALLOC_MEM(f)) {
 		ipio_err("Failed to open the file at %ld.\n", PTR_ERR(f));
-		return -1;
+		ret = -1;
+		goto out;
 	}
 
 	ret = ilitek_ice_mode_ctrl(ENABLE, OFF);
 	if (ret < 0)
-		return ret;
+		goto out;
 
 	if (user) {
 		start_addr = 0x0;
@@ -470,11 +473,13 @@ int ilitek_tddi_fw_dump_flash_data(u32 start, u32 end, bool user)
 	if (ERR_ALLOC_MEM(buf)) {
 		ipio_err("Failed to allocate buf memory, %ld\n", PTR_ERR(buf));
 		filp_close(f, NULL);
-		ilitek_ice_mode_ctrl(DISABLE, OFF);
-		return -1;
+		ret = -1;
+		goto out;
 	}
 
-	ilitek_tddi_fw_read_flash_data(start_addr, end_addr, buf, length);
+	ret = ilitek_tddi_fw_read_flash_data(start_addr, end_addr, buf, length);
+	if (ret < 0)
+		goto out;
 
 	old_fs = get_fs();
 	set_fs(get_ds());
@@ -484,9 +489,12 @@ int ilitek_tddi_fw_dump_flash_data(u32 start, u32 end, bool user)
 	set_fs(old_fs);
 	filp_close(f, NULL);
 	ipio_vfree((void **)&buf);
+
+out:
 	ilitek_ice_mode_ctrl(DISABLE, OFF);
-	ipio_info("dump flash success\n");
-	return 0;
+	ipio_info("Dump flash %s\n", (ret < 0) ? "FAIL" : "SUCCESS");
+	idev->fw_update_stat = (ret < 0) ? -1 : 100;
+	return ret;
 }
 
 static void ilitek_tddi_flash_protect(bool enable)

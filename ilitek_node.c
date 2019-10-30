@@ -574,7 +574,7 @@ static ssize_t ilitek_proc_fw_pc_counter_read(struct file *pFile, char __user *b
 u32 rw_reg[5] = {0};
 static ssize_t ilitek_proc_rw_tp_reg_read(struct file *pFile, char __user *buf, size_t size, loff_t *pos)
 {
-	int ret = 0;
+	int ret = 0, len = 0;
 	bool mcu_on = 0, read = 0;
 	u32 type, addr, read_data, write_data, write_len, stop_mcu;
 	bool esd_en = idev->wq_esd_ctrl, bat_en = idev->wq_bat_ctrl;
@@ -597,63 +597,57 @@ static ssize_t ilitek_proc_rw_tp_reg_read(struct file *pFile, char __user *buf, 
 
 	mutex_lock(&idev->touch_mutex);
 
-	if (stop_mcu == mcu_on) {
+	memset(g_user_buf, 0, USER_STR_BUFF * sizeof(unsigned char));
+
+	if (stop_mcu == mcu_on)
 		ret = ilitek_ice_mode_ctrl(ENABLE, ON);
-		if (ret < 0) {
-			ipio_err("Failed to enter ICE mode, ret = %d\n", ret);
-			size = -1;
-			goto out;
-		}
-	} else {
+	else
 		ret = ilitek_ice_mode_ctrl(ENABLE, OFF);
-		if (ret < 0) {
-			ipio_err("Failed to enter ICE mode, ret = %d\n", ret);
-			size = -1;
-			goto out;
-		}
+
+	if (ret < 0) {
+		ipio_err("Failed to enter ICE mode, ret = %d\n", ret);
+		len += snprintf(g_user_buf + len, USER_STR_BUFF - len, "%s\n", "Failed to enter ICE mode");
 	}
 
 	if (type == read) {
-		if (ilitek_ice_mode_read(addr, &read_data, sizeof(u32)) < 0)
+		if (ilitek_ice_mode_read(addr, &read_data, sizeof(u32)) < 0) {
 			ipio_err("Read data error\n");
-		ipio_info("READ:addr = 0x%06x, read = 0x%08x\n", addr, read_data);
-		size = snprintf(g_user_buf, PAGE_SIZE, "READ:addr = 0x%06x, read = 0x%08x\n", addr, read_data);
+			len += snprintf(g_user_buf + len, USER_STR_BUFF - len, "%s\n", "Read data error");
+		}
+
+		ipio_info("[READ]:addr = 0x%06x, read = 0x%08x\n", addr, read_data);
+		len += snprintf(g_user_buf + len, USER_STR_BUFF - len, "READ:addr = 0x%06x, read = 0x%08x\n", addr, read_data);
 	} else {
-		if (ilitek_ice_mode_write(addr, write_data, write_len) < 0)
+		if (ilitek_ice_mode_write(addr, write_data, write_len) < 0) {
 			ipio_err("Write data error\n");
-		ipio_info("WRITE:addr = 0x%06x, write = 0x%08x, len =%d byte\n", addr, write_data, write_len);
-		size = snprintf(g_user_buf, PAGE_SIZE, "WRITE:addr = 0x%06x, write = 0x%08x, len =%d byte\n", addr, write_data, write_len);
+			len += snprintf(g_user_buf + len, USER_STR_BUFF - len, "%s\n", "Write data error");
+		}
+
+		ipio_info("[WRITE]:addr = 0x%06x, write = 0x%08x, len = %d byte\n", addr, write_data, write_len);
+		len += snprintf(g_user_buf + len, USER_STR_BUFF - len, "WRITE:addr = 0x%06x, write = 0x%08x, len =%d byte\n", addr, write_data, write_len);
 	}
 
-	if (stop_mcu == mcu_on) {
+	if (stop_mcu == mcu_on)
 		ret = ilitek_ice_mode_ctrl(DISABLE, ON);
-		if (ret < 0) {
-			ipio_err("Failed to disable ICE mode, ret = %d\n", ret);
-			size = -1;
-			goto out;
-		}
-	} else {
+	else
 		ret = ilitek_ice_mode_ctrl(DISABLE, OFF);
-		if (ret < 0) {
-			ipio_err("Failed to disable ICE mode, ret = %d\n", ret);
-			size = -1;
-			goto out;
-		}
+
+	if (ret < 0) {
+		ipio_err("Failed to disable ICE mode, ret = %d\n", ret);
+		len += snprintf(g_user_buf + len, USER_STR_BUFF - len, "%s\n", "Failed to disable ICE mode");
 	}
 
-	if (copy_to_user(buf, g_user_buf, size))
+	if (copy_to_user((char *)buf, g_user_buf, len))
 		ipio_err("Failed to copy data to user space\n");
-
-	*pos += size;
 
 	if (esd_en)
 		ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
 	if (bat_en)
 		ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
 
-out:
+	*pos += len;
 	mutex_unlock(&idev->touch_mutex);
-	return size;
+	return len;
 }
 
 static ssize_t ilitek_proc_rw_tp_reg_write(struct file *filp, const char *buff, size_t size, loff_t *pos)
@@ -915,8 +909,11 @@ static ssize_t ilitek_proc_get_debug_mode_data_write(struct file *filp, const ch
 
 static ssize_t ilitek_node_mp_lcm_on_test_read(struct file *filp, char __user *buff, size_t size, loff_t *pos)
 {
-	int ret = 0, len = 0;
+	int ret = 0, len = 2;
 	bool esd_en = idev->wq_esd_ctrl, bat_en = idev->wq_bat_ctrl;
+
+	if (*pos != 0)
+		return 0;
 
 	ipio_info("Run MP test with LCM on\n");
 
@@ -932,30 +929,33 @@ static ssize_t ilitek_node_mp_lcm_on_test_read(struct file *filp, char __user *b
 		ilitek_tddi_wq_ctrl(WQ_BAT, DISABLE);
 
 	memset(g_user_buf, 0, USER_STR_BUFF * sizeof(unsigned char));
+	idev->mp_ret_len = 0;
 
 	ret = ilitek_tddi_mp_test_handler(g_user_buf, ON, NULL);
 	ipio_info("MP TEST %s, Error code = %d\n", (ret < 0) ? "FAIL" : "PASS", ret);
 
 	g_user_buf[0] = 3;
 	g_user_buf[1] = (ret < 0) ? -ret : ret;
+	len += idev->mp_ret_len;
 
+	len += snprintf(g_user_buf + len, USER_STR_BUFF - len, "MP TEST %s\n", (ret < 0) ? "FAIL" : "PASS");
 	if (g_user_buf[1] == EMP_MODE) {
-		len += snprintf(g_user_buf + 2 + len, USER_STR_BUFF - len, "%s\n", "Failed to switch MP mode, abort!");
+		len += snprintf(g_user_buf + len, USER_STR_BUFF - len, "%s\n", "Failed to switch MP mode, abort!");
 	} else if (g_user_buf[1] == EMP_FW_PROC) {
-		len += snprintf(g_user_buf + 2 + len, USER_STR_BUFF - len, "%s\n", "FW still upgrading, abort!");
+		len += snprintf(g_user_buf + len, USER_STR_BUFF - len, "%s\n", "FW still upgrading, abort!");
 	} else if (g_user_buf[1] == EMP_FORMUL_NULL) {
-		len += snprintf(g_user_buf + 2 + len, USER_STR_BUFF - len, "%s\n", "MP formula is null, abort!");
+		len += snprintf(g_user_buf + len, USER_STR_BUFF - len, "%s\n", "MP formula is null, abort!");
 	} else if (g_user_buf[1] == EMP_INI) {
-		len += snprintf(g_user_buf + 2 + len, USER_STR_BUFF - len, "%s\n", "Not found ini file, abort!");
+		len += snprintf(g_user_buf + len, USER_STR_BUFF - len, "%s\n", "Not found ini file, abort!");
 	} else if (g_user_buf[1] == EMP_NOMEM) {
-		len += snprintf(g_user_buf + 2 + len, USER_STR_BUFF - len, "%s\n", "Failed to allocated memory, abort!");
+		len += snprintf(g_user_buf + len, USER_STR_BUFF - len, "%s\n", "Failed to allocated memory, abort!");
 	} else if (g_user_buf[1] == EMP_PROTOCOL) {
-		len += snprintf(g_user_buf + 2 + len, USER_STR_BUFF - len, "%s\n", "Protocol version isn't matched, abort!");
+		len += snprintf(g_user_buf + len, USER_STR_BUFF - len, "%s\n", "Protocol version isn't matched, abort!");
 	} else if (g_user_buf[1] == EMP_TIMING_INFO) {
-		len += snprintf(g_user_buf + 2 + len, USER_STR_BUFF - len, "%s\n", "Failed to get timing info, abort!");
+		len += snprintf(g_user_buf + len, USER_STR_BUFF - len, "%s\n", "Failed to get timing info, abort!");
 	}
 
-	if (copy_to_user((char *)buff, g_user_buf, USER_STR_BUFF))
+	if (copy_to_user((char *)buff, g_user_buf, len))
 		ipio_err("Failed to copy data to user space\n");
 
 	if (esd_en)
@@ -963,14 +963,18 @@ static ssize_t ilitek_node_mp_lcm_on_test_read(struct file *filp, char __user *b
 	if (bat_en)
 		ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
 
+	*pos += len;
 	mutex_unlock(&idev->touch_mutex);
-	return 0;
+	return len;
 }
 
 static ssize_t ilitek_node_mp_lcm_off_test_read(struct file *filp, char __user *buff, size_t size, loff_t *pos)
 {
-	int ret = 0, len = 0;
+	int ret = 0, len = 2;
 	bool esd_en = idev->wq_esd_ctrl, bat_en = idev->wq_bat_ctrl;
+
+	if (*pos != 0)
+		return 0;
 
 	ipio_info("Run MP test with LCM off\n");
 
@@ -987,30 +991,33 @@ static ssize_t ilitek_node_mp_lcm_off_test_read(struct file *filp, char __user *
 		ilitek_tddi_wq_ctrl(WQ_BAT, DISABLE);
 
 	memset(g_user_buf, 0, USER_STR_BUFF * sizeof(unsigned char));
+	idev->mp_ret_len = 0;
 
 	ret = ilitek_tddi_mp_test_handler(g_user_buf, OFF, NULL);
 	ipio_info("MP TEST %s, Error code = %d\n", (ret < 0) ? "FAIL" : "PASS", ret);
 
 	g_user_buf[0] = 3;
 	g_user_buf[1] = (ret < 0) ? -ret : ret;
+	len += idev->mp_ret_len;
 
+	len += snprintf(g_user_buf + len, USER_STR_BUFF - len, "MP TEST %s\n", (ret < 0) ? "FAIL" : "PASS");
 	if (g_user_buf[1] == EMP_MODE) {
-		len += snprintf(g_user_buf + 2 + len, USER_STR_BUFF - len, "%s\n", "Failed to switch MP mode, abort!");
+		len += snprintf(g_user_buf + len, USER_STR_BUFF - len, "%s\n", "Failed to switch MP mode, abort!");
 	} else if (g_user_buf[1] == EMP_FW_PROC) {
-		len += snprintf(g_user_buf + 2 + len, USER_STR_BUFF - len, "%s\n", "FW still upgrading, abort!");
+		len += snprintf(g_user_buf + len, USER_STR_BUFF - len, "%s\n", "FW still upgrading, abort!");
 	} else if (g_user_buf[1] == EMP_FORMUL_NULL) {
-		len += snprintf(g_user_buf + 2 + len, USER_STR_BUFF - len, "%s\n", "MP formula is null, abort!");
+		len += snprintf(g_user_buf + len, USER_STR_BUFF - len, "%s\n", "MP formula is null, abort!");
 	} else if (g_user_buf[1] == EMP_INI) {
-		len += snprintf(g_user_buf + 2 + len, USER_STR_BUFF - len, "%s\n", "Not found ini file, abort!");
+		len += snprintf(g_user_buf + len, USER_STR_BUFF - len, "%s\n", "Not found ini file, abort!");
 	} else if (g_user_buf[1] == EMP_NOMEM) {
-		len += snprintf(g_user_buf + 2 + len, USER_STR_BUFF - len, "%s\n", "Failed to allocated memory, abort!");
+		len += snprintf(g_user_buf + len, USER_STR_BUFF - len, "%s\n", "Failed to allocated memory, abort!");
 	} else if (g_user_buf[1] == EMP_PROTOCOL) {
-		len += snprintf(g_user_buf + 2 + len, USER_STR_BUFF - len, "%s\n", "Protocol version isn't matched, abort!");
+		len += snprintf(g_user_buf + len, USER_STR_BUFF - len, "%s\n", "Protocol version isn't matched, abort!");
 	} else if (g_user_buf[1] == EMP_TIMING_INFO) {
-		len += snprintf(g_user_buf + 2 + len, USER_STR_BUFF - len, "%s\n", "Failed to get timing info, abort!");
+		len += snprintf(g_user_buf + len, USER_STR_BUFF - len, "%s\n", "Failed to get timing info, abort!");
 	}
 
-	if (copy_to_user((char *)buff, g_user_buf, USER_STR_BUFF))
+	if (copy_to_user((char *)buff, g_user_buf, len))
 		ipio_err("Failed to copy data to user space\n");
 
 	if (esd_en)
@@ -1018,8 +1025,9 @@ static ssize_t ilitek_node_mp_lcm_off_test_read(struct file *filp, char __user *
 	if (bat_en)
 		ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
 
+	*pos += len;
 	mutex_unlock(&idev->touch_mutex);
-	return 0;
+	return len;
 }
 
 static ssize_t ilitek_proc_fw_process_read(struct file *filp, char __user *buff, size_t size, loff_t *pos)
@@ -1044,9 +1052,11 @@ static ssize_t ilitek_proc_fw_process_read(struct file *filp, char __user *buff,
 
 static ssize_t ilitek_node_fw_upgrade_read(struct file *filp, char __user *buff, size_t size, loff_t *pos)
 {
-	int ret = 0;
-	u32 len = 2;
+	int ret = 0, len = 2;
 	bool esd_en = idev->wq_esd_ctrl, bat_en = idev->wq_bat_ctrl;
+
+	if (*pos != 0)
+		return 0;
 
 	ipio_info("Preparing to upgarde firmware\n");
 
@@ -1095,7 +1105,7 @@ static ssize_t ilitek_node_fw_upgrade_read(struct file *filp, char __user *buff,
 		len += snprintf(g_user_buf + len, USER_STR_BUFF - len, "%s\n", "Failed to program flash, abort!");
 	}
 
-	if (copy_to_user((u32 *) buff, g_user_buf, USER_STR_BUFF))
+	if (copy_to_user((u32 *) buff, g_user_buf, len))
 		ipio_err("Failed to copy data to user space\n");
 
 	if (esd_en)
@@ -1103,8 +1113,9 @@ static ssize_t ilitek_node_fw_upgrade_read(struct file *filp, char __user *buff,
 	if (bat_en)
 		ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
 
+	*pos += len;
 	mutex_unlock(&idev->touch_mutex);
-	return 0;
+	return len;
 }
 
 static ssize_t ilitek_proc_debug_level_read(struct file *filp, char __user *buff, size_t size, loff_t *pos)
@@ -1351,6 +1362,9 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 		ilitek_ice_mode_ctrl(ENABLE, OFF);
 		ilitek_tddi_reset_ctrl(TP_IC_CODE_RST);
 		ilitek_ice_mode_ctrl(DISABLE, OFF);
+	} else if (strcmp(cmd, "infofromhex") == 0) {
+		idev->info_from_hex = data[1];
+		ipio_info("info from hex = %d\n", data[1]);
 	} else if (strncmp(cmd, "getinfo", strlen(cmd)) == 0) {
 		ilitek_ice_mode_ctrl(ENABLE, OFF);
 		ilitek_tddi_ic_get_info();
@@ -1385,7 +1399,7 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 		ipio_info("gesture = %d\n", idev->gesture);
 	} else if (strncmp(cmd, "esdgesture", strlen(cmd)) == 0) {
 		if (ilitek_tddi_gesture_recovery() < 0) {
-			ipio_err("gesture recovery failed\n");
+			ipio_err("Gesture recovery failed\n");
 			size = -1;
 		}
 	} else if (strncmp(cmd, "esdspi", strlen(cmd)) == 0) {

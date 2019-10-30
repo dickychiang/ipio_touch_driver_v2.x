@@ -687,6 +687,7 @@ struct ilitek_tddi_dev {
 	int reset;
 	int rst_edge_delay;
 	int fw_upgrade_mode;
+	int mp_ret_len;
 	bool wtd_ctrl;
 	bool do_otp_check;
 	bool fw_uart_en;
