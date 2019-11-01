@@ -112,9 +112,100 @@ static int CalculateCRC32(u32 start_addr, u32 len, u8 *pfw)
 	return tmp_crc;
 }
 
+static int ilitek_tddi_fw_iram_read(u8 *buf, u32 start, int len)
+{
+	int i, limit = 4*K;
+	int addr = 0, end = len - 1;
+	u8 cmd[4] = {0};
+
+	if (!buf) {
+		ipio_err("buf is null\n");
+		return -ENOMEM;
+	}
+
+	for (i = 0, addr = start; addr < end; i += limit, addr += limit) {
+		if ((addr + limit) > len)
+			limit = end % limit;
+
+		cmd[0] = 0x25;
+		cmd[3] = (char)((addr & 0x00FF0000) >> 16);
+		cmd[2] = (char)((addr & 0x0000FF00) >> 8);
+		cmd[1] = (char)((addr & 0x000000FF));
+
+		if (idev->write(cmd, 4) < 0) {
+			ipio_err("Failed to write iram data\n");
+			return -ENODEV;
+		}
+
+		if (idev->read(buf + i, limit) < 0) {
+			ipio_err("Failed to Read iram data\n");
+			return -ENODEV;
+		}
+		idev->fw_update_stat = (i * 100) / end;
+		ipio_debug("Reading iram data .... %d%c", idev->fw_update_stat, '%');
+	}
+	return 0;
+}
+
 void ilitek_fw_dump_iram_data(u32 start, u32 end, bool save)
 {
-	return;
+	struct file *f = NULL;
+	mm_segment_t old_fs;
+	loff_t pos = 0;
+	int i, ret, len;
+	u8 *fw_buf = NULL;
+
+	idev->fw_update_stat = 0;
+
+	if (ilitek_ice_mode_ctrl(ENABLE, OFF) < 0) {
+		ipio_err("Enable ice mode failed\n");
+		ret = -1;
+		goto out;
+	}
+
+	len = end - start + 1;
+
+	if (len > MAX_HEX_FILE_SIZE) {
+		ipio_err("len is larger than buffer, abort\n");
+		ret = -EINVAL;
+		goto out;
+	}
+
+	fw_buf = kzalloc(MAX_HEX_FILE_SIZE, GFP_KERNEL);
+	if (ERR_ALLOC_MEM(fw_buf)) {
+		ipio_err("Failed to allocate update_buf\n");
+		ret = -ENOMEM;
+		goto out;
+	}
+
+	for (i = 0; i < MAX_HEX_FILE_SIZE; i++)
+		fw_buf[i] = 0xFF;
+
+	ret = ilitek_tddi_fw_iram_read(fw_buf, start, len);
+	if (ret < 0)
+		goto out;
+
+	f = filp_open(DUMP_IRAM_PATH, O_WRONLY | O_CREAT | O_TRUNC, 644);
+	if (ERR_ALLOC_MEM(f)) {
+		ipio_err("Failed to open the file at %ld.\n", PTR_ERR(f));
+		ret = -1;
+		goto out;
+	}
+
+	old_fs = get_fs();
+	set_fs(get_ds());
+	set_fs(KERNEL_DS);
+	pos = 0;
+	vfs_write(f, fw_buf, len, &pos);
+	set_fs(old_fs);
+	filp_close(f, NULL);
+	ipio_info("Save iram data to %s\n", DUMP_IRAM_PATH);
+
+out:
+	ilitek_ice_mode_ctrl(DISABLE, OFF);
+	ipio_info("Dump IRAM %s\n", (ret < 0) ? "FAIL" : "SUCCESS");
+	idev->fw_update_stat = (ret < 0) ? -1 : 100;
+	ipio_kfree((void **)&fw_buf);
 }
 
 static int ilitek_tddi_fw_check_hex_hw_crc(u8 *pfw)

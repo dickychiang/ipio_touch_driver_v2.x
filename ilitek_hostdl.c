@@ -171,12 +171,12 @@ static int ilitek_tddi_fw_iram_read(u8 *buf, u32 start, int len)
 		cmd[2] = (char)((addr & 0x0000FF00) >> 8);
 		cmd[1] = (char)((addr & 0x000000FF));
 
-		if (idev->write(cmd, 4)) {
+		if (idev->write(cmd, 4) < 0) {
 			ipio_err("Failed to write iram data\n");
 			return -ENODEV;
 		}
 
-		if (idev->read(buf + i, limit)) {
+		if (idev->read(buf + i, limit) < 0) {
 			ipio_err("Failed to Read iram data\n");
 			return -ENODEV;
 		}
@@ -213,7 +213,7 @@ void ilitek_fw_dump_iram_data(u32 start, u32 end, bool save)
 		goto out;
 	}
 
-	for (i = 0; i < len; i++)
+	for (i = 0; i < MAX_HEX_FILE_SIZE; i++)
 		idev->update_buf[i] = 0xFF;
 
 	if (ilitek_tddi_fw_iram_read(idev->update_buf, start, len) < 0)

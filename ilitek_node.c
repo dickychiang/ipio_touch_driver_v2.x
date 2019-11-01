@@ -1257,7 +1257,6 @@ int get_tp_recore_data(void)
 
 void gesture_fail_reason(bool enable)
 {
-
 	u8 cmd[24] = {0};
 
 	/* set symbol */

@@ -264,7 +264,7 @@ static int ilitek_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id *
 	idev->gesture_move_code = ilitek_tddi_move_gesture_code_flash;
 	idev->esd_recover = ilitek_tddi_wq_esd_i2c_check;
 	idev->ges_recover = ilitek_tddi_touch_esd_gesture_flash;
-	idev->gesture_mode = DATA_FORMAT_GESTURE_NORMAL;
+	idev->gesture_mode = DATA_FORMAT_GESTURE_INFO;
 	idev->gesture_demo_ctrl = DISABLE;
 	idev->wtd_ctrl = OFF;
 	idev->report = ENABLE;
