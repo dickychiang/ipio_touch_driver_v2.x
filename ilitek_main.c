@@ -425,7 +425,7 @@ int ilitek_tddi_sleep_handler(int mode)
 				ipio_err("Write sense stop cmd failed\n");
 
 			if (ilitek_tddi_ic_check_busy(50, 20) < 0)
-				ipio_err("Check busy timeout during suspend\n");
+				ipio_err("Check busy timeout during deep suspend\n");
 		}
 
 		if (idev->gesture) {

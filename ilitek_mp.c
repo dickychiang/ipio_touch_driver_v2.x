@@ -3414,7 +3414,6 @@ int ilitek_tddi_mp_test_main(char *apk, bool lcm_on)
 
 	ret = mp_show_result(lcm_on);
 
-mp_failed:
 	mp_copy_ret_to_apk(apk);
 	mp_test_free();
 

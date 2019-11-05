@@ -94,9 +94,9 @@
 #define ILITEK_COMPAT_IOCTL_TP_FW_UART_CTRL		_IOWR(ILITEK_IOCTL_MAGIC, 22, compat_uptr_t)
 #define ILITEK_COMPAT_IOCTL_TP_PANEL_INFO		_IOWR(ILITEK_IOCTL_MAGIC, 23, compat_uptr_t)
 #define ILITEK_COMPAT_IOCTL_TP_INFO			_IOWR(ILITEK_IOCTL_MAGIC, 24, compat_uptr_t)
-#define ILITEK_COMPAT_IOCTL_WRAPPER_RW			_IOWR(ILITEK_IOCTL_MAGIC, 25, u8*)
-#define ILITEK_COMPAT_IOCTL_DDI_WRITE	 		_IOWR(ILITEK_IOCTL_MAGIC, 26, u8*)
-#define ILITEK_COMPAT_IOCTL_DDI_READ	 		_IOWR(ILITEK_IOCTL_MAGIC, 27, u8*)
+#define ILITEK_COMPAT_IOCTL_WRAPPER_RW			_IOWR(ILITEK_IOCTL_MAGIC, 25, compat_uptr_t)
+#define ILITEK_COMPAT_IOCTL_DDI_WRITE	 		_IOWR(ILITEK_IOCTL_MAGIC, 26, compat_uptr_t)
+#define ILITEK_COMPAT_IOCTL_DDI_READ	 		_IOWR(ILITEK_IOCTL_MAGIC, 27, compat_uptr_t)
 #endif
 
 struct record_state {
@@ -1665,10 +1665,6 @@ static long ilitek_node_compat_ioctl(struct file *filp, unsigned int cmd, unsign
 	case ILITEK_COMPAT_IOCTL_TP_PANEL_INFO:
 		ipio_debug("compat_ioctl: convert resolution\n");
 		ret = filp->f_op->unlocked_ioctl(filp, ILITEK_COMPAT_IOCTL_TP_PANEL_INFO, (unsigned long)compat_ptr(arg));
-		return ret;
-	case ILITEK_COMPAT_IOCTL_TP_INFO:
-		ipio_debug("compat_ioctl: convert tp info\n");
-		ret = filp->f_op->unlocked_ioctl(filp, ILITEK_COMPAT_IOCTL_TP_INFO, (unsigned long)compat_ptr(arg));
 		return ret;
 	case ILITEK_COMPAT_IOCTL_TP_INFO:
 		ipio_debug("compat_ioctl: convert tp info\n");
