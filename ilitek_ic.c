@@ -565,10 +565,9 @@ void ilitek_tddi_ic_set_ddi_reg_onepage(u8 page, u8 reg, u8 data)
 			ipio_err("Disable ice mode failed after writing ddi reg\n");
 }
 
-void ilitek_tddi_ic_get_ddi_reg_onepage(u8 page, u8 reg)
+void ilitek_tddi_ic_get_ddi_reg_onepage(u8 page, u8 reg, u8 *data)
 {
 	int wdt;
-	u32 reg_data = 0;
 	u32 setpage = 0x1FFFFF00 | page;
 	u32 setreg = 0x2F000100 | (reg << 16);
 	bool ice = atomic_read(&idev->ice_stat);
@@ -595,8 +594,8 @@ void ilitek_tddi_ic_get_ddi_reg_onepage(u8 page, u8 reg)
 	if (ilitek_ice_mode_write(0x4800A, 0x02, 1) < 0)
 		ipio_err("Write 0x2 at 0x4800A\n");
 
-	reg_data = ilitek_tddi_ic_rd_pack(setreg);
-	ipio_info("check page = 0x%X, reg = 0x%X, read 0x%X\n", page, reg, reg_data);
+	*data = ilitek_tddi_ic_rd_pack(setreg);
+	ipio_info("check page = 0x%X, reg = 0x%X, read 0x%X\n", page, reg, *data);
 
 	/*TDI_RD_KEY OFF*/
 	ilitek_tddi_ic_wr_pack(0x1FFF9400);

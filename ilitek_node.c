@@ -25,7 +25,7 @@
 #define USER_STR_BUFF		PAGE_SIZE
 #define IOCTL_I2C_BUFF		PAGE_SIZE
 #define ILITEK_IOCTL_MAGIC	100
-#define ILITEK_IOCTL_MAXNR	24
+#define ILITEK_IOCTL_MAXNR	27
 
 #define ILITEK_IOCTL_I2C_WRITE_DATA		_IOWR(ILITEK_IOCTL_MAGIC, 0, u8*)
 #define ILITEK_IOCTL_I2C_SET_WRITE_LENGTH	_IOWR(ILITEK_IOCTL_MAGIC, 1, int)
@@ -58,6 +58,9 @@
 #define ILITEK_IOCTL_TP_FW_UART_CTRL		_IOWR(ILITEK_IOCTL_MAGIC, 22, u8*)
 #define ILITEK_IOCTL_TP_PANEL_INFO		_IOWR(ILITEK_IOCTL_MAGIC, 23, u32*)
 #define ILITEK_IOCTL_TP_INFO			_IOWR(ILITEK_IOCTL_MAGIC, 24, u32*)
+#define ILITEK_IOCTL_WRAPPER_RW 		_IOWR(ILITEK_IOCTL_MAGIC, 25, u8*)
+#define ILITEK_IOCTL_DDI_WRITE	 		_IOWR(ILITEK_IOCTL_MAGIC, 26, u8*)
+#define ILITEK_IOCTL_DDI_READ	 		_IOWR(ILITEK_IOCTL_MAGIC, 27, u8*)
 
 #ifdef CONFIG_COMPAT
 #define ILITEK_COMPAT_IOCTL_I2C_WRITE_DATA		_IOWR(ILITEK_IOCTL_MAGIC, 0, compat_uptr_t)
@@ -91,6 +94,9 @@
 #define ILITEK_COMPAT_IOCTL_TP_FW_UART_CTRL		_IOWR(ILITEK_IOCTL_MAGIC, 22, compat_uptr_t)
 #define ILITEK_COMPAT_IOCTL_TP_PANEL_INFO		_IOWR(ILITEK_IOCTL_MAGIC, 23, compat_uptr_t)
 #define ILITEK_COMPAT_IOCTL_TP_INFO			_IOWR(ILITEK_IOCTL_MAGIC, 24, compat_uptr_t)
+#define ILITEK_COMPAT_IOCTL_WRAPPER_RW			_IOWR(ILITEK_IOCTL_MAGIC, 25, u8*)
+#define ILITEK_COMPAT_IOCTL_DDI_WRITE	 		_IOWR(ILITEK_IOCTL_MAGIC, 26, u8*)
+#define ILITEK_COMPAT_IOCTL_DDI_READ	 		_IOWR(ILITEK_IOCTL_MAGIC, 27, u8*)
 #endif
 
 struct record_state {
@@ -931,7 +937,7 @@ static ssize_t ilitek_node_mp_lcm_on_test_read(struct file *filp, char __user *b
 	memset(g_user_buf, 0, USER_STR_BUFF * sizeof(unsigned char));
 	idev->mp_ret_len = 0;
 
-	ret = ilitek_tddi_mp_test_handler(g_user_buf, ON, NULL);
+	ret = ilitek_tddi_mp_test_handler(g_user_buf, ON);
 	ipio_info("MP TEST %s, Error code = %d\n", (ret < 0) ? "FAIL" : "PASS", ret);
 
 	g_user_buf[0] = 3;
@@ -993,7 +999,7 @@ static ssize_t ilitek_node_mp_lcm_off_test_read(struct file *filp, char __user *
 	memset(g_user_buf, 0, USER_STR_BUFF * sizeof(unsigned char));
 	idev->mp_ret_len = 0;
 
-	ret = ilitek_tddi_mp_test_handler(g_user_buf, OFF, NULL);
+	ret = ilitek_tddi_mp_test_handler(g_user_buf, OFF);
 	ipio_info("MP TEST %s, Error code = %d\n", (ret < 0) ? "FAIL" : "PASS", ret);
 
 	g_user_buf[0] = 3;
@@ -1475,8 +1481,10 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 		for (i = 0; i < r_len; i++)
 			ipio_info("read[%d] = %x\n", i, temp[i]);
 	} else if (strncmp(cmd, "getddiregdata", strlen(cmd)) == 0) {
+		u8 ddi_data = 0;
 		ipio_info("Get ddi reg one page: page = %x, reg = %x\n", data[1], data[2]);
-		ilitek_tddi_ic_get_ddi_reg_onepage(data[1], data[2]);
+		ilitek_tddi_ic_get_ddi_reg_onepage(data[1], data[2], &ddi_data);
+		ipio_info("ddi_data = %x\n", ddi_data);
 	} else if (strncmp(cmd, "setddiregdata", strlen(cmd)) == 0) {
 		ipio_info("Set ddi reg one page: page = %x, reg = %x, data = %x\n", data[1], data[2], data[3]);
 		ilitek_tddi_ic_set_ddi_reg_onepage(data[1], data[2], data[3]);
@@ -1661,6 +1669,22 @@ static long ilitek_node_compat_ioctl(struct file *filp, unsigned int cmd, unsign
 	case ILITEK_COMPAT_IOCTL_TP_INFO:
 		ipio_debug("compat_ioctl: convert tp info\n");
 		ret = filp->f_op->unlocked_ioctl(filp, ILITEK_COMPAT_IOCTL_TP_INFO, (unsigned long)compat_ptr(arg));
+		return ret;
+	case ILITEK_COMPAT_IOCTL_TP_INFO:
+		ipio_debug("compat_ioctl: convert tp info\n");
+		ret = filp->f_op->unlocked_ioctl(filp, ILITEK_COMPAT_IOCTL_TP_INFO, (unsigned long)compat_ptr(arg));
+		return ret;
+	case ILITEK_COMPAT_IOCTL_WRAPPER_RW:
+		ipio_debug("compat_ioctl: convert wrapper rw\n");
+		ret = filp->f_op->unlocked_ioctl(filp, ILITEK_COMPAT_IOCTL_WRAPPER_RW, (unsigned long)compat_ptr(arg));
+		return ret;
+	case ILITEK_COMPAT_IOCTL_DDI_WRITE:
+		ipio_debug("compat_ioctl: convert ddi write\n");
+		ret = filp->f_op->unlocked_ioctl(filp, ILITEK_COMPAT_IOCTL_DDI_WRITE, (unsigned long)compat_ptr(arg));
+		return ret;
+	case ILITEK_COMPAT_IOCTL_DDI_READ:
+		ipio_debug("compat_ioctl: convert ddi read\n");
+		ret = filp->f_op->unlocked_ioctl(filp, ILITEK_COMPAT_IOCTL_DDI_READ, (unsigned long)compat_ptr(arg));
 		return ret;
 	default:
 		ipio_err("no ioctl cmd, return ilitek_node_ioctl\n");
@@ -2009,6 +2033,33 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 
 		if (copy_to_user((u32 *) arg, id_to_user, sizeof(u32) * 8)) {
 			ipio_err("Failed to copy driver ver to user space\n");
+			ret = -ENOTTY;
+		}
+		break;
+	case ILITEK_IOCTL_WRAPPER_RW:
+		ipio_info("Not supported in this version\n");
+		ret = -ENOTTY;
+		break;
+	case ILITEK_IOCTL_DDI_WRITE:
+		if (copy_from_user(szBuf, (u8 *) arg, 3)) {
+			ipio_err("Failed to copy data from user space\n");
+			ret = -ENOTTY;
+			break;
+		}
+		ipio_debug("ioctl: page = %x, reg = %x, data = %x\n", szBuf[0], szBuf[1], szBuf[2]);
+		ilitek_tddi_ic_set_ddi_reg_onepage(szBuf[0], szBuf[1], szBuf[2]);
+		break;
+	case ILITEK_IOCTL_DDI_READ:
+		if (copy_from_user(szBuf, (u8 *) arg, 2)) {
+			ipio_err("Failed to copy data from user space\n");
+			ret = -ENOTTY;
+			break;
+		}
+		ipio_debug("ioctl: page = %x, reg = %x\n", szBuf[0], szBuf[1]);
+		ilitek_tddi_ic_get_ddi_reg_onepage(szBuf[0], szBuf[1], &szBuf[2]);
+		ipio_debug("ioctl: data = %x\n", szBuf[2]);
+		if (copy_to_user((u8 *) arg, szBuf + 2, 1)) {
+			ipio_err("Failed to copy data to user space\n");
 			ret = -ENOTTY;
 		}
 		break;

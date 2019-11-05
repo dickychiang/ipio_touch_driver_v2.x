@@ -171,6 +171,8 @@ struct core_mp_test_data {
 	u32 fw_ver;
 	u32 protocol_ver;
 	u32 core_ver;
+	char ini_date[128];
+	char ini_ver[64];
 	int no_bk_shift;
 	bool retry;
 	bool m_signal;
@@ -1062,6 +1064,10 @@ static void mp_print_csv_header(char *csv, int *csv_len, int *csv_line, int file
 	tmp_len += snprintf(csv + tmp_len, (file_size - tmp_len), "Firmware Version ,0x%x\n", core_mp.fw_ver);
 	tmp_line++;
 	tmp_len += snprintf(csv + tmp_len, (file_size - tmp_len), "Panel information ,XCH=%d, YCH=%d\n", core_mp.xch_len, core_mp.ych_len);
+	tmp_len += snprintf(csv + tmp_len, (file_size - tmp_len), "INI Release Version ,%s\n", core_mp.ini_date);
+	tmp_line++;
+	tmp_len += snprintf(csv + tmp_len, (file_size - tmp_len), "INI Release Date ,%s\n", core_mp.ini_ver);
+	tmp_line++;
 	tmp_line++;
 	tmp_len += snprintf(csv + tmp_len, (file_size - tmp_len), "Test Item:\n");
 	tmp_line++;
@@ -2819,6 +2825,11 @@ static int mp_show_result(bool lcm_on)
 		goto fail_open;
 	}
 
+	if (parser_get_ini_key_value("pv5_4 command", "date", core_mp.ini_date) < 0)
+		ipio_memcpy(core_mp.ini_date, "Unknown", strlen("Unknown"), strlen("Unknown"));
+	if (parser_get_ini_key_value("pv5_4 command", "version", core_mp.ini_ver) < 0)
+		ipio_memcpy(core_mp.ini_ver, "Unknown", strlen("Unknown"), strlen("Unknown"));
+
 	mp_print_csv_header(csv, &csv_len, &line_count, CSV_FILE_SIZE);
 
 	size = ARRAY_SIZE(tItems);
@@ -3351,7 +3362,7 @@ static void mp_copy_ret_to_apk(char *buf)
 	idev->mp_ret_len = len;
 }
 
-int ilitek_tddi_mp_test_main(char *apk, bool lcm_on, char *single)
+int ilitek_tddi_mp_test_main(char *apk, bool lcm_on)
 {
 	int i, ret = 0;
 	char str[128] = {0}, ver[128] = {0};
@@ -3388,41 +3399,17 @@ int ilitek_tddi_mp_test_main(char *apk, bool lcm_on, char *single)
 		goto out;
 	}
 
-	if (single != NULL) {
-		ret = mp_test_run(single);
-		if (ret < 0) {
-			mp_show_result(lcm_on);
-			goto mp_failed;
-		}
-	}
-
 	/* Do not chang the sequence of test */
 	if (core_mp.protocol_ver >= PROTOCOL_VER_540) {
-		if (lcm_on) {
-			for (i = 0; i < DEF_TEST_LCM_ON; i++) {
-				ret = mp_test_run(run_lcm_on[i]);
-				if (ret < 0) {
-					mp_show_result(lcm_on);
-					goto mp_failed;
-				}
-			}
-		} else {
-			for (i = 0; i < DEF_TEST_LCM_OFF; i++) {
-				ret = mp_test_run(run_lcm_off[i]);
-				if (ret < 0) {
-					mp_show_result(lcm_on);
-					goto mp_failed;
-				}
-			}
-		}
+		if (lcm_on)
+			for (i = 0; i < DEF_TEST_LCM_ON; i++)
+				mp_test_run(run_lcm_on[i]);
+		else
+			for (i = 0; i < DEF_TEST_LCM_OFF; i++)
+				mp_test_run(run_lcm_off[i]);
 	} else {
-		for (i = 0; i < DEF_OLD_TEST; i++) {
-			ret = mp_test_run(run_old_test[i]);
-			if (ret < 0) {
-				mp_show_result(true);
-				goto mp_failed;
-			}
-		}
+		for (i = 0; i < DEF_OLD_TEST; i++)
+			mp_test_run(run_old_test[i]);
 	}
 
 	ret = mp_show_result(lcm_on);

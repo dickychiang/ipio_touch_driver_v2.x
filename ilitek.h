@@ -830,7 +830,7 @@ extern int ilitek_tddi_fw_dump_flash_data(u32 start, u32 end, bool user);
 extern int ilitek_tddi_fw_upgrade(int op);
 
 /* Prototypes for tddi mp test */
-extern int ilitek_tddi_mp_test_main(char *apk, bool lcm_on, char *single);
+extern int ilitek_tddi_mp_test_main(char *apk, bool lcm_on);
 
 /* Prototypes for tddi core functions */
 extern int ilitek_tddi_touch_esd_gesture_flash(void);
@@ -848,7 +848,7 @@ extern void ilitek_tddi_report_gesture_mode(u8 *buf, int rlen);
 extern void ilitek_tddi_report_i2cuart_mode(u8 *buf, int rlen);
 extern int ilitek_tddi_ic_watch_dog_ctrl(bool write, bool enable);
 extern void ilitek_tddi_ic_set_ddi_reg_onepage(u8 page, u8 reg, u8 data);
-extern void ilitek_tddi_ic_get_ddi_reg_onepage(u8 page, u8 reg);
+extern void ilitek_tddi_ic_get_ddi_reg_onepage(u8 page, u8 reg, u8 *data);
 extern void ilitek_tddi_ic_spi_speed_ctrl(bool enable);
 extern int ilitek_tddi_ic_whole_reset(void);
 extern int ilitek_tddi_ic_code_reset(void);
@@ -886,7 +886,7 @@ extern int ilitek_tddi_wq_esd_spi_check(void);
 extern int ilitek_tddi_gesture_recovery(void);
 extern void ilitek_tddi_spi_recovery(void);
 extern void ilitek_tddi_wq_ctrl(int type, int ctrl);
-extern int ilitek_tddi_mp_test_handler(char *apk, bool lcm_on, char *single);
+extern int ilitek_tddi_mp_test_handler(char *apk, bool lcm_on);
 extern void ilitek_tddi_report_handler(void);
 extern int ilitek_tddi_sleep_handler(int mode);
 extern int ilitek_tddi_reset_ctrl(int mode);

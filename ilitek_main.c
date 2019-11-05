@@ -85,7 +85,7 @@ void ilitek_resume_by_ddi(void)
 }
 #endif
 
-int ilitek_tddi_mp_test_handler(char *apk, bool lcm_on, char *single)
+int ilitek_tddi_mp_test_handler(char *apk, bool lcm_on)
 {
 	int ret = 0;
 
@@ -111,7 +111,7 @@ int ilitek_tddi_mp_test_handler(char *apk, bool lcm_on, char *single)
 		}
 	}
 
-	ret = ilitek_tddi_mp_test_main(apk, lcm_on, single);
+	ret = ilitek_tddi_mp_test_main(apk, lcm_on);
 
 out:
 	/*
