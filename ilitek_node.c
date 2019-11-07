@@ -560,21 +560,21 @@ out:
 
 static ssize_t ilitek_proc_fw_pc_counter_read(struct file *pFile, char __user *buf, size_t size, loff_t *pos)
 {
-	u32 pc;
+	int len = 0;
 
 	if (*pos != 0)
 		return 0;
 
 	memset(g_user_buf, 0, USER_STR_BUFF * sizeof(unsigned char));
 
-	pc = ilitek_tddi_ic_get_pc_counter();
-	size = snprintf(g_user_buf, PAGE_SIZE, "pc counter = 0x%x\n", pc);
+	ilitek_tddi_ic_get_pc_counter();
+	len = snprintf(g_user_buf, PAGE_SIZE, "pc = 0x%x, latch = 0x%x\n", idev->fw_pc, idev->fw_latch);
 
-	if (copy_to_user(buf, g_user_buf, size))
+	if (copy_to_user(buf, g_user_buf, len))
 		ipio_err("Failed to copy data to user space\n");
 
-	*pos += size;
-	return size;
+	*pos += len;
+	return len;
 }
 
 u32 rw_reg[5] = {0};

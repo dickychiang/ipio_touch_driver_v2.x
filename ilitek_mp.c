@@ -259,11 +259,13 @@ struct mp_test_items {
 	int (*do_test)(int index);
 };
 
-#define DEF_TEST_LCM_ON	13
+#define DEF_TEST_LCM_ON	15
 static char run_lcm_on[DEF_TEST_LCM_ON][64] = {
 	"pin test ( int and rst )",
 	"noise peak to peak(with panel)",
+	"noise_diff",
 	"noise peak to peak(ic only)",
+	"noise_diff(ic)",
 	"open test(integration)_sp",
 	"raw data(no bk)",
 	"raw data(have bk)",
@@ -276,12 +278,14 @@ static char run_lcm_on[DEF_TEST_LCM_ON][64] = {
 	"touch deltac"
 };
 
-#define DEF_TEST_LCM_OFF	6
+#define DEF_TEST_LCM_OFF	8
 static char run_lcm_off[DEF_TEST_LCM_OFF][64] = {
 	"raw data(have bk) (lcm off)",
 	"raw data(no bk) (lcm off)",
 	"noise peak to peak(with panel) (lcm off)",
+	"noise_diff (lcm off)",
 	"noise peak to peak(ic only) (lcm off)",
+	"noise_diff(ic) (lcm off)",
 	"raw data_td (lcm off)",
 	"peak to peak_td (lcm off)"
 };
@@ -296,7 +300,7 @@ static char run_old_test[DEF_OLD_TEST][64] = {
 	"pixel raw (have bk)"
 };
 
-#define MP_TEST_ITEM	49
+#define MP_TEST_ITEM	53
 static struct mp_test_items tItems[MP_TEST_ITEM] = {
 	{.name = "mutual_bg", .desp = "baseline data(bg)", .result = "FAIL", .catalog = MUTUAL_TEST},
 	{.name = "mutual_signal", .desp = "untouch signal data(bg-raw-4096) - mutual", .result = "FAIL", .catalog = MUTUAL_TEST},
@@ -331,7 +335,9 @@ static struct mp_test_items tItems[MP_TEST_ITEM] = {
 	/* New test items for protocol 5.4.0 as below */
 	{.name = "pin test", .desp = "pin test ( int and rst )", .result = "FAIL", .catalog = PIN_TEST},
 	{.name = "noise_peak_to_peak_panel", .desp = "noise peak to peak(with panel)", .result = "FAIL", .catalog = PEAK_TO_PEAK_TEST},
+	{.name = "noise_diff", .desp = "noise_diff", .result = "FAIL", .catalog = PEAK_TO_PEAK_TEST},
 	{.name = "noise_peak_to_peak_ic", .desp = "noise peak to peak(ic only)", .result = "FAIL", .catalog = PEAK_TO_PEAK_TEST},
+	{.name = "noise_diff_ic", .desp = "noise_diff(ic)", .result = "FAIL", .catalog = PEAK_TO_PEAK_TEST},
 	{.name = "open_integration_sp", .desp = "open test(integration)_sp", .result = "FAIL", .catalog = OPEN_TEST},
 	{.name = "mutual_no_bk", .desp = "raw data(no bk)", .result = "FAIL", .catalog = MUTUAL_TEST},
 	{.name = "mutual_has_bk", .desp = "raw data(have bk)", .result = "FAIL", .catalog = MUTUAL_TEST},
@@ -346,7 +352,9 @@ static struct mp_test_items tItems[MP_TEST_ITEM] = {
 	{.name = "mutual_has_bk_lcm_off", .desp = "raw data(have bk) (lcm off)", .result = "FAIL", .catalog = MUTUAL_TEST},
 	{.name = "mutual_no_bk_lcm_off", .desp = "raw data(no bk) (lcm off)", .result = "FAIL", .catalog = MUTUAL_TEST},
 	{.name = "noise_peak_to_peak_panel_lcm_off", .desp = "noise peak to peak(with panel) (lcm off)", .result = "FAIL", .catalog = PEAK_TO_PEAK_TEST},
+	{.name = "noise_diff_lcm_off", .desp = "noise_diff (lcm off)", .result = "FAIL", .catalog = PEAK_TO_PEAK_TEST},
 	{.name = "noise_peak_to_peak_ic_lcm_off", .desp = "noise peak to peak(ic only) (lcm off)", .result = "FAIL", .catalog = PEAK_TO_PEAK_TEST},
+	{.name = "noise_diff_ic_lcm_off", .desp = "noise_diff(ic) (lcm off)", .result = "FAIL", .catalog = PEAK_TO_PEAK_TEST},
 	{.name = "doze_raw_td_lcm_off", .desp = "raw data_td (lcm off)", .result = "FAIL", .catalog = MUTUAL_TEST},
 	{.name = "doze_p2p_td_lcm_off", .desp = "peak to peak_td (lcm off)", .result = "FAIL", .catalog = PEAK_TO_PEAK_TEST},
 };
@@ -408,17 +416,18 @@ static int parser_get_ini_key_value(char *section, char *key, char *value)
 {
 	int i = 0;
 	int ret = -2;
-	int len = 0;
-
-	len = strlen(key);
 
 	for (i = 0; i < g_ini_items; i++) {
-		if (strncmp(section, ilitek_ini_file_data[i].pSectionName, strlen(section)) != 0)
+		if (ipio_strcmp(section, ilitek_ini_file_data[i].pSectionName) != 0)
 			continue;
 
-		if (strncmp(key, ilitek_ini_file_data[i].pKeyName, strlen(key)) == 0) {
+		if (ipio_strcmp(key, ilitek_ini_file_data[i].pKeyName) == 0) {
 			ipio_memcpy(value, ilitek_ini_file_data[i].pKeyValue, ilitek_ini_file_data[i].iKeyValueLen, PARSER_MAX_KEY_VALUE_LEN);
-			ipio_debug(" value:%s , pKeyValue: %s\n", value, ilitek_ini_file_data[i].pKeyValue);
+			ipio_debug("(key: %s, value:%s) => (ini key: %s, val: %s)\n",
+					key,
+					value,
+					ilitek_ini_file_data[i].pKeyName,
+					ilitek_ini_file_data[i].pKeyValue);
 			ret = 0;
 			break;
 		}
@@ -433,7 +442,7 @@ void parser_ini_nodetype(s32 *type_ptr, char *desp, int frame_len)
 
 	for (i = 0; i < g_ini_items; i++) {
 		if ((strstr(ilitek_ini_file_data[i].pSectionName, desp) <= 0) ||
-			strncmp(ilitek_ini_file_data[i].pKeyName, NODE_TYPE_KEY_NAME, strlen(ilitek_ini_file_data[i].pKeyName)) != 0) {
+			ipio_strcmp(ilitek_ini_file_data[i].pKeyName, NODE_TYPE_KEY_NAME) != 0) {
 			continue;
 		}
 
@@ -471,8 +480,8 @@ void parser_ini_benchmark(s32 *max_ptr, s32 *min_ptr, int8_t type, char *desp, i
 	snprintf(benchmark_str, sizeof(benchmark_str), "%s%s%s", desp, "_", BENCHMARK_KEY_NAME);
 
 	for (i = 0; i < g_ini_items; i++) {
-		if ((strncmp(ilitek_ini_file_data[i].pSectionName, benchmark_str, strlen(ilitek_ini_file_data[i].pSectionName)) != 0) ||
-			strncmp(ilitek_ini_file_data[i].pKeyName, BENCHMARK_KEY_NAME, strlen(ilitek_ini_file_data[i].pSectionName)) != 0)
+		if ((ipio_strcmp(ilitek_ini_file_data[i].pSectionName, benchmark_str) != 0) ||
+			ipio_strcmp(ilitek_ini_file_data[i].pKeyName, BENCHMARK_KEY_NAME) != 0)
 			continue;
 		record = ',';
 		for (j = 0, index1 = 0; j <= ilitek_ini_file_data[i].iKeyValueLen; j++) {
@@ -978,10 +987,10 @@ static int run_open_test(int index)
 	int border_y[] = {-1, -1, -1, 0, 1, 1, 1, 0};
 	s32 *p_comb = frame_buf;
 
-	if (strncmp(tItems[index].name, "open_integration", strlen(tItems[index].name)) == 0) {
+	if (ipio_strcmp(tItems[index].name, "open_integration") == 0) {
 		for (i = 0; i < core_mp.frame_len; i++)
 			tItems[index].buf[i] = p_comb[i];
-	} else if (strncmp(tItems[index].name, "open_cap", strlen(tItems[index].name)) == 0) {
+	} else if (ipio_strcmp(tItems[index].name, "open_cap") == 0) {
 		/*
 		 * Each result is getting from a 3 by 3 grid depending on where the centre location is.
 		 * So if the centre is at corner, the number of node grabbed from a grid will be different.
@@ -1118,7 +1127,7 @@ static void mp_print_csv_cdc_cmd(char *csv, int *csv_len, int index, int file_si
 	char *open_c_cmd[] = {"open cap1 dac", "open cap1 raw"};
 	char *name = tItems[index].desp;
 
-	if (strncmp(name, "open test(integration)_sp", strlen(name)) == 0) {
+	if (ipio_strcmp(name, "open test(integration)_sp") == 0) {
 		size = ARRAY_SIZE(open_sp_cmd);
 		for (i = 0; i < size; i++) {
 			slen = parser_get_int_data("pv5_4 command", open_sp_cmd[i], str, sizeof(str));
@@ -1127,7 +1136,7 @@ static void mp_print_csv_cdc_cmd(char *csv, int *csv_len, int index, int file_si
 			else
 				tmp_len += snprintf(csv + tmp_len, (file_size - tmp_len), "%s = ,%s\n", open_sp_cmd[i], str);
 		}
-	} else if (strncmp(name, "open test_c", strlen(name)) == 0) {
+	} else if (ipio_strcmp(name, "open test_c") == 0) {
 		size = ARRAY_SIZE(open_c_cmd);
 		for (i = 0; i < size; i++) {
 			slen = parser_get_int_data("pv5_4 command", open_c_cmd[i], str, sizeof(str));
@@ -1290,10 +1299,10 @@ void allnode_open_cdc_result(int index, int *buf, int *dac, int *raw)
 	int i;
 	char *name = tItems[index].name;
 
-	if (strncmp(name, "open_integration_sp", strlen(name)) == 0) {
+	if (ipio_strcmp(name, "open_integration_sp") == 0) {
 		for (i = 0; i < core_mp.frame_len; i++)
 			buf[i] = idev->chip->open_sp_formula(dac[i], raw[i], open_spec.tvch, open_spec.tvcl);
-	} else if (strncmp(name, "open test_c", strlen(name)) == 0) {
+	} else if (ipio_strcmp(name, "open test_c") == 0) {
 		for (i = 0; i < core_mp.frame_len; i++)
 			buf[i] = idev->chip->open_c_formula(dac[i], raw[i], open_spec.tvch - open_spec.tvcl, open_spec.gain);
 	}
@@ -1502,9 +1511,9 @@ static int mp_cdc_init_cmd_common(u8 *cmd, int len, int index)
 
 	core_mp.cdc_len = 3;
 
-	if (strncmp(tItems[index].name, "open_integration", strlen(tItems[index].name)) == 0)
+	if (ipio_strcmp(tItems[index].name, "open_integration") == 0)
 		cmd[2] = 0x2;
-	if (strncmp(tItems[index].name, "open_cap", strlen(tItems[index].name)) == 0)
+	if (ipio_strcmp(tItems[index].name, "open_cap") == 0)
 		cmd[2] = 0x3;
 
 	if (tItems[index].catalog == PEAK_TO_PEAK_TEST) {
@@ -1514,7 +1523,7 @@ static int mp_cdc_init_cmd_common(u8 *cmd, int len, int index)
 
 		core_mp.cdc_len = 5;
 
-		if (strncmp(tItems[index].name, "noise_peak_to_peak_cut", strlen(tItems[index].name)) == 0)
+		if (ipio_strcmp(tItems[index].name, "noise_peak_to_peak_cut") == 0)
 			cmd[4] = 0x1;
 
 		ipio_debug("P2P CMD: %d,%d,%d,%d,%d\n",
@@ -1782,8 +1791,8 @@ static int allnode_mutual_cdc_data(int index)
 			else
 				frame_buf[i] = tmp;
 
-			if (strncmp(tItems[index].name, "mutual_no_bk", strlen("mutual_no_bk")) == 0 ||
-				strncmp(tItems[index].name, "mutual_no_bk_lcm_off", strlen("mutual_no_bk_lcm_off")) == 0) {
+			if (ipio_strcmp(tItems[index].name, "mutual_no_bk") == 0 ||
+				ipio_strcmp(tItems[index].name, "mutual_no_bk_lcm_off") == 0) {
 					frame_buf[i] -= core_mp.no_bk_shift;
 			}
 		}
@@ -2891,13 +2900,13 @@ static int mp_show_result(bool lcm_on)
 			csv_len += snprintf(csv + csv_len, (CSV_FILE_SIZE - csv_len), "Min = %d\n", tItems[i].min);
 		}
 
-		if (strncmp(tItems[i].name, "open_integration_sp", strlen(tItems[i].name)) == 0) {
+		if (ipio_strcmp(tItems[i].name, "open_integration_sp") == 0) {
 			mp_compare_cdc_show_result(i, frame1_cbk700, csv, &csv_len, TYPE_NO_JUGE, max_threshold, min_threshold, "frame1 cbk700", CSV_FILE_SIZE);
 			mp_compare_cdc_show_result(i, frame1_cbk250, csv, &csv_len, TYPE_NO_JUGE, max_threshold, min_threshold, "frame1 cbk250", CSV_FILE_SIZE);
 			mp_compare_cdc_show_result(i, frame1_cbk200, csv, &csv_len, TYPE_NO_JUGE, max_threshold, min_threshold, "frame1 cbk200", CSV_FILE_SIZE);
 		}
 
-		if (strncmp(tItems[i].name, "open test_c", strlen(tItems[i].name)) == 0) {
+		if (ipio_strcmp(tItems[i].name, "open test_c") == 0) {
 			mp_compare_cdc_show_result(i, cap_dac, csv, &csv_len, TYPE_NO_JUGE, max_threshold, min_threshold, "CAP_DAC", CSV_FILE_SIZE);
 			mp_compare_cdc_show_result(i, cap_raw, csv, &csv_len, TYPE_NO_JUGE, max_threshold, min_threshold, "CAP_RAW", CSV_FILE_SIZE);
 		}
@@ -3119,9 +3128,9 @@ static void ilitek_tddi_mp_init_item(void)
 		} else if (tItems[i].catalog == PIXEL) {
 			tItems[i].do_test = mutual_test;
 		} else if (tItems[i].catalog == OPEN_TEST) {
-			if (strncmp(tItems[i].name, "open_integration_sp", strlen(tItems[i].name)) == 0)
+			if (ipio_strcmp(tItems[i].name, "open_integration_sp") == 0)
 				tItems[i].do_test = open_test_sp;
-			else if (strncmp(tItems[i].name, "open test_c", strlen(tItems[i].name)) == 0)
+			else if (ipio_strcmp(tItems[i].name, "open test_c") == 0)
 				tItems[i].do_test = open_test_cap;
 			else
 				tItems[i].do_test = mutual_test;
@@ -3186,7 +3195,7 @@ static int mp_test_run(char *item)
 	int i, ret = MP_DATA_PASS;
 	char str[512] = {0};
 
-	if (item == NULL || strncmp(item, " ", strlen(item)) == 0 || core_mp.frame_len == 0) {
+	if (item == NULL || ipio_strcmp(item, " ") == 0 || core_mp.frame_len == 0) {
 		core_mp.final_result = MP_DATA_FAIL;
 		ret = -EMP_INVAL;
 		ipio_err("Invaild string (%s) or frame length (%d)\n", item, core_mp.frame_len);
@@ -3196,7 +3205,7 @@ static int mp_test_run(char *item)
 	ipio_debug("Test item = %s\n", item);
 
 	for (i = 0; i < MP_TEST_ITEM; i++) {
-		if (strncmp(item, tItems[i].desp, strlen(item)) == 0) {
+		if (ipio_strcmp(item, tItems[i].desp) == 0) {
 			if (strlen(item) != strlen(tItems[i].desp))
 				continue;
 
@@ -3249,7 +3258,7 @@ static int mp_test_run(char *item)
 			}
 
 			/* Get threshold from ini structure in parser */
-			if (strncmp(item, "tx/rx delta", strlen(item)) == 0) {
+			if (ipio_strcmp(item, "tx/rx delta") == 0) {
 				parser_get_int_data(item, "tx max", str, sizeof(str));
 				core_mp.TxDeltaMax = katoi(str);
 				parser_get_int_data(item, "tx min", str, sizeof(str));

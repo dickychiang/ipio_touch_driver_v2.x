@@ -368,8 +368,8 @@ int ilitek_tddi_ic_watch_dog_ctrl(bool write, bool enable)
 	}
 
 	if (timeout <= 0) {
-		ipio_err("WDT turn on/off timeout !, ret = %x, pc = 0x%x\n",
-				ret, ilitek_tddi_ic_get_pc_counter());
+		ipio_err("WDT turn on/off timeout !, ret = %x\n", ret);
+		ilitek_tddi_ic_get_pc_counter();
 		return -EINVAL;
 	}
 
@@ -388,7 +388,7 @@ int ilitek_tddi_ic_func_ctrl(const char *name, int ctrl)
 	int i = 0, ret;
 
 	for (i = 0; i < FUNC_CTRL_NUM; i++) {
-		if (strncmp(name, func_ctrl[i].name, strlen(name)) == 0) {
+		if (ipio_strcmp(name, func_ctrl[i].name) == 0) {
 			if (strlen(name) != strlen(func_ctrl[i].name))
 				continue;
 			break;
@@ -408,8 +408,8 @@ int ilitek_tddi_ic_func_ctrl(const char *name, int ctrl)
 	}
 
 	if (idev->protocol->ver >= PROTOCOL_VER_560) {
-		if (strncmp(func_ctrl[i].name, "gesture", strlen("gesture")) == 0 ||
-			strncmp(func_ctrl[i].name, "phone_cover_window", strlen("phone_cover_window")) == 0) {
+		if (ipio_strcmp(func_ctrl[i].name, "gesture") == 0 ||
+			ipio_strcmp(func_ctrl[i].name, "phone_cover_window") == 0) {
 			ipio_info("Non support %s function ctrl\n", func_ctrl[i].name);
 			ret = -1;
 			goto out;
@@ -685,31 +685,30 @@ void ilitek_tddi_ic_spi_speed_ctrl(bool enable)
 	}
 }
 
-u32 ilitek_tddi_ic_get_pc_counter(void)
+void ilitek_tddi_ic_get_pc_counter(void)
 {
 	bool ice = atomic_read(&idev->ice_stat);
-	u32 pc = 0;
-	u32 latch = 0;
+	u32 pc = 0, pc_addr = idev->chip->pc_counter_addr;
+	u32 latch = 0, latch_addr = idev->chip->pc_latch_addr;
 
 	if (!ice)
 		if (ilitek_ice_mode_ctrl(ENABLE, OFF) < 0)
 			ipio_err("Enable ice mode failed while reading pc counter\n");
 
-	if (ilitek_ice_mode_read(idev->chip->pc_counter_addr, &pc, sizeof(u32)) < 0)
+	if (ilitek_ice_mode_read(pc_addr, &pc, sizeof(u32)) < 0)
 		ipio_err("Read pc conter error\n");
 
-	ipio_info("read pc counter (addr: 0x%x) = 0x%x\n", idev->chip->pc_counter_addr, pc);
-
-	if (ilitek_ice_mode_read(idev->chip->pc_latch_addr, &latch, sizeof(u32)) < 0)
+	if (ilitek_ice_mode_read(latch_addr, &latch, sizeof(u32)) < 0)
 		ipio_err("Read pc conter error\n");
 
-	ipio_info("read pc latch (addr: 0x%x) = 0x%x\n", idev->chip->pc_latch_addr, latch);
+	idev->fw_pc = pc;
+	idev->fw_latch = latch;
+	ipio_err("read pc (addr: 0x%x) = 0x%x\n", pc_addr, idev->fw_pc);
+	ipio_err("read latch (addr: 0x%x) = 0x%x\n", latch_addr, idev->fw_latch);
 
 	if (!ice)
 		if (ilitek_ice_mode_ctrl(DISABLE, OFF) < 0)
 			ipio_err("Disable ice mode failed while reading pc counter\n");
-
-	return pc;
 }
 
 int ilitek_tddi_ic_check_int_stat(void)
@@ -760,8 +759,8 @@ int ilitek_tddi_ic_check_busy(int count, int delay)
 		mdelay(delay);
 	} while (--count > 0);
 
-	ipio_err("Check busy (0x%x) timeout ! pc = 0x%x\n", busy,
-		ilitek_tddi_ic_get_pc_counter());
+	ipio_err("Check busy (0x%x) timeout !\n", busy);
+	ilitek_tddi_ic_get_pc_counter();
 	return -1;
 }
 

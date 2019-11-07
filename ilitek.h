@@ -105,7 +105,7 @@
 #define DRIVER_VERSION			"2.0.4.0.191018"
 
 /* Options */
-#define TDDI_INTERFACE			BUS_I2C /* BUS_I2C(0x18) or BUS_SPI(0x1C) */
+#define TDDI_INTERFACE			BUS_SPI /* BUS_I2C(0x18) or BUS_SPI(0x1C) */
 #define VDD_VOLTAGE			1800000
 #define VCC_VOLTAGE			1800000
 #define SPI_CLK				(10*MEGA_HZ)
@@ -622,6 +622,8 @@ struct ilitek_tddi_dev {
 	const char *phys;
 
 	bool boot;
+	u32 fw_pc;
+	u32 fw_latch;
 
 	u16 max_x;
 	u16 max_y;
@@ -853,7 +855,7 @@ extern void ilitek_tddi_ic_spi_speed_ctrl(bool enable);
 extern int ilitek_tddi_ic_whole_reset(void);
 extern int ilitek_tddi_ic_code_reset(void);
 extern int ilitek_tddi_ic_func_ctrl(const char *name, int ctrl);
-extern u32 ilitek_tddi_ic_get_pc_counter(void);
+extern void ilitek_tddi_ic_get_pc_counter(void);
 extern int ilitek_tddi_ic_check_int_stat(void);
 extern int ilitek_tddi_ic_check_busy(int count, int delay);
 extern int ilitek_tddi_ic_get_project_id(u8 *pdata, int size);
@@ -942,6 +944,11 @@ static inline void ipio_vfree(void **mem)
 		vfree(*mem);
 		*mem = NULL;
 	}
+}
+
+static inline int ipio_strcmp(const char *s1, const char *s2)
+{
+	return (strlen(s1) != strlen(s2)) ? -1 : strncmp(s1, s2, strlen(s1));
 }
 
 static inline void *ipio_memcpy(void *dest, const void *src, int n, int dest_size)
