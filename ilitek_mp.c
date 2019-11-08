@@ -223,7 +223,6 @@ struct core_mp_test_data {
 } core_mp = {0};
 
 struct mp_test_items {
-	char *name;
 	/* The description must be the same as ini's section name */
 	char *desp;
 	char *result;
@@ -232,6 +231,7 @@ struct mp_test_items {
 	u8 spec_option;
 	u8 type_option;
 	bool run;
+	bool lcm;
 	int max;
 	int max_res;
 	int item_result;
@@ -259,104 +259,64 @@ struct mp_test_items {
 	int (*do_test)(int index);
 };
 
-#define DEF_TEST_LCM_ON	15
-static char run_lcm_on[DEF_TEST_LCM_ON][64] = {
-	"pin test ( int and rst )",
-	"noise peak to peak(with panel)",
-	"noise_diff",
-	"noise peak to peak(ic only)",
-	"noise_diff(ic)",
-	"open test(integration)_sp",
-	"raw data(no bk)",
-	"raw data(have bk)",
-	"calibration data(dac)",
-	"short test -ili9881",
-	"short test",
-	"doze raw data",
-	"doze peak to peak",
-	"open test_c",
-	"touch deltac"
-};
-
-#define DEF_TEST_LCM_OFF	8
-static char run_lcm_off[DEF_TEST_LCM_OFF][64] = {
-	"raw data(have bk) (lcm off)",
-	"raw data(no bk) (lcm off)",
-	"noise peak to peak(with panel) (lcm off)",
-	"noise_diff (lcm off)",
-	"noise peak to peak(ic only) (lcm off)",
-	"noise_diff(ic) (lcm off)",
-	"raw data_td (lcm off)",
-	"peak to peak_td (lcm off)"
-};
-
-#define DEF_OLD_TEST	6
-static char run_old_test[DEF_OLD_TEST][64] = {
-	"untouch peak to peak",
-	"open test(integration)",
-	"open test(cap)",
-	"untouch cm data",
-	"pixel raw (no bk)",
-	"pixel raw (have bk)"
-};
-
-#define MP_TEST_ITEM	53
+#define MP_TEST_ITEM	54
 static struct mp_test_items tItems[MP_TEST_ITEM] = {
-	{.name = "mutual_bg", .desp = "baseline data(bg)", .result = "FAIL", .catalog = MUTUAL_TEST},
-	{.name = "mutual_signal", .desp = "untouch signal data(bg-raw-4096) - mutual", .result = "FAIL", .catalog = MUTUAL_TEST},
-	{.name = "mutual_bk_dac", .desp = "manual bk data(mutual)", .result = "FAIL", .catalog = MUTUAL_TEST},
-	{.name = "self_dac", .desp = "calibration data(dac) - self", .result = "FAIL", .catalog = SELF_TEST},
-	{.name = "self_bg", .desp = "baselin data(bg,self_tx,self_r)", .result = "FAIL", .catalog = SELF_TEST},
-	{.name = "self_signal", .desp = "untouch signal data(bg-raw-4096) - self", .result = "FAIL", .catalog = SELF_TEST},
-	{.name = "self_no_bk", .desp = "raw data(no bk) - self", .result = "FAIL", .catalog = SELF_TEST},
-	{.name = "self_has_bk", .desp = "raw data(have bk) - self", .result = "FAIL", .catalog = SELF_TEST},
-	{.name = "self_bk_dac", .desp = "manual bk dac data(self_tx,self_rx)", .result = "FAIL", .catalog = SELF_TEST},
-	{.name = "key_dac", .desp = "calibration data(dac/icon)", .result = "FAIL", .catalog = KEY_TEST},
-	{.name = "key_bg", .desp = "key baseline data", .result = "FAIL", .catalog = KEY_TEST},
-	{.name = "key_no_bk", .desp = "key raw data", .result = "FAIL", .catalog = KEY_TEST},
-	{.name = "key_has_bk", .desp = "key raw bk dac", .result = "FAIL", .catalog = KEY_TEST},
-	{.name = "key_open", .desp = "key raw open test", .result = "FAIL", .catalog = KEY_TEST},
-	{.name = "key_short", .desp = "key raw short test", .result = "FAIL", .catalog = KEY_TEST},
-	{.name = "st_dac", .desp = "st calibration data(dac)", .result = "FAIL", .catalog = ST_TEST},
-	{.name = "st_bg", .desp = "st baseline data(bg)", .result = "FAIL", .catalog = ST_TEST},
-	{.name = "st_no_bk", .desp = "st raw data(no bk)", .result = "FAIL", .catalog = ST_TEST},
-	{.name = "st_has_bk", .desp = "st raw(have bk)", .result = "FAIL", .catalog = ST_TEST},
-	{.name = "st_open", .desp = "st open data", .result = "FAIL", .catalog = ST_TEST},
-	{.name = "tx_short", .desp = "tx short test", .result = "FAIL", .catalog = MUTUAL_TEST},
-	{.name = "rx_open", .desp = "rx open", .result = "FAIL", .catalog = MUTUAL_TEST},
-	{.name = "cm_data", .desp = "untouch cm data", .result = "FAIL", .catalog = MUTUAL_TEST},
-	{.name = "cs_data", .desp = "untouch cs data", .result = "FAIL", .catalog = MUTUAL_TEST},
-	{.name = "tx_rx_delta", .desp = "tx/rx delta", .result = "FAIL", .catalog = TX_RX_DELTA},
-	{.name = "p2p", .desp = "untouch peak to peak", .result = "FAIL", .catalog = UNTOUCH_P2P},
-	{.name = "pixel_no_bk", .desp = "pixel raw (no bk)", .result = "FAIL", .catalog = PIXEL},
-	{.name = "pixel_has_bk", .desp = "pixel raw (have bk)", .result = "FAIL", .catalog = PIXEL},
-	{.name = "open_integration", .desp = "open test(integration)", .result = "FAIL", .catalog = OPEN_TEST},
-	{.name = "open_cap", .desp = "open test(cap)", .result = "FAIL", .catalog = OPEN_TEST},
-	/* New test items for protocol 5.4.0 as below */
-	{.name = "pin test", .desp = "pin test ( int and rst )", .result = "FAIL", .catalog = PIN_TEST},
-	{.name = "noise_peak_to_peak_panel", .desp = "noise peak to peak(with panel)", .result = "FAIL", .catalog = PEAK_TO_PEAK_TEST},
-	{.name = "noise_diff", .desp = "noise_diff", .result = "FAIL", .catalog = PEAK_TO_PEAK_TEST},
-	{.name = "noise_peak_to_peak_ic", .desp = "noise peak to peak(ic only)", .result = "FAIL", .catalog = PEAK_TO_PEAK_TEST},
-	{.name = "noise_diff_ic", .desp = "noise_diff(ic)", .result = "FAIL", .catalog = PEAK_TO_PEAK_TEST},
-	{.name = "open_integration_sp", .desp = "open test(integration)_sp", .result = "FAIL", .catalog = OPEN_TEST},
-	{.name = "mutual_no_bk", .desp = "raw data(no bk)", .result = "FAIL", .catalog = MUTUAL_TEST},
-	{.name = "mutual_has_bk", .desp = "raw data(have bk)", .result = "FAIL", .catalog = MUTUAL_TEST},
-	{.name = "mutual_dac", .desp = "calibration data(dac)", .result = "FAIL", .catalog = MUTUAL_TEST},
-	{.name = "rx_short", .desp = "short test -ili9881", .result = "FAIL", .catalog = SHORT_TEST},
-	{.name = "rx_short", .desp = "short test", .result = "FAIL", .catalog = SHORT_TEST},
-	{.name = "doze_raw", .desp = "doze raw data", .result = "FAIL", .catalog = MUTUAL_TEST},
-	{.name = "doze_p2p", .desp = "doze peak to peak", .result = "FAIL", .catalog = PEAK_TO_PEAK_TEST},
-	{.name = "open test_c", .desp = "open test_c", .result = "FAIL", .catalog = OPEN_TEST},
-	{.name = "touch deltac", .desp = "touch deltac", .result = "FAIL", .catalog = MUTUAL_TEST},
-	/* LCM OFF */
-	{.name = "mutual_has_bk_lcm_off", .desp = "raw data(have bk) (lcm off)", .result = "FAIL", .catalog = MUTUAL_TEST},
-	{.name = "mutual_no_bk_lcm_off", .desp = "raw data(no bk) (lcm off)", .result = "FAIL", .catalog = MUTUAL_TEST},
-	{.name = "noise_peak_to_peak_panel_lcm_off", .desp = "noise peak to peak(with panel) (lcm off)", .result = "FAIL", .catalog = PEAK_TO_PEAK_TEST},
-	{.name = "noise_diff_lcm_off", .desp = "noise_diff (lcm off)", .result = "FAIL", .catalog = PEAK_TO_PEAK_TEST},
-	{.name = "noise_peak_to_peak_ic_lcm_off", .desp = "noise peak to peak(ic only) (lcm off)", .result = "FAIL", .catalog = PEAK_TO_PEAK_TEST},
-	{.name = "noise_diff_ic_lcm_off", .desp = "noise_diff(ic) (lcm off)", .result = "FAIL", .catalog = PEAK_TO_PEAK_TEST},
-	{.name = "doze_raw_td_lcm_off", .desp = "raw data_td (lcm off)", .result = "FAIL", .catalog = MUTUAL_TEST},
-	{.name = "doze_p2p_td_lcm_off", .desp = "peak to peak_td (lcm off)", .result = "FAIL", .catalog = PEAK_TO_PEAK_TEST},
+	{.desp = "baseline data(bg)", .catalog = MUTUAL_TEST, .cmd = CMD_MUTUAL_BG, .lcm = ON},
+	{.desp = "untouch signal data(bg-raw-4096) - mutual", .catalog = MUTUAL_TEST, .cmd = CMD_MUTUAL_SIGNAL, .lcm = ON},
+	{.desp = "manual bk data(mutual)", .catalog = MUTUAL_TEST, .cmd = CMD_MUTUAL_BK_DAC, .lcm = ON},
+	{.desp = "calibration data(dac) - self", .catalog = SELF_TEST, .cmd = CMD_SELF_DAC, .lcm = ON},
+	{.desp = "baselin data(bg,self_tx,self_r)", .catalog = SELF_TEST, .cmd = CMD_SELF_BG, .lcm = ON},
+	{.desp = "untouch signal data(bg-raw-4096) - self", .catalog = SELF_TEST, .cmd = CMD_SELF_SIGNAL, .lcm = ON},
+	{.desp = "raw data(no bk) - self", .catalog = SELF_TEST, .cmd = CMD_SELF_NO_BK, .lcm = ON},
+	{.desp = "raw data(have bk) - self", .catalog = SELF_TEST, .cmd = CMD_SELF_HAVE_BK, .lcm = ON},
+	{.desp = "manual bk dac data(self_tx,self_rx)", .catalog = SELF_TEST, .cmd = CMD_SELF_BK_DAC, .lcm = ON},
+	{.desp = "calibration data(dac/icon)", .catalog = KEY_TEST, .cmd = CMD_KEY_DAC, .lcm = ON},
+	{.desp = "key baseline data", .catalog = KEY_TEST, .cmd = CMD_KEY_BG, .lcm = ON},
+	{.desp = "key raw data", .catalog = KEY_TEST, .cmd = CMD_KEY_NO_BK, .lcm = ON},
+	{.desp = "key raw bk dac", .catalog = KEY_TEST, .cmd = CMD_KEY_HAVE_BK, .lcm = ON},
+	{.desp = "key raw open test", .catalog = KEY_TEST, .cmd = CMD_KEY_OPEN, .lcm = ON},
+	{.desp = "key raw short test", .catalog = KEY_TEST, .cmd = CMD_KEY_SHORT, .lcm = ON},
+	{.desp = "st calibration data(dac)", .catalog = ST_TEST, .cmd = CMD_ST_DAC, .lcm = ON},
+	{.desp = "st baseline data(bg)", .catalog = ST_TEST, .cmd = CMD_ST_BG, .lcm = ON},
+	{.desp = "st raw data(no bk)", .catalog = ST_TEST, .cmd = CMD_ST_NO_BK, .lcm = ON},
+	{.desp = "st raw(have bk)", .catalog = ST_TEST, .cmd = CMD_ST_HAVE_BK, .lcm = ON},
+	{.desp = "st open data", .catalog = ST_TEST, .cmd = CMD_ST_OPEN, .lcm = ON},
+	{.desp = "tx short test", .catalog = MUTUAL_TEST, .cmd = CMD_TX_SHORT, .lcm = ON},
+	{.desp = "rx open", .catalog = MUTUAL_TEST, .cmd = CMD_RX_OPEN, .lcm = ON},
+	{.desp = "untouch cm data", .catalog = MUTUAL_TEST, .cmd = CMD_CM_DATA, .lcm = ON},
+	{.desp = "untouch cs data", .catalog = MUTUAL_TEST, .cmd = CMD_CS_DATA, .lcm = ON},
+	{.desp = "tx/rx delta", .catalog = TX_RX_DELTA, .cmd = CMD_TX_RX_DELTA, .lcm = ON},
+	{.desp = "untouch peak to peak", .catalog = UNTOUCH_P2P, .cmd = CMD_MUTUAL_SIGNAL, .lcm = ON},
+	{.desp = "pixel raw (no bk)", .catalog = PIXEL, .cmd = CMD_MUTUAL_NO_BK, .lcm = ON},
+	{.desp = "pixel raw (have bk)", .catalog = PIXEL, .cmd = CMD_MUTUAL_HAVE_BK, .lcm = ON},
+	{.desp = "noise peak to peak(cut panel)", .catalog = PEAK_TO_PEAK_TEST, .lcm = ON},
+	{.desp = "open test(integration)", .catalog = OPEN_TEST, .cmd = CMD_RX_SHORT, .lcm = ON},
+	{.desp = "open test(cap)", .catalog = OPEN_TEST, .cmd = CMD_RX_SHORT, .lcm = ON},
+	/* Following is the new test items for protocol 5.4.0 above */
+	{.desp = "pin test ( int and rst )", .catalog = PIN_TEST, .cmd = CMD_PIN_TEST, .lcm = ON},
+	{.desp = "noise peak to peak(with panel)", .catalog = PEAK_TO_PEAK_TEST, .lcm = ON},
+	{.desp = "noise_diff", .catalog = PEAK_TO_PEAK_TEST, .lcm = ON},
+	{.desp = "noise peak to peak(ic only)", .catalog = PEAK_TO_PEAK_TEST, .cmd = CMD_PEAK_TO_PEAK, .lcm = ON},
+	{.desp = "noise_diff(ic)", .catalog = PEAK_TO_PEAK_TEST, .lcm = ON},
+	{.desp = "open test(integration)_sp", .catalog = OPEN_TEST, .lcm = ON},
+	{.desp = "raw data(no bk)", .catalog = MUTUAL_TEST, .cmd = CMD_MUTUAL_NO_BK, .lcm = ON},
+	{.desp = "raw data(have bk)", .catalog = MUTUAL_TEST, .cmd = CMD_MUTUAL_HAVE_BK, .lcm = ON},
+	{.desp = "calibration data(dac)", .catalog = MUTUAL_TEST, .cmd = CMD_MUTUAL_DAC, .lcm = ON},
+	{.desp = "short test -ili9881", .catalog = SHORT_TEST, .cmd = CMD_RX_SHORT, .lcm = ON},
+	{.desp = "short test", .catalog = SHORT_TEST, .lcm = ON},
+	{.desp = "doze raw data", .catalog = MUTUAL_TEST, .lcm = ON},
+	{.desp = "doze peak to peak", .catalog = PEAK_TO_PEAK_TEST, .lcm = ON},
+	{.desp = "open test_c", .catalog = OPEN_TEST, .lcm = ON},
+	{.desp = "touch deltac", .catalog = MUTUAL_TEST, .lcm = ON},
+	/* LCM OFF TEST */
+	{.desp = "raw data(have bk) (lcm off)", .catalog = MUTUAL_TEST, .lcm = OFF},
+	{.desp = "raw data(no bk) (lcm off)", .catalog = MUTUAL_TEST, .lcm = OFF},
+	{.desp = "noise peak to peak(with panel) (lcm off)", .catalog = PEAK_TO_PEAK_TEST, .lcm = OFF},
+	{.desp = "noise_diff (lcm off)", .catalog = PEAK_TO_PEAK_TEST, .lcm = OFF},
+	{.desp = "noise peak to peak(ic only) (lcm off)", .catalog = PEAK_TO_PEAK_TEST, .lcm = OFF},
+	{.desp = "noise_diff(ic) (lcm off)", .catalog = PEAK_TO_PEAK_TEST, .lcm = OFF},
+	{.desp = "raw data_td (lcm off)", .catalog = MUTUAL_TEST, .lcm = OFF},
+	{.desp = "peak to peak_td (lcm off)", .catalog = PEAK_TO_PEAK_TEST, .lcm = OFF},
 };
 
 s32 *frame_buf;
@@ -365,6 +325,7 @@ s32 *frame1_cbk700, *frame1_cbk250, *frame1_cbk200;
 s32 *cap_dac, *cap_raw;
 int g_ini_items;
 char csv_name[128] = {0};
+char seq_item[MP_TEST_ITEM][PARSER_MAX_KEY_NAME_LEN] = {{0}};
 
 static int isspace_t(int x)
 {
@@ -662,7 +623,7 @@ static char *parser_ini_str_trim_r(char *buf)
 static int parser_get_ini_phy_data(char *data, int fsize)
 {
 	int i, n = 0, ret = 0, banchmark_flag = 0, empty_section, nodetype_flag = 0;
-	int offset = 0, isEqualSign = 0;
+	int offset = 0, isEqualSign = 0, seq = 0;
 	char *ini_buf = NULL, *tmpSectionName = NULL;
 	char M_CFG_SSL = '[';
 	char M_CFG_SSR = ']';
@@ -689,6 +650,8 @@ static int parser_get_ini_phy_data(char *data, int fsize)
 		ret = -ENOMEM;
 		goto out;
 	}
+
+	memset(seq_item, 0, MP_TEST_ITEM * PARSER_MAX_KEY_NAME_LEN * sizeof(char));
 
 	while (true) {
 		banchmark_flag = 0;
@@ -733,7 +696,9 @@ static int parser_get_ini_phy_data(char *data, int fsize)
 				strncpy((char *)tmpSectionName, ini_buf + 1, (PARSER_MAX_CFG_BUF + 1) * sizeof(char));
 				banchmark_flag = 0;
 				nodetype_flag = 0;
-				ipio_debug("Section Name: %s, Len: %d, offset = %d\n", tmpSectionName, n - 2, offset);
+				strncpy(seq_item[seq], tmpSectionName, PARSER_MAX_KEY_NAME_LEN);
+				seq++;
+				ipio_debug("Section Name: %s, Len: %d, offset = %d\n", seq_item[seq], n - 2, offset);
 				continue;
 			}
 		}
@@ -987,10 +952,10 @@ static int run_open_test(int index)
 	int border_y[] = {-1, -1, -1, 0, 1, 1, 1, 0};
 	s32 *p_comb = frame_buf;
 
-	if (ipio_strcmp(tItems[index].name, "open_integration") == 0) {
+	if (ipio_strcmp(tItems[index].desp, "open test(integration)") == 0) {
 		for (i = 0; i < core_mp.frame_len; i++)
 			tItems[index].buf[i] = p_comb[i];
-	} else if (ipio_strcmp(tItems[index].name, "open_cap") == 0) {
+	} else if (ipio_strcmp(tItems[index].desp, "open test(cap)") == 0) {
 		/*
 		 * Each result is getting from a 3 by 3 grid depending on where the centre location is.
 		 * So if the centre is at corner, the number of node grabbed from a grid will be different.
@@ -1055,7 +1020,7 @@ static char *get_date_time_str(void)
 
 static void mp_print_csv_header(char *csv, int *csv_len, int *csv_line, int file_size)
 {
-	int i, tmp_len = *csv_len, tmp_line = *csv_line, size;
+	int i, j, tmp_len = *csv_len, tmp_line = *csv_line;
 
 	/* header must has 19 line*/
 	tmp_len += snprintf(csv + tmp_len, (file_size - tmp_len), "==============================================================================\n");
@@ -1081,11 +1046,12 @@ static void mp_print_csv_header(char *csv, int *csv_len, int *csv_line, int file
 	tmp_len += snprintf(csv + tmp_len, (file_size - tmp_len), "Test Item:\n");
 	tmp_line++;
 
-	size = ARRAY_SIZE(tItems);
-	for (i = 0; i < size; i++) {
-		if (tItems[i].run == 1) {
-			tmp_len += snprintf(csv + tmp_len, (file_size - tmp_len), "	  ---%s\n", tItems[i].desp);
-			tmp_line++;
+	for (j = 0; j < MP_TEST_ITEM; j++) {
+		for (i = 0; i < MP_TEST_ITEM; i++) {
+			if (ipio_strcmp(seq_item[j], tItems[i].desp) == 0 && tItems[i].run) {
+				tmp_len += snprintf(csv + tmp_len, (file_size - tmp_len), "	  ---%s\n", tItems[i].desp);
+				tmp_line++;
+			}
 		}
 	}
 
@@ -1102,20 +1068,22 @@ static void mp_print_csv_header(char *csv, int *csv_len, int *csv_line, int file
 
 static void mp_print_csv_tail(char *csv, int *csv_len, int file_size)
 {
-	int i, tmp_len = *csv_len, size;
+	int i, j, tmp_len = *csv_len;
 
 	tmp_len += snprintf(csv + tmp_len, (file_size - tmp_len), "==============================================================================\n");
 	tmp_len += snprintf(csv + tmp_len, (file_size - tmp_len), "Result_Summary			\n");
 
-	size = ARRAY_SIZE(tItems);
-	for (i = 0; i < size; i++) {
-		if (tItems[i].run) {
-			if (tItems[i].item_result == MP_DATA_PASS)
-				tmp_len += snprintf(csv + tmp_len, (file_size - tmp_len), "	  {%s}	   ,OK\n", tItems[i].desp);
-			else
-				tmp_len += snprintf(csv + tmp_len, (file_size - tmp_len), "	  {%s}	   ,NG\n", tItems[i].desp);
+	for (j = 0; j < MP_TEST_ITEM; j++) {
+		for (i = 0; i < MP_TEST_ITEM; i++) {
+			if (ipio_strcmp(seq_item[j], tItems[i].desp) == 0 && tItems[i].run) {
+				if (tItems[i].item_result == MP_DATA_PASS)
+					tmp_len += snprintf(csv + tmp_len, (file_size - tmp_len), "	  {%s}	   ,OK\n", tItems[i].desp);
+				else
+					tmp_len += snprintf(csv + tmp_len, (file_size - tmp_len), "	  {%s}	   ,NG\n", tItems[i].desp);
+			}
 		}
 	}
+
 	*csv_len = tmp_len;
 }
 
@@ -1297,12 +1265,12 @@ int full_open_rate_compare(s32 *full_open, s32 *cbk, int x, int y, s32 inNodeTyp
 void allnode_open_cdc_result(int index, int *buf, int *dac, int *raw)
 {
 	int i;
-	char *name = tItems[index].name;
+	char *desp = tItems[index].desp;
 
-	if (ipio_strcmp(name, "open_integration_sp") == 0) {
+	if (ipio_strcmp(desp, "open test(integration)_sp") == 0) {
 		for (i = 0; i < core_mp.frame_len; i++)
 			buf[i] = idev->chip->open_sp_formula(dac[i], raw[i], open_spec.tvch, open_spec.tvcl);
-	} else if (ipio_strcmp(name, "open test_c") == 0) {
+	} else if (ipio_strcmp(desp, "open test_c") == 0) {
 		for (i = 0; i < core_mp.frame_len; i++)
 			buf[i] = idev->chip->open_c_formula(dac[i], raw[i], open_spec.tvch - open_spec.tvcl, open_spec.gain);
 	}
@@ -1511,9 +1479,9 @@ static int mp_cdc_init_cmd_common(u8 *cmd, int len, int index)
 
 	core_mp.cdc_len = 3;
 
-	if (ipio_strcmp(tItems[index].name, "open_integration") == 0)
+	if (ipio_strcmp(tItems[index].desp, "open test(integration)") == 0)
 		cmd[2] = 0x2;
-	if (ipio_strcmp(tItems[index].name, "open_cap") == 0)
+	if (ipio_strcmp(tItems[index].desp, "open test(cap)") == 0)
 		cmd[2] = 0x3;
 
 	if (tItems[index].catalog == PEAK_TO_PEAK_TEST) {
@@ -1523,7 +1491,7 @@ static int mp_cdc_init_cmd_common(u8 *cmd, int len, int index)
 
 		core_mp.cdc_len = 5;
 
-		if (ipio_strcmp(tItems[index].name, "noise_peak_to_peak_cut") == 0)
+		if (ipio_strcmp(tItems[index].desp, "noise peak to peak(cut panel)") == 0)
 			cmd[4] = 0x1;
 
 		ipio_debug("P2P CMD: %d,%d,%d,%d,%d\n",
@@ -1764,7 +1732,7 @@ static int allnode_mutual_cdc_data(int index)
 
 	/* Convert original data to the physical one in each node */
 	for (i = 0; i < core_mp.frame_len; i++) {
-		if (tItems[index].cmd == CMD_MUTUAL_DAC) {
+		if (ipio_strcmp(tItems[index].desp, "calibration data(dac)") == 0) {
 			/* DAC - P */
 			if (((ori[(2 * i) + 1] & 0x80) >> 7) == 1) {
 				/* Negative */
@@ -1791,8 +1759,8 @@ static int allnode_mutual_cdc_data(int index)
 			else
 				frame_buf[i] = tmp;
 
-			if (ipio_strcmp(tItems[index].name, "mutual_no_bk") == 0 ||
-				ipio_strcmp(tItems[index].name, "mutual_no_bk_lcm_off") == 0) {
+			if (ipio_strcmp(tItems[index].desp, "raw data(no bk)") == 0 ||
+				ipio_strcmp(tItems[index].desp, "raw data(no bk) (lcm off)") == 0) {
 					frame_buf[i] -= core_mp.no_bk_shift;
 			}
 		}
@@ -2101,8 +2069,8 @@ static int mutual_test(int index)
 {
 	int i = 0, j = 0, x = 0, y = 0, ret = 0, get_frame_cont = 1;
 
-	ipio_debug("index = %d, name = %s, CMD = 0x%x, Frame Count = %d\n",
-		index, tItems[index].name, tItems[index].cmd, tItems[index].frame_count);
+	ipio_debug("index = %d, desp = %s, CMD = 0x%x, Frame Count = %d\n",
+		index, tItems[index].desp, tItems[index].cmd, tItems[index].frame_count);
 
 	/*
 	 * We assume that users who are calling the test forget to config frame count
@@ -2184,8 +2152,8 @@ static int open_test_sp(int index)
 	int Charge_AA = 0, Charge_Border = 0, Charge_Notch = 0, full_open_rate = 0;
 	char str[512] = {0};
 
-	ipio_debug("index = %d, name = %s, CMD = 0x%x, Frame Count = %d\n",
-		index, tItems[index].name, tItems[index].cmd, tItems[index].frame_count);
+	ipio_debug("index = %d, desp = %s, CMD = 0x%x, Frame Count = %d\n",
+		index, tItems[index].desp, tItems[index].cmd, tItems[index].frame_count);
 
 	/*
 	 * We assume that users who are calling the test forget to config frame count
@@ -2520,7 +2488,7 @@ static int key_test(int index)
 	int i, j = 0, ret = 0;
 
 	ipio_debug("Item = %s, CMD = 0x%x, Frame Count = %d\n",
-		tItems[index].name, tItems[index].cmd, tItems[index].frame_count);
+		tItems[index].desp, tItems[index].cmd, tItems[index].frame_count);
 
 	if (tItems[index].frame_count == 0) {
 		ipio_err("Frame count is zero, which at least sets as 1\n");
@@ -2810,7 +2778,7 @@ static void mp_do_retry(int index, int count)
 
 static int mp_show_result(bool lcm_on)
 {
-	int ret = MP_DATA_PASS, size;
+	int ret = MP_DATA_PASS, size, seq;
 	int i, x, y, j, csv_len = 0, pass_item_count = 0, line_count = 0, get_frame_cont = 1;
 	s32 *max_threshold = NULL, *min_threshold = NULL;
 	char *csv = NULL;
@@ -2842,135 +2810,140 @@ static int mp_show_result(bool lcm_on)
 	mp_print_csv_header(csv, &csv_len, &line_count, CSV_FILE_SIZE);
 
 	size = ARRAY_SIZE(tItems);
-	for (i = 0; i < size; i++) {
-
-		get_frame_cont = 1;
-		if (tItems[i].run != 1)
-			continue;
-
-		if (tItems[i].item_result == MP_DATA_PASS) {
-			pr_info("\n[%s],OK \n", tItems[i].desp);
-			csv_len += snprintf(csv + csv_len, (CSV_FILE_SIZE - csv_len), "\n[%s],OK\n", tItems[i].desp);
-		} else {
-			pr_info("\n[%s],NG \n", tItems[i].desp);
-			csv_len += snprintf(csv + csv_len, (CSV_FILE_SIZE - csv_len), "\n[%s],NG\n", tItems[i].desp);
-		}
-
-		if (tItems[i].catalog == PIN_TEST) {
-			pr_info("Test INT Pin = %d\n", tItems[i].test_int_pin);
-			csv_len += snprintf(csv + csv_len, (CSV_FILE_SIZE - csv_len), "Test INT Pin = %d\n", tItems[i].test_int_pin);
-			pr_info("Pulse Test = %d\n", tItems[i].int_pulse_test);
-			csv_len += snprintf(csv + csv_len, (CSV_FILE_SIZE - csv_len), "Pulse Test = %d\n", tItems[i].int_pulse_test);
-			pr_info("Delay Time = %d\n", tItems[i].delay_time);
-			csv_len += snprintf(csv + csv_len, (CSV_FILE_SIZE - csv_len), "Delay Time = %d\n", tItems[i].delay_time);
-			continue;
-		}
-
-		mp_print_csv_cdc_cmd(csv, &csv_len, i, CSV_FILE_SIZE);
-
-		pr_info("Frame count = %d\n", tItems[i].frame_count);
-		csv_len += snprintf(csv + csv_len, (CSV_FILE_SIZE - csv_len), "Frame count = %d\n", tItems[i].frame_count);
-
-		if (tItems[i].trimmed_mean && tItems[i].catalog != PEAK_TO_PEAK_TEST) {
-			pr_info("lowest percentage = %d\n", tItems[i].lowest_percentage);
-			csv_len += snprintf(csv + csv_len, (CSV_FILE_SIZE - csv_len), "lowest percentage = %d\n", tItems[i].lowest_percentage);
-
-			pr_info("highest percentage = %d\n", tItems[i].highest_percentage);
-			csv_len += snprintf(csv + csv_len, (CSV_FILE_SIZE - csv_len), "highest percentage = %d\n", tItems[i].highest_percentage);
-		}
-
-		/* Show result of benchmark max and min */
-		if (tItems[i].spec_option == BENCHMARK) {
-			for (j = 0; j < core_mp.frame_len; j++) {
-				max_threshold[j] = tItems[i].bench_mark_max[j];
-				min_threshold[j] = tItems[i].bench_mark_min[j];
-			}
-			mp_compare_cdc_show_result(i, tItems[i].bench_mark_max, csv, &csv_len, TYPE_BENCHMARK, max_threshold, min_threshold, "Max_Bench", CSV_FILE_SIZE);
-			mp_compare_cdc_show_result(i, tItems[i].bench_mark_min, csv, &csv_len, TYPE_BENCHMARK, max_threshold, min_threshold, "Min_Bench", CSV_FILE_SIZE);
-		} else {
-			for (j = 0; j < core_mp.frame_len; j++) {
-				max_threshold[j] = tItems[i].max;
-				min_threshold[j] = tItems[i].min;
-			}
-
-			pr_info("Max = %d\n", tItems[i].max);
-			csv_len += snprintf(csv + csv_len, (CSV_FILE_SIZE - csv_len), "Max = %d\n", tItems[i].max);
-
-			pr_info("Min = %d\n", tItems[i].min);
-			csv_len += snprintf(csv + csv_len, (CSV_FILE_SIZE - csv_len), "Min = %d\n", tItems[i].min);
-		}
-
-		if (ipio_strcmp(tItems[i].name, "open_integration_sp") == 0) {
-			mp_compare_cdc_show_result(i, frame1_cbk700, csv, &csv_len, TYPE_NO_JUGE, max_threshold, min_threshold, "frame1 cbk700", CSV_FILE_SIZE);
-			mp_compare_cdc_show_result(i, frame1_cbk250, csv, &csv_len, TYPE_NO_JUGE, max_threshold, min_threshold, "frame1 cbk250", CSV_FILE_SIZE);
-			mp_compare_cdc_show_result(i, frame1_cbk200, csv, &csv_len, TYPE_NO_JUGE, max_threshold, min_threshold, "frame1 cbk200", CSV_FILE_SIZE);
-		}
-
-		if (ipio_strcmp(tItems[i].name, "open test_c") == 0) {
-			mp_compare_cdc_show_result(i, cap_dac, csv, &csv_len, TYPE_NO_JUGE, max_threshold, min_threshold, "CAP_DAC", CSV_FILE_SIZE);
-			mp_compare_cdc_show_result(i, cap_raw, csv, &csv_len, TYPE_NO_JUGE, max_threshold, min_threshold, "CAP_RAW", CSV_FILE_SIZE);
-		}
-
-		if (tItems[i].catalog == TX_RX_DELTA) {
-			if (ERR_ALLOC_MEM(core_mp.rx_delta_buf) || ERR_ALLOC_MEM(core_mp.tx_delta_buf)) {
-				ipio_err("This test item (%s) has no data inside its buffer\n", tItems[i].desp);
+	for (seq = 0; seq < MP_TEST_ITEM; seq++) {
+		for (i = 0; i < MP_TEST_ITEM; i++) {
+			if (ipio_strcmp(seq_item[seq], tItems[i].desp) != 0)
 				continue;
-			}
-		} else {
-			if (ERR_ALLOC_MEM(tItems[i].buf) || ERR_ALLOC_MEM(tItems[i].max_buf) ||
-					ERR_ALLOC_MEM(tItems[i].min_buf)) {
-				ipio_err("This test item (%s) has no data inside its buffer\n", tItems[i].desp);
+
+			if (tItems[i].lcm != lcm_on || tItems[i].run != 1)
 				continue;
-			}
-		}
 
-		/* Show test result as below */
-		if (tItems[i].catalog == KEY_TEST) {
-			for (x = 0; x < core_mp.key_len; x++) {
-				DUMP("KEY_%02d ", x);
-				csv_len += snprintf(csv + csv_len, (CSV_FILE_SIZE - csv_len), "KEY_%02d,", x);
-			}
+			get_frame_cont = 1;
 
-			DUMP("\n");
-			csv_len += snprintf(csv + csv_len, (CSV_FILE_SIZE - csv_len), "\n");
-
-			for (y = 0; y < core_mp.key_len; y++) {
-				DUMP(" %3d   ", tItems[i].buf[y]);
-				csv_len += snprintf(csv + csv_len, (CSV_FILE_SIZE - csv_len), " %3d, ", tItems[i].buf[y]);
-			}
-
-			DUMP("\n");
-			csv_len += snprintf(csv + csv_len, (CSV_FILE_SIZE - csv_len), "\n");
-		} else if (tItems[i].catalog == TX_RX_DELTA) {
-			for (j = 0; j < core_mp.frame_len; j++) {
-				max_threshold[j] = core_mp.TxDeltaMax;
-				min_threshold[j] = core_mp.TxDeltaMin;
-			}
-			mp_compare_cdc_show_result(i, core_mp.tx_max_buf, csv, &csv_len, TYPE_JUGE, max_threshold, min_threshold, "TX Max Hold", CSV_FILE_SIZE);
-			mp_compare_cdc_show_result(i, core_mp.tx_min_buf, csv, &csv_len, TYPE_JUGE, max_threshold, min_threshold, "TX Min Hold", CSV_FILE_SIZE);
-
-			for (j = 0; j < core_mp.frame_len; j++) {
-				max_threshold[j] = core_mp.RxDeltaMax;
-				min_threshold[j] = core_mp.RxDeltaMin;
-			}
-			mp_compare_cdc_show_result(i, core_mp.rx_max_buf, csv, &csv_len, TYPE_JUGE, max_threshold, min_threshold, "RX Max Hold", CSV_FILE_SIZE);
-			mp_compare_cdc_show_result(i, core_mp.rx_min_buf, csv, &csv_len, TYPE_JUGE, max_threshold, min_threshold, "RX Min Hold", CSV_FILE_SIZE);
-		} else {
-			/* general result */
-			if (tItems[i].trimmed_mean && tItems[i].catalog != PEAK_TO_PEAK_TEST) {
-				mp_compare_cdc_show_result(i, tItems[i].result_buf, csv, &csv_len, TYPE_JUGE, max_threshold, min_threshold, "Mean result", CSV_FILE_SIZE);
+			if (tItems[i].item_result == MP_DATA_PASS) {
+				pr_info("\n[%s],OK \n", tItems[i].desp);
+				csv_len += snprintf(csv + csv_len, (CSV_FILE_SIZE - csv_len), "\n[%s],OK\n", tItems[i].desp);
 			} else {
-				mp_compare_cdc_show_result(i, tItems[i].max_buf, csv, &csv_len, TYPE_JUGE, max_threshold, min_threshold, "Max Hold", CSV_FILE_SIZE);
-				mp_compare_cdc_show_result(i, tItems[i].min_buf, csv, &csv_len, TYPE_JUGE, max_threshold, min_threshold, "Min Hold", CSV_FILE_SIZE);
+				pr_info("\n[%s],NG \n", tItems[i].desp);
+				csv_len += snprintf(csv + csv_len, (CSV_FILE_SIZE - csv_len), "\n[%s],NG\n", tItems[i].desp);
 			}
-			if (tItems[i].catalog != PEAK_TO_PEAK_TEST)
-				get_frame_cont = tItems[i].frame_count;
 
-			/* result of each frame */
-			for (j = 0; j < get_frame_cont; j++) {
-				char frame_name[128] = {0};
-				snprintf(frame_name, (CSV_FILE_SIZE - csv_len), "Frame %d", (j+1));
-				mp_compare_cdc_show_result(i, &tItems[i].buf[(j*core_mp.frame_len)], csv, &csv_len, TYPE_NO_JUGE, max_threshold, min_threshold, frame_name, CSV_FILE_SIZE);
+			if (tItems[i].catalog == PIN_TEST) {
+				pr_info("Test INT Pin = %d\n", tItems[i].test_int_pin);
+				csv_len += snprintf(csv + csv_len, (CSV_FILE_SIZE - csv_len), "Test INT Pin = %d\n", tItems[i].test_int_pin);
+				pr_info("Pulse Test = %d\n", tItems[i].int_pulse_test);
+				csv_len += snprintf(csv + csv_len, (CSV_FILE_SIZE - csv_len), "Pulse Test = %d\n", tItems[i].int_pulse_test);
+				pr_info("Delay Time = %d\n", tItems[i].delay_time);
+				csv_len += snprintf(csv + csv_len, (CSV_FILE_SIZE - csv_len), "Delay Time = %d\n", tItems[i].delay_time);
+				continue;
+			}
+
+			mp_print_csv_cdc_cmd(csv, &csv_len, i, CSV_FILE_SIZE);
+
+			pr_info("Frame count = %d\n", tItems[i].frame_count);
+			csv_len += snprintf(csv + csv_len, (CSV_FILE_SIZE - csv_len), "Frame count = %d\n", tItems[i].frame_count);
+
+			if (tItems[i].trimmed_mean && tItems[i].catalog != PEAK_TO_PEAK_TEST) {
+				pr_info("lowest percentage = %d\n", tItems[i].lowest_percentage);
+				csv_len += snprintf(csv + csv_len, (CSV_FILE_SIZE - csv_len), "lowest percentage = %d\n", tItems[i].lowest_percentage);
+
+				pr_info("highest percentage = %d\n", tItems[i].highest_percentage);
+				csv_len += snprintf(csv + csv_len, (CSV_FILE_SIZE - csv_len), "highest percentage = %d\n", tItems[i].highest_percentage);
+			}
+
+			/* Show result of benchmark max and min */
+			if (tItems[i].spec_option == BENCHMARK) {
+				for (j = 0; j < core_mp.frame_len; j++) {
+					max_threshold[j] = tItems[i].bench_mark_max[j];
+					min_threshold[j] = tItems[i].bench_mark_min[j];
+				}
+				mp_compare_cdc_show_result(i, tItems[i].bench_mark_max, csv, &csv_len, TYPE_BENCHMARK, max_threshold, min_threshold, "Max_Bench", CSV_FILE_SIZE);
+				mp_compare_cdc_show_result(i, tItems[i].bench_mark_min, csv, &csv_len, TYPE_BENCHMARK, max_threshold, min_threshold, "Min_Bench", CSV_FILE_SIZE);
+			} else {
+				for (j = 0; j < core_mp.frame_len; j++) {
+					max_threshold[j] = tItems[i].max;
+					min_threshold[j] = tItems[i].min;
+				}
+
+				pr_info("Max = %d\n", tItems[i].max);
+				csv_len += snprintf(csv + csv_len, (CSV_FILE_SIZE - csv_len), "Max = %d\n", tItems[i].max);
+
+				pr_info("Min = %d\n", tItems[i].min);
+				csv_len += snprintf(csv + csv_len, (CSV_FILE_SIZE - csv_len), "Min = %d\n", tItems[i].min);
+			}
+
+			if (ipio_strcmp(tItems[i].desp, "open test(integration)_sp") == 0) {
+				mp_compare_cdc_show_result(i, frame1_cbk700, csv, &csv_len, TYPE_NO_JUGE, max_threshold, min_threshold, "frame1 cbk700", CSV_FILE_SIZE);
+				mp_compare_cdc_show_result(i, frame1_cbk250, csv, &csv_len, TYPE_NO_JUGE, max_threshold, min_threshold, "frame1 cbk250", CSV_FILE_SIZE);
+				mp_compare_cdc_show_result(i, frame1_cbk200, csv, &csv_len, TYPE_NO_JUGE, max_threshold, min_threshold, "frame1 cbk200", CSV_FILE_SIZE);
+			}
+
+			if (ipio_strcmp(tItems[i].desp, "open test_c") == 0) {
+				mp_compare_cdc_show_result(i, cap_dac, csv, &csv_len, TYPE_NO_JUGE, max_threshold, min_threshold, "CAP_DAC", CSV_FILE_SIZE);
+				mp_compare_cdc_show_result(i, cap_raw, csv, &csv_len, TYPE_NO_JUGE, max_threshold, min_threshold, "CAP_RAW", CSV_FILE_SIZE);
+			}
+
+			if (tItems[i].catalog == TX_RX_DELTA) {
+				if (ERR_ALLOC_MEM(core_mp.rx_delta_buf) || ERR_ALLOC_MEM(core_mp.tx_delta_buf)) {
+					ipio_err("This test item (%s) has no data inside its buffer\n", tItems[i].desp);
+					continue;
+				}
+			} else {
+				if (ERR_ALLOC_MEM(tItems[i].buf) || ERR_ALLOC_MEM(tItems[i].max_buf) ||
+						ERR_ALLOC_MEM(tItems[i].min_buf)) {
+					ipio_err("This test item (%s) has no data inside its buffer\n", tItems[i].desp);
+					continue;
+				}
+			}
+
+			/* Show test result as below */
+			if (tItems[i].catalog == KEY_TEST) {
+				for (x = 0; x < core_mp.key_len; x++) {
+					DUMP("KEY_%02d ", x);
+					csv_len += snprintf(csv + csv_len, (CSV_FILE_SIZE - csv_len), "KEY_%02d,", x);
+				}
+
+				DUMP("\n");
+				csv_len += snprintf(csv + csv_len, (CSV_FILE_SIZE - csv_len), "\n");
+
+				for (y = 0; y < core_mp.key_len; y++) {
+					DUMP(" %3d   ", tItems[i].buf[y]);
+					csv_len += snprintf(csv + csv_len, (CSV_FILE_SIZE - csv_len), " %3d, ", tItems[i].buf[y]);
+				}
+
+				DUMP("\n");
+				csv_len += snprintf(csv + csv_len, (CSV_FILE_SIZE - csv_len), "\n");
+			} else if (tItems[i].catalog == TX_RX_DELTA) {
+				for (j = 0; j < core_mp.frame_len; j++) {
+					max_threshold[j] = core_mp.TxDeltaMax;
+					min_threshold[j] = core_mp.TxDeltaMin;
+				}
+				mp_compare_cdc_show_result(i, core_mp.tx_max_buf, csv, &csv_len, TYPE_JUGE, max_threshold, min_threshold, "TX Max Hold", CSV_FILE_SIZE);
+				mp_compare_cdc_show_result(i, core_mp.tx_min_buf, csv, &csv_len, TYPE_JUGE, max_threshold, min_threshold, "TX Min Hold", CSV_FILE_SIZE);
+
+				for (j = 0; j < core_mp.frame_len; j++) {
+					max_threshold[j] = core_mp.RxDeltaMax;
+					min_threshold[j] = core_mp.RxDeltaMin;
+				}
+				mp_compare_cdc_show_result(i, core_mp.rx_max_buf, csv, &csv_len, TYPE_JUGE, max_threshold, min_threshold, "RX Max Hold", CSV_FILE_SIZE);
+				mp_compare_cdc_show_result(i, core_mp.rx_min_buf, csv, &csv_len, TYPE_JUGE, max_threshold, min_threshold, "RX Min Hold", CSV_FILE_SIZE);
+			} else {
+				/* general result */
+				if (tItems[i].trimmed_mean && tItems[i].catalog != PEAK_TO_PEAK_TEST) {
+					mp_compare_cdc_show_result(i, tItems[i].result_buf, csv, &csv_len, TYPE_JUGE, max_threshold, min_threshold, "Mean result", CSV_FILE_SIZE);
+				} else {
+					mp_compare_cdc_show_result(i, tItems[i].max_buf, csv, &csv_len, TYPE_JUGE, max_threshold, min_threshold, "Max Hold", CSV_FILE_SIZE);
+					mp_compare_cdc_show_result(i, tItems[i].min_buf, csv, &csv_len, TYPE_JUGE, max_threshold, min_threshold, "Min Hold", CSV_FILE_SIZE);
+				}
+				if (tItems[i].catalog != PEAK_TO_PEAK_TEST)
+					get_frame_cont = tItems[i].frame_count;
+
+				/* result of each frame */
+				for (j = 0; j < get_frame_cont; j++) {
+					char frame_name[128] = {0};
+					snprintf(frame_name, (CSV_FILE_SIZE - csv_len), "Frame %d", (j+1));
+					mp_compare_cdc_show_result(i, &tItems[i].buf[(j*core_mp.frame_len)], csv, &csv_len, TYPE_NO_JUGE, max_threshold, min_threshold, frame_name, CSV_FILE_SIZE);
+				}
 			}
 		}
 	}
@@ -3128,9 +3101,9 @@ static void ilitek_tddi_mp_init_item(void)
 		} else if (tItems[i].catalog == PIXEL) {
 			tItems[i].do_test = mutual_test;
 		} else if (tItems[i].catalog == OPEN_TEST) {
-			if (ipio_strcmp(tItems[i].name, "open_integration_sp") == 0)
+			if (ipio_strcmp(tItems[i].desp, "open test(integration)_sp") == 0)
 				tItems[i].do_test = open_test_sp;
-			else if (ipio_strcmp(tItems[i].name, "open test_c") == 0)
+			else if (ipio_strcmp(tItems[i].desp, "open test_c") == 0)
 				tItems[i].do_test = open_test_cap;
 			else
 				tItems[i].do_test = mutual_test;
@@ -3151,66 +3124,26 @@ static void ilitek_tddi_mp_init_item(void)
 		tItems[i].result = kmalloc(16, GFP_KERNEL);
 		snprintf(tItems[i].result, 16, "%s", "FAIL");
 	}
-
-	tItems[0].cmd = CMD_MUTUAL_DAC;
-	tItems[1].cmd = CMD_MUTUAL_BG;
-	tItems[2].cmd = CMD_MUTUAL_SIGNAL;
-	tItems[3].cmd = CMD_MUTUAL_NO_BK;
-	tItems[4].cmd = CMD_MUTUAL_HAVE_BK;
-	tItems[5].cmd = CMD_MUTUAL_BK_DAC;
-	tItems[6].cmd = CMD_SELF_DAC;
-	tItems[7].cmd = CMD_SELF_BG;
-	tItems[8].cmd = CMD_SELF_SIGNAL;
-	tItems[9].cmd = CMD_SELF_NO_BK;
-	tItems[10].cmd = CMD_SELF_HAVE_BK;
-	tItems[11].cmd = CMD_SELF_BK_DAC;
-	tItems[12].cmd = CMD_KEY_DAC;
-	tItems[13].cmd = CMD_KEY_BG;
-	tItems[14].cmd = CMD_KEY_NO_BK;
-	tItems[15].cmd = CMD_KEY_HAVE_BK;
-	tItems[16].cmd = CMD_KEY_OPEN;
-	tItems[17].cmd = CMD_KEY_SHORT;
-	tItems[18].cmd = CMD_ST_DAC;
-	tItems[19].cmd = CMD_ST_BG;
-	tItems[20].cmd = CMD_ST_NO_BK;
-	tItems[21].cmd = CMD_ST_HAVE_BK;
-	tItems[22].cmd = CMD_ST_OPEN;
-	tItems[23].cmd = CMD_TX_SHORT;
-	tItems[24].cmd = CMD_RX_SHORT;
-	tItems[25].cmd = CMD_RX_OPEN;
-	tItems[26].cmd = CMD_CM_DATA;
-	tItems[27].cmd = CMD_CS_DATA;
-	tItems[28].cmd = CMD_TX_RX_DELTA;
-	tItems[29].cmd = CMD_MUTUAL_SIGNAL;
-	tItems[30].cmd = CMD_MUTUAL_NO_BK;
-	tItems[31].cmd = CMD_MUTUAL_HAVE_BK;
-	tItems[32].cmd = CMD_RX_SHORT;
-	tItems[33].cmd = CMD_RX_SHORT;
-	tItems[34].cmd = CMD_PEAK_TO_PEAK;
-	tItems[48].cmd = CMD_PIN_TEST;
 }
 
-static int mp_test_run(char *item)
+static void mp_test_run(bool lcm_on)
 {
-	int i, ret = MP_DATA_PASS;
+	int i, j;
 	char str[512] = {0};
+	char item[PARSER_MAX_KEY_NAME_LEN] = {0};
 
-	if (item == NULL || ipio_strcmp(item, " ") == 0 || core_mp.frame_len == 0) {
-		core_mp.final_result = MP_DATA_FAIL;
-		ret = -EMP_INVAL;
-		ipio_err("Invaild string (%s) or frame length (%d)\n", item, core_mp.frame_len);
-		goto out;
-	}
-
-	ipio_debug("Test item = %s\n", item);
-
-	for (i = 0; i < MP_TEST_ITEM; i++) {
-		if (ipio_strcmp(item, tItems[i].desp) == 0) {
-			if (strlen(item) != strlen(tItems[i].desp))
+	for (j = 0; j < MP_TEST_ITEM; j++) {
+		for (i = 0; i < MP_TEST_ITEM; i++) {
+			if (ipio_strcmp(seq_item[j], tItems[i].desp) != 0)
 				continue;
 
-			/* Get parameters from ini */
+			memset(item, 0x0, PARSER_MAX_KEY_NAME_LEN);
+			strncpy(item, tItems[i].desp, strlen(tItems[i].desp));
 			parser_get_int_data(item, "enable", str, sizeof(str));
+
+			if (katoi(str) != 1 || tItems[i].lcm != lcm_on)
+				continue;
+
 			tItems[i].run = katoi(str);
 			parser_get_int_data(item, "spec option", str, sizeof(str));
 			tItems[i].spec_option = katoi(str);
@@ -3228,7 +3161,7 @@ static int mp_test_run(char *item)
 			tItems[i].goldenmode = katoi(str);
 
 			if (tItems[i].goldenmode && (tItems[i].spec_option != tItems[i].goldenmode))
-				core_mp.lost_benchmark = true;
+			core_mp.lost_benchmark = true;
 
 			/* Get pin test delay time */
 			if (tItems[i].catalog == PIN_TEST) {
@@ -3278,7 +3211,7 @@ static int mp_test_run(char *item)
 			}
 
 			ipio_debug("%s: run = %d, max = %d, min = %d, frame_count = %d\n", tItems[i].desp,
-					tItems[i].run, tItems[i].max, tItems[i].min, tItems[i].frame_count);
+				tItems[i].run, tItems[i].max, tItems[i].min, tItems[i].frame_count);
 
 			ipio_debug("v_tdf_1 = %d, v_tdf_2 = %d, h_tdf_1 = %d, h_tdf_2 = %d", tItems[i].v_tdf_1,
 					tItems[i].v_tdf_2, tItems[i].h_tdf_1, tItems[i].h_tdf_2);
@@ -3287,7 +3220,7 @@ static int mp_test_run(char *item)
 				continue;
 
 			ipio_info("Run MP Test Item : %s\n", tItems[i].desp);
-			ret = tItems[i].do_test(i);
+			tItems[i].do_test(i);
 
 			/* Check result before do retry (if enabled)  */
 			if (mp_comp_result_before_retry(i) < 0) {
@@ -3298,9 +3231,6 @@ static int mp_test_run(char *item)
 			}
 		}
 	}
-
-out:
-	return ret;
 }
 
 static void mp_test_free(void)
@@ -3331,6 +3261,8 @@ static void mp_test_free(void)
 				ipio_kfree((void **)&tItems[i].bench_mark_max);
 				ipio_kfree((void **)&tItems[i].bench_mark_min);
 			}
+			ipio_kfree((void **)&tItems[i].node_type);
+			ipio_kfree((void **)&tItems[i].result);
 			ipio_kfree((void **)&tItems[i].result_buf);
 			ipio_kfree((void **)&tItems[i].max_buf);
 			ipio_kfree((void **)&tItems[i].min_buf);
@@ -3373,7 +3305,7 @@ static void mp_copy_ret_to_apk(char *buf)
 
 int ilitek_tddi_mp_test_main(char *apk, bool lcm_on)
 {
-	int i, ret = 0;
+	int ret = 0;
 	char str[128] = {0}, ver[128] = {0};
 
 	ilitek_ini_file_data = (struct ini_file_data *)vmalloc(sizeof(struct ini_file_data) * PARSER_MAX_KEY_NUM);
@@ -3408,18 +3340,7 @@ int ilitek_tddi_mp_test_main(char *apk, bool lcm_on)
 		goto out;
 	}
 
-	/* Do not chang the sequence of test */
-	if (core_mp.protocol_ver >= PROTOCOL_VER_540) {
-		if (lcm_on)
-			for (i = 0; i < DEF_TEST_LCM_ON; i++)
-				mp_test_run(run_lcm_on[i]);
-		else
-			for (i = 0; i < DEF_TEST_LCM_OFF; i++)
-				mp_test_run(run_lcm_off[i]);
-	} else {
-		for (i = 0; i < DEF_OLD_TEST; i++)
-			mp_test_run(run_old_test[i]);
-	}
+	mp_test_run(lcm_on);
 
 	ret = mp_show_result(lcm_on);
 
