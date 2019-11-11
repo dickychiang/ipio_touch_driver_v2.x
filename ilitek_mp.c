@@ -2778,7 +2778,7 @@ static void mp_do_retry(int index, int count)
 
 static int mp_show_result(bool lcm_on)
 {
-	int ret = MP_DATA_PASS, size, seq;
+	int ret = MP_DATA_PASS, seq;
 	int i, x, y, j, csv_len = 0, pass_item_count = 0, line_count = 0, get_frame_cont = 1;
 	s32 *max_threshold = NULL, *min_threshold = NULL;
 	char *csv = NULL;
@@ -2809,7 +2809,6 @@ static int mp_show_result(bool lcm_on)
 
 	mp_print_csv_header(csv, &csv_len, &line_count, CSV_FILE_SIZE);
 
-	size = ARRAY_SIZE(tItems);
 	for (seq = 0; seq < MP_TEST_ITEM; seq++) {
 		for (i = 0; i < MP_TEST_ITEM; i++) {
 			if (ipio_strcmp(seq_item[seq], tItems[i].desp) != 0)
@@ -2952,8 +2951,7 @@ static int mp_show_result(bool lcm_on)
 
 	mp_print_csv_tail(csv, &csv_len, CSV_FILE_SIZE);
 
-	size = ARRAY_SIZE(tItems);
-	for (i = 0; i < size; i++) {
+	for (i = 0; i < MP_TEST_ITEM; i++) {
 		if (tItems[i].run) {
 			if (tItems[i].item_result < 0) {
 				pass_item_count = 0;
@@ -3144,6 +3142,7 @@ static void mp_test_run(bool lcm_on)
 			if (katoi(str) != 1 || tItems[i].lcm != lcm_on)
 				continue;
 
+			/* Get parameters from ini */
 			tItems[i].run = katoi(str);
 			parser_get_int_data(item, "spec option", str, sizeof(str));
 			tItems[i].spec_option = katoi(str);
@@ -3235,19 +3234,17 @@ static void mp_test_run(bool lcm_on)
 
 static void mp_test_free(void)
 {
-	int i, size;
+	int i;
 
 	ipio_info("Free all allocated mem for MP\n");
 
 	core_mp.final_result = MP_DATA_FAIL;
 
-	size = ARRAY_SIZE(tItems);
-	for (i = 0; i < size; i++) {
+	for (i = 0; i < MP_TEST_ITEM; i++) {
 		tItems[i].run = false;
 		tItems[i].max_res = MP_DATA_FAIL;
 		tItems[i].min_res = MP_DATA_FAIL;
 		tItems[i].item_result = MP_DATA_PASS;
-		snprintf(tItems[i].result, 16, "%s", "FAIL");
 
 		if (tItems[i].catalog == TX_RX_DELTA) {
 				ipio_kfree((void **)&core_mp.rx_delta_buf);
@@ -3266,8 +3263,7 @@ static void mp_test_free(void)
 			ipio_kfree((void **)&tItems[i].result_buf);
 			ipio_kfree((void **)&tItems[i].max_buf);
 			ipio_kfree((void **)&tItems[i].min_buf);
-			vfree(tItems[i].buf);
-			tItems[i].buf = NULL;
+			ipio_vfree((void **)&tItems[i].buf);
 		}
 	}
 
@@ -3308,9 +3304,15 @@ int ilitek_tddi_mp_test_main(char *apk, bool lcm_on)
 	int ret = 0;
 	char str[128] = {0}, ver[128] = {0};
 
+	if (idev->xch_num <= 0 || idev->ych_num <= 0) {
+		ipio_err("Invalid frame length (%d, %d)\n", idev->xch_num, idev->ych_num);
+		ret = -EMP_INVAL;
+		goto out;
+	}
+
 	ilitek_ini_file_data = (struct ini_file_data *)vmalloc(sizeof(struct ini_file_data) * PARSER_MAX_KEY_NUM);
 	if (ERR_ALLOC_MEM(ilitek_ini_file_data)) {
-		ipio_info("Failed to malloc ilitek_ini_file_data\n");
+		ipio_err("Failed to malloc ilitek_ini_file_data\n");
 		ret = -EMP_NOMEM;
 		goto out;
 	}
@@ -3345,9 +3347,9 @@ int ilitek_tddi_mp_test_main(char *apk, bool lcm_on)
 	ret = mp_show_result(lcm_on);
 
 	mp_copy_ret_to_apk(apk);
-	mp_test_free();
 
 out:
+	mp_test_free();
 	ipio_vfree((void **)&ilitek_ini_file_data);
 	return ret;
 };

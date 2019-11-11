@@ -688,7 +688,7 @@ static int ilitek_tddi_fw_hex_convert(u8 *phex, int size, u8 *pfw)
 
 static int ilitek_tdd_fw_hex_open(u8 op, u8 *pfw)
 {
-	int fsize = 0;
+	int ret = 0, fsize = 0;
 	const struct firmware *fw = NULL;
 	struct file *f = NULL;
 	mm_segment_t old_fs;
@@ -702,7 +702,8 @@ static int ilitek_tdd_fw_hex_open(u8 op, u8 *pfw)
 	case REQUEST_FIRMWARE:
 		if (request_firmware(&fw, idev->md_fw_rq_path, idev->dev) < 0) {
 			ipio_err("Request firmware failed\n");
-			goto convert_hex;
+			ret = -1;
+			goto out;
 		}
 
 		fsize = fw->size;
@@ -710,18 +711,20 @@ static int ilitek_tdd_fw_hex_open(u8 op, u8 *pfw)
 		if (fsize <= 0) {
 			ipio_err("The size of file is zero\n");
 			release_firmware(fw);
-			goto convert_hex;
+			ret = -1;
+			goto out;
 		}
 
-		ipio_vfree((void **)&(idev->tp_fw.data));
 		idev->tp_fw.size = 0;
 		idev->tp_fw.data = vmalloc(fsize);
-		if (!idev->tp_fw.data) {
+		if (ERR_ALLOC_MEM(idev->tp_fw.data)) {
 			ipio_err("Failed to allocate tp_fw by vmalloc, try again\n");
 			idev->tp_fw.data = vmalloc(fsize);
-			if (!idev->tp_fw.data) {
+			if (ERR_ALLOC_MEM(idev->tp_fw.data)) {
 				ipio_err("Failed to allocate tp_fw after retry\n");
-				return -ENOMEM;
+				release_firmware(fw);
+				ret = -ENOMEM;
+				goto out;
 			}
 		}
 
@@ -733,28 +736,30 @@ static int ilitek_tdd_fw_hex_open(u8 op, u8 *pfw)
 	case FILP_OPEN:
 		f = filp_open(idev->md_fw_filp_path, O_RDONLY, 0644);
 		if (ERR_ALLOC_MEM(f)) {
-			ipio_err("Failed to open the file at %ld, try to load it from tp_fw\n", PTR_ERR(f));
-			goto convert_hex;
+			ipio_err("Failed to open the file, %ld\n", PTR_ERR(f));
+			ret = -1;
+			goto out;
 		}
 
 		fsize = f->f_inode->i_size;
 		ipio_info("fsize = %d\n", fsize);
 		if (fsize <= 0) {
-			ipio_err("The size of file is invaild, try to load it from tp_fw\n");
+			ipio_err("The size of file is invaild\n");
 			filp_close(f, NULL);
-			goto convert_hex;
+			ret = -1;
+			goto out;
 		}
 
-		ipio_vfree((void **)&(idev->tp_fw.data));
 		idev->tp_fw.size = 0;
 		idev->tp_fw.data = vmalloc(fsize);
-		if (idev->tp_fw.data == NULL) {
+		if (ERR_ALLOC_MEM(idev->tp_fw.data)) {
 			ipio_err("Failed to allocate tp_fw by vmalloc, try again\n");
 			idev->tp_fw.data = vmalloc(fsize);
-			if (idev->tp_fw.data == NULL) {
+			if (ERR_ALLOC_MEM(idev->tp_fw.data)) {
 				ipio_err("Failed to allocate tp_fw after retry\n");
 				filp_close(f, NULL);
-				return -ENOMEM;
+				ret = -ENOMEM;
+				goto out;
 			}
 		}
 
@@ -773,18 +778,21 @@ static int ilitek_tdd_fw_hex_open(u8 op, u8 *pfw)
 		break;
 	}
 
-convert_hex:
-	/* Convert hex and copy data from tp_fw.data to pfw */
-	if (!ERR_ALLOC_MEM(idev->tp_fw.data) && idev->tp_fw.size > 0) {
-		if (ilitek_tddi_fw_hex_convert((u8 *)idev->tp_fw.data, idev->tp_fw.size, pfw) < 0) {
-			ipio_err("Convert hex file failed\n");
-			return -1;
-		}
-	} else {
-		ipio_err("tp_fw is NULL or fsize(%d) is zero\n", fsize);
-		return -1;
+	if (ERR_ALLOC_MEM(idev->tp_fw.data) || idev->tp_fw.size <= 0) {
+		ipio_err("fw data/size is invaild\n");
+		ret = -1;
+		goto out;
 	}
-	return 0;
+
+	/* Convert hex and copy data from tp_fw.data to pfw */
+	if (ilitek_tddi_fw_hex_convert((u8 *)idev->tp_fw.data, idev->tp_fw.size, pfw) < 0) {
+		ipio_err("Convert hex file failed\n");
+		ret = -1;
+	}
+
+out:
+	ipio_vfree((void **)&(idev->tp_fw.data));
+	return ret;
 }
 
 int ilitek_tddi_fw_upgrade(int op)
@@ -810,7 +818,13 @@ int ilitek_tddi_fw_upgrade(int op)
 		if (ilitek_tdd_fw_hex_open(op, pfw) < 0) {
 			ipio_err("Open hex file fail, try upgrade from ILI file\n");
 
+			/*
+			 * They might not be aware of a broken hex file if we recover
+			 * fw from ILI file. We should force them to check
+			 * hex files they attempt to update via device node.
+			 */
 			if (idev->node_update) {
+				ipio_err("Ignore update from ILI file\n");
 				ipio_vfree((void **)&pfw);
 				return -EFW_CONVERT_FILE;
 			}
