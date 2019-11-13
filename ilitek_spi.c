@@ -522,8 +522,8 @@ static int core_spi_ice_mode_read(u8 *data, int len)
 		goto out;
 
 	if (len < size && (!idev->fw_uart_en && !idev->gesture_demo_ctrl)) {
-		size = len;
 		ipio_info("WARRING! size(%d) > len(%d), use len to get data\n", size, len);
+		size = len;
 	}
 
 	/* receive data from rxbuf and change lock status to 0x9881. */

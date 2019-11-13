@@ -482,14 +482,14 @@ int ilitek_tddi_fw_upgrade_handler(void *data)
 
 	atomic_set(&idev->fw_stat, START);
 
-	idev->fw_update_stat = 0;
+	idev->fw_update_stat = FW_STAT_INIT;
 	ret = ilitek_tddi_fw_upgrade(idev->fw_open);
 	if (ret != 0) {
 		ipio_info("FW upgrade fail\n");
-		idev->fw_update_stat = -1;
+		idev->fw_update_stat = FW_UPDATE_FAIL;
 	} else {
 		ipio_info("FW upgrade pass\n");
-		idev->fw_update_stat = 100;
+		idev->fw_update_stat = FW_UPDATE_PASS;
 	}
 
 	if (!idev->boot) {
@@ -626,8 +626,8 @@ void ilitek_tddi_report_handler(void)
 	ret = idev->read(idev->tr_buf, rlen);
 	if (ret < 0) {
 		ipio_err("Read report packet failed, ret = %d\n", ret);
-		ilitek_tddi_ic_get_pc_counter();
 		if (ret == DO_SPI_RECOVER) {
+			ilitek_tddi_ic_get_pc_counter();
 			if ((idev->actual_tp_mode == P5_X_FW_GESTURE_MODE) && idev->gesture && !idev->prox_near) {
 				ipio_err("Gesture failed, doing gesture recovery\n");
 				if (ilitek_tddi_gesture_recovery() < 0)
@@ -894,13 +894,13 @@ int ilitek_tddi_init(void)
 	 * it might cause unknown problems if we disable ice mode without any
 	 * codes inside touch ic.
 	 */
-	if (ilitek_ice_mode_ctrl(ENABLE, OFF) < 0)
-		ipio_err("Failed to enable ice mode failed during init\n");
-
-	if (ilitek_tddi_ic_get_info() < 0) {
+	if (ilitek_ice_mode_ctrl(ENABLE, OFF) < 0) {
 		ipio_err("Not found ilitek chips\n");
 		return -ENODEV;
 	}
+
+	if (ilitek_tddi_ic_get_info() < 0)
+		ipio_err("Chip info is incorrect\n");
 
 	ilitek_tddi_node_init();
 

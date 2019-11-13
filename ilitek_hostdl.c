@@ -359,7 +359,7 @@ static int ilitek_tddi_fw_iram_upgrade(u8 *pfw)
 				ilitek_fw_dump_iram_data(0x0, 0xF, false);
 				return -EFW_CRC;
 			}
-			idev->fw_update_stat = 90;
+			idev->fw_update_stat = FW_UPDATING;
 		}
 	}
 
@@ -701,9 +701,12 @@ static int ilitek_tdd_fw_hex_open(u8 op, u8 *pfw)
 	switch (op) {
 	case REQUEST_FIRMWARE:
 		if (request_firmware(&fw, idev->md_fw_rq_path, idev->dev) < 0) {
-			ipio_err("Request firmware failed\n");
-			ret = -1;
-			goto out;
+			ipio_err("Request firmware failed, try again\n");
+			if (request_firmware(&fw, idev->md_fw_rq_path, idev->dev) < 0) {
+				ipio_err("Request firmware failed after retry\n");
+				ret = -1;
+				goto out;
+			}
 		}
 
 		fsize = fw->size;
@@ -799,10 +802,11 @@ int ilitek_tddi_fw_upgrade(int op)
 {
 	int i, ret = 0, retry = 3;
 
-	if (!idev->boot || idev->force_fw_update || !pfw) {
+	if (!idev->boot || idev->force_fw_update || ERR_ALLOC_MEM(pfw)) {
 		idev->gesture_load_code = false;
 
-		if (!pfw) {
+		if (ERR_ALLOC_MEM(pfw)) {
+			ipio_vfree((void **)&pfw);
 			pfw = vmalloc(MAX_HEX_FILE_SIZE * sizeof(u8));
 			if (ERR_ALLOC_MEM(pfw)) {
 				ipio_err("Failed to allocate pfw memory, %ld\n", PTR_ERR(pfw));

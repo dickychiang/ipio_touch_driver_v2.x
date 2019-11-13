@@ -155,7 +155,7 @@ void ilitek_fw_dump_iram_data(u32 start, u32 end, bool save)
 	int i, ret, len;
 	u8 *fw_buf = NULL;
 
-	idev->fw_update_stat = 0;
+	idev->fw_update_stat = FW_STAT_INIT;
 
 	if (ilitek_ice_mode_ctrl(ENABLE, OFF) < 0) {
 		ipio_err("Enable ice mode failed\n");
@@ -204,7 +204,7 @@ void ilitek_fw_dump_iram_data(u32 start, u32 end, bool save)
 out:
 	ilitek_ice_mode_ctrl(DISABLE, OFF);
 	ipio_info("Dump IRAM %s\n", (ret < 0) ? "FAIL" : "SUCCESS");
-	idev->fw_update_stat = (ret < 0) ? -1 : 100;
+	idev->fw_update_stat = (ret < 0) ? FW_UPDATE_FAIL : FW_UPDATE_PASS;
 	ipio_kfree((void **)&fw_buf);
 }
 
@@ -536,7 +536,7 @@ int ilitek_tddi_fw_dump_flash_data(u32 start, u32 end, bool user)
 	u32 start_addr, end_addr;
 	int ret, length;
 
-	idev->fw_update_stat = 0;
+	idev->fw_update_stat = FW_STAT_INIT;
 
 	f = filp_open(DUMP_FLASH_PATH, O_WRONLY | O_CREAT | O_TRUNC, 644);
 	if (ERR_ALLOC_MEM(f)) {
@@ -584,7 +584,7 @@ int ilitek_tddi_fw_dump_flash_data(u32 start, u32 end, bool user)
 out:
 	ilitek_ice_mode_ctrl(DISABLE, OFF);
 	ipio_info("Dump flash %s\n", (ret < 0) ? "FAIL" : "SUCCESS");
-	idev->fw_update_stat = (ret < 0) ? -1 : 100;
+	idev->fw_update_stat = (ret < 0) ? FW_UPDATE_FAIL : FW_UPDATE_PASS;
 	return ret;
 }
 
@@ -775,7 +775,7 @@ static int ilitek_tddi_fw_flash_program(u8 *pfw)
 			/* holding the status until finish this upgrade. */
 			idev->fw_update_stat = (addr * 101) / tfd.end_addr;
 			if (idev->fw_update_stat > 90)
-				idev->fw_update_stat = 90;
+				idev->fw_update_stat = FW_UPDATING;
 		}
 	}
 	return UPDATE_PASS;
@@ -1151,9 +1151,12 @@ static int ilitek_tdd_fw_hex_open(u8 op, u8 *pfw)
 	switch (op) {
 	case REQUEST_FIRMWARE:
 		if (request_firmware(&fw, idev->md_fw_rq_path, idev->dev) < 0) {
-			ipio_err("Request firmware failed\n");
-			ret = -1;
-			goto out;
+			ipio_err("Request firmware failed, try again\n");
+			if (request_firmware(&fw, idev->md_fw_rq_path, idev->dev) < 0) {
+				ipio_err("Request firmware failed after retry\n");
+				ret = -1;
+				goto out;
+			}
 		}
 
 		fsize = fw->size;
@@ -1250,8 +1253,9 @@ int ilitek_tddi_fw_upgrade(int op)
 {
 	int i, ret = 0, retry = 3;
 
-	if (!idev->boot || idev->force_fw_update || !pfw) {
-		if (!pfw) {
+	if (!idev->boot || idev->force_fw_update || ERR_ALLOC_MEM(pfw)) {
+		if (ERR_ALLOC_MEM(pfw)) {
+			ipio_vfree((void **)&pfw);
 			pfw = vmalloc(MAX_HEX_FILE_SIZE * sizeof(u8));
 			if (ERR_ALLOC_MEM(pfw)) {
 				ipio_err("Failed to allocate pfw memory, %ld\n", PTR_ERR(pfw));

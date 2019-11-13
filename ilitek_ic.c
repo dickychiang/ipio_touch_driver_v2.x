@@ -83,6 +83,8 @@ int ilitek_tddi_ic_check_support(u32 pid, u16 id)
 		return -1;
 	}
 
+	idev->chip->pid = pid;
+
 	if (id == ILI9881_CHIP) {
 		idev->chip->reset_key = 0x00019881;
 		idev->chip->wtd_key = 0x9881;
@@ -1113,24 +1115,26 @@ out:
 int ilitek_tddi_ic_get_info(void)
 {
 	int ret = 0;
+	u32 pid = idev->chip->pid;
 
 	if (!atomic_read(&idev->ice_stat)) {
 		ipio_err("ice mode doesn't enable\n");
 		return -1;
 	}
 
-	if (ilitek_ice_mode_read(idev->chip->pid_addr, &idev->chip->pid, sizeof(u32)) < 0)
-		ipio_err("Read chip pid error\n");
-
-	idev->chip->id = idev->chip->pid >> 16;
-	idev->chip->type_hi = idev->chip->pid & 0x0000FF00;
-	idev->chip->type_low = idev->chip->pid	& 0xFF;
-
+	if (!pid) {
+		if (ilitek_ice_mode_read(idev->chip->pid_addr, &pid, sizeof(u32)) < 0)
+			ipio_err("Read chip id error\n");
+	}
 	if (ilitek_ice_mode_read(idev->chip->otp_addr, &idev->chip->otp_id, sizeof(u32)) < 0)
 		ipio_err("Read otp id error\n");
 	if (ilitek_ice_mode_read(idev->chip->ana_addr, &idev->chip->ana_id, sizeof(u32)) < 0)
 		ipio_err("Read ana id error\n");
 
+	idev->chip->pid = pid;
+	idev->chip->id = pid >> 16;
+	idev->chip->type_hi = pid & 0x0000FF00;
+	idev->chip->type_low = pid & 0xFF;
 	idev->chip->otp_id &= 0xFF;
 	idev->chip->ana_id &= 0xFF;
 

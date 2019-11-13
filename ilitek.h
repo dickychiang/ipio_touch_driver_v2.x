@@ -102,7 +102,7 @@
 #include "sync_write.h"
 #endif
 
-#define DRIVER_VERSION			"2.0.4.0.191018"
+#define DRIVER_VERSION			"2.0.5.0.191115"
 
 /* Options */
 #define TDDI_INTERFACE			BUS_SPI /* BUS_I2C(0x18) or BUS_SPI(0x1C) */
@@ -194,6 +194,13 @@ enum TP_RST_METHOD {
 enum TP_FW_UPGRADE_TYPE {
 	UPGRADE_FLASH = 0,
 	UPGRADE_IRAM
+};
+
+enum TP_FW_UPGRADE_STATUS {
+	FW_STAT_INIT = 0,
+	FW_UPDATING = 90,
+	FW_UPDATE_PASS = 100,
+	FW_UPDATE_FAIL = -1
 };
 
 enum TP_FW_OPEN_METHOD {
@@ -481,8 +488,12 @@ enum TP_ERR_CODE {
 #define GESTURE_RIGHT					0x63
 #define GESTURE_M					0x64
 #define GESTURE_W					0x65
+#define GESTURE_C					0x66
+#define GESTURE_E					0x67
 #define GESTURE_V					0x68
 #define GESTURE_O					0x69
+#define GESTURE_S					0x6A
+#define GESTURE_Z					0x6B
 #define KEY_GESTURE_POWER				KEY_POWER
 #define KEY_GESTURE_UP					KEY_UP
 #define KEY_GESTURE_DOWN				KEY_DOWN
