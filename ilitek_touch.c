@@ -539,9 +539,9 @@ int ilitek_tddi_touch_esd_gesture_iram(void)
 		ipio_err("Enable ice mode failed during gesture recovery\n");
 
 	if (idev->chip->core_ver >= CORE_VER_1420)
-		esd_ges_pwd_addr = 0x40054;
+		esd_ges_pwd_addr = I2C_ESD_GESTURE_PWD_ADDR;
 	else
-		esd_ges_pwd_addr = 0x25FF8;
+		esd_ges_pwd_addr = SPI_ESD_GESTURE_PWD_ADDR;
 
 	ipio_info("ESD Gesture PWD Addr = 0x%x, Answer = 0x%x\n",
 		esd_ges_pwd_addr, SPI_ESD_GESTURE_RUN);

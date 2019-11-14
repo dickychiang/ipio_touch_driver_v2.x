@@ -88,7 +88,6 @@ int ilitek_tddi_ic_check_support(u32 pid, u16 id)
 	if (id == ILI9881_CHIP) {
 		idev->chip->reset_key = 0x00019881;
 		idev->chip->wtd_key = 0x9881;
-		idev->chip->open_sp_formula = open_sp_formula_ili9881;
 		idev->chip->hd_dma_check_crc_off = firmware_hd_dma_crc_off_ili9881;
 
 		/*
@@ -107,7 +106,6 @@ int ilitek_tddi_ic_check_support(u32 pid, u16 id)
 	} else {
 		idev->chip->reset_key = 0x00019878;
 		idev->chip->wtd_key = 0x9878;
-		idev->chip->open_sp_formula = open_sp_formula_ili7807;
 		idev->chip->hd_dma_check_crc_off = firmware_hd_dma_crc_off_ili7807;
 		idev->chip->no_bk_shift = RAWDATA_NO_BK_SHIFT_9881H;
 
@@ -119,7 +117,6 @@ int ilitek_tddi_ic_check_support(u32 pid, u16 id)
 	}
 
 	idev->chip->max_count = 0x1FFFF;
-	idev->chip->open_c_formula = open_c_formula;
 	return 0;
 }
 

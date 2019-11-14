@@ -297,6 +297,35 @@ enum TP_ERR_CODE {
 	EFW_PROGRAM,
 };
 
+enum TP_IC_TYPE {
+	ILI_A = 0x0A,
+	ILI_B,
+	ILI_C,
+	ILI_D,
+	ILI_E,
+	ILI_F,
+	ILI_G,
+	ILI_H,
+	ILI_I,
+	ILI_J,
+	ILI_K,
+	ILI_L,
+	ILI_M,
+	ILI_N,
+	ILI_O,
+	ILI_P,
+	ILI_Q,
+	ILI_R,
+	ILI_S,
+	ILI_T,
+	ILI_U,
+	ILI_V,
+	ILI_W,
+	ILI_X,
+	ILI_Y,
+	ILI_Z,
+};
+
 #define TDDI_I2C_ADDR				0x41
 #define TDDI_DEV_ID				"ILITEK_TDDI"
 
@@ -517,6 +546,7 @@ enum TP_ERR_CODE {
 #define ESD_GESTURE_PWD					0xF38A94EF
 #define SPI_ESD_GESTURE_RUN				0x5B92E7F4
 #define I2C_ESD_GESTURE_RUN				0xA67C9DFE
+#define SPI_ESD_GESTURE_PWD_ADDR			0x25FF8
 #define I2C_ESD_GESTURE_PWD_ADDR			0x40054
 
 /* FW data format */
@@ -815,8 +845,6 @@ struct ilitek_ic_info {
 	u16 wtd_key;
 	int no_bk_shift;
 	bool spi_speed_ctrl;
-	s32 (*open_sp_formula)(int dac, int raw, int tvch, int tvcl);
-	s32 (*open_c_formula)(int dac, int raw, int tvch, int gain);
 	void (*hd_dma_check_crc_off)(void);
 };
 
@@ -968,22 +996,6 @@ static inline void *ipio_memcpy(void *dest, const void *src, int n, int dest_siz
 		 n = dest_size;
 
 	return memcpy(dest, src, n);
-}
-
-static inline s32 open_sp_formula_ili9881(int dac, int raw, int tvch, int tvcl)
-{
-	return (int)((int)(dac * 10000 * 161 / 100) - (int)(16384 / 2 - (int)raw) * 20000 * 7 / 16384 * 36 / 10) / (tvch - tvcl) / 2;
-}
-
-static inline s32 open_sp_formula_ili7807(int dac, int raw, int tvch, int tvcl)
-{
-	return (int)((int)(dac * 10000 * 131 / 100) - (int)(16384 / 2 - (int)raw) * 20000 * 7 / 16384 * 36 / 10) / (tvch - tvcl) / 2;
-}
-
-static inline s32 open_c_formula(int dac, int raw, int tvch, int gain)
-{
-	return (int)((int)(dac * 414 * 39 / 2) + (int)(((int)raw - 8192) * 36 * (7 * 100 - 22) * 10 / 16384)) /
-						tvch / 100 / gain;
 }
 
 static inline void firmware_hd_dma_crc_off_ili9881(void)

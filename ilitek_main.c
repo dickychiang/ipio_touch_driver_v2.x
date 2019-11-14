@@ -94,12 +94,6 @@ int ilitek_tddi_mp_test_handler(char *apk, bool lcm_on)
 		return -EMP_FW_PROC;
 	}
 
-	if (!idev->chip->open_c_formula ||
-		!idev->chip->open_sp_formula) {
-		ipio_err("formula is null\n");
-		return -EMP_FORMUL_NULL;
-	}
-
 	atomic_set(&idev->mp_stat, ENABLE);
 
 	if (idev->actual_tp_mode != P5_X_FW_TEST_MODE) {
@@ -833,7 +827,11 @@ void ilitek_update_tp_module_info(int module)
 		idev->md_fw_ili_size = sizeof(CTPM_FW_TM);
 		break;
 	default:
-		module = 0;
+		break;
+	}
+
+	if (module == 0 || idev->md_fw_ili_size < ILI_FILE_HEADER) {
+		ipio_err("Couldn't find any tp modules, applying default settings\n");
 		idev->md_name = "DEF";
 		idev->md_fw_filp_path = DEF_FW_FILP_PATH;
 		idev->md_fw_rq_path = DEF_FW_REQUEST_PATH;
@@ -841,11 +839,15 @@ void ilitek_update_tp_module_info(int module)
 		idev->md_ini_rq_path = DEF_INI_REQUEST_PATH;
 		idev->md_fw_ili = CTPM_FW_DEF;
 		idev->md_fw_ili_size = sizeof(CTPM_FW_DEF);
-		ipio_err("Couldn't find any tp modules, applying default settings\n");
-		break;
 	}
 
-	ipio_info("Found %s module\n", idev->md_name);
+	ipio_info("Found %s module: ini path = %s, fw path = (%s, %s, %d)\n",
+			idev->md_name,
+			idev->md_ini_path,
+			idev->md_fw_filp_path,
+			idev->md_fw_rq_path,
+			idev->md_fw_ili_size);
+
 	idev->tp_module = module;
 }
 

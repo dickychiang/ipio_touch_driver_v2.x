@@ -37,7 +37,7 @@ static unsigned char CTPM_FW_DEF[] = {
 #define CSOT_INI_REQUEST_PATH		"mp_csot.ini"
 #define CSOT_FW_REQUEST_PATH		"ILITEK_FW_CSOT"
 static unsigned char CTPM_FW_CSOT[] = {
-	#include "firmware/FW_TDDI_TRUNK_FB_CSOT.ili"
+	0xFF,
 };
 
 #define AUO_INI_NAME_PATH		"/sdcard/mp_auo.ini"
@@ -45,7 +45,7 @@ static unsigned char CTPM_FW_CSOT[] = {
 #define AUO_INI_REQUEST_PATH		"mp_auo.ini"
 #define AUO_FW_REQUEST_PATH		"ILITEK_FW_AUO"
 static unsigned char CTPM_FW_AUO[] = {
-	#include "firmware/FW_TDDI_TRUNK_FB_AUO.ili"
+	0xFF,
 };
 
 #define BOE_INI_NAME_PATH		"/sdcard/mp_boe.ini"
@@ -53,7 +53,7 @@ static unsigned char CTPM_FW_AUO[] = {
 #define BOE_INI_REQUEST_PATH		"mp_boe.ini"
 #define BOE_FW_REQUEST_PATH		"ILITEK_FW_BOE"
 static unsigned char CTPM_FW_BOE[] = {
-	#include "firmware/FW_TDDI_TRUNK_FB_BOE.ili"
+	0xFF,
 };
 
 #define INX_INI_NAME_PATH		"/sdcard/mp_inx.ini"
@@ -61,7 +61,7 @@ static unsigned char CTPM_FW_BOE[] = {
 #define INX_INI_REQUEST_PATH		"mp_inx.ini"
 #define INX_FW_REQUEST_PATH		"ILITEK_FW_INX"
 static unsigned char CTPM_FW_INX[] = {
-	#include "firmware/FW_TDDI_TRUNK_FB_INX.ili"
+	0xFF,
 };
 
 #define DJ_INI_NAME_PATH		"/sdcard/mp_dj.ini"
@@ -69,7 +69,7 @@ static unsigned char CTPM_FW_INX[] = {
 #define DJ_INI_REQUEST_PATH		"mp_dj.ini"
 #define DJ_FW_REQUEST_PATH		"ILITEK_FW_DJ"
 static unsigned char CTPM_FW_DJ[] = {
-	#include "firmware/FW_TDDI_TRUNK_FB_DJ.ili"
+	0xFF,
 };
 
 #define TXD_INI_NAME_PATH		"/sdcard/mp_txd.ini"
@@ -77,7 +77,7 @@ static unsigned char CTPM_FW_DJ[] = {
 #define TXD_INI_REQUEST_PATH		"mp_txd.ini"
 #define TXD_FW_REQUEST_PATH		"ILITEK_FW_TXD"
 static unsigned char CTPM_FW_TXD[] = {
-	#include "firmware/FW_TDDI_TRUNK_FB_TXD.ili"
+	0xFF,
 };
 
 #define TM_INI_NAME_PATH		"/sdcard/mp_tm.ini"
@@ -85,7 +85,7 @@ static unsigned char CTPM_FW_TXD[] = {
 #define TM_INI_REQUEST_PATH		"mp_tm.ini"
 #define TM_FW_REQUEST_PATH		"ILITEK_FW_TM"
 static unsigned char CTPM_FW_TM[] = {
-	#include "firmware/FW_TDDI_TRUNK_FB_TM.ili"
+	0xFF,
 };
 
 #endif

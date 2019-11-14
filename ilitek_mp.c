@@ -169,6 +169,8 @@ struct open_test_spec {
 
 struct core_mp_test_data {
 	u32 chip_pid;
+	u16 chip_id;
+	u16 chip_type;
 	u32 fw_ver;
 	u32 protocol_ver;
 	u32 core_ver;
@@ -657,7 +659,6 @@ static int parser_get_ini_phy_data(char *data, int fsize)
 		goto out;
 	}
 
-	scount = 0;
 	memset(seq_item, 0, MP_TEST_ITEM * PARSER_MAX_KEY_NAME_LEN * sizeof(char));
 
 	while (true) {
@@ -1269,6 +1270,39 @@ int full_open_rate_compare(s32 *full_open, s32 *cbk, int x, int y, s32 inNodeTyp
 	return ret;
 }
 
+static s32 open_sp_formula(int dac, int raw, int tvch, int tvcl)
+{
+	s32 ret = 0;
+	u16 id = core_mp.chip_id;
+
+	if (id == ILI9881_CHIP) {
+		ret = ((dac * 10000 * 161 / 100) - (16384 / 2 - raw) * 20000 * 7 / 16384 * 36 / 10) / (tvch - tvcl) / 2;
+	} else {
+		ret = ((dac * 10000 * 131 / 100) - (16384 / 2 - raw) * 20000 * 7 / 16384 * 36 / 10) / (tvch - tvcl) / 2;
+	}
+	return ret;
+}
+
+static s32 open_c_formula(int dac, int raw, int tvch, int gain)
+{
+	s32 ret = 0;
+	u16 id = core_mp.chip_id, type = core_mp.chip_type;
+
+	if (id == ILI9881_CHIP) {
+		ret = ((dac * 414 * 39 / 2) + ((raw - 8192) * 36 * (7 * 100 - 22) * 10 / 16384)) / tvch / 100 / gain;
+		return ret;
+	}
+
+	if (type == ILI_R) {
+		ret = ((dac * 376 * 39 / 2 * 10) + ((raw - 8192) * 9 * (7 * 100  + 5) * 25 / 1024)) / tvch / 100 / gain;
+	} else if (type == ILI_Q) {
+		ret = ((dac * 275 * 39 / 2 * 10) + ((raw - 8192) * 9 * (7 * 100) * 25 / 1024)) / tvch / 100 / gain;
+	} else { //G
+		ret = ((dac * 337 * 39 / 2 * 10) + ((raw - 8192) * 9 * (7 * 100 - 22) * 25 / 1024)) / tvch / 100 / gain;
+	}
+	return ret;
+}
+
 void allnode_open_cdc_result(int index, int *buf, int *dac, int *raw)
 {
 	int i;
@@ -1276,10 +1310,10 @@ void allnode_open_cdc_result(int index, int *buf, int *dac, int *raw)
 
 	if (ipio_strcmp(desp, "open test(integration)_sp") == 0) {
 		for (i = 0; i < core_mp.frame_len; i++)
-			buf[i] = idev->chip->open_sp_formula(dac[i], raw[i], open_spec.tvch, open_spec.tvcl);
+			buf[i] = open_sp_formula(dac[i], raw[i], open_spec.tvch, open_spec.tvcl);
 	} else if (ipio_strcmp(desp, "open test_c") == 0) {
 		for (i = 0; i < core_mp.frame_len; i++)
-			buf[i] = idev->chip->open_c_formula(dac[i], raw[i], open_spec.tvch - open_spec.tvcl, open_spec.gain);
+			buf[i] = open_c_formula(dac[i], raw[i], open_spec.tvch - open_spec.tvcl, open_spec.gain);
 	}
 }
 
@@ -1293,6 +1327,10 @@ static int codeToOhm(s32 Code, u16 *v_tdf, u16 *h_tdf)
 	int douVariation = 64;
 	int douRinternal = 930;
 	s32 temp = 0;
+
+	if (idev->chip->id == ILI7807_CHIP &&
+		idev->chip->type_hi == ILI_Q)
+		douRinternal = 1500;
 
 	if (core_mp.isLongV) {
 		douTDF1 = *v_tdf;
@@ -3026,6 +3064,8 @@ static void ilitek_tddi_mp_init_item(void)
 	memset(&core_mp, 0, sizeof(core_mp));
 
 	core_mp.chip_pid = idev->chip->pid;
+	core_mp.chip_id = idev->chip->id;
+	core_mp.chip_type = idev->chip->type_hi;
 	core_mp.fw_ver = idev->chip->fw_ver;
 	core_mp.protocol_ver = idev->protocol->ver;
 	core_mp.core_ver = idev->chip->core_ver;
@@ -3264,14 +3304,12 @@ static void mp_copy_ret_to_apk(char *buf)
 	len += snprintf(buf + len, PAGE_SIZE - len, "CSV path: %s\n\n", csv_name);
 	for (seq = 0; seq < ri.count; seq++) {
 		i = ri.index[seq];
-		if (tItems[i].run) {
-			if (tItems[i].item_result == MP_DATA_FAIL) {
-				ipio_err("[%s] = FAIL\n", tItems[i].desp);
-				len += snprintf(buf + len, PAGE_SIZE - len, "[%s] = FAIL\n", tItems[i].desp);
-			} else {
-				ipio_info("[%s] = PASS\n", tItems[i].desp);
-				len += snprintf(buf + len, PAGE_SIZE - len, "[%s] = PASS\n", tItems[i].desp);
-			}
+		if (tItems[i].item_result == MP_DATA_FAIL) {
+			ipio_err("[%s] = FAIL\n", tItems[i].desp);
+			len += snprintf(buf + len, PAGE_SIZE - len, "[%s] = FAIL\n", tItems[i].desp);
+		} else {
+			ipio_info("[%s] = PASS\n", tItems[i].desp);
+			len += snprintf(buf + len, PAGE_SIZE - len, "[%s] = PASS\n", tItems[i].desp);
 		}
 	}
 	idev->mp_ret_len = len;
