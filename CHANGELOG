@@ -1,5 +1,28 @@
 v2.0.4.0
 [New features]
+1. Add new mp test item (Noise Diff)
+2. Won't go to sleep stop and check busy while system suspending (for core version 1.4.3 above).
+3. Add DDI R/W ioctl
+4. Now can read iram data in TP modules with flash.
+5. Add INI release version and date in CSV log.
+
+[Improvements]
+1. Now the results of strings in fw upgrad and mp can print on terminal as well as send to apk.
+2. Wrapper strncmp to avoid the failure of comparsion with whole part of string.
+3. Read pc count and latch if spi ack error occurs.
+4. Rewrite MP LIST and the order to test item that follows with the order of ini section.
+5. Add the coordinate of gesture
+6. Modify open test c formula for 7807G/R/Q
+7. Remove other ILI files in order to reduce the size of driver code.
+
+[Bus fixed]
+1. Fix unlock error when geting CDC data.
+2. Fix device id error in probe stage.
+3. Fix the error of DAC test.
+4. Free those allocated memories that wasn't freed.
+
+v2.0.4.0
+[New features]
 1. Add the option of transferring touch position, which is supported by core version 1.4.3 above.
 
 [Improvements]
