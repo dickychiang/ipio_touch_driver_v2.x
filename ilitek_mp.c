@@ -170,7 +170,8 @@ struct open_test_spec {
 struct core_mp_test_data {
 	u32 chip_pid;
 	u16 chip_id;
-	u16 chip_type;
+	u8 chip_type;
+	u8 chip_ver;
 	u32 fw_ver;
 	u32 protocol_ver;
 	u32 core_ver;
@@ -1327,9 +1328,10 @@ static int codeToOhm(s32 Code, u16 *v_tdf, u16 *h_tdf)
 	int douVariation = 64;
 	int douRinternal = 930;
 	s32 temp = 0;
+	u16 id = core_mp.chip_id;
+	u8 type = core_mp.chip_type;
 
-	if (idev->chip->id == ILI7807_CHIP &&
-		idev->chip->type_hi == ILI_Q)
+	if (id == ILI7807_CHIP && type == ILI_Q)
 		douRinternal = 1500;
 
 	if (core_mp.isLongV) {
@@ -3065,7 +3067,8 @@ static void ilitek_tddi_mp_init_item(void)
 
 	core_mp.chip_pid = idev->chip->pid;
 	core_mp.chip_id = idev->chip->id;
-	core_mp.chip_type = idev->chip->type_hi;
+	core_mp.chip_type = idev->chip->type;
+	core_mp.chip_ver = idev->chip->ver;
 	core_mp.fw_ver = idev->chip->fw_ver;
 	core_mp.protocol_ver = idev->protocol->ver;
 	core_mp.core_ver = idev->chip->core_ver;

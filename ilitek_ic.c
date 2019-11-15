@@ -1130,15 +1130,16 @@ int ilitek_tddi_ic_get_info(void)
 
 	idev->chip->pid = pid;
 	idev->chip->id = pid >> 16;
-	idev->chip->type_hi = pid & 0x0000FF00;
-	idev->chip->type_low = pid & 0xFF;
+	idev->chip->type = (pid & 0x0000FF00) >> 8;
+	idev->chip->ver = pid & 0xFF;
 	idev->chip->otp_id &= 0xFF;
 	idev->chip->ana_id &= 0xFF;
 
-	ipio_info("CHIP INFO: PID = %x, ID = %x, TYPE = %x, OTP = %x, ANA = %x\n",
+	ipio_info("CHIP: PID = %x, ID = %x, TYPE = %x, VER = %x, OTP = %x, ANA = %x\n",
 		idev->chip->pid,
 		idev->chip->id,
-		((idev->chip->type_hi << 8) | idev->chip->type_low),
+		idev->chip->type,
+		idev->chip->ver,
 		idev->chip->otp_id,
 		idev->chip->ana_id);
 

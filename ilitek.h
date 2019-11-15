@@ -825,6 +825,11 @@ struct ilitek_ic_func_ctrl {
 };
 
 struct ilitek_ic_info {
+	u8 type;
+	u8 ver;
+	u16 id;
+	u16 wtd_key;
+	u32 pid;
 	u32 pid_addr;
 	u32 wdt_addr;
 	u32 pc_counter_addr;
@@ -832,17 +837,12 @@ struct ilitek_ic_info {
 	u32 reset_addr;
 	u32 otp_addr;
 	u32 ana_addr;
-	u32 pid;
-	u16 id;
-	u16 type_hi;
-	u16 type_low;
 	u32 otp_id;
 	u32 ana_id;
 	u32 fw_ver;
 	u32 core_ver;
 	u32 max_count;
 	u32 reset_key;
-	u16 wtd_key;
 	int no_bk_shift;
 	bool spi_speed_ctrl;
 	void (*hd_dma_check_crc_off)(void);
