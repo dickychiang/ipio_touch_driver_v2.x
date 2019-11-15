@@ -760,8 +760,12 @@ static int ilitek_get_tp_module(void)
 	return 0;
 }
 
-void ilitek_update_tp_module_info(int module)
+static void ilitek_update_tp_module_info(void)
 {
+	int module;
+
+	module = ilitek_get_tp_module();
+
 	switch(module) {
 	case MODEL_CSOT:
 		idev->md_name = "CSOT";
@@ -904,11 +908,11 @@ int ilitek_tddi_init(void)
 	if (ilitek_tddi_ic_get_info() < 0)
 		ipio_err("Chip info is incorrect\n");
 
+	ilitek_update_tp_module_info();
+
 	ilitek_tddi_node_init();
 
 	ilitek_tddi_fw_read_flash_info();
-
-	ilitek_update_tp_module_info(ilitek_get_tp_module());
 
 #if BOOT_FW_UPDATE
 	fw_boot_th = kthread_run(ilitek_tddi_fw_upgrade_handler, NULL, "ili_fw_boot");

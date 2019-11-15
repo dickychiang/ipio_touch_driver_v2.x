@@ -1437,9 +1437,6 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 	} else if (strncmp(cmd, "dbgflag", strlen(cmd)) == 0) {
 		idev->debug_node_open = !idev->debug_node_open;
 		ipio_info("debug flag message = %d\n", idev->debug_node_open);
-	} else if (strncmp(cmd, "module", strlen(cmd)) == 0) {
-		ipio_info("module = %d\n", data[1]);
-		ilitek_update_tp_module_info(data[1]);
 	} else if (strncmp(cmd, "ss", strlen(cmd)) == 0) {
 		ipio_info("sense_stop = %d\n", data[1]);
 		idev->ss_ctrl = data[1];
