@@ -180,7 +180,7 @@ struct file_buffer {
 	char fname[128];
 	int32_t wlen;
 	int32_t flen;
-	int32_t wtemp_zise;
+	int32_t max_size;
 };
 
 static int file_write(struct file_buffer *file, bool new_open)
@@ -199,7 +199,7 @@ static int file_write(struct file_buffer *file, bool new_open)
 		return -1;
 	}
 
-	if (file->wlen >= file->wtemp_zise) {
+	if (file->wlen >= file->max_size) {
 		ipio_err("Saved to file length is too long !, %d\n", file->wlen);
 		return -1;
 	}
@@ -224,56 +224,45 @@ static int file_write(struct file_buffer *file, bool new_open)
 	return 0;
 }
 
-void ilitek_debug_node_buff_control(void)
+static int ilitek_debug_node_buff_control(bool open)
 {
-	int i;
-	bool free_flag = false;
+	int i, ret;
 
-	idev->debug_node_open = !idev->debug_node_open;
+	idev->dnp = open;
 
-	if (idev->debug_node_open == true) {
-		idev->debug_data_frame = 0;
-		idev->out_data_index = 0;
+	ipio_info("Debug buf ctrl = %s\n", idev->dnp ? "Enable" : "Disable");
 
-		if (idev->debug_buf == NULL) {
-			idev->debug_buf = (struct debug_buf_list *)kzalloc(TR_BUF_LIST_SIZE * sizeof(*idev->debug_buf), GFP_KERNEL);
-			if (ERR_ALLOC_MEM(idev->debug_buf)) {
-				ipio_err("Failed to allocate idev->debug_buf mem, %ld\n", PTR_ERR(idev->debug_buf));
-				free_flag = true;
-			}
+	if (open) {
+		idev->dbf = 0;
+		idev->odi = 0;
+		ipio_kfree((void **)&idev->dbl);
+		idev->dbl = kzalloc(TR_BUF_LIST_SIZE * sizeof(*idev->dbl), GFP_KERNEL);
+		if (ERR_ALLOC_MEM(idev->dbl)) {
+			ipio_err("Failed to allocate idev->dbl mem, %ld\n", PTR_ERR(idev->dbl));
+			ret = -ENOMEM;
+			goto out;
 		}
 
-		if (idev->debug_buf  != NULL) {
-			for (i = 0; i < TR_BUF_LIST_SIZE; i++) {
-				idev->debug_buf[i].mark = false;
-				if (idev->debug_buf[i].data == NULL) {
-					idev->debug_buf[i].data = (unsigned char *)kzalloc(TR_BUF_SIZE * sizeof(unsigned char), GFP_KERNEL);
-					if (ERR_ALLOC_MEM(idev->debug_buf[i].data)) {
-						ipio_err("Failed to allocate debug_buf[%d] mem, %ld\n", i, PTR_ERR(idev->debug_buf[i].data));
-						free_flag = true;
-						break;
-					}
-				}
+		for (i = 0; i < TR_BUF_LIST_SIZE; i++) {
+			idev->dbl[i].mark = false;
+			ipio_kfree((void **)&idev->dbl[i].data);
+			idev->dbl[i].data = kzalloc(TR_BUF_SIZE * sizeof(unsigned char), GFP_KERNEL);
+			if (ERR_ALLOC_MEM(idev->dbl[i].data)) {
+				ipio_err("Failed to allocate dbl[%d] mem, %ld\n", i, PTR_ERR(idev->dbl[i].data));
+				ret = -ENOMEM;
+				goto out;
 			}
 		}
-
+		return 0;
 	}
 
-	/* Note that it might be freed by next touch event */
-	if (free_flag || (!idev->debug_node_open)) {
-		if (idev->debug_buf != NULL) {
-			for (i = 0; i < TR_BUF_LIST_SIZE; i++) {
-				idev->debug_buf[i].mark = false;
-				if (idev->debug_buf[i].data != NULL) {
-					kfree(idev->debug_buf[i].data);
-					idev->debug_buf[i].data = NULL;
-				}
-			}
-			kfree(idev->debug_buf);
-			idev->debug_buf = NULL;
-		}
-		idev->debug_node_open = false;
+out:
+	for (i = 0; i < TR_BUF_LIST_SIZE; i++) {
+		idev->dbl[i].mark = false;
+		ipio_kfree((void **)&idev->dbl[i].data);
 	}
+	ipio_kfree((void **)&idev->dbl);
+	return ret;
 }
 
 static int debug_mode_get_data(struct file_buffer *file, u8 type, u32 frame_count)
@@ -285,22 +274,25 @@ static int debug_mode_get_data(struct file_buffer *file, u8 type, u32 frame_coun
 	int j;
 	u16 write_index = 0;
 
-	if (idev->debug_node_open)
-		ilitek_debug_node_buff_control();
-	idev->debug_data_frame = 0;
+	ilitek_debug_node_buff_control(DISABLE);
+
+	idev->dbf = 0;
 	row = idev->ych_num;
 	col = idev->xch_num;
-
 	mutex_lock(&idev->touch_mutex);
+
 	cmd[0] = 0xFA;
 	cmd[1] = type;
 	ret = idev->write(cmd, 2);
-	ilitek_debug_node_buff_control();
-	mutex_unlock(&idev->touch_mutex);
-	if (!idev->debug_node_open){
-		ipio_err("open debug fail\n");
-		return ret;
+
+	if (ilitek_debug_node_buff_control(ENABLE) < 0) {
+		ipio_err("Failed to allocate debug buf\n");
+		ret = -ENOMEM;
+		goto out;
 	}
+
+	mutex_unlock(&idev->touch_mutex);
+
 	if (ret < 0) {
 		ipio_err("Write 0xFA,0x%x failed\n", type);
 		return ret;
@@ -308,43 +300,43 @@ static int debug_mode_get_data(struct file_buffer *file, u8 type, u32 frame_coun
 
 	while (write_index < frame_count) {
 		file->wlen = 0;
-		ipio_info("frame = %d,index = %d,count = %d\n", write_index,idev->out_data_index, idev->debug_data_frame);
-		if (!wait_event_interruptible_timeout(idev->inq, idev->debug_buf[idev->out_data_index].mark, msecs_to_jiffies(3000))) {
+		ipio_info("frame = %d,index = %d,count = %d\n", write_index,idev->odi, idev->dbf);
+		if (!wait_event_interruptible_timeout(idev->inq, idev->dbl[idev->odi].mark, msecs_to_jiffies(3000))) {
 			ipio_err("debug mode get data timeout!\n");
 			goto out;
 		}
 
 		mutex_lock(&idev->touch_mutex);
 
-		memset(file->ptr, 0, file->wtemp_zise);
-		file->wlen += snprintf(file->ptr + file->wlen, (file->wtemp_zise - file->wlen), "\n\nFrame%d,", write_index);
+		memset(file->ptr, 0, file->max_size);
+		file->wlen += snprintf(file->ptr + file->wlen, (file->max_size - file->wlen), "\n\nFrame%d,", write_index);
 		for (j = 0; j < col; j++)
-			file->wlen += snprintf(file->ptr + file->wlen, (file->wtemp_zise - file->wlen), "[X%d] ,", j);
-		ptr = &idev->debug_buf[idev->out_data_index].data[35];
+			file->wlen += snprintf(file->ptr + file->wlen, (file->max_size - file->wlen), "[X%d] ,", j);
+		ptr = &idev->dbl[idev->odi].data[35];
 		for (j = 0; j < row * col; j++, ptr += 2) {
 			temp = (*ptr << 8) + *(ptr + 1);
 			if (j % col == 0)
-				file->wlen += snprintf(file->ptr + file->wlen, (file->wtemp_zise - file->wlen), "\n[Y%d] ,", (j / col));
-			file->wlen += snprintf(file->ptr + file->wlen, (file->wtemp_zise - file->wlen), "%d, ", temp);
+				file->wlen += snprintf(file->ptr + file->wlen, (file->max_size - file->wlen), "\n[Y%d] ,", (j / col));
+			file->wlen += snprintf(file->ptr + file->wlen, (file->max_size - file->wlen), "%d, ", temp);
 		}
-		file->wlen += snprintf(file->ptr + file->wlen, (file->wtemp_zise - file->wlen), "\n[X] ,");
+		file->wlen += snprintf(file->ptr + file->wlen, (file->max_size - file->wlen), "\n[X] ,");
 		for (j = 0; j < row + col; j++, ptr += 2) {
 			temp = (*ptr << 8) + *(ptr + 1);
 			if (j == col)
-				file->wlen += snprintf(file->ptr + file->wlen, (file->wtemp_zise - file->wlen), "\n[Y] ,");
-			file->wlen += snprintf(file->ptr + file->wlen, (file->wtemp_zise - file->wlen), "%d, ", temp);
+				file->wlen += snprintf(file->ptr + file->wlen, (file->max_size - file->wlen), "\n[Y] ,");
+			file->wlen += snprintf(file->ptr + file->wlen, (file->max_size - file->wlen), "%d, ", temp);
 		}
 		file_write(file, false);
 		write_index++;
 
 		mutex_unlock(&idev->touch_mutex);
 
-		idev->debug_buf[idev->out_data_index].mark = false;
-		idev->out_data_index = ((idev->out_data_index + 1) % TR_BUF_LIST_SIZE);
+		idev->dbl[idev->odi].mark = false;
+		idev->odi = ((idev->odi + 1) % TR_BUF_LIST_SIZE);
 	}
 out:
-	ilitek_debug_node_buff_control();
-	return 0;
+	ilitek_debug_node_buff_control(DISABLE);
+	return ret;
 }
 
 static int dev_mkdir(char *name, umode_t mode)
@@ -366,7 +358,7 @@ static ssize_t ilitek_proc_get_delta_data_read(struct file *pFile, char __user *
 	s16 *delta = NULL;
 	int row = 0, col = 0,  index = 0;
 	int ret, i, x, y;
-	int read_length = 0;
+	int read_length = 0, len = 0;
 	u8 cmd[2] = {0};
 	u8 *data = NULL;
 
@@ -424,31 +416,31 @@ static ssize_t ilitek_proc_get_delta_data_read(struct file *pFile, char __user *
 	for (i = 4, index = 0; index < row * col * 2; i += 2, index++)
 		delta[index] = (data[i] << 8) + data[i + 1];
 
-	size = snprintf(g_user_buf + size, PAGE_SIZE - size, "======== Deltadata ========\n");
+	len = snprintf(g_user_buf + len, PAGE_SIZE - len, "======== Deltadata ========\n");
 	ipio_info("======== Deltadata ========\n");
 
-	size += snprintf(g_user_buf + size, PAGE_SIZE - size,
+	len += snprintf(g_user_buf + len, PAGE_SIZE - len,
 		"Header 0x%x ,Type %d, Length %d\n", data[0], data[1], (data[2] << 8) | data[3]);
 	ipio_info("Header 0x%x ,Type %d, Length %d\n", data[0], data[1], (data[2] << 8) | data[3]);
 
 	// print delta data
 	for (y = 0; y < row; y++) {
-		size += snprintf(g_user_buf + size, PAGE_SIZE - size, "[%2d] ", (y+1));
+		len += snprintf(g_user_buf + len, PAGE_SIZE - len, "[%2d] ", (y+1));
 		ipio_info("[%2d] ", (y+1));
 
 		for (x = 0; x < col; x++) {
 			int shift = y * col + x;
-			size += snprintf(g_user_buf + size, PAGE_SIZE - size, "%5d", delta[shift]);
+			len += snprintf(g_user_buf + len, PAGE_SIZE - len, "%5d", delta[shift]);
 			printk(KERN_CONT "%5d", delta[shift]);
 		}
-		size += snprintf(g_user_buf + size, PAGE_SIZE - size, "\n");
+		len += snprintf(g_user_buf + len, PAGE_SIZE - len, "\n");
 		printk(KERN_CONT "\n");
 	}
 
-	if (copy_to_user(buf, g_user_buf, size))
+	if (copy_to_user(buf, g_user_buf, len))
 		ipio_err("Failed to copy data to user space\n");
 
-	*pos += size;
+	*pos += len;
 
 out:
 	mutex_unlock(&idev->touch_mutex);
@@ -456,14 +448,14 @@ out:
 	ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
 	ipio_kfree((void **)&data);
 	ipio_kfree((void **)&delta);
-	return size;
+	return len;
 }
 
 static ssize_t ilitek_proc_fw_get_raw_data_read(struct file *pFile, char __user *buf, size_t size, loff_t *pos)
 {
 	s16 *rawdata = NULL;
 	int row = 0, col = 0,  index = 0;
-	int ret, i, x, y, len;
+	int ret, i, x, y, len = 0;
 	int read_length = 0;
 	u8 cmd[2] = {0};
 	u8 *data = NULL;
@@ -485,14 +477,14 @@ static ssize_t ilitek_proc_fw_get_raw_data_read(struct file *pFile, char __user 
 
 	data = kcalloc(read_length + 1, sizeof(u8), GFP_KERNEL);
 	if (ERR_ALLOC_MEM(data)) {
-			ipio_err("Failed to allocate data mem\n");
-			return 0;
+		ipio_err("Failed to allocate data mem\n");
+		goto out;
 	}
 
 	rawdata = kcalloc(P5_X_DEBUG_MODE_PACKET_LENGTH, sizeof(s32), GFP_KERNEL);
 	if (ERR_ALLOC_MEM(rawdata)) {
-			ipio_err("Failed to allocate rawdata mem\n");
-			return 0;
+		ipio_err("Failed to allocate rawdata mem\n");
+		goto out;
 	}
 
 	cmd[0] = 0xB7;
@@ -519,35 +511,34 @@ static ssize_t ilitek_proc_fw_get_raw_data_read(struct file *pFile, char __user 
 		goto out;
 	}
 
-	len = row * col * 2;
-	for (i = 4, index = 0; index < len; i += 2, index++)
+	for (i = 4, index = 0; index < row * col * 2; i += 2, index++)
 		rawdata[index] = (data[i] << 8) + data[i + 1];
 
-	size = snprintf(g_user_buf, PAGE_SIZE, "======== RawData ========\n");
+	len = snprintf(g_user_buf, PAGE_SIZE, "======== RawData ========\n");
 	ipio_info("======== RawData ========\n");
 
-	size += snprintf(g_user_buf + size, PAGE_SIZE - size,
+	len += snprintf(g_user_buf + len, PAGE_SIZE - len,
 			"Header 0x%x ,Type %d, Length %d\n", data[0], data[1], (data[2] << 8) | data[3]);
 	ipio_info("Header 0x%x ,Type %d, Length %d\n", data[0], data[1], (data[2] << 8) | data[3]);
 
 	// print raw data
 	for (y = 0; y < row; y++) {
-		size += snprintf(g_user_buf + size, PAGE_SIZE - size, "[%2d] ", (y+1));
+		len += snprintf(g_user_buf + len, PAGE_SIZE - len, "[%2d] ", (y+1));
 		ipio_info("[%2d] ", (y+1));
 
 		for (x = 0; x < col; x++) {
 			int shift = y * col + x;
-			size += snprintf(g_user_buf + size, PAGE_SIZE - size, "%5d", rawdata[shift]);
+			len += snprintf(g_user_buf + len, PAGE_SIZE - len, "%5d", rawdata[shift]);
 			printk(KERN_CONT "%5d", rawdata[shift]);
 		}
-		size += snprintf(g_user_buf + size, PAGE_SIZE - size, "\n");
+		len += snprintf(g_user_buf + len, PAGE_SIZE - len, "\n");
 		printk(KERN_CONT "\n");
 	}
 
-	if (copy_to_user(buf, g_user_buf, size))
+	if (copy_to_user(buf, g_user_buf, len))
 		ipio_err("Failed to copy data to user space\n");
 
-	*pos += size;
+	*pos += len;
 
 out:
 	mutex_unlock(&idev->touch_mutex);
@@ -555,7 +546,7 @@ out:
 	ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
 	ipio_kfree((void **)&data);
 	ipio_kfree((void **)&rawdata);
-	return size;
+	return len;
 }
 
 static ssize_t ilitek_proc_fw_pc_counter_read(struct file *pFile, char __user *buf, size_t size, loff_t *pos)
@@ -690,21 +681,22 @@ out:
 
 static ssize_t ilitek_proc_debug_switch_read(struct file *pFile, char __user *buff, size_t size, loff_t *pos)
 {
+	bool open;
 
 	if (*pos != 0)
 		return 0;
 
 	memset(g_user_buf, 0, USER_STR_BUFF * sizeof(unsigned char));
 
-
 	mutex_lock(&idev->debug_mutex);
 
-	ilitek_debug_node_buff_control();
+	open = !idev->dnp;
 
-	size = snprintf(g_user_buf, USER_STR_BUFF * sizeof(unsigned char), "debug_node_open : %s\n", idev->debug_node_open ? "Enabled" : "Disabled");
+	ilitek_debug_node_buff_control(open);
+
+	size = snprintf(g_user_buf, USER_STR_BUFF * sizeof(unsigned char), "dnp : %s\n", idev->dnp ? "Enable" : "Disable");
 	*pos = size;
 
-	ipio_info(" %s debug_flag message = %x\n", idev->debug_node_open ? "Enabled" : "Disabled", idev->debug_node_open);
 	if (copy_to_user(buff, g_user_buf, size))
 		ipio_err("Failed to copy data to user space\n");
 
@@ -731,9 +723,9 @@ static ssize_t ilitek_proc_debug_message_read(struct file *filp, char __user *bu
 	}
 
 	mutex_lock(&idev->debug_read_mutex);
-	ipio_debug("f_count= %d, index = %d, mark = %d\n", idev->debug_data_frame, idev->out_data_index, idev->debug_buf[idev->out_data_index].mark);
-	if (!wait_event_interruptible_timeout(idev->inq, idev->debug_buf[idev->out_data_index].mark, msecs_to_jiffies(3000))) {
-		ipio_err("Error! get debug data fail\n");
+	ipio_debug("f_count= %d, index = %d, mark = %d\n", idev->dbf, idev->odi, idev->dbl[idev->odi].mark);
+	if (!wait_event_interruptible_timeout(idev->inq, idev->dbl[idev->odi].mark, msecs_to_jiffies(3000))) {
+		ipio_err("WARNING ! there's no data received.\n");
 		mutex_unlock(&idev->debug_read_mutex);
 		*pos = send_data_len;
 		return send_data_len;
@@ -744,17 +736,17 @@ static ssize_t ilitek_proc_debug_message_read(struct file *filp, char __user *bu
 	if (ERR_ALLOC_MEM(tmpbuf)) {
 		ipio_err("buffer vmalloc error\n");
 		send_data_len += snprintf(tmpbufback + send_data_len, sizeof(tmpbufback), "buffer vmalloc error\n");
-		ret = copy_to_user(buff, tmpbufback, send_data_len); /*idev->debug_buf[0] */
+		ret = copy_to_user(buff, tmpbufback, send_data_len); /*idev->dbl[0] */
 		goto out;
 	}
 
-	if (idev->debug_buf[idev->out_data_index].mark) {
-		if (idev->debug_buf[idev->out_data_index].data[0] == P5_X_DEMO_PACKET_ID) {
+	if (idev->dbl[idev->odi].mark) {
+		if (idev->dbl[idev->odi].data[0] == P5_X_DEMO_PACKET_ID) {
 			need_read_data_len = 43;
-		} else if (idev->debug_buf[idev->out_data_index].data[0] == P5_X_I2CUART_PACKET_ID) {
-			type = idev->debug_buf[idev->out_data_index].data[3] & 0x0F;
+		} else if (idev->dbl[idev->odi].data[0] == P5_X_I2CUART_PACKET_ID) {
+			type = idev->dbl[idev->odi].data[3] & 0x0F;
 
-			data_count = idev->debug_buf[idev->out_data_index].data[1] * idev->debug_buf[idev->out_data_index].data[2];
+			data_count = idev->dbl[idev->odi].data[1] * idev->dbl[idev->odi].data[2];
 
 			if (type == 0 || type == 1 || type == 6) {
 				one_data_bytes = 1;
@@ -764,13 +756,13 @@ static ssize_t ilitek_proc_debug_message_read(struct file *filp, char __user *bu
 				one_data_bytes = 4;
 			}
 			need_read_data_len = data_count * one_data_bytes + 1 + 5;
-		} else if (idev->debug_buf[idev->out_data_index].data[0] == P5_X_DEBUG_PACKET_ID) {
-			send_data_len = 0;	/* idev->debug_buf[0][1] - 2; */
+		} else if (idev->dbl[idev->odi].data[0] == P5_X_DEBUG_PACKET_ID) {
+			send_data_len = 0;	/* idev->dbl[0][1] - 2; */
 			need_read_data_len = TR_BUF_SIZE - 8;
 		}
 
 		for (i = 0; i < need_read_data_len; i++) {
-			send_data_len += snprintf(tmpbuf + send_data_len, sizeof(tmpbufback), "%02X", idev->debug_buf[idev->out_data_index].data[i]);
+			send_data_len += snprintf(tmpbuf + send_data_len, sizeof(tmpbufback), "%02X", idev->dbl[idev->odi].data[i]);
 			if (send_data_len >= 4096) {
 				ipio_err("send_data_len = %d set 4096 i = %d\n", send_data_len, i);
 				send_data_len = 4096;
@@ -781,8 +773,8 @@ static ssize_t ilitek_proc_debug_message_read(struct file *filp, char __user *bu
 		send_data_len += snprintf(tmpbuf + send_data_len, sizeof(tmpbufback), "\n\n");
 
 		if (p == 5 || size == 4096 || size == 2048) {
-			idev->debug_buf[idev->out_data_index].mark = false;
-			idev->out_data_index = ((idev->out_data_index + 1) % TR_BUF_LIST_SIZE);
+			idev->dbl[idev->odi].mark = false;
+			idev->odi = ((idev->odi + 1) % TR_BUF_LIST_SIZE);
 		}
 
 	}
@@ -828,9 +820,9 @@ static ssize_t ilitek_proc_get_debug_mode_data_read(struct file *filp, char __us
 	snprintf(csv.fname, sizeof(csv.fname), "%s", DEBUG_DATA_FILE_PATH);
 	csv.flen = 0;
 	csv.wlen = 0;
-	csv.wtemp_zise = DEBUG_DATA_FILE_SIZE;
-	csv.ptr = vmalloc(csv.wtemp_zise);
+	csv.max_size = DEBUG_DATA_FILE_SIZE;
 
+	csv.ptr = vmalloc(csv.max_size);
 	if (ERR_ALLOC_MEM(csv.ptr)) {
 		ipio_err("Failed to allocate CSV mem\n");
 		goto out;
@@ -839,8 +831,8 @@ static ssize_t ilitek_proc_get_debug_mode_data_read(struct file *filp, char __us
 	/* save data to csv */
 	ipio_info("Get Raw data %d frame\n", idev->raw_count);
 	ipio_info("Get Delta data %d frame\n", idev->delta_count);
-	csv.wlen += snprintf(csv.ptr + csv.wlen, (csv.wtemp_zise - csv.wlen), "Get Raw data %d frame\n", idev->raw_count);
-	csv.wlen += snprintf(csv.ptr + csv.wlen, (csv.wtemp_zise - csv.wlen), "Get Delta data %d frame\n", idev->delta_count);
+	csv.wlen += snprintf(csv.ptr + csv.wlen, (csv.max_size - csv.wlen), "Get Raw data %d frame\n", idev->raw_count);
+	csv.wlen += snprintf(csv.ptr + csv.wlen, (csv.max_size - csv.wlen), "Get Delta data %d frame\n", idev->delta_count);
 
 	file_write(&csv, true);
 
@@ -852,8 +844,8 @@ static ssize_t ilitek_proc_get_debug_mode_data_read(struct file *filp, char __us
 
 	/* get raw data */
 	csv.wlen = 0;
-	memset(csv.ptr, 0, csv.wtemp_zise);
-	csv.wlen += snprintf(csv.ptr + csv.wlen, (csv.wtemp_zise - csv.wlen), "\n\n=======Raw data=======");
+	memset(csv.ptr, 0, csv.max_size);
+	csv.wlen += snprintf(csv.ptr + csv.wlen, (csv.max_size - csv.wlen), "\n\n=======Raw data=======");
 	file_write(&csv, false);
 
 	ret = debug_mode_get_data(&csv, P5_X_FW_RAW_DATA_MODE, idev->raw_count);
@@ -862,8 +854,8 @@ static ssize_t ilitek_proc_get_debug_mode_data_read(struct file *filp, char __us
 
 	/* get delta data */
 	csv.wlen = 0;
-	memset(csv.ptr, 0, csv.wtemp_zise);
-	csv.wlen += snprintf(csv.ptr + csv.wlen, (csv.wtemp_zise - csv.wlen), "\n\n=======Delta data=======");
+	memset(csv.ptr, 0, csv.max_size);
+	csv.wlen += snprintf(csv.ptr + csv.wlen, (csv.max_size - csv.wlen), "\n\n=======Delta data=======");
 	file_write(&csv, false);
 
 	ret = debug_mode_get_data(&csv, P5_X_FW_DELTA_DATA_MODE, idev->delta_count);
@@ -1353,7 +1345,7 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 			idev->gesture_demo_ctrl = DISABLE;
 		else
 			idev->gesture_demo_ctrl = ENABLE;
-		ilitek_set_tp_data_len(DATA_FORMAT_GESTURE_DEMO);
+		ilitek_set_tp_data_len(DATA_FORMAT_GESTURE_SPECIAL_DEMO);
 	} else if (strcmp(cmd, "gesturefailrsn") == 0) {
 		if (data[1] == 0)
 			gesture_fail_reason(DISABLE);
@@ -1434,9 +1426,14 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 		ilitek_set_tp_data_len(DATA_FORMAT_DEBUG);
 	} else if (strncmp(cmd, "switchdemomode", strlen(cmd)) == 0) {
 		ilitek_set_tp_data_len(DATA_FORMAT_DEMO);
+	} else if (strncmp(cmd, "switchgesturedebugmode", strlen(cmd)) == 0) {
+		ilitek_set_tp_data_len(DATA_FORMAT_GESTURE_DEBUG);
 	} else if (strncmp(cmd, "dbgflag", strlen(cmd)) == 0) {
-		idev->debug_node_open = !idev->debug_node_open;
-		ipio_info("debug flag message = %d\n", idev->debug_node_open);
+		idev->dnp = !idev->dnp;
+		ipio_info("debug flag message = %d\n", idev->dnp);
+	} else if (strncmp(cmd, "spiclk", strlen(cmd)) == 0) {
+		ipio_info("spi clk num = %d\n", data[1]);
+		core_spi_setup(data[1]);
 	} else if (strncmp(cmd, "ss", strlen(cmd)) == 0) {
 		ipio_info("sense_stop = %d\n", data[1]);
 		idev->ss_ctrl = data[1];
@@ -1913,34 +1910,42 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 			break;
 		}
 		ipio_debug("ioctl: switch fw format = %d\n", szBuf[0]);
-		if (szBuf[0] == 0) {
-			if (idev->actual_tp_mode == P5_X_FW_AP_MODE) {
-				if (ilitek_set_tp_data_len(DATA_FORMAT_DEMO) < 0) {
-					ipio_err("Failed to set tp data length\n");
+		if (szBuf[0] == 0) {//ap mode
+			if (idev->tp_suspend) {
+				if (ilitek_set_tp_data_len(DATA_FORMAT_GESTURE_DEMO) < 0) {
+					ipio_err("Failed to set demo len from gesture mode\n");
 					ret = -ENOTTY;
 				}
 			} else {
 				if (ilitek_tddi_switch_tp_mode(P5_X_FW_AP_MODE) < 0) {
-					ipio_err("Failed to set tp data length\n");
+					ipio_err("Failed to switch demo mode\n");
 					ret = -ENOTTY;
 				}
 			}
-		} else if (szBuf[0] == 1) {
+		} else if (szBuf[0] == 1) {//test mode
 			if (ilitek_tddi_switch_tp_mode(P5_X_FW_TEST_MODE) < 0) {
-				ipio_err("Failed to set tp data length\n");
+				ipio_err("Failed to switch test mode\n");
 				ret = -ENOTTY;
 			}
-		} else if (szBuf[0] == 2) {
-			if (idev->actual_tp_mode != P5_X_FW_AP_MODE) {
+		} else if (szBuf[0] == 2) {//debug mode
+			if (!idev->tp_suspend && (idev->actual_tp_mode != P5_X_FW_AP_MODE)) {
 				if (ilitek_tddi_switch_tp_mode(P5_X_FW_AP_MODE) < 0) {
-					ipio_err("Failed to set tp data length\n");
+					ipio_err("Failed to switch demo mode\n");
 					ret = -ENOTTY;
 					break;
 				}
 			}
-			if (ilitek_set_tp_data_len(DATA_FORMAT_DEBUG) < 0) {
-				ipio_err("Failed to set tp data length\n");
-				ret = -ENOTTY;
+
+			if (idev->tp_suspend) {
+				if (ilitek_set_tp_data_len(DATA_FORMAT_GESTURE_DEBUG) < 0) {
+					ipio_err("Failed to set debug len from gesture mode\n");
+					ret = -ENOTTY;
+				}
+			} else {
+				if (ilitek_set_tp_data_len(DATA_FORMAT_DEBUG) < 0) {
+					ipio_err("Failed to set debug len\n");
+					ret = -ENOTTY;
+				}
 			}
 		} else {
 			ipio_err("Unknown TP mode ctrl\n");

@@ -263,7 +263,7 @@ struct mp_test_items {
 	int (*do_test)(int index);
 };
 
-#define MP_TEST_ITEM	54
+#define MP_TEST_ITEM	50
 static struct mp_test_items tItems[MP_TEST_ITEM] = {
 	{.desp = "baseline data(bg)", .catalog = MUTUAL_TEST, .cmd = CMD_MUTUAL_BG, .lcm = ON},
 	{.desp = "untouch signal data(bg-raw-4096) - mutual", .catalog = MUTUAL_TEST, .cmd = CMD_MUTUAL_SIGNAL, .lcm = ON},
@@ -299,9 +299,7 @@ static struct mp_test_items tItems[MP_TEST_ITEM] = {
 	/* Following is the new test items for protocol 5.4.0 above */
 	{.desp = "pin test ( int and rst )", .catalog = PIN_TEST, .cmd = CMD_PIN_TEST, .lcm = ON},
 	{.desp = "noise peak to peak(with panel)", .catalog = PEAK_TO_PEAK_TEST, .lcm = ON},
-	{.desp = "noise_diff", .catalog = PEAK_TO_PEAK_TEST, .lcm = ON},
 	{.desp = "noise peak to peak(ic only)", .catalog = PEAK_TO_PEAK_TEST, .cmd = CMD_PEAK_TO_PEAK, .lcm = ON},
-	{.desp = "noise_diff(ic)", .catalog = PEAK_TO_PEAK_TEST, .lcm = ON},
 	{.desp = "open test(integration)_sp", .catalog = OPEN_TEST, .lcm = ON},
 	{.desp = "raw data(no bk)", .catalog = MUTUAL_TEST, .cmd = CMD_MUTUAL_NO_BK, .lcm = ON},
 	{.desp = "raw data(have bk)", .catalog = MUTUAL_TEST, .cmd = CMD_MUTUAL_HAVE_BK, .lcm = ON},
@@ -316,9 +314,7 @@ static struct mp_test_items tItems[MP_TEST_ITEM] = {
 	{.desp = "raw data(have bk) (lcm off)", .catalog = MUTUAL_TEST, .lcm = OFF},
 	{.desp = "raw data(no bk) (lcm off)", .catalog = MUTUAL_TEST, .lcm = OFF},
 	{.desp = "noise peak to peak(with panel) (lcm off)", .catalog = PEAK_TO_PEAK_TEST, .lcm = OFF},
-	{.desp = "noise_diff (lcm off)", .catalog = PEAK_TO_PEAK_TEST, .lcm = OFF},
 	{.desp = "noise peak to peak(ic only) (lcm off)", .catalog = PEAK_TO_PEAK_TEST, .lcm = OFF},
-	{.desp = "noise_diff(ic) (lcm off)", .catalog = PEAK_TO_PEAK_TEST, .lcm = OFF},
 	{.desp = "raw data_td (lcm off)", .catalog = MUTUAL_TEST, .lcm = OFF},
 	{.desp = "peak to peak_td (lcm off)", .catalog = PEAK_TO_PEAK_TEST, .lcm = OFF},
 };
@@ -613,10 +609,26 @@ static int parser_get_ini_phy_line(char *data, char *buffer, int maxlen)
 static char *parser_ini_str_trim_r(char *buf)
 {
 	int len, i;
-	char tmp[512] = { 0 };
+	char *tmp = NULL;
+	char x[512] = {0};
+	char *y = NULL;
+	char *empty = "";
 
 	len = strlen(buf);
 
+	if (len < sizeof(x)) {
+		tmp = x;
+		goto copy;
+	}
+
+	y = kzalloc(len, GFP_KERNEL);
+	if (ERR_ALLOC_MEM(y)) {
+		ipio_err("Failed to allocate tmp buf\n");
+		return empty;
+	}
+	tmp = y;
+
+copy:
 	for (i = 0; i < len; i++) {
 		if (buf[i] != ' ')
 			break;
@@ -626,6 +638,7 @@ static char *parser_ini_str_trim_r(char *buf)
 		strncpy(tmp, (buf + i), (len - i));
 
 	strncpy(buf, tmp, len);
+	ipio_kfree((void **)&y);
 	return buf;
 }
 
@@ -1288,19 +1301,30 @@ static s32 open_c_formula(int dac, int raw, int tvch, int gain)
 {
 	s32 ret = 0;
 	u16 id = core_mp.chip_id, type = core_mp.chip_type;
+	int accuracy = 0;
+	char *section = "open test_c";
+	char str[32] = {0};
 
 	if (id == ILI9881_CHIP) {
 		ret = ((dac * 414 * 39 / 2) + ((raw - 8192) * 36 * (7 * 100 - 22) * 10 / 16384)) / tvch / 100 / gain;
 		return ret;
 	}
 
+	parser_get_int_data(section, "accuracy", str, sizeof(str));
+	accuracy = katoi(str);
+
 	if (type == ILI_R) {
-		ret = ((dac * 376 * 39 / 2 * 10) + ((raw - 8192) * 9 * (7 * 100  + 5) * 25 / 1024)) / tvch / 100 / gain;
-	} else if (type == ILI_Q) {
-		ret = ((dac * 275 * 39 / 2 * 10) + ((raw - 8192) * 9 * (7 * 100) * 25 / 1024)) / tvch / 100 / gain;
+		if (accuracy)
+			ret = ((dac * 376 * 39 / 2 * 10) + ((raw - 8192) * 9 * (7 * 100  + 5) * 25 / 1024)) / tvch / 100 / gain;
+		else
+			ret = ((dac * 376 * 39 / 2) + ((raw - 8192) * 36 * (7 * 100  + 5) * 10 * 1 / 16384)) / tvch / 100 / gain;
 	} else { //G
-		ret = ((dac * 337 * 39 / 2 * 10) + ((raw - 8192) * 9 * (7 * 100 - 22) * 25 / 1024)) / tvch / 100 / gain;
+		if (accuracy)
+			ret = ((dac * 337 * 39 / 2 * 10) + ((raw - 8192) * 9 * (7 * 100 - 22) * 25 / 1024)) / tvch / 100 / gain;
+		else
+			ret = ((dac * 414 * 39 / 2) + ((raw - 8192) * 36 * (7 * 100 - 22) * 10 * 1 / 16384)) / tvch / 100 / gain;
 	}
+
 	return ret;
 }
 

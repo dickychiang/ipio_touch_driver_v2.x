@@ -108,10 +108,10 @@
 #define TDDI_INTERFACE			BUS_SPI /* BUS_I2C(0x18) or BUS_SPI(0x1C) */
 #define VDD_VOLTAGE			1800000
 #define VCC_VOLTAGE			1800000
-#define SPI_CLK				(10*MEGA_HZ)
+#define SPI_CLK                         9      /* follow by clk list */
 #define SPI_RETRY			5
 #define IRQ_GPIO_NUM			66
-#define TR_BUF_SIZE			2048 /* Buffer size of touch report */
+#define TR_BUF_SIZE			(2*K) /* Buffer size of touch report */
 #define TR_BUF_LIST_SIZE		(1*K) /* Buffer size of touch report */
 #define SPI_TX_BUF_SIZE  		4096
 #define SPI_RX_BUF_SIZE  		4096
@@ -167,7 +167,6 @@ do {									\
 #define ERR_ALLOC_MEM(X)	((IS_ERR(X) || X == NULL) ? 1 : 0)
 #define K			(1024)
 #define M			(K * K)
-#define MEGA_HZ			1000000
 #define ENABLE			1
 #define START			1
 #define ON			1
@@ -179,6 +178,24 @@ do {									\
 #define NONE			-1
 #define DO_SPI_RECOVER		-2
 #define SPI_IS_LOCKED		INT_MAX
+
+enum TP_SPI_CLK_LIST {
+	TP_SPI_CLK_1M = 1000000,
+	TP_SPI_CLK_2M = 2000000,
+	TP_SPI_CLK_3M = 3000000,
+	TP_SPI_CLK_4M =	4000000,
+	TP_SPI_CLK_5M =	5000000,
+	TP_SPI_CLK_6M =	6000000,
+	TP_SPI_CLK_7M =	7000000,
+	TP_SPI_CLK_8M = 8000000,
+	TP_SPI_CLK_9M = 9000000,
+	TP_SPI_CLK_10M = 10000000,
+	TP_SPI_CLK_11M = 11000000,
+	TP_SPI_CLK_12M = 12000000,
+	TP_SPI_CLK_13M = 13000000,
+	TP_SPI_CLK_14M = 14000000,
+	TP_SPI_CLK_15M = 15000000,
+};
 
 enum TP_PLAT_TYPE {
 	TP_PLAT_MTK = 0,
@@ -257,9 +274,11 @@ enum TP_DATA_FORMAT {
 	DATA_FORMAT_DEMO = 0,
 	DATA_FORMAT_DEBUG,
 	DATA_FORMAT_DEMO_DEBUG_INFO,
+	DATA_FORMAT_GESTURE_SPECIAL_DEMO,
 	DATA_FORMAT_GESTURE_INFO,
 	DATA_FORMAT_GESTURE_NORMAL,
-	DATA_FORMAT_GESTURE_DEMO
+	DATA_FORMAT_GESTURE_DEMO,
+	DATA_FORMAT_GESTURE_DEBUG
 };
 
 enum TP_MODEL {
@@ -629,11 +648,6 @@ enum TP_IC_TYPE {
 #define RAWDATA_NO_BK_SHIFT_9881H			8192
 #define RAWDATA_NO_BK_SHIFT_9881F			4096
 
-struct debug_buf_list {
-	bool mark;
-	unsigned char *data;
-};
-
 struct ilitek_tddi_dev {
 	struct i2c_client *i2c;
 	struct spi_device *spi;
@@ -708,7 +722,6 @@ struct ilitek_tddi_dev {
 	bool netlink;
 	bool report;
 	bool gesture;
-	bool gesture_debug;
 	int gesture_mode;
 	int gesture_demo_ctrl;
 
@@ -718,11 +731,11 @@ struct ilitek_tddi_dev {
 	int flash_sector;
 
 	/* Sending report data to users for the debug */
-	bool debug_node_open;
-	int debug_data_frame;
-	int out_data_index;
+	bool dnp; //debug node open
+	int dbf; //debug data frame
+	int odi; //out data index
 	wait_queue_head_t inq;
-	struct debug_buf_list *debug_buf;
+	struct debug_buf_list *dbl;
 	int raw_count;
 	int delta_count;
 	int bg_count;
@@ -784,6 +797,11 @@ struct ilitek_tddi_dev {
 	void (*demo_debug_info[5])(u8 *, size_t);
 };
 extern struct ilitek_tddi_dev *idev;
+
+struct debug_buf_list {
+	bool mark;
+	unsigned char *data;
+};
 
 struct ilitek_touch_info {
 	u16 id;
@@ -935,6 +953,7 @@ extern int ilitek_tddi_dev_init(struct ilitek_hwif_info *hwif);
 extern void ilitek_tddi_dev_remove(void);
 
 /* Prototypes for i2c/spi interface */
+extern int core_spi_setup(int num);
 extern int ilitek_tddi_interface_dev_init(struct ilitek_hwif_info *hwif);
 extern void ilitek_tddi_interface_dev_exit(struct ilitek_tddi_dev *idev);
 extern int ilitek_spi_write_then_read_split(struct spi_device *spi,

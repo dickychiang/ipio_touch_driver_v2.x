@@ -192,6 +192,12 @@ out:
 	return ret;
 }
 
+int core_spi_setup(int num)
+{
+	ipio_err("Not support this interface\n");
+	return 0;
+}
+
 static int ilitek_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id *id)
 {
 	struct touch_bus_info *info =
@@ -269,7 +275,7 @@ static int ilitek_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id *
 	idev->wtd_ctrl = OFF;
 	idev->report = ENABLE;
 	idev->netlink = DISABLE;
-	idev->debug_node_open = DISABLE;
+	idev->dnp = DISABLE;
 	idev->irq_tirgger_type = IRQF_TRIGGER_FALLING;
 	idev->info_from_hex = ENABLE;
 

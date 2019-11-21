@@ -651,13 +651,36 @@ out:
 	return ret;
 }
 
-static int core_spi_setup(u32 freq)
+int core_spi_setup(int num)
 {
-	ipio_info("spi clock = %d\n", freq);
+	u32 freq[] = {
+		TP_SPI_CLK_1M,
+		TP_SPI_CLK_2M,
+		TP_SPI_CLK_3M,
+		TP_SPI_CLK_4M,
+		TP_SPI_CLK_5M,
+		TP_SPI_CLK_6M,
+		TP_SPI_CLK_7M,
+		TP_SPI_CLK_8M,
+		TP_SPI_CLK_9M,
+		TP_SPI_CLK_10M,
+		TP_SPI_CLK_11M,
+		TP_SPI_CLK_12M,
+		TP_SPI_CLK_13M,
+		TP_SPI_CLK_14M,
+		TP_SPI_CLK_15M
+	};
+
+	if (num > sizeof(freq)) {
+		ipio_err("Invaild clk freq\n");
+		return -1;
+	}
+
+	ipio_info("spi clock = %d\n", freq[num]);
 
 	idev->spi->mode = SPI_MODE_0;
 	idev->spi->bits_per_word = 8;
-	idev->spi->max_speed_hz = freq;
+	idev->spi->max_speed_hz = freq[num];
 
 	if (spi_setup(idev->spi) < 0) {
 		ipio_err("Failed to setup spi device\n");
@@ -764,7 +787,7 @@ static int ilitek_spi_probe(struct spi_device *spi)
 	idev->wtd_ctrl = ON;
 	idev->report = ENABLE;
 	idev->netlink = DISABLE;
-	idev->debug_node_open = DISABLE;
+	idev->dnp = DISABLE;
 	idev->irq_tirgger_type = IRQF_TRIGGER_FALLING;
 	idev->info_from_hex = ENABLE;
 
@@ -772,7 +795,9 @@ static int ilitek_spi_probe(struct spi_device *spi)
 	idev->gesture = ENABLE;
 #endif
 
-	core_spi_setup(SPI_CLK);
+	if (core_spi_setup(SPI_CLK) < 0)
+		return -EINVAL;
+
 	return info->hwif->plat_probe();
 }
 

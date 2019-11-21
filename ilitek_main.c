@@ -134,10 +134,16 @@ out:
 int ilitek_tddi_switch_tp_mode(u8 mode)
 {
 	int ret = 0;
+	bool ges_dbg = false;
 
 	atomic_set(&idev->tp_sw_mode, START);
 
 	idev->actual_tp_mode = mode;
+
+	/* able to see cdc data in gesture mode */
+	if (idev->tp_data_format == DATA_FORMAT_DEBUG &&
+		idev->actual_tp_mode == P5_X_FW_GESTURE_MODE)
+		ges_dbg = true;
 
 	switch (idev->actual_tp_mode) {
 	case P5_X_FW_AP_MODE:
@@ -156,6 +162,10 @@ int ilitek_tddi_switch_tp_mode(u8 mode)
 		ret = idev->gesture_move_code(idev->gesture_mode);
 		if (ret < 0)
 			ipio_err("Move gesture code failed\n");
+		if (ges_dbg) {
+			ipio_info("Enable gesture debug func\n");
+			ilitek_set_tp_data_len(DATA_FORMAT_GESTURE_DEBUG);
+		}
 		break;
 	case P5_X_FW_TEST_MODE:
 		ipio_info("Switch to Test mode\n");
@@ -397,10 +407,6 @@ int ilitek_tddi_sleep_handler(int mode)
 		}
 
 		if (idev->gesture) {
-			if (idev->tp_data_format == DATA_FORMAT_DEBUG) {
-				ipio_info("Enable gesture debug mode\n");
-				idev->gesture_debug = ENABLE;
-			}
 			ilitek_tddi_switch_tp_mode(P5_X_FW_GESTURE_MODE);
 			enable_irq_wake(idev->irq_num);
 			ilitek_plat_irq_enable();
@@ -502,43 +508,45 @@ int ilitek_set_tp_data_len(int format)
 {
 	u8 cmd[2] = {0}, ctrl = 0;
 	u16 self_key = 2;
-	int ret = 0;
+	int ret = 0, tp_mode = idev->actual_tp_mode, len = 0;
 
 	switch (format) {
 	case DATA_FORMAT_DEMO:
-		idev->tp_data_len = P5_X_DEMO_MODE_PACKET_LEN;
+	case DATA_FORMAT_GESTURE_DEMO:
+		len = P5_X_DEMO_MODE_PACKET_LEN;
 		ctrl = DATA_FORMAT_DEMO_CMD;
 		break;
 	case DATA_FORMAT_DEBUG:
-		idev->tp_data_len = (2 * idev->xch_num * idev->ych_num) + (idev->stx * 2) + (idev->srx * 2);
-		idev->tp_data_len += 2 * self_key + (8 * 2) + 1 + 35;
+	case DATA_FORMAT_GESTURE_DEBUG:
+		len = (2 * idev->xch_num * idev->ych_num) + (idev->stx * 2) + (idev->srx * 2);
+		len += 2 * self_key + (8 * 2) + 1 + 35;
 		ctrl = DATA_FORMAT_DEBUG_CMD;
 		break;
 	case DATA_FORMAT_DEMO_DEBUG_INFO:
 		/*only suport SPI interface now, so defult use size 1024 buffer*/
-		idev->tp_data_len = P5_X_DEMO_MODE_PACKET_LEN +
+		len = P5_X_DEMO_MODE_PACKET_LEN +
 			P5_X_DEMO_DEBUG_INFO_ID0_LENGTH + P5_X_INFO_HEADER_LENGTH;
 		ctrl = DATA_FORMAT_DEMO_DEBUG_INFO_CMD;
 		break;
 	case DATA_FORMAT_GESTURE_INFO:
-		idev->tp_data_len = P5_X_GESTURE_INFO_LENGTH;
+		len = P5_X_GESTURE_INFO_LENGTH;
 		ctrl = DATA_FORMAT_GESTURE_INFO_CMD;
 		break;
 	case DATA_FORMAT_GESTURE_NORMAL:
-		idev->tp_data_len = P5_X_GESTURE_NORMAL_LENGTH;
+		len = P5_X_GESTURE_NORMAL_LENGTH;
 		ctrl = DATA_FORMAT_GESTURE_NORMAL_CMD;
 		break;
-	case DATA_FORMAT_GESTURE_DEMO:
+	case DATA_FORMAT_GESTURE_SPECIAL_DEMO:
 		if (idev->gesture_demo_ctrl == ENABLE) {
 			if (idev->gesture_mode == DATA_FORMAT_GESTURE_INFO)
-				idev->tp_data_len = P5_X_GESTURE_INFO_LENGTH + P5_X_INFO_HEADER_LENGTH + P5_X_INFO_CHECKSUM_LENGTH;
+				len = P5_X_GESTURE_INFO_LENGTH + P5_X_INFO_HEADER_LENGTH + P5_X_INFO_CHECKSUM_LENGTH;
 			else
-				idev->tp_data_len = P5_X_DEMO_MODE_PACKET_LEN + P5_X_INFO_HEADER_LENGTH + P5_X_INFO_CHECKSUM_LENGTH;
+				len = P5_X_DEMO_MODE_PACKET_LEN + P5_X_INFO_HEADER_LENGTH + P5_X_INFO_CHECKSUM_LENGTH;
 		} else {
 			if (idev->gesture_mode == DATA_FORMAT_GESTURE_INFO)
-				idev->tp_data_len = P5_X_GESTURE_INFO_LENGTH;
+				len = P5_X_GESTURE_INFO_LENGTH;
 			else
-				idev->tp_data_len = P5_X_GESTURE_NORMAL_LENGTH;
+				len = P5_X_GESTURE_NORMAL_LENGTH;
 		}
 		ipio_info("Gesture demo mode control = %d\n",  idev->gesture_demo_ctrl);
 		ilitek_tddi_ic_func_ctrl("gesture_demo_en", idev->gesture_demo_ctrl);
@@ -551,9 +559,13 @@ int ilitek_set_tp_data_len(int format)
 	}
 
 	idev->tp_data_format = format;
-	ipio_info("Set TP data format = %d, len = %d\n", idev->tp_data_format, idev->tp_data_len);
+	idev->tp_data_len = len;
+	ipio_info("TP mode = %d, format = %d, len = %d\n",
+		tp_mode, idev->tp_data_format, idev->tp_data_len);
 
-	if (idev->actual_tp_mode == P5_X_FW_AP_MODE) {
+	if (tp_mode == P5_X_FW_AP_MODE ||
+		format == DATA_FORMAT_GESTURE_DEMO ||
+		format == DATA_FORMAT_GESTURE_DEBUG) {
 		cmd[0] = P5_X_MODE_CONTROL;
 		cmd[1] = ctrl;
 		ret = idev->write(cmd, 2);
@@ -562,7 +574,7 @@ int ilitek_set_tp_data_len(int format)
 			ipio_err("switch to format %d failed\n", format);
 			ilitek_tddi_switch_tp_mode(P5_X_FW_AP_MODE);
 		}
-	} else if (idev->actual_tp_mode == P5_X_FW_GESTURE_MODE) {
+	} else if (tp_mode == P5_X_FW_GESTURE_MODE) {
 		ret = ilitek_tddi_ic_func_ctrl("lpwg", ctrl);
 		if (ret < 0)
 			ipio_err("write gesture mode failed\n");
@@ -597,11 +609,6 @@ void ilitek_tddi_report_handler(void)
 	ilitek_tddi_wq_ctrl(WQ_BAT, DISABLE);
 
 	if (idev->actual_tp_mode == P5_X_FW_GESTURE_MODE) {
-		if (idev->gesture_debug) {
-			if (ilitek_set_tp_data_len(DATA_FORMAT_DEBUG) < 0)
-				ipio_err("Failed to set tp data length\n");
-		}
-
 		__pm_stay_awake(idev->ws);
 		/* Waiting for pm resume completed */
 		mdelay(40);
@@ -742,7 +749,6 @@ int ilitek_tddi_reset_ctrl(int mode)
 		atomic_set(&idev->ice_stat, DISABLE);
 
 	idev->fw_uart_en = DISABLE;
-	idev->gesture_debug = DISABLE;
 	idev->tp_data_format = DATA_FORMAT_DEMO;
 	idev->tp_data_len = P5_X_DEMO_MODE_PACKET_LEN;
 	atomic_set(&idev->tp_reset, END);

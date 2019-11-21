@@ -653,7 +653,7 @@ static void ilitek_tddi_touch_send_debug_data(u8 *buf, int len)
 	int index;
 	mutex_lock(&idev->debug_mutex);
 
-	if (!idev->netlink && !idev->debug_node_open)
+	if (!idev->netlink && !idev->dnp)
 		goto out;
 
 	/* Send data to netlink */
@@ -663,22 +663,22 @@ static void ilitek_tddi_touch_send_debug_data(u8 *buf, int len)
 	}
 
 	/* Sending data to apk via the node of debug_message node */
-	if (idev->debug_node_open) {
-		index = idev->debug_data_frame;
-		if (!idev->debug_buf[idev->debug_data_frame].mark) {
-			idev->debug_data_frame = ((idev->debug_data_frame + 1) % TR_BUF_LIST_SIZE);
+	if (idev->dnp) {
+		index = idev->dbf;
+		if (!idev->dbl[idev->dbf].mark) {
+			idev->dbf = ((idev->dbf + 1) % TR_BUF_LIST_SIZE);
 		} else {
-			if (idev->debug_data_frame == 0)
+			if (idev->dbf == 0)
 				index = TR_BUF_LIST_SIZE -1;
 			else
-				index = idev->debug_data_frame -1;
+				index = idev->dbf -1;
 		}
-		if (idev->debug_buf[index].data == NULL) {
+		if (idev->dbl[index].data == NULL) {
 			ipio_info("BUFFER %d error\n", index);
 			goto out;
 		}
-		ipio_memcpy(idev->debug_buf[index].data, buf, len, 2048);
-		idev->debug_buf[index].mark = true;
+		ipio_memcpy(idev->dbl[index].data, buf, len, 2048);
+		idev->dbl[index].mark = true;
 		wake_up(&(idev->inq));
 		goto out;
 	}
