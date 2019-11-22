@@ -300,7 +300,7 @@ static int debug_mode_get_data(struct file_buffer *file, u8 type, u32 frame_coun
 
 	while (write_index < frame_count) {
 		file->wlen = 0;
-		ipio_info("frame = %d,index = %d,count = %d\n", write_index,idev->odi, idev->dbf);
+		ipio_info("frame = %d,index = %d,count = %d\n", write_index, idev->odi, idev->dbf);
 		if (!wait_event_interruptible_timeout(idev->inq, idev->dbl[idev->odi].mark, msecs_to_jiffies(3000))) {
 			ipio_err("debug mode get data timeout!\n");
 			goto out;

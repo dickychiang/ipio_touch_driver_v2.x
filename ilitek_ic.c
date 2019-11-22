@@ -280,7 +280,6 @@ int ilitek_ice_mode_ctrl(bool enable, bool mcu)
 					break;
 
 				usleep_range(1000, 1000);
-
 				retry--;
 			}
 
@@ -294,7 +293,6 @@ int ilitek_ice_mode_ctrl(bool enable, bool mcu)
 			if (ret < 0)
 				ipio_err("Exit to ICE Mode failed !!\n");
 		}
-
 		atomic_set(&idev->ice_stat, DISABLE);
 	}
 out:

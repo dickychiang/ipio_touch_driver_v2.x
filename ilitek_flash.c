@@ -70,8 +70,8 @@ static struct flash_block_info {
 	u8 mode;
 } fbi[FW_BLOCK_INFO_NUM];
 
-u8 *pfw = NULL;
-u8 *CTPM_FW = NULL;
+u8 *pfw;
+u8 *CTPM_FW;
 
 static u32 HexToDec(char *phex, s32 len)
 {

@@ -50,8 +50,8 @@ static struct flash_block_info {
 	u8 mode;
 } fbi[FW_BLOCK_INFO_NUM];
 
-u8 *pfw = NULL;
-u8 *CTPM_FW = NULL;
+u8 *pfw;
+u8 *CTPM_FW;
 
 static u32 HexToDec(char *phex, s32 len)
 {
@@ -367,6 +367,7 @@ static int ilitek_tddi_fw_iram_upgrade(u8 *pfw)
 		if (ilitek_tddi_reset_ctrl(TP_IC_CODE_RST) < 0) {
 			ipio_err("TP Code reset failed during iram programming\n");
 			ret = -EFW_REST;
+			return ret;
 		}
 	}
 

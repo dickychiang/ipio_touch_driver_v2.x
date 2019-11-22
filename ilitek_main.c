@@ -772,7 +772,7 @@ static void ilitek_update_tp_module_info(void)
 
 	module = ilitek_get_tp_module();
 
-	switch(module) {
+	switch (module) {
 	case MODEL_CSOT:
 		idev->md_name = "CSOT";
 		idev->md_fw_filp_path = CSOT_FW_FILP_PATH;

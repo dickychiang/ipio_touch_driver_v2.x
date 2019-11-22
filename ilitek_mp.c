@@ -330,7 +330,7 @@ s32 *frame1_cbk700, *frame1_cbk250, *frame1_cbk200;
 s32 *cap_dac, *cap_raw;
 int g_ini_items;
 char csv_name[128] = {0};
-char seq_item[MAX_SECTION_NUM][PARSER_MAX_KEY_NAME_LEN] = {{0}};
+char seq_item[MAX_SECTION_NUM][PARSER_MAX_KEY_NAME_LEN] = {0};
 
 static int isspace_t(int x)
 {
@@ -2474,14 +2474,14 @@ static int open_test_cap(int index)
 	/* Init Max/Min buffer */
 	for (y = 0; y < core_mp.ych_len; y++) {
 		for (x = 0; x < core_mp.xch_len; x++) {
-				tItems[index].max_buf[y * core_mp.xch_len + x] = INT_MIN;
-				tItems[index].min_buf[y * core_mp.xch_len + x] = INT_MAX;
+			tItems[index].max_buf[y * core_mp.xch_len + x] = INT_MIN;
+			tItems[index].min_buf[y * core_mp.xch_len + x] = INT_MAX;
 		}
 	}
 
 	if (tItems[index].spec_option == BENCHMARK) {
 		parser_ini_benchmark(tItems[index].bench_mark_max, tItems[index].bench_mark_min,
-							tItems[index].type_option, tItems[index].desp, core_mp.frame_len);
+				tItems[index].type_option, tItems[index].desp, core_mp.frame_len);
 		dump_benchmark_data(tItems[index].bench_mark_max, tItems[index].bench_mark_min);
 	}
 

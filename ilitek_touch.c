@@ -669,9 +669,9 @@ static void ilitek_tddi_touch_send_debug_data(u8 *buf, int len)
 			idev->dbf = ((idev->dbf + 1) % TR_BUF_LIST_SIZE);
 		} else {
 			if (idev->dbf == 0)
-				index = TR_BUF_LIST_SIZE -1;
+				index = TR_BUF_LIST_SIZE - 1;
 			else
-				index = idev->dbf -1;
+				index = idev->dbf - 1;
 		}
 		if (idev->dbl[index].data == NULL) {
 			ipio_info("BUFFER %d error\n", index);
@@ -1052,7 +1052,7 @@ void ilitek_tddi_report_gesture_mode(u8 *buf, int len)
 			gc->pos_start.x, gc->pos_start.y,
 			gc->pos_end.x, gc->pos_end.y,
 			gc->pos_1st.x, gc->pos_1st.y,
-			gc->pos_2nd.x ,gc->pos_2nd.y,
+			gc->pos_2nd.x, gc->pos_2nd.y,
 			gc->pos_3rd.x, gc->pos_3rd.y,
 			gc->pos_4th.x, gc->pos_4th.y);
 
