@@ -1,4 +1,15 @@
-v2.0.4.0
+v2.0.6.0
+[New features]
+1. Able to adjust spi clock by echoing ioctl (if platforms support).
+
+[Improvements]
+1. Remove Noise Diff from MP Test.
+2. Adjust the formula of 7807G/R.
+
+[Bus fixed]
+1. Fix the issue while getting cdc data in gesture mode.
+
+v2.0.5.0
 [New features]
 1. Add new mp test item (Noise Diff)
 2. Won't go to sleep stop and check busy while system suspending (for core version 1.4.3 above).

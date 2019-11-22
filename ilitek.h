@@ -102,7 +102,7 @@
 #include "sync_write.h"
 #endif
 
-#define DRIVER_VERSION			"2.0.5.0.191115"
+#define DRIVER_VERSION			"2.0.6.0.191122"
 
 /* Options */
 #define TDDI_INTERFACE			BUS_SPI /* BUS_I2C(0x18) or BUS_SPI(0x1C) */
