@@ -330,7 +330,7 @@ s32 *frame1_cbk700, *frame1_cbk250, *frame1_cbk200;
 s32 *cap_dac, *cap_raw;
 int g_ini_items;
 char csv_name[128] = {0};
-char seq_item[MAX_SECTION_NUM][PARSER_MAX_KEY_NAME_LEN] = {0};
+char seq_item[MAX_SECTION_NUM][PARSER_MAX_KEY_NAME_LEN] = {{0}};
 
 static int isspace_t(int x)
 {
