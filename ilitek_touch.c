@@ -225,12 +225,6 @@ int ilitek_tddi_move_mp_code_flash(void)
 	bool dma_trigger_enable = 0;
 	u8 cmd[16] = {0};
 
-	cmd[0] = P5_X_MODE_CONTROL;
-	cmd[1] = P5_X_FW_TEST_MODE;
-	ret = idev->write(cmd, 2);
-	if (ret < 0)
-		goto out;
-
 	cmd[0] = P5_X_MP_TEST_MODE_INFO;
 	ret = idev->write(cmd, 1);
 	if (ret < 0)
@@ -259,6 +253,12 @@ int ilitek_tddi_move_mp_code_flash(void)
 	ipio_info("MP info Overlay: Enable = %d, addr = 0x%x ~ 0x%x, flash addr = 0x%x, mp size = 0x%x\n",
 		dma_trigger_enable, overlay_start_addr,
 		overlay_end_addr, mp_flash_addr, mp_size);
+
+	cmd[0] = P5_X_MODE_CONTROL;
+	cmd[1] = P5_X_FW_TEST_MODE;
+	ret = idev->write(cmd, 2);
+	if (ret < 0)
+		goto out;
 
 	/* Check if ic is ready switching test mode from demo mode */
 	idev->actual_tp_mode = P5_X_FW_AP_MODE;
