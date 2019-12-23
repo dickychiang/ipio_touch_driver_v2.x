@@ -317,8 +317,8 @@ static int core_spi_ice_mode_lock_write(u8 *data, int size)
 	int safe_size = size;
 	u8 check_sum = 0, wsize = 0;
 
-	if (size > sizeof(spi_ice_buf)) {
-		ipio_err("Size(%d) is greater than spi_ice_buf, abort\n", size);
+	if ((size + 5) >= sizeof(spi_ice_buf)) {
+		ipio_err("Size(%d) is greater than spi_ice_buf, abort\n", size + 5);
 		return -EINVAL;
 	}
 
@@ -565,17 +565,17 @@ static int core_spi_write(u8 *data, int len)
 		goto out;
 	}
 
-	if (len > sizeof(spi_ice_buf)) {
-		ipio_err("Size(%d) is greater than spi_ice_buf, abort\n", len);
+	if ((len + 1) >= sizeof(spi_ice_buf)) {
+		ipio_err("Size(%d) is greater than spi_ice_buf, abort\n", len + 1);
 		return -EINVAL;
 	}
 
 	memset(spi_ice_buf, 0x0, sizeof(spi_ice_buf));
 
 	spi_ice_buf[0] = SPI_WRITE;
-	ipio_memcpy(spi_ice_buf+1, data, len, safe_size + 1);
+	ipio_memcpy(spi_ice_buf + 1, data, len, safe_size + 1);
 
-	if (idev->spi_write_then_read(idev->spi, spi_ice_buf, len+1, spi_ice_buf, 0) < 0) {
+	if (idev->spi_write_then_read(idev->spi, spi_ice_buf, len + 1, spi_ice_buf, 0) < 0) {
 		ipio_err("spi write data error in ice mode\n");
 		ret = -EIO;
 		goto out;
