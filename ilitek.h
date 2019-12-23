@@ -912,7 +912,7 @@ extern void ilitek_tddi_ic_spi_speed_ctrl(bool enable);
 extern int ilitek_tddi_ic_whole_reset(void);
 extern int ilitek_tddi_ic_code_reset(void);
 extern int ilitek_tddi_ic_func_ctrl(const char *name, int ctrl);
-extern void ilitek_tddi_ic_get_pc_counter(void);
+extern void ilitek_tddi_ic_get_pc_counter(int stat);
 extern int ilitek_tddi_ic_check_int_stat(void);
 extern int ilitek_tddi_ic_check_busy(int count, int delay);
 extern int ilitek_tddi_ic_get_project_id(u8 *pdata, int size);

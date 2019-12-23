@@ -366,7 +366,7 @@ int ilitek_tddi_ic_watch_dog_ctrl(bool write, bool enable)
 
 	if (timeout <= 0) {
 		ipio_err("WDT turn on/off timeout !, ret = %x\n", ret);
-		ilitek_tddi_ic_get_pc_counter();
+		ilitek_tddi_ic_get_pc_counter(0);
 		return -EINVAL;
 	}
 
@@ -682,11 +682,13 @@ void ilitek_tddi_ic_spi_speed_ctrl(bool enable)
 	}
 }
 
-void ilitek_tddi_ic_get_pc_counter(void)
+void ilitek_tddi_ic_get_pc_counter(int stat)
 {
 	bool ice = atomic_read(&idev->ice_stat);
 	u32 pc = 0, pc_addr = idev->chip->pc_counter_addr;
 	u32 latch = 0, latch_addr = idev->chip->pc_latch_addr;
+
+	ipio_debug("stat = %d\n", stat);
 
 	if (!ice)
 		if (ilitek_ice_mode_ctrl(ENABLE, OFF) < 0)
@@ -700,10 +702,11 @@ void ilitek_tddi_ic_get_pc_counter(void)
 
 	idev->fw_pc = pc;
 	idev->fw_latch = latch;
-	ipio_err("read pc (addr: 0x%x) = 0x%x\n", pc_addr, idev->fw_pc);
-	ipio_err("read latch (addr: 0x%x) = 0x%x\n", latch_addr, idev->fw_latch);
+	ipio_err("read counter (addr: 0x%x) = 0x%x, latch (addr: 0x%x) = 0x%x\n",
+		pc_addr, idev->fw_pc, latch_addr, idev->fw_latch);
 
-	if (!ice)
+	/* To aovid screen abnormal, it won't exit ice mode when spi recovery occured.*/
+	if (!ice && stat != DO_SPI_RECOVER)
 		if (ilitek_ice_mode_ctrl(DISABLE, OFF) < 0)
 			ipio_err("Disable ice mode failed while reading pc counter\n");
 }
@@ -757,7 +760,7 @@ int ilitek_tddi_ic_check_busy(int count, int delay)
 	} while (--count > 0);
 
 	ipio_err("Check busy (0x%x) timeout !\n", busy);
-	ilitek_tddi_ic_get_pc_counter();
+	ilitek_tddi_ic_get_pc_counter(0);
 	return -1;
 }
 

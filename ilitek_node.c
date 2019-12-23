@@ -558,7 +558,7 @@ static ssize_t ilitek_proc_fw_pc_counter_read(struct file *pFile, char __user *b
 
 	memset(g_user_buf, 0, USER_STR_BUFF * sizeof(unsigned char));
 
-	ilitek_tddi_ic_get_pc_counter();
+	ilitek_tddi_ic_get_pc_counter(0);
 	len = snprintf(g_user_buf, PAGE_SIZE, "pc = 0x%x, latch = 0x%x\n", idev->fw_pc, idev->fw_latch);
 
 	if (copy_to_user(buf, g_user_buf, len))
