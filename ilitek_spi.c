@@ -824,6 +824,7 @@ int ilitek_tddi_interface_dev_init(struct ilitek_hwif_info *hwif)
 
 	if (hwif->bus_type != BUS_SPI) {
 		ipio_err("Not SPI dev\n");
+		ipio_kfree((void **)&info);
 		return -EINVAL;
 	}
 

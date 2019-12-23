@@ -309,6 +309,7 @@ int ilitek_tddi_interface_dev_init(struct ilitek_hwif_info *hwif)
 
 	if (hwif->bus_type != BUS_I2C) {
 		ipio_err("Not I2C dev\n");
+		ipio_kfree((void **)&info);
 		return -EINVAL;
 	}
 
