@@ -1028,6 +1028,37 @@ static ssize_t ilitek_node_mp_lcm_off_test_read(struct file *filp, char __user *
 	return len;
 }
 
+static ssize_t ilitek_node_ver_info_read(struct file *filp, char __user *buff, size_t size, loff_t *pos)
+{
+	u32 len = 0;
+
+	if (*pos != 0)
+		return 0;
+
+	mutex_lock(&idev->touch_mutex);
+
+	memset(g_user_buf, 0, USER_STR_BUFF * sizeof(unsigned char));
+
+	len += snprintf(g_user_buf + len, USER_STR_BUFF - len, "CHIP ID = %x\n", idev->chip->id);
+	len += snprintf(g_user_buf + len, USER_STR_BUFF - len, "FW version = %d.%d.%d.%d\n",
+			idev->chip->fw_ver >> 24, (idev->chip->fw_ver >> 16) & 0xFF,
+			(idev->chip->fw_ver >> 8) & 0xFF, idev->chip->fw_ver & 0xFF);
+	len += snprintf(g_user_buf + len, USER_STR_BUFF - len, "Core version = %d.%d.%d\n",
+			idev->chip->core_ver >> 16, (idev->chip->core_ver >> 8) & 0xFF,
+			idev->chip->core_ver & 0xFF);
+	len += snprintf(g_user_buf + len, USER_STR_BUFF - len, "Protocol version = %d.%d.%d\n",
+			idev->protocol->ver >> 16, (idev->protocol->ver >> 8) & 0xFF,
+			idev->protocol->ver & 0xFF);
+	len += snprintf(g_user_buf + len, USER_STR_BUFF - len, "Driver version = %s\n", DRIVER_VERSION);
+
+	if (copy_to_user((char *)buff, g_user_buf, len))
+		ipio_err("Failed to copy data to user space\n");
+
+	*pos += len;
+	mutex_unlock(&idev->touch_mutex);
+	return len;
+}
+
 static ssize_t ilitek_proc_fw_process_read(struct file *filp, char __user *buff, size_t size, loff_t *pos)
 {
 	u32 len = 0;
@@ -2095,6 +2126,10 @@ struct file_operations proc_mp_lcm_off_test_fops = {
 	.read = ilitek_node_mp_lcm_off_test_read,
 };
 
+struct file_operations proc_ver_info_fops = {
+	.read = ilitek_node_ver_info_read,
+};
+
 struct file_operations proc_debug_message_fops = {
 	.read = ilitek_proc_debug_message_read,
 };
@@ -2159,6 +2194,7 @@ proc_node_t proc_table[] = {
 	{"show_raw_data", NULL, &proc_get_raw_data_fops, false},
 	{"get_debug_mode_data", NULL, &proc_get_debug_mode_data_fops, false},
 	{"rw_tp_reg", NULL, &proc_rw_tp_reg_fops, false},
+	{"ver_info", NULL, &proc_ver_info_fops, false},
 };
 
 #define NETLINK_USER 21
