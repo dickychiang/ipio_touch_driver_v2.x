@@ -2297,38 +2297,27 @@ static int open_test_sp(int index)
 	parser_ini_nodetype(tItems[index].node_type, NODE_TYPE_KEY_NAME, core_mp.frame_len);
 	dump_node_type_buffer(tItems[index].node_type, "node type");
 
-	ret = parser_get_int_data(tItems[index].desp, "charge_aa", str, sizeof(str));
-	if (ret || ret == 0)
-		Charge_AA = katoi(str);
+	parser_get_int_data(tItems[index].desp, "charge_aa", str, sizeof(str));
+	Charge_AA = katoi(str);
 
-	ret = parser_get_int_data(tItems[index].desp, "charge_border", str, sizeof(str));
-	if (ret || ret == 0)
-		Charge_Border = katoi(str);
+	parser_get_int_data(tItems[index].desp, "charge_border", str, sizeof(str));
+	Charge_Border = katoi(str);
 
-	ret = parser_get_int_data(tItems[index].desp, "charge_notch", str, sizeof(str));
-	if (ret || ret == 0)
-		Charge_Notch = katoi(str);
+	parser_get_int_data(tItems[index].desp, "charge_notch", str, sizeof(str));
+	Charge_Notch = katoi(str);
 
-	ret = parser_get_int_data(tItems[index].desp, "full open", str, sizeof(str));
-	if (ret || ret == 0)
-		full_open_rate = katoi(str);
+	parser_get_int_data(tItems[index].desp, "full open", str, sizeof(str));
+	full_open_rate = katoi(str);
 
-	ret = parser_get_int_data(tItems[index].desp, "tvch", str, sizeof(str));
-	if (ret || ret == 0)
-		open_spec.tvch = katoi(str);
+	parser_get_int_data(tItems[index].desp, "tvch", str, sizeof(str));
+	open_spec.tvch = katoi(str);
 
-	ret = parser_get_int_data(tItems[index].desp, "tvcl", str, sizeof(str));
-	if (ret || ret == 0)
-		open_spec.tvcl = katoi(str);
+	parser_get_int_data(tItems[index].desp, "tvcl", str, sizeof(str));
+	open_spec.tvcl = katoi(str);
 
-	if (ret < 0) {
-		ipio_err("Failed to get parameters from ini file\n");
-		ret = -EMP_PARSE;
-		goto out;
-	}
-
-	ipio_debug("open_test_sp: frame_cont %d, AA %d, Border %d, Notch %d, full_open_rate %d\n",
-			tItems[index].frame_count, Charge_AA, Charge_Border, Charge_Notch, full_open_rate);
+	ipio_debug("AA = %d, Border = %d, Notch = %d, full_open_rate = %d, tvch = %d, tvcl = %d\n",
+			Charge_AA, Charge_Border, Charge_Notch,
+			full_open_rate, open_spec.tvch, open_spec.tvcl);
 
 	for (i = 0; i < tItems[index].frame_count; i++) {
 		open[i].tdf_700 = kcalloc(core_mp.frame_len, sizeof(s32), GFP_KERNEL);
@@ -2440,6 +2429,9 @@ static int open_test_cap(int index)
 	int i = 0, x = 0, y = 0, ret = 0, addr = 0;
 	char str[512] = {0};
 
+	ipio_debug("index = %d, desp = %s, Frame Count = %d\n",
+		index, tItems[index].desp, tItems[index].frame_count);
+
 	if (tItems[index].frame_count <= 0) {
 		ipio_err("Frame count is zero, which is at least set as 1\n");
 		tItems[index].frame_count = 1;
@@ -2485,26 +2477,16 @@ static int open_test_cap(int index)
 		dump_benchmark_data(tItems[index].bench_mark_max, tItems[index].bench_mark_min);
 	}
 
-	ret = parser_get_int_data(tItems[index].desp, "gain", str, sizeof(str));
-	if (ret || ret == 0)
-		open_spec.gain = katoi(str);
+	parser_get_int_data(tItems[index].desp, "gain", str, sizeof(str));
+	open_spec.gain = katoi(str);
 
-	ret = parser_get_int_data(tItems[index].desp, "tvch", str, sizeof(str));
-	if (ret || ret == 0)
-		open_spec.tvch = katoi(str);
+	parser_get_int_data(tItems[index].desp, "tvch", str, sizeof(str));
+	open_spec.tvch = katoi(str);
 
-	ret = parser_get_int_data(tItems[index].desp, "tvcl", str, sizeof(str));
-	if (ret || ret == 0)
-		open_spec.tvcl = katoi(str);
+	parser_get_int_data(tItems[index].desp, "tvcl", str, sizeof(str));
+	open_spec.tvcl = katoi(str);
 
-	if (ret < 0) {
-		ipio_err("Failed to get parameters from ini file\n");
-		ret = -EMP_PARSE;
-		goto out;
-	}
-
-	ipio_debug("open_test_c: frame_cont = %d, gain = %d, tvch = %d, tvcl = %d\n",
-			tItems[index].frame_count, open_spec.gain, open_spec.tvch, open_spec.tvcl);
+	ipio_debug("gain = %d, tvch = %d, tvcl = %d\n", open_spec.gain, open_spec.tvch, open_spec.tvcl);
 
 	for (i = 0; i < tItems[index].frame_count; i++) {
 		open[i].cap_dac = kcalloc(core_mp.frame_len, sizeof(s32), GFP_KERNEL);
@@ -3088,6 +3070,7 @@ static void ilitek_tddi_mp_init_item(void)
 	int i = 0;
 
 	memset(&core_mp, 0, sizeof(core_mp));
+	memset(&open_spec, 0, sizeof(open_spec));
 
 	core_mp.chip_pid = idev->chip->pid;
 	core_mp.chip_id = idev->chip->id;
