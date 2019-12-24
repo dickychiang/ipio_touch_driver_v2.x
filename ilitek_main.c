@@ -164,7 +164,7 @@ int ilitek_tddi_switch_tp_mode(u8 mode)
 			ipio_err("Move gesture code failed\n");
 		if (ges_dbg) {
 			ipio_info("Enable gesture debug func\n");
-			ilitek_set_tp_data_len(DATA_FORMAT_GESTURE_DEBUG);
+			ilitek_set_tp_data_len(DATA_FORMAT_GESTURE_DEBUG, true);
 		}
 		break;
 	case P5_X_FW_TEST_MODE:
@@ -504,7 +504,7 @@ int ilitek_tddi_fw_upgrade_handler(void *data)
 	return ret;
 }
 
-int ilitek_set_tp_data_len(int format)
+int ilitek_set_tp_data_len(int format, bool send)
 {
 	u8 cmd[2] = {0}, ctrl = 0;
 	u16 self_key = 2;
@@ -563,21 +563,23 @@ int ilitek_set_tp_data_len(int format)
 	ipio_info("TP mode = %d, format = %d, len = %d\n",
 		tp_mode, idev->tp_data_format, idev->tp_data_len);
 
-	if (tp_mode == P5_X_FW_AP_MODE ||
-		format == DATA_FORMAT_GESTURE_DEMO ||
-		format == DATA_FORMAT_GESTURE_DEBUG) {
-		cmd[0] = P5_X_MODE_CONTROL;
-		cmd[1] = ctrl;
-		ret = idev->write(cmd, 2);
+	if (send) {
+		if (tp_mode == P5_X_FW_AP_MODE ||
+			format == DATA_FORMAT_GESTURE_DEMO ||
+			format == DATA_FORMAT_GESTURE_DEBUG) {
+			cmd[0] = P5_X_MODE_CONTROL;
+			cmd[1] = ctrl;
+			ret = idev->write(cmd, 2);
 
-		if (ret < 0) {
-			ipio_err("switch to format %d failed\n", format);
-			ilitek_tddi_switch_tp_mode(P5_X_FW_AP_MODE);
+			if (ret < 0) {
+				ipio_err("switch to format %d failed\n", format);
+				ilitek_tddi_switch_tp_mode(P5_X_FW_AP_MODE);
+			}
+		} else if (tp_mode == P5_X_FW_GESTURE_MODE) {
+			ret = ilitek_tddi_ic_func_ctrl("lpwg", ctrl);
+			if (ret < 0)
+				ipio_err("write gesture mode failed\n");
 		}
-	} else if (tp_mode == P5_X_FW_GESTURE_MODE) {
-		ret = ilitek_tddi_ic_func_ctrl("lpwg", ctrl);
-		if (ret < 0)
-			ipio_err("write gesture mode failed\n");
 	}
 
 	return ret;

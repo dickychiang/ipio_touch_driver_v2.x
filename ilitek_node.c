@@ -837,7 +837,7 @@ static ssize_t ilitek_proc_get_debug_mode_data_read(struct file *filp, char __us
 	file_write(&csv, true);
 
 	/* change to debug mode */
-	if (ilitek_set_tp_data_len(DATA_FORMAT_DEBUG) < 0) {
+	if (ilitek_set_tp_data_len(DATA_FORMAT_DEBUG, true) < 0) {
 		ipio_err("Failed to set tp data length\n");
 		goto out;
 	}
@@ -863,7 +863,7 @@ static ssize_t ilitek_proc_get_debug_mode_data_read(struct file *filp, char __us
 		goto out;
 
 	/* change to demo mode */
-	if (ilitek_set_tp_data_len(DATA_FORMAT_DEMO) < 0)
+	if (ilitek_set_tp_data_len(DATA_FORMAT_DEMO, true) < 0)
 		ipio_err("Failed to set tp data length\n");
 
 out:
@@ -1370,13 +1370,13 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 		else if (data[1] == 2)
 			get_tp_recore_ctrl(DISABLE_RECORD);
 	} else if (strcmp(cmd, "switchdemodebuginfomode") == 0) {
-		ilitek_set_tp_data_len(DATA_FORMAT_DEMO_DEBUG_INFO);
+		ilitek_set_tp_data_len(DATA_FORMAT_DEMO_DEBUG_INFO, true);
 	} else if (strcmp(cmd, "gesturedemoen") == 0) {
 		if (data[1] == 0)
 			idev->gesture_demo_ctrl = DISABLE;
 		else
 			idev->gesture_demo_ctrl = ENABLE;
-		ilitek_set_tp_data_len(DATA_FORMAT_GESTURE_SPECIAL_DEMO);
+		ilitek_set_tp_data_len(DATA_FORMAT_GESTURE_SPECIAL_DEMO, true);
 	} else if (strcmp(cmd, "gesturefailrsn") == 0) {
 		if (data[1] == 0)
 			gesture_fail_reason(DISABLE);
@@ -1454,11 +1454,11 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 	} else if (strncmp(cmd, "switchtestmode", strlen(cmd)) == 0) {
 		ilitek_tddi_switch_tp_mode(P5_X_FW_TEST_MODE);
 	} else if (strncmp(cmd, "switchdebugmode", strlen(cmd)) == 0) {
-		ilitek_set_tp_data_len(DATA_FORMAT_DEBUG);
+		ilitek_set_tp_data_len(DATA_FORMAT_DEBUG, true);
 	} else if (strncmp(cmd, "switchdemomode", strlen(cmd)) == 0) {
-		ilitek_set_tp_data_len(DATA_FORMAT_DEMO);
+		ilitek_set_tp_data_len(DATA_FORMAT_DEMO, true);
 	} else if (strncmp(cmd, "switchgesturedebugmode", strlen(cmd)) == 0) {
-		ilitek_set_tp_data_len(DATA_FORMAT_GESTURE_DEBUG);
+		ilitek_set_tp_data_len(DATA_FORMAT_GESTURE_DEBUG, true);
 	} else if (strncmp(cmd, "dbgflag", strlen(cmd)) == 0) {
 		idev->dnp = !idev->dnp;
 		ipio_info("debug flag message = %d\n", idev->dnp);
@@ -1943,7 +1943,7 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 		ipio_debug("ioctl: switch fw format = %d\n", szBuf[0]);
 		if (szBuf[0] == 0) {//ap mode
 			if (idev->tp_suspend) {
-				if (ilitek_set_tp_data_len(DATA_FORMAT_GESTURE_DEMO) < 0) {
+				if (ilitek_set_tp_data_len(DATA_FORMAT_GESTURE_DEMO, true) < 0) {
 					ipio_err("Failed to set demo len from gesture mode\n");
 					ret = -ENOTTY;
 				}
@@ -1968,12 +1968,12 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 			}
 
 			if (idev->tp_suspend) {
-				if (ilitek_set_tp_data_len(DATA_FORMAT_GESTURE_DEBUG) < 0) {
+				if (ilitek_set_tp_data_len(DATA_FORMAT_GESTURE_DEBUG, true) < 0) {
 					ipio_err("Failed to set debug len from gesture mode\n");
 					ret = -ENOTTY;
 				}
 			} else {
-				if (ilitek_set_tp_data_len(DATA_FORMAT_DEBUG) < 0) {
+				if (ilitek_set_tp_data_len(DATA_FORMAT_DEBUG, true) < 0) {
 					ipio_err("Failed to set debug len\n");
 					ret = -ENOTTY;
 				}

@@ -402,8 +402,13 @@ int ilitek_tddi_move_gesture_code_flash(int mode)
 {
 	int ret = 0;
 
-	ipio_info("Switch to Gesture mode, lpwg cmd = %d\n",  idev->gesture_mode);
-	ret = ilitek_set_tp_data_len(idev->gesture_mode);
+	/*
+	 * NOTE: If functions need to be added during suspend,
+	 * they must be called before gesture cmd reaches to FW.
+	 */
+
+	ipio_info("Switch to Gesture mode = %d\n",  idev->gesture_mode);
+	ret = ilitek_set_tp_data_len(idev->gesture_mode, true);
 
 	return ret;
 }
@@ -414,20 +419,25 @@ int ilitek_tddi_move_gesture_code_iram(int mode)
 	int timeout = 10;
 	u8 cmd[3] = {0};
 
-	if (idev->gesture_load_code == false) {
-		ipio_info("Switch to Gesture mode, lpwg cmd = %d,\n no need to load gesture code by driver\n",  mode);
-		if (ilitek_set_tp_data_len(mode) < 0)
+	/*
+	 * NOTE: If functions need to be added during suspend,
+	 * they must be called before gesture cmd reaches to FW.
+	 */
+
+	if (!idev->gesture_load_code) {
+		ipio_info("Load gesture code by FW itself, mode = %d\n",  mode);
+		if (ilitek_set_tp_data_len(mode, true) < 0)
 			ipio_err("Failed to set tp data length\n");
 		return 0;
-	} else {
-		ipio_info("Load gesture code by driver\n");
 	}
+
+	ipio_info("Load gesture code by driver\n");
 
 	if (ilitek_tddi_ic_func_ctrl("lpwg", 0x3) < 0)
 		ipio_err("write gesture flag failed\n");
 
-	ipio_info("Switch to Gesture mode, lpwg cmd = %d\n",  mode);
-	if (ilitek_set_tp_data_len(mode) < 0)
+	ipio_info("Switch to Gesture mode = %d\n",  mode);
+	if (ilitek_set_tp_data_len(mode, true) < 0)
 		ipio_err("Failed to set tp data length\n");
 
 	for (i = 0; i < timeout; i++) {
@@ -437,11 +447,8 @@ int ilitek_tddi_move_gesture_code_iram(int mode)
 		idev->write(cmd, 2);
 
 		/* Check ready for load code */
-		cmd[0] = 0x1;
-		cmd[1] = 0xA;
-		cmd[2] = 0x5;
-		if ((idev->write(cmd, 3)) < 0)
-			ipio_err("write 0x1,0xA,0x5 error");
+		if (ilitek_tddi_ic_func_ctrl("lpwg", 0x5) < 0)
+			ipio_err("write check load code error");
 
 		if ((idev->read(cmd, 1)) < 0)
 			ipio_err("read gesture ready byte error\n");
@@ -462,11 +469,9 @@ int ilitek_tddi_move_gesture_code_iram(int mode)
 		ipio_err("FW upgrade failed during moving code\n");
 
 	/* FW star run gestrue code cmd */
-	cmd[0] = 0x1;
-	cmd[1] = 0xA;
-	cmd[2] = 0x6;
-	if ((idev->write(cmd, 3)) < 0)
-		ipio_err("write 0x1,0xA,0x6 error");
+	if (ilitek_tddi_ic_func_ctrl("lpwg", 0x6) < 0)
+		ipio_err("write resume loader error");
+
 	return 0;
 }
 
@@ -524,7 +529,8 @@ int ilitek_tddi_touch_esd_gesture_flash(void)
 	if (ilitek_ice_mode_ctrl(DISABLE, ON) < 0)
 		ipio_err("Disable ice mode failed during gesture recovery\n");
 
-	idev->gesture_move_code(idev->gesture_mode);
+	idev->actual_tp_mode = P5_X_FW_GESTURE_MODE;
+	ilitek_set_tp_data_len(idev->gesture_mode, false);
 	return ret;
 }
 
@@ -533,7 +539,6 @@ int ilitek_tddi_touch_esd_gesture_iram(void)
 	int ret = 0, retry = 100;
 	u32 answer = 0;
 	u32 esd_ges_pwd_addr = 0x0;
-	u8 cmd[3] = {0};
 
 	if (ilitek_ice_mode_ctrl(ENABLE, OFF) < 0)
 		ipio_err("Enable ice mode failed during gesture recovery\n");
@@ -581,20 +586,18 @@ int ilitek_tddi_touch_esd_gesture_iram(void)
 		ipio_info("Enter gesture successfully\n");
 	}
 
-	if (ilitek_ice_mode_ctrl(DISABLE, ON) < 0)
-		ipio_err("Disable ice mode failed during gesture recovery\n");
-
+	/* Load gesture code */
 	idev->actual_tp_mode = P5_X_FW_GESTURE_MODE;
-	ilitek_set_tp_data_len(idev->gesture_mode);
+	ilitek_set_tp_data_len(idev->gesture_mode, false);
 	if (ilitek_tddi_fw_upgrade_handler(NULL) < 0)
 		ipio_err("FW upgrade failed during gesture recovery\n");
 
-	/* FW star run gestrue code cmd */
-	cmd[0] = 0x1;
-	cmd[1] = 0xA;
-	cmd[2] = 0x6;
-	if ((idev->write(cmd, sizeof(cmd))) < 0)
-		ipio_err("write 0x1,0xA,0x6 error");
+	if (ilitek_ice_mode_ctrl(DISABLE, ON) < 0)
+		ipio_err("Disable ice mode failed during gesture recovery\n");
+
+	/* Resume gesture loader */
+	if (ilitek_tddi_ic_func_ctrl("lpwg", 0x6) < 0)
+		ipio_err("write resume loader error");
 
 	/* Set it back after gesture was recovered. */
 	idev->skip_wake = false;
