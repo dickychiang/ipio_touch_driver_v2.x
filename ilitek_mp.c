@@ -407,7 +407,7 @@ void parser_ini_nodetype(s32 *type_ptr, char *desp, int frame_len)
 	char str[512] = {0}, record = ',';
 
 	for (i = 0; i < g_ini_items; i++) {
-		if ((strstr(ini_info[i].section_name, desp) <= 0) ||
+		if (!strstr(ini_info[i].section_name, desp) ||
 			ipio_strcmp(ini_info[i].key_name, NODE_TYPE_KEY_NAME) != 0) {
 			continue;
 		}
@@ -751,10 +751,10 @@ static int parser_get_ini_phy_data(char *data, int fsize)
 			if (empty_section)
 				continue;
 
-			if (strstr(ini_info[g_ini_items].section_name, BENCHMARK_KEY_NAME) > 0) {
+			if (strstr(ini_info[g_ini_items].section_name, BENCHMARK_KEY_NAME) != NULL) {
 				banchmark_flag = 1;
 				isEqualSign = -1;
-			} else if (strstr(ini_info[g_ini_items].section_name, NODE_TYPE_KEY_NAME) > 0) {
+			} else if (strstr(ini_info[g_ini_items].section_name, NODE_TYPE_KEY_NAME) != NULL) {
 				nodetype_flag = 1;
 				isEqualSign = -1;
 			} else {
