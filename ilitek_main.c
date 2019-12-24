@@ -657,7 +657,7 @@ void ilitek_tddi_report_handler(void)
 
 	checksum = ilitek_calc_packet_checksum(idev->tr_buf, rlen - 1);
 
-	if ((checksum != idev->tr_buf[rlen-1]) && (idev->fw_uart_en == DISABLE)) {
+	if ((checksum != idev->tr_buf[rlen-1]) && !idev->fw_uart_en) {
 		ipio_err("Wrong checksum, checksum = %x, buf = %x, len = %d\n", checksum, idev->tr_buf[rlen-1], rlen);
 		ipio_debug_level = DEBUG_ALL;
 		ilitek_dump_data(idev->tr_buf, 8, rlen, 0, "finger report with wrong");
@@ -748,7 +748,6 @@ int ilitek_tddi_reset_ctrl(int mode)
 	if (mode != TP_IC_CODE_RST)
 		atomic_set(&idev->ice_stat, DISABLE);
 
-	idev->fw_uart_en = DISABLE;
 	idev->tp_data_format = DATA_FORMAT_DEMO;
 	idev->tp_data_len = P5_X_DEMO_MODE_PACKET_LEN;
 	atomic_set(&idev->tp_reset, END);
@@ -894,9 +893,6 @@ int ilitek_tddi_init(void)
 			ipio_err("TP Reset failed during init\n");
 
 	idev->do_otp_check = ENABLE;
-	idev->fix_ice = DISABLE;
-	idev->fw_uart_en = DISABLE;
-	idev->force_fw_update = DISABLE;
 	idev->demo_debug_info[0] = demo_debug_info_id0;
 	idev->tp_data_format = DATA_FORMAT_DEMO;
 	idev->boot = false;
