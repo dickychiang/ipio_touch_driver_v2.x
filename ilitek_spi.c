@@ -468,6 +468,16 @@ static int core_spi_ice_mode_enable(void)
 static int core_spi_ice_mode_write(u8 *data, int len)
 {
 	int ack = 0, ret = 0;
+	u8 wakeup[10] = {0x82, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3};
+
+	/* if system is suspended, wake up our spi pll clock before communication. */
+	if (idev->tp_suspend && idev->gesture) {
+		ipio_info("write dummy to wake up spi pll clk\n");
+		if (idev->spi_write_then_read(idev->spi, wakeup, sizeof(wakeup), NULL, 0) < 0) {
+			ipio_err("spi write wake up cmd failed\n");
+			return -EIO;
+		}
+	}
 
 	ack = idev->spi_ack();
 	if (ack != SPI_ACK) {
@@ -545,18 +555,8 @@ static int core_spi_write(u8 *data, int len)
 {
 	int ret = 0, retry = 5;
 	int safe_size = len;
-	u8 wakeup[10] = {0x82, 0x25, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3};
 
-	/* if system is suspended, wake up our spi pll clock before communication. */
-	if (idev->tp_suspend && !idev->skip_wake) {
-		ipio_info("wake up spi pll clk\n");
-		if (idev->spi_write_then_read(idev->spi, wakeup, sizeof(wakeup), NULL, 0) < 0) {
-			ipio_err("spi write wake up cmd failed\n");
-			return -EIO;
-		}
-	}
-
-	if (atomic_read(&idev->ice_stat) == DISABLE) {
+	if (!atomic_read(&idev->ice_stat)) {
 		do {
 			ret = core_spi_ice_mode_write(data, len);
 			if (ret >= 0)

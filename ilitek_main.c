@@ -54,7 +54,6 @@ static void ilitek_resume_by_ddi_work(struct work_struct *work)
 	ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
 	ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
 	idev->tp_suspend = false;
-	idev->skip_wake = true;
 	mutex_unlock(&idev->touch_mutex);
 }
 
@@ -71,13 +70,12 @@ void ilitek_resume_by_ddi(void)
 
 	/*
 	 * To match the timing of sleep out, the first of mipi cmd must be sent within 10ms
-	 * after TP reset. Because of that, we create a wq doing host download for resume.
+	 * after TP reset. We then create a wq doing host download before resume.
 	 */
 	atomic_set(&idev->fw_stat, ENABLE);
 	ilitek_tddi_reset_ctrl(idev->reset);
 	ilitek_ice_mode_ctrl(ENABLE, OFF);
 	idev->ddi_rest_done = true;
-	idev->resume_by_ddi = true;
 	mdelay(5);
 	queue_work(resume_by_ddi_wq, &(resume_by_ddi_work));
 
@@ -416,7 +414,6 @@ int ilitek_tddi_sleep_handler(int mode)
 		}
 		ipio_info("TP suspend end\n");
 		idev->tp_suspend = true;
-		idev->skip_wake = false;
 		break;
 	case TP_DEEP_SLEEP:
 		ipio_info("TP deep suspend start\n");
@@ -438,31 +435,29 @@ int ilitek_tddi_sleep_handler(int mode)
 		}
 		ipio_info("TP deep suspend end\n");
 		idev->tp_suspend = true;
-		idev->skip_wake = false;
 		break;
 	case TP_RESUME:
-		if (!idev->resume_by_ddi) {
-			ipio_info("TP resume start\n");
+#if !RESUME_BY_DDI
+		ipio_info("TP resume start\n");
 
-			if (idev->gesture)
-				disable_irq_wake(idev->irq_num);
+		if (idev->gesture)
+			disable_irq_wake(idev->irq_num);
 
-			/* Set tp as demo mode and reload code if it's iram. */
-			idev->actual_tp_mode = P5_X_FW_AP_MODE;
-			if (idev->fw_upgrade_mode == UPGRADE_IRAM) {
-				if (ilitek_tddi_fw_upgrade_handler(NULL) < 0)
-					ipio_err("FW upgrade failed during resume\n");
-			} else {
-				if (ilitek_tddi_reset_ctrl(idev->reset) < 0)
-					ipio_err("TP Reset failed during resume\n");
-			}
-			ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
-			ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
-			idev->tp_suspend = false;
-			idev->skip_wake = true;
-			ipio_info("TP resume end\n");
+		/* Set tp as demo mode and reload code if it's iram. */
+		idev->actual_tp_mode = P5_X_FW_AP_MODE;
+		if (idev->fw_upgrade_mode == UPGRADE_IRAM) {
+			if (ilitek_tddi_fw_upgrade_handler(NULL) < 0)
+				ipio_err("FW upgrade failed during resume\n");
+		} else {
+			if (ilitek_tddi_reset_ctrl(idev->reset) < 0)
+				ipio_err("TP Reset failed during resume\n");
 		}
+		ilitek_tddi_wq_ctrl(WQ_ESD, ENABLE);
+		ilitek_tddi_wq_ctrl(WQ_BAT, ENABLE);
+		idev->tp_suspend = false;
+		ipio_info("TP resume end\n");
 		ilitek_plat_irq_enable();
+#endif
 		break;
 	default:
 		ipio_err("Unknown sleep mode, %d\n", mode);
@@ -714,10 +709,8 @@ int ilitek_tddi_reset_ctrl(int mode)
 
 	atomic_set(&idev->tp_reset, START);
 
-	if (mode != TP_IC_CODE_RST) {
-		idev->skip_wake = false;
+	if (mode != TP_IC_CODE_RST)
 		ilitek_tddi_ic_check_otp_prog_mode();
-	}
 
 	switch (mode) {
 	case TP_IC_CODE_RST:
@@ -752,7 +745,6 @@ int ilitek_tddi_reset_ctrl(int mode)
 	idev->tp_data_format = DATA_FORMAT_DEMO;
 	idev->tp_data_len = P5_X_DEMO_MODE_PACKET_LEN;
 	atomic_set(&idev->tp_reset, END);
-	idev->skip_wake = true;
 	return ret;
 }
 

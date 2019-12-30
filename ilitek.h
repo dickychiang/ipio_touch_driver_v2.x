@@ -750,13 +750,11 @@ struct ilitek_tddi_dev {
 	bool force_fw_update;
 	bool irq_after_recovery;
 	bool ddi_rest_done;
-	bool resume_by_ddi;
 	bool tp_suspend;
 	bool info_from_hex;
 	bool prox_near;
 	bool gesture_load_code;
 	bool fix_ice;
-	bool skip_wake;
 	bool trans_xy;
 	bool ss_ctrl;
 	bool node_update;

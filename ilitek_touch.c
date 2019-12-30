@@ -494,8 +494,8 @@ int ilitek_tddi_touch_esd_gesture_flash(void)
 	if (ilitek_ice_mode_ctrl(ENABLE, OFF) < 0)
 		ipio_err("Enable ice mode failed during gesture recovery\n");
 
-	ipio_info("ESD Gesture PWD Addr = 0x%x, Answer = 0x%x\n",
-		I2C_ESD_GESTURE_PWD_ADDR, I2C_ESD_GESTURE_RUN);
+	ipio_info("ESD Gesture PWD Addr = 0x%X, PWD = 0x%X\n",
+		I2C_ESD_GESTURE_PWD_ADDR, ESD_GESTURE_PWD);
 
 	/* write a special password to inform FW go back into gesture mode */
 	if (ilitek_ice_mode_write(I2C_ESD_GESTURE_PWD_ADDR, ESD_GESTURE_PWD, 4) < 0)
@@ -514,7 +514,7 @@ int ilitek_tddi_touch_esd_gesture_flash(void)
 		if (ilitek_ice_mode_read(I2C_ESD_GESTURE_PWD_ADDR, &answer, sizeof(u32)) < 0)
 			ipio_err("Read gesture answer error\n");
 		if (answer != I2C_ESD_GESTURE_RUN)
-			ipio_info("answer = 0x%x != (0x%x)\n", answer, I2C_ESD_GESTURE_RUN);
+			ipio_info("ret = 0x%X, answer = 0x%X\n", answer, I2C_ESD_GESTURE_RUN);
 		mdelay(1);
 		retry--;
 	} while (answer != I2C_ESD_GESTURE_RUN && retry > 0);
@@ -548,8 +548,8 @@ int ilitek_tddi_touch_esd_gesture_iram(void)
 	else
 		esd_ges_pwd_addr = SPI_ESD_GESTURE_PWD_ADDR;
 
-	ipio_info("ESD Gesture PWD Addr = 0x%x, Answer = 0x%x\n",
-		esd_ges_pwd_addr, SPI_ESD_GESTURE_RUN);
+	ipio_info("ESD Gesture PWD Addr = 0x%X, PWD = 0x%X\n",
+		esd_ges_pwd_addr, ESD_GESTURE_PWD);
 
 	/* write a special password to inform FW go back into gesture mode */
 	if (ilitek_ice_mode_write(esd_ges_pwd_addr, ESD_GESTURE_PWD, 4) < 0)
@@ -559,8 +559,6 @@ int ilitek_tddi_touch_esd_gesture_iram(void)
 	idev->actual_tp_mode = P5_X_FW_AP_MODE;
 	if (ilitek_tddi_fw_upgrade_handler(NULL) < 0)
 		ipio_err("FW upgrade failed during gesture recovery\n");
-
-	idev->skip_wake = true;
 
 	/* Wait for fw running code finished. */
 	if (idev->info_from_hex || (idev->chip->core_ver >= CORE_VER_1410))
@@ -575,7 +573,7 @@ int ilitek_tddi_touch_esd_gesture_iram(void)
 			ipio_err("Read gesture answer error\n");
 
 		if (answer != SPI_ESD_GESTURE_RUN)
-			ipio_info("answer = 0x%x != (0x%x)\n", answer, SPI_ESD_GESTURE_RUN);
+			ipio_info("ret = 0x%X, answer = 0x%X\n", answer, SPI_ESD_GESTURE_RUN);
 		mdelay(1);
 	} while (answer != SPI_ESD_GESTURE_RUN && --retry > 0);
 
@@ -599,8 +597,6 @@ int ilitek_tddi_touch_esd_gesture_iram(void)
 	if (ilitek_tddi_ic_func_ctrl("lpwg", 0x6) < 0)
 		ipio_err("write resume loader error");
 
-	/* Set it back after gesture was recovered. */
-	idev->skip_wake = false;
 	return ret;
 }
 
