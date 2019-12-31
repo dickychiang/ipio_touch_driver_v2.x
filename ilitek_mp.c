@@ -1066,9 +1066,9 @@ static void mp_print_csv_header(char *csv, int *csv_len, int *csv_line, int file
 	tmp_len += snprintf(csv + tmp_len, (file_size - tmp_len), "Firmware Version ,0x%x\n", core_mp.fw_ver);
 	tmp_line++;
 	tmp_len += snprintf(csv + tmp_len, (file_size - tmp_len), "Panel information ,XCH=%d, YCH=%d\n", core_mp.xch_len, core_mp.ych_len);
-	tmp_len += snprintf(csv + tmp_len, (file_size - tmp_len), "INI Release Version ,%s\n", core_mp.ini_date);
+	tmp_len += snprintf(csv + tmp_len, (file_size - tmp_len), "INI Release Version ,%s\n", core_mp.ini_ver);
 	tmp_line++;
-	tmp_len += snprintf(csv + tmp_len, (file_size - tmp_len), "INI Release Date ,%s\n", core_mp.ini_ver);
+	tmp_len += snprintf(csv + tmp_len, (file_size - tmp_len), "INI Release Date ,%s\n", core_mp.ini_date);
 	tmp_line++;
 	tmp_line++;
 	tmp_len += snprintf(csv + tmp_len, (file_size - tmp_len), "Test Item:\n");
@@ -2178,7 +2178,7 @@ static int mutual_test(int index)
 
 	if (tItems[index].spec_option == BENCHMARK) {
 		parser_ini_benchmark(tItems[index].bench_mark_max, tItems[index].bench_mark_min,
-								tItems[index].type_option, tItems[index].desp, core_mp.frame_len);
+			tItems[index].type_option, tItems[index].desp, core_mp.frame_len);
 		dump_benchmark_data(tItems[index].bench_mark_max, tItems[index].bench_mark_min);
 	}
 
@@ -2290,7 +2290,7 @@ static int open_test_sp(int index)
 
 	if (tItems[index].spec_option == BENCHMARK) {
 		parser_ini_benchmark(tItems[index].bench_mark_max, tItems[index].bench_mark_min,
-							tItems[index].type_option, tItems[index].desp, core_mp.frame_len);
+			tItems[index].type_option, tItems[index].desp, core_mp.frame_len);
 		dump_benchmark_data(tItems[index].bench_mark_max, tItems[index].bench_mark_min);
 	}
 
