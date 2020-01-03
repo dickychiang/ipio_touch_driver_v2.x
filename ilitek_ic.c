@@ -705,10 +705,16 @@ void ilitek_tddi_ic_get_pc_counter(int stat)
 	ipio_err("read counter (addr: 0x%x) = 0x%x, latch (addr: 0x%x) = 0x%x\n",
 		pc_addr, idev->fw_pc, latch_addr, idev->fw_latch);
 
-	/* To aovid screen abnormal, it won't exit ice mode when spi recovery occured.*/
-	if (!ice && stat != DO_SPI_RECOVER)
+	/* Avoid screen abnormal. */
+	if (stat == DO_SPI_RECOVER) {
+		atomic_set(&idev->ice_stat, DISABLE);
+		return;
+	}
+
+	if (!ice) {
 		if (ilitek_ice_mode_ctrl(DISABLE, OFF) < 0)
 			ipio_err("Disable ice mode failed while reading pc counter\n");
+	}
 }
 
 int ilitek_tddi_ic_check_int_stat(void)
@@ -897,6 +903,10 @@ int ilitek_tddi_ic_get_fw_ver(void)
 		buf[2] = idev->fw_info[49];
 		buf[3] = idev->fw_info[50];
 		buf[4] = idev->fw_info[51];
+		buf[5] = idev->fw_mp_ver[0];
+		buf[6] = idev->fw_mp_ver[1];
+		buf[7] = idev->fw_mp_ver[2];
+		buf[8] = idev->fw_mp_ver[3];
 		goto out;
 	}
 
@@ -928,7 +938,9 @@ int ilitek_tddi_ic_get_fw_ver(void)
 
 out:
 	ipio_info("Firmware version = %d.%d.%d.%d\n", buf[1], buf[2], buf[3], buf[4]);
+	ipio_info("Firmware MP version = %d.%d.%d.%d\n", buf[5], buf[6], buf[7], buf[8]);
 	idev->chip->fw_ver = buf[1] << 24 | buf[2] << 16 | buf[3] << 8 | buf[4];
+	idev->chip->fw_mp_ver = buf[5] << 24 | buf[6] << 16 | buf[7] << 8 | buf[8];
 	return ret;
 }
 

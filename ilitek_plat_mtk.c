@@ -377,6 +377,7 @@ static int ilitek_plat_probe(void)
 	}
 	ilitek_plat_irq_register(idev->irq_tirgger_type);
 	tpd_load_status = 1;
+	ipio_info("ILITEK Driver loaded successfully!");
 	return 0;
 }
 

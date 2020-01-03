@@ -584,14 +584,14 @@ int ilitek_tddi_touch_esd_gesture_iram(void)
 		ipio_info("Enter gesture successfully\n");
 	}
 
+	if (ilitek_ice_mode_ctrl(DISABLE, ON) < 0)
+		ipio_err("Disable ice mode failed during gesture recovery\n");
+
 	/* Load gesture code */
 	idev->actual_tp_mode = P5_X_FW_GESTURE_MODE;
 	ilitek_set_tp_data_len(idev->gesture_mode, false);
 	if (ilitek_tddi_fw_upgrade_handler(NULL) < 0)
 		ipio_err("FW upgrade failed during gesture recovery\n");
-
-	if (ilitek_ice_mode_ctrl(DISABLE, ON) < 0)
-		ipio_err("Disable ice mode failed during gesture recovery\n");
 
 	/* Resume gesture loader */
 	if (ilitek_tddi_ic_func_ctrl("lpwg", 0x6) < 0)

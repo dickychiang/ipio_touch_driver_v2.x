@@ -379,6 +379,7 @@ enum TP_IC_TYPE {
 #define RESERVE_BLOCK_START_ADDR		0x1D000
 #define RESERVE_BLOCK_END_ADDR			0x1DFFF
 #define INFO_HEX_ST_ADDR			0x4F
+#define INFO_MP_HEX_ADDR			0x1F
 #define FW_BLOCK_INFO_NUM			7
 #define SPI_UPGRADE_LEN				2048
 
@@ -715,6 +716,7 @@ struct ilitek_tddi_dev {
 	int fw_update_stat;
 	int fw_open;
 	u8  fw_info[75];
+	u8  fw_mp_ver[4];
 	bool wq_ctrl;
 	bool wq_esd_ctrl;
 	bool wq_bat_ctrl;
@@ -856,6 +858,7 @@ struct ilitek_ic_info {
 	u32 otp_id;
 	u32 ana_id;
 	u32 fw_ver;
+	u32 fw_mp_ver;
 	u32 core_ver;
 	u32 max_count;
 	u32 reset_key;

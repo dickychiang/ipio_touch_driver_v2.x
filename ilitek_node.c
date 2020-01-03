@@ -681,8 +681,6 @@ out:
 
 static ssize_t ilitek_proc_debug_switch_read(struct file *pFile, char __user *buff, size_t size, loff_t *pos)
 {
-	bool open;
-
 	if (*pos != 0)
 		return 0;
 
@@ -690,9 +688,9 @@ static ssize_t ilitek_proc_debug_switch_read(struct file *pFile, char __user *bu
 
 	mutex_lock(&idev->debug_mutex);
 
-	open = !idev->dnp;
+	idev->dnp = !idev->dnp;
 
-	ilitek_debug_node_buff_control(open);
+	ilitek_debug_node_buff_control(idev->dnp);
 
 	size = snprintf(g_user_buf, USER_STR_BUFF * sizeof(unsigned char), "dnp : %s\n", idev->dnp ? "Enable" : "Disable");
 	*pos = size;
@@ -719,6 +717,11 @@ static ssize_t ilitek_proc_debug_message_read(struct file *filp, char __user *bu
 	unsigned char tmpbufback[128] = {0};
 
 	if (filp->f_flags & O_NONBLOCK) {
+		return -EAGAIN;
+	}
+
+	if (!idev->dnp) {
+		ipio_err("Debug flag isn't enabled (%d)\n", idev->dnp);
 		return -EAGAIN;
 	}
 
@@ -1043,6 +1046,9 @@ static ssize_t ilitek_node_ver_info_read(struct file *filp, char __user *buff, s
 	len += snprintf(g_user_buf + len, USER_STR_BUFF - len, "FW version = %d.%d.%d.%d\n",
 			idev->chip->fw_ver >> 24, (idev->chip->fw_ver >> 16) & 0xFF,
 			(idev->chip->fw_ver >> 8) & 0xFF, idev->chip->fw_ver & 0xFF);
+	len += snprintf(g_user_buf + len, USER_STR_BUFF - len, "FW MP version = %d.%d.%d.%d\n",
+			idev->chip->fw_mp_ver >> 24, (idev->chip->fw_mp_ver >> 16) & 0xFF,
+			(idev->chip->fw_mp_ver >> 8) & 0xFF, idev->chip->fw_mp_ver & 0xFF);
 	len += snprintf(g_user_buf + len, USER_STR_BUFF - len, "Core version = %d.%d.%d\n",
 			idev->chip->core_ver >> 16, (idev->chip->core_ver >> 8) & 0xFF,
 			idev->chip->core_ver & 0xFF);

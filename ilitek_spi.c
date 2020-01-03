@@ -471,7 +471,7 @@ static int core_spi_ice_mode_write(u8 *data, int len)
 	u8 wakeup[10] = {0x82, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3, 0xA3};
 
 	/* if system is suspended, wake up our spi pll clock before communication. */
-	if (idev->tp_suspend && idev->gesture) {
+	if (idev->tp_suspend && (idev->actual_tp_mode == P5_X_FW_GESTURE_MODE)) {
 		ipio_info("write dummy to wake up spi pll clk\n");
 		if (idev->spi_write_then_read(idev->spi, wakeup, sizeof(wakeup), NULL, 0) < 0) {
 			ipio_err("spi write wake up cmd failed\n");

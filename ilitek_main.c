@@ -583,7 +583,7 @@ int ilitek_set_tp_data_len(int format, bool send)
 void ilitek_tddi_report_handler(void)
 {
 	int ret = 0, pid = 0;
-	u8 checksum = 0;
+	u8 checksum = 0, pack_checksum;
 	u8 *trdata = NULL;
 	int rlen = 0;
 	int tmp = ipio_debug_level;
@@ -653,21 +653,22 @@ void ilitek_tddi_report_handler(void)
 	ilitek_dump_data(idev->tr_buf, 8, rlen, 0, "finger report");
 
 	checksum = ilitek_calc_packet_checksum(idev->tr_buf, rlen - 1);
-
-	trdata = idev->tr_buf;
-	pid = trdata[0];
+	pack_checksum = idev->tr_buf[rlen-1];
+	pid = idev->tr_buf[0];
 	ipio_debug("Packet ID = %x\n", pid);
 
-	if ((checksum != trdata[rlen-1]) && pid != P5_X_I2CUART_PACKET_ID) {
-		ipio_err("Wrong checksum, checksum = %x, buf = %x, len = %d\n", checksum, trdata[rlen-1], rlen);
+	if (checksum != pack_checksum && pid != P5_X_I2CUART_PACKET_ID) {
+		ipio_err("Checksum Error (0x%X)! Pack = 0x%X, len = %d\n", checksum, pack_checksum, rlen);
 		ipio_debug_level = DEBUG_ALL;
 		ilitek_dump_data(trdata, 8, rlen, 0, "finger report with wrong");
 		ipio_debug_level = tmp;
 		goto out;
 	}
 
-	if (pid == P5_X_INFO_HEADER_PACKET_ID)
+	if (pid == P5_X_INFO_HEADER_PACKET_ID) {
 		trdata = idev->tr_buf + P5_X_INFO_HEADER_LENGTH;
+		pid = trdata[0];
+	}
 
 	switch (pid) {
 	case P5_X_DEMO_PACKET_ID:

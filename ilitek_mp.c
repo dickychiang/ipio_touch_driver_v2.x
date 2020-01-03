@@ -818,7 +818,7 @@ static int ilitek_tddi_mp_ini_parser(const char *path)
 
 	f = filp_open(path, O_RDONLY, 644);
 	if (ERR_ALLOC_MEM(f)) {
-		ipio_err("Failed to open ini file at %ld, trying to request\n", PTR_ERR(f));
+		ipio_err("Failed to open ini file at %ld, try to request_firmware\n", PTR_ERR(f));
 		f = NULL;
 		path = idev->md_ini_rq_path;
 		ipio_info("request path = %s\n", path);
@@ -853,11 +853,15 @@ static int ilitek_tddi_mp_ini_parser(const char *path)
 		goto out;
 	}
 
-	old_fs = get_fs();
-	set_fs(get_ds());
-	vfs_read(f, tmp, fsize, &pos);
-	set_fs(old_fs);
-	tmp[fsize] = 0x00;
+	if (f != NULL) {
+		old_fs = get_fs();
+		set_fs(get_ds());
+		vfs_read(f, tmp, fsize, &pos);
+		set_fs(old_fs);
+		tmp[fsize] = 0x0;
+	} else {
+		memcpy(tmp, ini->data, fsize);
+	}
 
 	g_ini_items = 0;
 
@@ -884,7 +888,12 @@ static int ilitek_tddi_mp_ini_parser(const char *path)
 	ipio_info("Parsed ini file done\n");
 out:
 	ipio_vfree((void **)&tmp);
-	filp_close(f, NULL);
+
+	if (f != NULL)
+		filp_close(f, NULL);
+	else
+		release_firmware(ini);
+
 	return ret;
 }
 

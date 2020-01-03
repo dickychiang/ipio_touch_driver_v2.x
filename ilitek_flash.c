@@ -923,7 +923,7 @@ static int ilitek_fw_calc_file_crc(u8 *pfw)
 
 static void ilitek_tddi_fw_update_block_info(u8 *pfw)
 {
-	u32 fw_info_addr = 0;
+	u32 fw_info_addr = 0, fw_mp_ver_addr = 0;
 
 	fbi[AP].name = "AP";
 	fbi[DATA].name = "DATA";
@@ -947,6 +947,11 @@ static void ilitek_tddi_fw_update_block_info(u8 *pfw)
 	/* Get hex fw vers */
 	tfd.new_fw_cb = (idev->fw_info[48] << 24) | (idev->fw_info[49] << 16) |
 			(idev->fw_info[50] << 8) | idev->fw_info[51];
+
+	/* copy fw mp ver */
+	fw_mp_ver_addr = fbi[MP].end - INFO_MP_HEX_ADDR;
+	ipio_info("Parsing hex mp ver addr = 0x%x\n", fw_mp_ver_addr);
+	ipio_memcpy(idev->fw_mp_ver, pfw + fw_mp_ver_addr, sizeof(idev->fw_mp_ver), sizeof(idev->fw_mp_ver));
 
 	/* Calculate update address */
 	ipio_info("New FW ver = 0x%x\n", tfd.new_fw_cb);

@@ -410,7 +410,7 @@ static void ilitek_tddi_fw_update_block_info(u8 *pfw)
 {
 	u32 ges_area_section, ges_info_addr, ges_fw_start, ges_fw_end;
 	u32 ap_end, ap_len = 0;
-	u32 fw_info_addr = 0;
+	u32 fw_info_addr = 0, fw_mp_ver_addr = 0;
 
 	ipio_info("Tag = %x\n", tfd.hex_tag);
 
@@ -492,6 +492,11 @@ static void ilitek_tddi_fw_update_block_info(u8 *pfw)
 	fw_info_addr = fbi[AP].end - INFO_HEX_ST_ADDR;
 	ipio_info("Parsing hex info start addr = 0x%x\n", fw_info_addr);
 	ipio_memcpy(idev->fw_info, pfw + fw_info_addr, sizeof(idev->fw_info), sizeof(idev->fw_info));
+
+	/* copy fw mp ver */
+	fw_mp_ver_addr = fbi[MP].end - INFO_MP_HEX_ADDR;
+	ipio_info("Parsing hex mp ver addr = 0x%x\n", fw_mp_ver_addr);
+	ipio_memcpy(idev->fw_mp_ver, pfw + fw_mp_ver_addr, sizeof(idev->fw_mp_ver), sizeof(idev->fw_mp_ver));
 
 	idev->trans_xy = (idev->chip->core_ver >= CORE_VER_1430) ? idev->fw_info[0] : OFF;
 	ipio_info("Transfer touch coordinate = %s\n", idev->trans_xy ? "ON" : "OFF");
