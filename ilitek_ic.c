@@ -826,7 +826,7 @@ int ilitek_tddi_ic_get_project_id(u8 *pdata, int size)
 
 int ilitek_tddi_ic_get_core_ver(void)
 {
-	int ret = 0;
+	int i, ret = 0, len = 0;
 	u8 cmd[2] = {0};
 	u8 buf[10] = {0};
 
@@ -834,38 +834,47 @@ int ilitek_tddi_ic_get_core_ver(void)
 		buf[1] = idev->fw_info[68];
 		buf[2] = idev->fw_info[69];
 		buf[3] = idev->fw_info[70];
+		buf[4] = idev->fw_info[71];
 		goto out;
 	}
 
-	cmd[0] = P5_X_READ_DATA_CTRL;
-	cmd[1] = P5_X_GET_CORE_VERSION;
+	for (i = 0; i < 2; i++) {
+		if (i == 0) {
+			cmd[0] = P5_X_READ_DATA_CTRL;
+			cmd[1] = P5_X_GET_CORE_VERSION;
+			len = idev->protocol->core_ver_len;
+		} else {
+			cmd[0] = P5_X_READ_DATA_CTRL;
+			cmd[1] = P5_X_GET_CORE_VERSION_NEW;
+			len = idev->protocol->core_ver_len + 1;
+		}
 
-	if (idev->write(cmd, sizeof(cmd)) < 0) {
-		ipio_err("write core ver err\n");
-		ret = -1;
-		goto out;
+		memset(buf, 0, sizeof(buf));
+
+		if (idev->write(cmd, sizeof(cmd)) < 0)
+			ipio_err("write core ver err\n");
+
+		if (idev->write(&cmd[1], sizeof(u8)) < 0)
+			ipio_err("write core ver err\n");
+
+		if (idev->read(buf, len) < 0)
+			ipio_err("i2c/spi read core ver err\n");
+
+		if (buf[0] == P5_X_GET_CORE_VERSION ||
+			buf[0] == P5_X_GET_CORE_VERSION_NEW)
+			break;
 	}
 
-	if (idev->write(&cmd[1], sizeof(u8)) < 0) {
-		ipio_err("write core ver err\n");
-		ret = -1;
-		goto out;
-	}
-
-	if (idev->read(buf, idev->protocol->core_ver_len) < 0) {
-		ipio_err("i2c/spi read core ver err\n");
-		ret = -1;
-		goto out;
-	}
-
-	if (buf[0] != P5_X_GET_CORE_VERSION) {
-		ipio_err("Invalid core ver\n");
-		ret = -1;
+	if (i == 0) {
+		buf[4] = 0;
+	} else if (i >= 2) {
+		ipio_err("Invalid header (0x%x)\n", buf[0]);
+		ret = -EINVAL;
 	}
 
 out:
-	ipio_info("Core version = %d.%d.%d\n", buf[1], buf[2], buf[3]);
-	idev->chip->core_ver = buf[1] << 16 | buf[2] << 8 | buf[3];
+	ipio_info("Core version = %d.%d.%d.%d\n", buf[1], buf[2], buf[3], buf[4]);
+	idev->chip->core_ver = buf[1] << 24 | buf[2] << 16 | buf[3] << 8 | buf[4];
 	return ret;
 }
 

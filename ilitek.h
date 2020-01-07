@@ -360,9 +360,9 @@ enum TP_IC_TYPE {
 #define TPD_WIDTH				2048
 
 /* Firmware upgrade */
-#define CORE_VER_1410				0x010401
-#define CORE_VER_1420				0x010402
-#define CORE_VER_1430				0x010403
+#define CORE_VER_1410				0x01040100
+#define CORE_VER_1420				0x01040200
+#define CORE_VER_1430				0x01040300
 #define MAX_HEX_FILE_SIZE			(160*K)
 #define MAX_FLASH_FIRMWARE_SIZE			(256*K)
 #define MAX_IRAM_FIRMWARE_SIZE			(60*K)
@@ -600,6 +600,7 @@ enum TP_IC_TYPE {
 #define P5_X_GET_FW_VERSION				0x21
 #define P5_X_GET_PROTOCOL_VERSION			0x22
 #define P5_X_GET_CORE_VERSION				0x23
+#define P5_X_GET_CORE_VERSION_NEW			0x24
 #define P5_X_MODE_CONTROL				0xF0
 #define P5_X_SET_CDC_INIT				0xF1
 #define P5_X_GET_CDC_DATA				0xF2
