@@ -135,6 +135,12 @@ int ilitek_spi_write_then_read_direct(struct spi_device *spi,
 	struct spi_message	message;
 	struct spi_transfer	xfer;
 
+	if ((n_tx > SPI_TX_BUF_SIZE) || (n_rx > SPI_RX_BUF_SIZE)) {
+		ipio_err("Tx/Rx length is over than dma buf, abort\n");
+		status = -ENOMEM;
+		goto out;
+	}
+
 	spi_message_init(&message);
 	memset(&xfer, 0, sizeof(xfer));
 
@@ -179,6 +185,7 @@ int ilitek_spi_write_then_read_direct(struct spi_device *spi,
 		break;
 	}
 
+out:
 	if (status != 0)
 		ipio_err("spi transfer failed\n");
 

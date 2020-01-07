@@ -721,10 +721,11 @@ int ilitek_tddi_ic_check_int_stat(void)
 {
 	/* From FW request, timeout should at least be 3 sec */
 	if (!wait_event_interruptible_timeout(idev->inq, !atomic_read(&idev->mp_int_check), msecs_to_jiffies(3000))) {
-		ipio_err("Error! Interrupt for MP isn't received\n");
+		ipio_err("Error! MP INT no detected.\n");
 		atomic_set(&idev->mp_int_check, DISABLE);
 		return -1;
 	}
+	ipio_debug("MP INT detected.\n");
 	return 0;
 }
 

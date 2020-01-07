@@ -80,7 +80,6 @@ static int core_i2c_write(void *buf, int len)
 	}
 #endif
 
-
 	/*
 	 * NOTE: If TP driver is doing MP test and commanding 0xF1 to FW, we add a checksum
 	 * to the last index and plus 1 with size.

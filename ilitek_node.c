@@ -1857,12 +1857,17 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 		break;
 	case ILITEK_IOCTL_TP_FW_VER:
 		ipio_debug("ioctl: get fw version\n");
-
+		szBuf[7] = idev->chip->fw_mp_ver & 0xFF;
+		szBuf[6] = (idev->chip->fw_mp_ver >> 8) & 0xFF;
+		szBuf[5] = (idev->chip->fw_mp_ver >> 16) & 0xFF;
+		szBuf[4] = idev->chip->fw_mp_ver >> 24;
+		szBuf[3] = idev->chip->fw_ver & 0xFF;
 		szBuf[3] = idev->chip->fw_ver & 0xFF;
 		szBuf[2] = (idev->chip->fw_ver >> 8) & 0xFF;
 		szBuf[1] = (idev->chip->fw_ver >> 16) & 0xFF;
 		szBuf[0] = idev->chip->fw_ver >> 24;
 		ipio_debug("Firmware version = %d.%d.%d.%d\n", szBuf[0], szBuf[1], szBuf[2], szBuf[3]);
+		ipio_debug("Firmware MP version = %d.%d.%d.%d\n", szBuf[4], szBuf[5], szBuf[6], szBuf[7]);
 
 		if (copy_to_user((u8 *) arg, szBuf, 4)) {
 			ipio_err("Failed to copy data to user space\n");

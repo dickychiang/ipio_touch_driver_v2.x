@@ -654,6 +654,7 @@ void ilitek_tddi_report_handler(void)
 
 	checksum = ilitek_calc_packet_checksum(idev->tr_buf, rlen - 1);
 	pack_checksum = idev->tr_buf[rlen-1];
+	trdata = idev->tr_buf;
 	pid = idev->tr_buf[0];
 	ipio_debug("Packet ID = %x\n", pid);
 
@@ -882,9 +883,10 @@ int ilitek_tddi_init(void)
 	ilitek_tddi_wq_init();
 
 	/* Must do hw reset once in first time for work normally if tp reset is avaliable */
-	if (!TDDI_RST_BIND)
-		if (ilitek_tddi_reset_ctrl(idev->reset) < 0)
-			ipio_err("TP Reset failed during init\n");
+#if !TDDI_RST_BIND
+	if (ilitek_tddi_reset_ctrl(idev->reset) < 0)
+		ipio_err("TP Reset failed during init\n");
+#endif
 
 	idev->do_otp_check = ENABLE;
 	idev->demo_debug_info[0] = demo_debug_info_id0;
