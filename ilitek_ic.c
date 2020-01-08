@@ -841,12 +841,12 @@ int ilitek_tddi_ic_get_core_ver(void)
 	for (i = 0; i < 2; i++) {
 		if (i == 0) {
 			cmd[0] = P5_X_READ_DATA_CTRL;
-			cmd[1] = P5_X_GET_CORE_VERSION;
-			len = idev->protocol->core_ver_len;
-		} else {
-			cmd[0] = P5_X_READ_DATA_CTRL;
 			cmd[1] = P5_X_GET_CORE_VERSION_NEW;
 			len = idev->protocol->core_ver_len + 1;
+		} else {
+			cmd[0] = P5_X_READ_DATA_CTRL;
+			cmd[1] = P5_X_GET_CORE_VERSION;
+			len = idev->protocol->core_ver_len;
 		}
 
 		memset(buf, 0, sizeof(buf));
