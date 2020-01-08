@@ -826,7 +826,7 @@ int ilitek_tddi_ic_get_project_id(u8 *pdata, int size)
 
 int ilitek_tddi_ic_get_core_ver(void)
 {
-	int i, ret = 0, len = 0;
+	int i = 0, ret = 0, len = 0;
 	u8 cmd[2] = {0};
 	u8 buf[10] = {0};
 
@@ -838,7 +838,7 @@ int ilitek_tddi_ic_get_core_ver(void)
 		goto out;
 	}
 
-	for (i = 0; i < 2; i++) {
+	do {
 		if (i == 0) {
 			cmd[0] = P5_X_READ_DATA_CTRL;
 			cmd[1] = P5_X_GET_CORE_VERSION_NEW;
@@ -860,14 +860,17 @@ int ilitek_tddi_ic_get_core_ver(void)
 		if (idev->read(buf, len) < 0)
 			ipio_err("i2c/spi read core ver err\n");
 
+		ipio_debug("header = 0x%x\n", buf[0]);
+
 		if (buf[0] == P5_X_GET_CORE_VERSION ||
 			buf[0] == P5_X_GET_CORE_VERSION_NEW)
 			break;
-	}
+	} while (++i < 2);
 
-	if (i == 0) {
+	if (buf[0] == P5_X_GET_CORE_VERSION)
 		buf[4] = 0;
-	} else if (i >= 2) {
+
+	 if (i >= 2) {
 		ipio_err("Invalid header (0x%x)\n", buf[0]);
 		ret = -EINVAL;
 	}
