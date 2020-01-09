@@ -971,6 +971,7 @@ int ilitek_tddi_ic_get_panel_info(void)
 		buf[4] = idev->fw_info[19];
 		idev->panel_wid = buf[2] << 8 | buf[1];
 		idev->panel_hei = buf[4] << 8 | buf[3];
+		idev->trans_xy = (idev->chip->core_ver >= CORE_VER_1430) ? idev->fw_info[0] : OFF;
 		goto out;
 	}
 
@@ -993,11 +994,11 @@ int ilitek_tddi_ic_get_panel_info(void)
 		idev->panel_wid = buf[1] << 8 | buf[2];
 		idev->panel_hei = buf[3] << 8 | buf[4];
 		idev->trans_xy = (idev->chip->core_ver >= CORE_VER_1430) ? buf[5] : OFF;
-		ipio_info("Transfer touch coordinate = %s\n", idev->trans_xy ? "ON" : "OFF");
 	}
 
 out:
 	ipio_info("Panel info: width = %d, height = %d\n", idev->panel_wid, idev->panel_hei);
+	ipio_info("Transfer touch coordinate = %s\n", idev->trans_xy ? "ON" : "OFF");
 	return ret;
 }
 
@@ -1068,7 +1069,7 @@ static void ilitek_tddi_ic_check_protocol_ver(u32 pver)
 	int i = 0;
 
 	if (idev->protocol->ver == pver) {
-		ipio_info("same procotol version, do nothing\n");
+		ipio_debug("same procotol version, do nothing\n");
 		return;
 	}
 
@@ -1080,7 +1081,7 @@ static void ilitek_tddi_ic_check_protocol_ver(u32 pver)
 		}
 	}
 
-	ipio_info("Not found a correct protocol version in list, use newest version\n");
+	ipio_err("Not found a correct protocol version in list, use newest version\n");
 	idev->protocol = &protocol_info[PROTOCL_VER_NUM - 1];
 }
 

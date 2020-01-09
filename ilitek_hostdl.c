@@ -394,7 +394,7 @@ static int ilitek_fw_calc_file_crc(u8 *pfw)
 		ex_addr = fbi[i].end;
 		data_crc = CalculateCRC32(fbi[i].start, fbi[i].len - 4, pfw);
 		file_crc = pfw[ex_addr - 3] << 24 | pfw[ex_addr - 2] << 16 | pfw[ex_addr - 1] << 8 | pfw[ex_addr];
-		ipio_info("data crc = %x, file crc = %x\n", data_crc, file_crc);
+		ipio_debug("data crc = %x, file crc = %x\n", data_crc, file_crc);
 		if (data_crc != file_crc) {
 			ipio_err("Content of fw file is broken. (%d, %x, %x)\n",
 				i, data_crc, file_crc);
@@ -498,8 +498,10 @@ static void ilitek_tddi_fw_update_block_info(u8 *pfw)
 	ipio_info("Parsing hex mp ver addr = 0x%x\n", fw_mp_ver_addr);
 	ipio_memcpy(idev->fw_mp_ver, pfw + fw_mp_ver_addr, sizeof(idev->fw_mp_ver), sizeof(idev->fw_mp_ver));
 
-	idev->trans_xy = (idev->chip->core_ver >= CORE_VER_1430) ? idev->fw_info[0] : OFF;
-	ipio_info("Transfer touch coordinate = %s\n", idev->trans_xy ? "ON" : "OFF");
+	/* copy fw core ver */
+	idev->chip->core_ver = (idev->fw_info[68] << 24) | (idev->fw_info[69] << 16) |
+			(idev->fw_info[70] << 8) | idev->fw_info[71];
+	ipio_info("New FW Core version = %x\n", idev->chip->core_ver);
 
 	/* Get hex fw vers */
 	tfd.new_fw_cb = (idev->fw_info[48] << 24) | (idev->fw_info[49] << 16) |

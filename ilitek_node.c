@@ -1392,6 +1392,12 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 	} else if (strncmp(cmd, "icwholereset", strlen(cmd)) == 0) {
 		ilitek_ice_mode_ctrl(ENABLE, OFF);
 		ilitek_tddi_reset_ctrl(TP_IC_WHOLE_RST);
+	} else if (strncmp(cmd, "enableirq", strlen(cmd)) == 0) {
+		ipio_info("Enable IRQ\n");
+		ilitek_plat_irq_enable();
+	} else if (strncmp(cmd, "disableirq", strlen(cmd)) == 0) {
+		ipio_info("Disable IRQ\n");
+		ilitek_plat_irq_disable();
 	} else if (strncmp(cmd, "iccodereset", strlen(cmd)) == 0) {
 		ilitek_ice_mode_ctrl(ENABLE, OFF);
 		ilitek_tddi_reset_ctrl(TP_IC_CODE_RST);
