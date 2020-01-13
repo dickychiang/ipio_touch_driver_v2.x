@@ -3208,6 +3208,7 @@ static void mp_p2p_td_retry_after_ra_fail(int p2p_td)
 	if (tItems[i].item_result == MP_DATA_PASS && tItems[i].run == 1) {
 		core_mp.td_retry = true;
 		tItems[p2p_td].do_test(p2p_td);
+		core_mp.td_retry = false;
 	}
 }
 
