@@ -3215,7 +3215,6 @@ static void mp_test_run(int index)
 {
 	int i = index;
 	char str[512] = {0};
-	bool td_retry;
 
 	/* Get parameters from ini */
 	parser_get_int_data(tItems[i].desp, "spec option", str, sizeof(str));
@@ -3298,9 +3297,8 @@ static void mp_test_run(int index)
 	if (ipio_strcmp(tItems[i].desp, "peak to peak_td (lcm off)") == 0 &&
 		tItems[i].item_result == MP_DATA_FAIL) {
 		parser_get_int_data(tItems[i].desp, "recheck ptop lcm off", str, sizeof(str));
-		td_retry = katoi(str);
-		ipio_inf("Peak to Peak TD retry = %d\n", td_retry);
-		if (td_retry)
+		ipio_info("Peak to Peak TD retry = %d\n", katoi(str));
+		if (katoi(str))
 			mp_p2p_td_retry_after_ra_fail(i);
 	}
 
