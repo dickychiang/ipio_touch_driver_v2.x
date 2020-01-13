@@ -190,6 +190,7 @@ struct core_mp_test_data {
 	bool open_integ;
 	bool open_cap;
 	bool isLongV;
+	bool td_retry;
 
 	int cdc_len;
 	int xch_len;
@@ -1150,6 +1151,12 @@ static void mp_print_csv_cdc_cmd(char *csv, int *csv_len, int index, int file_si
 			ipio_err("Failed to get CDC command %s from ini\n", name);
 		else
 			tmp_len += snprintf(csv + tmp_len, (file_size - tmp_len), "CDC command = ,%s\n", str);
+
+		if (core_mp.td_retry && (ipio_strcmp(name, "peak to peak_td (lcm off)") == 0)) {
+			name = "peak to peak_td (lcm off)_2";
+			parser_get_int_data("pv5_4 command", name, str, sizeof(str));
+			tmp_len += snprintf(csv + tmp_len, (file_size - tmp_len), "CDC command 2 = ,%s\n", str);
+		}
 	}
 	*csv_len = tmp_len;
 }
@@ -1358,7 +1365,7 @@ static int codeToOhm(s32 Code, u16 *v_tdf, u16 *h_tdf)
 	int douTVCH = 24;
 	int douTVCL = 8;
 	int douCint = 7;
-	int douVariation = 64;
+	int douVariation = 100;
 	int douRinternal = 930;
 	s32 temp = 0;
 	u16 id = core_mp.chip_id;
@@ -1533,6 +1540,9 @@ static int mp_cdc_get_pv5_4_command(u8 *cmd, int len, int index)
 	int slen = 0;
 	char str[128] = {0};
 	char *key = tItems[index].desp;
+
+	if (core_mp.td_retry && (ipio_strcmp(key, "peak to peak_td (lcm off)") == 0))
+		key = "peak to peak_td (lcm off)_2";
 
 	slen = parser_get_int_data("pv5_4 command", key, str, sizeof(str));
 	if (slen < 0)
@@ -2735,7 +2745,7 @@ static void mp_compare_cdc_result(int index, s32 *tmp, s32 *max_ts, s32 *min_ts,
 	}
 }
 
-static int mp_comp_result_before_retry(int index)
+static int mp_compare_test_result(int index)
 {
 	int i, ret = 0, test_result = MP_DATA_PASS;
 	s32 *max_threshold = NULL, *min_threshold = NULL;
@@ -2830,7 +2840,7 @@ static void mp_do_retry(int index, int count)
 
 	tItems[index].do_test(index);
 
-	if (mp_comp_result_before_retry(index) < 0)
+	if (mp_compare_test_result(index) < 0)
 		return mp_do_retry(index, count - 1);
 }
 
@@ -3100,6 +3110,7 @@ static void ilitek_tddi_mp_init_item(void)
 	core_mp.tdf = 240;
 	core_mp.busy_cdc = INT_CHECK;
 	core_mp.retry = false;
+	core_mp.td_retry = false;
 	core_mp.final_result = MP_DATA_FAIL;
 	core_mp.lost_benchmark = false;
 
@@ -3179,10 +3190,32 @@ static void ilitek_tddi_mp_init_item(void)
 	}
 }
 
+static void mp_p2p_td_retry_after_ra_fail(int p2p_td)
+{
+	int i;
+
+	for (i = 0; i < MP_TEST_ITEM; i++) {
+		if (ipio_strcmp(tItems[i].desp, "noise peak to peak(with panel) (lcm off)") == 0)
+			break;
+	}
+
+	if (i >= MP_TEST_ITEM)
+		return;
+
+	ipio_debug("i = %d, p2p_noise_ret = %d, p2p_noise_run = %d\n",
+		i, tItems[i].item_result, tItems[i].run);
+
+	if (tItems[i].item_result == MP_DATA_PASS && tItems[i].run == 1) {
+		core_mp.td_retry = true;
+		tItems[p2p_td].do_test(p2p_td);
+	}
+}
+
 static void mp_test_run(int index)
 {
 	int i = index;
 	char str[512] = {0};
+	bool td_retry;
 
 	/* Get parameters from ini */
 	parser_get_int_data(tItems[i].desp, "spec option", str, sizeof(str));
@@ -3259,12 +3292,21 @@ static void mp_test_run(int index)
 	ipio_info("Run MP Test Item : %s\n", tItems[i].desp);
 	tItems[i].do_test(i);
 
-	/* Check result before do retry (if enabled)  */
-	if (mp_comp_result_before_retry(i) < 0) {
-		if (core_mp.retry) {
-			ipio_info("MP failed, doing retry\n");
-			mp_do_retry(i, RETRY_COUNT);
-		}
+	mp_compare_test_result(i);
+
+	/* P2P TD retry after RA sample failed. */
+	if (ipio_strcmp(tItems[i].desp, "peak to peak_td (lcm off)") == 0 &&
+		tItems[i].item_result == MP_DATA_FAIL) {
+		parser_get_int_data(tItems[i].desp, "recheck ptop lcm off", str, sizeof(str));
+		td_retry = katoi(str);
+		ipio_inf("Peak to Peak TD retry = %d\n", td_retry);
+		if (td_retry)
+			mp_p2p_td_retry_after_ra_fail(i);
+	}
+
+	if (core_mp.retry && tItems[i].item_result == MP_DATA_FAIL) {
+		ipio_info("MP failed, doing retry\n");
+		mp_do_retry(i, RETRY_COUNT);
 	}
 }
 
@@ -3275,6 +3317,7 @@ static void mp_test_free(void)
 	ipio_info("Free all allocated mem for MP\n");
 
 	core_mp.final_result = MP_DATA_FAIL;
+	core_mp.td_retry = false;
 
 	for (i = 0; i < MP_TEST_ITEM; i++) {
 		tItems[i].run = false;

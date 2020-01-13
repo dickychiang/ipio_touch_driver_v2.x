@@ -1402,7 +1402,7 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 		ilitek_ice_mode_ctrl(ENABLE, OFF);
 		ilitek_tddi_reset_ctrl(TP_IC_CODE_RST);
 		ilitek_ice_mode_ctrl(DISABLE, OFF);
-	} else if (strcmp(cmd, "infofromhex") == 0) {
+	} else if (strncmp(cmd, "infofromhex", strlen(cmd)) == 0) {
 		idev->info_from_hex = data[1];
 		ipio_info("info from hex = %d\n", data[1]);
 	} else if (strncmp(cmd, "getinfo", strlen(cmd)) == 0) {
@@ -1862,7 +1862,7 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 		idev->write(&szBuf[0], 3);
 		break;
 	case ILITEK_IOCTL_TP_FW_VER:
-		ipio_debug("ioctl: get fw version\n");
+		ipio_debug("ioctl: get fw and fw mp version\n");
 		szBuf[7] = idev->chip->fw_mp_ver & 0xFF;
 		szBuf[6] = (idev->chip->fw_mp_ver >> 8) & 0xFF;
 		szBuf[5] = (idev->chip->fw_mp_ver >> 16) & 0xFF;
