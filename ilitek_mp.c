@@ -1368,11 +1368,6 @@ static int codeToOhm(s32 Code, u16 *v_tdf, u16 *h_tdf)
 	int douVariation = 100;
 	int douRinternal = 930;
 	s32 temp = 0;
-	u16 id = core_mp.chip_id;
-	u8 type = core_mp.chip_type;
-
-	if (id == ILI7807_CHIP && type == ILI_Q)
-		douRinternal = 1500;
 
 	if (core_mp.isLongV) {
 		douTDF1 = *v_tdf;
@@ -3205,11 +3200,8 @@ static void mp_p2p_td_retry_after_ra_fail(int p2p_td)
 	ipio_debug("i = %d, p2p_noise_ret = %d, p2p_noise_run = %d\n",
 		i, tItems[i].item_result, tItems[i].run);
 
-	if (tItems[i].item_result == MP_DATA_PASS && tItems[i].run == 1) {
-		core_mp.td_retry = true;
+	if (tItems[i].item_result == MP_DATA_PASS && tItems[i].run == 1)
 		tItems[p2p_td].do_test(p2p_td);
-		core_mp.td_retry = false;
-	}
 }
 
 static void mp_test_run(int index)
@@ -3299,7 +3291,8 @@ static void mp_test_run(int index)
 		tItems[i].item_result == MP_DATA_FAIL) {
 		parser_get_int_data(tItems[i].desp, "recheck ptop lcm off", str, sizeof(str));
 		ipio_info("Peak to Peak TD retry = %d\n", katoi(str));
-		if (katoi(str))
+		core_mp.td_retry = katoi(str);
+		if (core_mp.td_retry)
 			mp_p2p_td_retry_after_ra_fail(i);
 	}
 

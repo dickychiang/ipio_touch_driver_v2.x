@@ -407,15 +407,15 @@ int ilitek_tddi_move_gesture_code_flash(int mode)
 	 * they must be called before gesture cmd reaches to FW.
 	 */
 
-	ipio_info("Switch to Gesture mode = %d\n",  idev->gesture_mode);
-	ret = ilitek_set_tp_data_len(idev->gesture_mode, true);
+	ipio_info("Gesture mode = %d\n", mode);
+	ret = ilitek_set_tp_data_len(mode, true);
 
 	return ret;
 }
 
 int ilitek_tddi_move_gesture_code_iram(int mode)
 {
-	int i;
+	int i, ret = 0;
 	int timeout = 10;
 	u8 cmd[3] = {0};
 
@@ -425,20 +425,24 @@ int ilitek_tddi_move_gesture_code_iram(int mode)
 	 */
 
 	if (!idev->gesture_load_code) {
-		ipio_info("Load gesture code by FW itself, mode = %d\n",  mode);
-		if (ilitek_set_tp_data_len(mode, true) < 0)
-			ipio_err("Failed to set tp data length\n");
-		return 0;
+		ipio_info("Gesture code loaded by firmware, mode = %d\n",  mode);
+		ret = ilitek_set_tp_data_len(mode, true);
+		goto out;
 	}
 
-	ipio_info("Load gesture code by driver\n");
+	ipio_info("Gesture code loaded by driver, mode = %d\n", mode);
 
-	if (ilitek_tddi_ic_func_ctrl("lpwg", 0x3) < 0)
+	ret = ilitek_tddi_ic_func_ctrl("lpwg", 0x3);
+	if (ret < 0) {
 		ipio_err("write gesture flag failed\n");
+		goto out;
+	}
 
-	ipio_info("Switch to Gesture mode = %d\n",  mode);
-	if (ilitek_set_tp_data_len(mode, true) < 0)
+	ret = ilitek_set_tp_data_len(mode, true);
+	if (ret < 0) {
 		ipio_err("Failed to set tp data length\n");
+		goto out;
+	}
 
 	for (i = 0; i < timeout; i++) {
 		/* Prepare Check Ready */
@@ -447,13 +451,20 @@ int ilitek_tddi_move_gesture_code_iram(int mode)
 		idev->write(cmd, 2);
 
 		/* Check ready for load code */
-		if (ilitek_tddi_ic_func_ctrl("lpwg", 0x5) < 0)
+		ret = ilitek_tddi_ic_func_ctrl("lpwg", 0x5);
+		if (ret < 0) {
 			ipio_err("write check load code error");
+			goto out;
+		}
 
-		if ((idev->read(cmd, 1)) < 0)
+		ret = idev->read(cmd, 1);
+		if (ret < 0) {
 			ipio_err("read gesture ready byte error\n");
+			goto out;
+		}
 
 		ipio_debug("gesture ready byte = 0x%x\n", cmd[0]);
+
 		if (cmd[0] == 0x91) {
 			ipio_info("Gesture check fw ready\n");
 			break;
@@ -465,14 +476,21 @@ int ilitek_tddi_move_gesture_code_iram(int mode)
 		return ilitek_tddi_gesture_recovery();
 	}
 
-	if (ilitek_tddi_fw_upgrade_handler(NULL) < 0)
+	ret = ilitek_tddi_fw_upgrade_handler(NULL);
+	if (ret < 0) {
 		ipio_err("FW upgrade failed during moving code\n");
+		goto out;
+	}
 
-	/* FW star run gestrue code cmd */
-	if (ilitek_tddi_ic_func_ctrl("lpwg", 0x6) < 0)
+	/* Resume gesture loader */
+	ret = ilitek_tddi_ic_func_ctrl("lpwg", 0x6)
+	if (ret < 0) {
 		ipio_err("write resume loader error");
+		goto out;
+	}
 
-	return 0;
+out:
+	return ret;
 }
 
 u8 ilitek_calc_packet_checksum(u8 *packet, int len)
@@ -491,46 +509,68 @@ int ilitek_tddi_touch_esd_gesture_flash(void)
 	int ret = 0, retry = 100;
 	u32 answer = 0;
 
-	if (ilitek_ice_mode_ctrl(ENABLE, OFF) < 0)
+	ret = ilitek_ice_mode_ctrl(ENABLE, OFF);
+	if (ret < 0) {
 		ipio_err("Enable ice mode failed during gesture recovery\n");
+		goto out;
+	}
 
 	ipio_info("ESD Gesture PWD Addr = 0x%X, PWD = 0x%X\n",
 		I2C_ESD_GESTURE_PWD_ADDR, ESD_GESTURE_PWD);
 
 	/* write a special password to inform FW go back into gesture mode */
-	if (ilitek_ice_mode_write(I2C_ESD_GESTURE_PWD_ADDR, ESD_GESTURE_PWD, 4) < 0)
+	ret = ilitek_ice_mode_write(I2C_ESD_GESTURE_PWD_ADDR, ESD_GESTURE_PWD, 4);
+	if (ret < 0) {
 		ipio_err("write password failed\n");
+		goto out;
+	}
 
 	/* HW reset gives effect to FW receives password successed */
 	idev->actual_tp_mode = P5_X_FW_AP_MODE;
-	if (ilitek_tddi_reset_ctrl(idev->reset) < 0)
+	ret = ilitek_tddi_reset_ctrl(idev->reset);
+	if (ret < 0) {
 		ipio_err("TP Reset failed during gesture recovery\n");
+		goto out;
+	}
 
-	if (ilitek_ice_mode_ctrl(ENABLE, ON) < 0)
+	ret = ilitek_ice_mode_ctrl(ENABLE, ON);
+	if (ret < 0) {
 		ipio_err("Enable ice mode failed during gesture recovery\n");
+		goto out;
+	}
 
 	/* polling another specific register to see if gesutre is enabled properly */
 	do {
-		if (ilitek_ice_mode_read(I2C_ESD_GESTURE_PWD_ADDR, &answer, sizeof(u32)) < 0)
+		ret = ilitek_ice_mode_read(I2C_ESD_GESTURE_PWD_ADDR, &answer, sizeof(u32));
+		if (ret < 0) {
 			ipio_err("Read gesture answer error\n");
+			goto out;
+		}
+
 		if (answer != I2C_ESD_GESTURE_RUN)
 			ipio_info("ret = 0x%X, answer = 0x%X\n", answer, I2C_ESD_GESTURE_RUN);
+
 		mdelay(1);
-		retry--;
-	} while (answer != I2C_ESD_GESTURE_RUN && retry > 0);
+	} while (answer != I2C_ESD_GESTURE_RUN && --retry > 0);
 
 	if (retry <= 0) {
 		ipio_err("Enter gesture failed\n");
 		ret = -1;
-	} else {
-		ipio_info("Enter gesture successfully\n");
+		goto out;
 	}
 
-	if (ilitek_ice_mode_ctrl(DISABLE, ON) < 0)
+	ipio_info("Enter gesture successfully\n");
+
+	ret = ilitek_ice_mode_ctrl(DISABLE, ON);
+	if (ret < 0) {
 		ipio_err("Disable ice mode failed during gesture recovery\n");
+		goto out;
+	}
 
 	idev->actual_tp_mode = P5_X_FW_GESTURE_MODE;
 	ilitek_set_tp_data_len(idev->gesture_mode, false);
+
+out:
 	return ret;
 }
 
@@ -540,8 +580,11 @@ int ilitek_tddi_touch_esd_gesture_iram(void)
 	u32 answer = 0;
 	u32 esd_ges_pwd_addr = 0x0;
 
-	if (ilitek_ice_mode_ctrl(ENABLE, OFF) < 0)
+	ret = ilitek_ice_mode_ctrl(ENABLE, OFF);
+	if (ret < 0) {
 		ipio_err("Enable ice mode failed during gesture recovery\n");
+		goto out;
+	}
 
 	if (idev->chip->core_ver >= CORE_VER_1420)
 		esd_ges_pwd_addr = I2C_ESD_GESTURE_PWD_ADDR;
@@ -552,51 +595,75 @@ int ilitek_tddi_touch_esd_gesture_iram(void)
 		esd_ges_pwd_addr, ESD_GESTURE_PWD);
 
 	/* write a special password to inform FW go back into gesture mode */
-	if (ilitek_ice_mode_write(esd_ges_pwd_addr, ESD_GESTURE_PWD, 4) < 0)
+	ret = ilitek_ice_mode_write(esd_ges_pwd_addr, ESD_GESTURE_PWD, 4);
+	if (ret < 0) {
 		ipio_err("write password failed\n");
+		goto out;
+	}
 
 	/* Host download gives effect to FW receives password successed */
 	idev->actual_tp_mode = P5_X_FW_AP_MODE;
-	if (ilitek_tddi_fw_upgrade_handler(NULL) < 0)
+	ret = ilitek_tddi_fw_upgrade_handler(NULL);
+	if (ret < 0) {
 		ipio_err("FW upgrade failed during gesture recovery\n");
+		goto out;
+	}
 
 	/* Wait for fw running code finished. */
 	if (idev->info_from_hex || (idev->chip->core_ver >= CORE_VER_1410))
 		msleep(50);
 
-	if (ilitek_ice_mode_ctrl(ENABLE, ON) < 0)
+	ret = ilitek_ice_mode_ctrl(ENABLE, ON);
+	if (ret < 0) {
 		ipio_err("Enable ice mode failed during gesture recovery\n");
+		goto out;
+	}
 
 	/* polling another specific register to see if gesutre is enabled properly */
 	do {
-		if (ilitek_ice_mode_read(esd_ges_pwd_addr, &answer, sizeof(u32)) < 0)
+		ret = ilitek_ice_mode_read(esd_ges_pwd_addr, &answer, sizeof(u32));
+		if (ret < 0) {
 			ipio_err("Read gesture answer error\n");
+			goto out;
+		}
 
 		if (answer != SPI_ESD_GESTURE_RUN)
 			ipio_info("ret = 0x%X, answer = 0x%X\n", answer, SPI_ESD_GESTURE_RUN);
+
 		mdelay(1);
 	} while (answer != SPI_ESD_GESTURE_RUN && --retry > 0);
 
 	if (retry <= 0) {
 		ipio_err("Enter gesture failed\n");
-		return -ETIME;
-	} else {
-		ipio_info("Enter gesture successfully\n");
+		ret = -1;
+		goto out;
 	}
 
-	if (ilitek_ice_mode_ctrl(DISABLE, ON) < 0)
+	ipio_info("Enter gesture successfully\n");
+
+	ret = ilitek_ice_mode_ctrl(DISABLE, ON);
+	if (ret < 0) {
 		ipio_err("Disable ice mode failed during gesture recovery\n");
+		goto out;
+	}
 
 	/* Load gesture code */
 	idev->actual_tp_mode = P5_X_FW_GESTURE_MODE;
 	ilitek_set_tp_data_len(idev->gesture_mode, false);
-	if (ilitek_tddi_fw_upgrade_handler(NULL) < 0)
-		ipio_err("FW upgrade failed during gesture recovery\n");
+	ret = ilitek_tddi_fw_upgrade_handler(NULL);
+	if (ret < 0) {
+		ipio_err("Failed to load code during gesture recovery\n");
+		goto out;
+	}
 
 	/* Resume gesture loader */
-	if (ilitek_tddi_ic_func_ctrl("lpwg", 0x6) < 0)
+	ret = ilitek_tddi_ic_func_ctrl("lpwg", 0x6)
+	if (ret < 0) {
 		ipio_err("write resume loader error");
+		goto out;
+	}
 
+out:
 	return ret;
 }
 

@@ -135,9 +135,7 @@ void ilitek_plat_regulator_power_on(bool status)
 	atomic_set(&idev->ice_stat, DISABLE);
 	mdelay(5);
 }
-#endif
 
-#if REGULATOR_POWER
 static void ilitek_plat_regulator_power_init(void)
 {
 	const char *vdd_name = "vdd";

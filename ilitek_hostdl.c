@@ -301,7 +301,7 @@ static int ilitek_tddi_fw_iram_program(u32 start, u8 *w_buf, u32 w_len, u32 spli
 
 static int ilitek_tddi_fw_iram_upgrade(u8 *pfw)
 {
-	int i, ret = UPDATE_PASS, size;
+	int i, ret = UPDATE_PASS;
 	u32 mode, crc, dma;
 	u8 *fw_ptr = NULL;
 
@@ -334,8 +334,7 @@ static int ilitek_tddi_fw_iram_upgrade(u8 *pfw)
 	}
 
 	/* Program data to iram acorrding to each block */
-	size = ARRAY_SIZE(fbi);
-	for (i = 0; i < size; i++) {
+	for (i = 0; i < FW_BLOCK_INFO_NUM; i++) {
 		if ((fbi[i].mode == mode) && (fbi[i].len != 0)) {
 			ipio_info("Download %s code from hex 0x%x to IRAM 0x%x, len = 0x%x\n",
 					fbi[i].name, fbi[i].start, fbi[i].mem_start, fbi[i].len);
@@ -720,7 +719,7 @@ static int ilitek_tdd_fw_hex_open(u8 op, u8 *pfw)
 		fsize = fw->size;
 		ipio_info("fsize = %d\n", fsize);
 		if (fsize <= 0) {
-			ipio_err("The size of file is zero\n");
+			ipio_err("The size of file is invaild\n");
 			release_firmware(fw);
 			ret = -1;
 			goto out;

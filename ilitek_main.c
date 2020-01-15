@@ -157,6 +157,7 @@ int ilitek_tddi_switch_tp_mode(u8 mode)
 
 		break;
 	case P5_X_FW_GESTURE_MODE:
+		ipio_info("Switch to Gesture mode\n");
 		ret = idev->gesture_move_code(idev->gesture_mode);
 		if (ret < 0)
 			ipio_err("Move gesture code failed\n");
@@ -194,9 +195,7 @@ int ilitek_tddi_gesture_recovery(void)
 		mutex_lock(&idev->touch_mutex);
 
 	ipio_info("Doing gesture recovery\n");
-	idev->force_fw_update = true;
 	ret = idev->ges_recover();
-	idev->force_fw_update = false;
 
 	if (!lock)
 		mutex_unlock(&idev->touch_mutex);
@@ -215,10 +214,8 @@ void ilitek_tddi_spi_recovery(void)
 		mutex_lock(&idev->touch_mutex);
 
 	ipio_info("Doing spi recovery\n");
-	idev->force_fw_update = true;
 	if (ilitek_tddi_fw_upgrade_handler(NULL) < 0)
 		ipio_err("FW upgrade failed\n");
-	idev->force_fw_update = false;
 
 	if (!lock)
 		mutex_unlock(&idev->touch_mutex);

@@ -1875,7 +1875,7 @@ static long ilitek_node_ioctl(struct file *filp, unsigned int cmd, unsigned long
 		ipio_debug("Firmware version = %d.%d.%d.%d\n", szBuf[0], szBuf[1], szBuf[2], szBuf[3]);
 		ipio_debug("Firmware MP version = %d.%d.%d.%d\n", szBuf[4], szBuf[5], szBuf[6], szBuf[7]);
 
-		if (copy_to_user((u8 *) arg, szBuf, 4)) {
+		if (copy_to_user((u8 *) arg, szBuf, 8)) {
 			ipio_err("Failed to copy data to user space\n");
 			ret = -ENOTTY;
 		}

@@ -19,27 +19,6 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
-/*
- * ILITEK Touch IC driver
- *
- * Copyright (C) 2011 ILI Technology Corporation.
- *
- * Author: Dicky Chiang <dicky_chiang@ilitek.com>
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
- */
 
 #include "ilitek.h"
 
@@ -1279,7 +1258,7 @@ int ilitek_tddi_fw_upgrade(int op)
 			ipio_err("Open hex file fail, try upgrade from ILI file\n");
 
 			/*
-			 * They might not be aware of a broken hex file if we recover
+			 * Users might not be aware of a broken hex file when recovering
 			 * fw from ILI file. We should force them to check
 			 * hex files they attempt to update via device node.
 			 */
@@ -1356,7 +1335,7 @@ struct flash_table {
 
 void ilitek_tddi_fw_read_flash_info(void)
 {
-	int i = 0, size;
+	int i = 0;
 	u8 buf[4] = {0};
 	u8 cmd = 0x9F;
 	u32 tmp = 0;
@@ -1376,8 +1355,8 @@ void ilitek_tddi_fw_read_flash_info(void)
 
 	if (ilitek_ice_mode_write(FLASH2_ADDR, cmd, 1) < 0)
 		ipio_err("Write 0x9F failed\n");
-	size = ARRAY_SIZE(buf);
-	for (i = 0; i < size; i++) {
+
+	for (i = 0; i < ARRAY_SIZE(buf); i++) {
 		if (ilitek_ice_mode_write(FLASH2_ADDR, 0xFF, 1) < 0)
 			ipio_err("Write dummy failed\n");
 
