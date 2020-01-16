@@ -448,7 +448,11 @@ int ilitek_tddi_move_gesture_code_iram(int mode)
 		/* Prepare Check Ready */
 		cmd[0] = P5_X_READ_DATA_CTRL;
 		cmd[1] = 0xA;
-		idev->write(cmd, 2);
+		ret = idev->write(cmd, 2);
+		if (ret < 0) {
+			ipio_err("Write 0xF6,0xA failed\n");
+			goto out;
+		}
 
 		/* Check ready for load code */
 		ret = ilitek_tddi_ic_func_ctrl("lpwg", 0x5);
@@ -483,7 +487,7 @@ int ilitek_tddi_move_gesture_code_iram(int mode)
 	}
 
 	/* Resume gesture loader */
-	ret = ilitek_tddi_ic_func_ctrl("lpwg", 0x6)
+	ret = ilitek_tddi_ic_func_ctrl("lpwg", 0x6);
 	if (ret < 0) {
 		ipio_err("write resume loader error");
 		goto out;
@@ -657,7 +661,7 @@ int ilitek_tddi_touch_esd_gesture_iram(void)
 	}
 
 	/* Resume gesture loader */
-	ret = ilitek_tddi_ic_func_ctrl("lpwg", 0x6)
+	ret = ilitek_tddi_ic_func_ctrl("lpwg", 0x6);
 	if (ret < 0) {
 		ipio_err("write resume loader error");
 		goto out;
@@ -995,7 +999,7 @@ void ilitek_tddi_report_gesture_mode(u8 *buf, int len)
 
 	gc->code = ges[1];
 	score = ges[36];
-	ipio_info("gesture code = 0x%x, score = %d\n", gc->code, score);
+	ipio_debug("gesture code = 0x%x, score = %d\n", gc->code, score);
 
 	/* Parsing gesture coordinate */
 	gc->pos_start.x = ((ges[4] & 0xF0) << 4) | ges[5];
@@ -1113,8 +1117,8 @@ void ilitek_tddi_report_gesture_mode(u8 *buf, int len)
 		gc->pos_4th.y   = gc->pos_4th.y * idev->panel_hei / TPD_HEIGHT;
 	}
 
-	ipio_info("Transfer = %d, Type = %d, clockwise = %d\n", transfer, gc->type, gc->clockwise);
-	ipio_info("Gesture Points: (%d, %d)(%d, %d)(%d, %d)(%d, %d)(%d, %d)(%d, %d)\n",
+	ipio_debug("Transfer = %d, Type = %d, clockwise = %d\n", transfer, gc->type, gc->clockwise);
+	ipio_debug("Gesture Points: (%d, %d)(%d, %d)(%d, %d)(%d, %d)(%d, %d)(%d, %d)\n",
 			gc->pos_start.x, gc->pos_start.y,
 			gc->pos_end.x, gc->pos_end.y,
 			gc->pos_1st.x, gc->pos_1st.y,

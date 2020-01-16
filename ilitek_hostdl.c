@@ -336,7 +336,7 @@ static int ilitek_tddi_fw_iram_upgrade(u8 *pfw)
 	/* Program data to iram acorrding to each block */
 	for (i = 0; i < FW_BLOCK_INFO_NUM; i++) {
 		if ((fbi[i].mode == mode) && (fbi[i].len != 0)) {
-			ipio_info("Download %s code from hex 0x%x to IRAM 0x%x, len = 0x%x\n",
+			ipio_debug("Download %s code from hex 0x%x to IRAM 0x%x, len = 0x%x\n",
 					fbi[i].name, fbi[i].start, fbi[i].mem_start, fbi[i].len);
 
 #if SPI_DMA_TRANSFER_SPLIT

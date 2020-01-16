@@ -145,7 +145,7 @@ int ilitek_tddi_switch_tp_mode(u8 mode)
 
 	switch (idev->actual_tp_mode) {
 	case P5_X_FW_AP_MODE:
-		ipio_info("Switch to AP mode\n");
+		ipio_debug("Switch to AP mode\n");
 		if (idev->fw_upgrade_mode == UPGRADE_IRAM) {
 			if (ilitek_tddi_fw_upgrade_handler(NULL) < 0)
 				ipio_err("FW upgrade failed\n");
@@ -157,7 +157,7 @@ int ilitek_tddi_switch_tp_mode(u8 mode)
 
 		break;
 	case P5_X_FW_GESTURE_MODE:
-		ipio_info("Switch to Gesture mode\n");
+		ipio_debug("Switch to Gesture mode\n");
 		ret = idev->gesture_move_code(idev->gesture_mode);
 		if (ret < 0)
 			ipio_err("Move gesture code failed\n");
@@ -167,7 +167,7 @@ int ilitek_tddi_switch_tp_mode(u8 mode)
 		}
 		break;
 	case P5_X_FW_TEST_MODE:
-		ipio_info("Switch to Test mode\n");
+		ipio_debug("Switch to Test mode\n");
 		ret = idev->mp_move_code();
 		break;
 	default:
@@ -381,7 +381,7 @@ int ilitek_tddi_sleep_handler(int mode)
 	ilitek_tddi_wq_ctrl(WQ_BAT, DISABLE);
 	ilitek_plat_irq_disable();
 
-	ipio_info("Sleep Mode = %d\n", mode);
+	ipio_debug("Sleep Mode = %d\n", mode);
 
 	if (idev->ss_ctrl)
 		sense_stop = true;
@@ -552,7 +552,7 @@ int ilitek_set_tp_data_len(int format, bool send)
 
 	idev->tp_data_format = format;
 	idev->tp_data_len = len;
-	ipio_info("TP mode = %d, format = %d, len = %d\n",
+	ipio_debug("TP mode = %d, format = %d, len = %d\n",
 		tp_mode, idev->tp_data_format, idev->tp_data_len);
 
 	if (send) {

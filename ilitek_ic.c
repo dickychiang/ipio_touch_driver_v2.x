@@ -328,7 +328,7 @@ int ilitek_tddi_ic_watch_dog_ctrl(bool write, bool enable)
 		return ret;
 	}
 
-	ipio_info("%s WDT, key = %x\n", (enable ? "Enable" : "Disable"), idev->chip->wtd_key);
+	ipio_debug("%s WDT, key = %x\n", (enable ? "Enable" : "Disable"), idev->chip->wtd_key);
 
 	if (enable) {
 		if (ilitek_ice_mode_write(idev->chip->wdt_addr, 1, 1) < 0)
@@ -415,7 +415,7 @@ int ilitek_tddi_ic_func_ctrl(const char *name, int ctrl)
 
 	func_ctrl[i].cmd[2] = ctrl;
 
-	ipio_info("func = %s, len = %d, cmd = 0x%x, 0%x, 0x%x\n", func_ctrl[i].name, func_ctrl[i].len,
+	ipio_debug("func = %s, len = %d, cmd = 0x%x, 0%x, 0x%x\n", func_ctrl[i].name, func_ctrl[i].len,
 		func_ctrl[i].cmd[0], func_ctrl[i].cmd[1], func_ctrl[i].cmd[2]);
 
 	ret = idev->write(func_ctrl[i].cmd, func_ctrl[i].len);
@@ -648,13 +648,13 @@ void ilitek_tddi_ic_check_otp_prog_mode(void)
 		if (ilitek_ice_mode_read(0x43008, &prog_mode, sizeof(u8)) < 0)
 			ipio_err("Read prog_mode error\n");
 
-		ipio_info("otp prog_mode = 0x%x, prog_done = 0x%x\n", prog_mode, prog_done);
+		ipio_debug("otp prog_mode = 0x%x, prog_done = 0x%x\n", prog_mode, prog_done);
 		if (prog_done == 0x0 && prog_mode == 0x80)
 			break;
 	} while (--retry > 0);
 
 	if (retry <= 0)
-		ipio_err("OTP Program mode error!\n");
+		ipio_err("OTP Program mode error! (%x, %x)\n", prog_mode, prog_done);
 }
 
 void ilitek_tddi_ic_spi_speed_ctrl(bool enable)

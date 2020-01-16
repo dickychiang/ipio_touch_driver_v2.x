@@ -1372,8 +1372,7 @@ void ilitek_tddi_fw_read_flash_info(void)
 	flash_mid = buf[0];
 	flash_id = buf[1] << 8 | buf[2];
 
-	size = ARRAY_SIZE(flashtab);
-	for (i = 0; i < size; i++) {
+	for (i = 0; i < ARRAY_SIZE(flashtab); i++) {
 		if (flash_mid == flashtab[i].mid && flash_id == flashtab[i].dev_id) {
 			idev->flash_mid = flashtab[i].mid;
 			idev->flash_devid = flashtab[i].dev_id;
