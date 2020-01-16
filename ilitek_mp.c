@@ -203,7 +203,6 @@ struct core_mp_test_data {
 	int mp_items;
 	int final_result;
 	int short_varia;
-	int short_rint;
 
 	u32 overlay_start_addr;
 	u32 overlay_end_addr;
@@ -1154,11 +1153,9 @@ static void mp_print_csv_cdc_cmd(char *csv, int *csv_len, int index, int file_si
 		else
 			tmp_len += snprintf(csv + tmp_len, (file_size - tmp_len), "CDC command = ,%s\n", str);
 
-		/* Print short parameters */
-		if (ipio_strcmp(name, "short test") == 0) {
+		/* Print short variation */
+		if (ipio_strcmp(name, "short test") == 0)
 			tmp_len += snprintf(csv + tmp_len, (file_size - tmp_len), "Variation = ,%d\n", core_mp.short_varia);
-			tmp_len += snprintf(csv + tmp_len, (file_size - tmp_len), "Rinternal = ,%d\n", core_mp.short_rint);
-		}
 
 		/* Print td second command */
 		if (core_mp.td_retry && (ipio_strcmp(name, "peak to peak_td (lcm off)") == 0)) {
@@ -1374,12 +1371,16 @@ static int codeToOhm(s32 Code, u16 *v_tdf, u16 *h_tdf)
 	int douTVCH = 24;
 	int douTVCL = 8;
 	int douCint = 7;
-	int douVariation = 100;
+	int douVariation = 64;
 	int douRinternal = 930;
 	s32 temp = 0;
+	char str[128] = {0};
+
+	parser_get_int_data("short test", "variation", str, sizeof(str));
+	if (katoi(str) == 1)
+		douVariation = 100;
 
 	core_mp.short_varia = douVariation;
-	core_mp.short_rint = douRinternal;
 
 	if (core_mp.isLongV) {
 		douTDF1 = *v_tdf;
