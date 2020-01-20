@@ -1077,8 +1077,8 @@ static ssize_t ilitek_node_change_list_read(struct file *filp, char __user *buff
 	memset(g_user_buf, 0, USER_STR_BUFF * sizeof(unsigned char));
 
 	len += snprintf(g_user_buf + len, USER_STR_BUFF - len, "============= Change list ==============\n");
-	// len += snprintf(g_user_buf + len, USER_STR_BUFF - len, "[Patch] 202001-0001\n");
 	len += snprintf(g_user_buf + len, USER_STR_BUFF - len, "[Drive version] = %s\n", DRIVER_VERSION);
+	// len += snprintf(g_user_buf + len, USER_STR_BUFF - len, "[Patch] 202001-0001\n");
 	len += snprintf(g_user_buf + len, USER_STR_BUFF - len, "========================================\n");
 
 	if (copy_to_user((char *)buff, g_user_buf, len))
@@ -1356,7 +1356,7 @@ void gesture_fail_reason(bool enable)
 
 static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size_t size, loff_t *pos)
 {
-	int i, count = 0;
+	int i, count = 0, ret = 0;
 	char cmd[512] = {0};
 	char *token = NULL, *cur = NULL;
 	u8 temp[256] = {0};
@@ -1551,10 +1551,16 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 		ilitek_tddi_ic_set_ddi_reg_onepage(data[1], data[2], data[3]);
 	} else if (strncmp(cmd, "dumpflashdata", strlen(cmd)) == 0) {
 		ipio_info("Start = 0x%x, End = 0x%x, Dump Hex path = %s\n", data[1], data[2], DUMP_FLASH_PATH);
-		ilitek_tddi_fw_dump_flash_data(data[1], data[2], false);
+		idev->fw_update_stat = FW_STAT_INIT;
+		ret = ilitek_tddi_fw_dump_flash_data(data[1], data[2], false);
+		idev->fw_update_stat = (ret < 0) ? FW_UPDATE_FAIL : FW_UPDATE_PASS;
+		ipio_info("idev->fw_update_stat = %d\n", idev->fw_update_stat);
 	} else if (strncmp(cmd, "dumpiramdata", strlen(cmd)) == 0) {
 		ipio_info("Start = 0x%x, End = 0x%x, Dump IRAM path = %s\n", data[1], data[2], DUMP_IRAM_PATH);
-		ilitek_fw_dump_iram_data(data[1], data[2], true);
+		idev->fw_update_stat = FW_STAT_INIT;
+		ret = ilitek_fw_dump_iram_data(data[1], data[2], true);
+		idev->fw_update_stat = (ret < 0) ? FW_UPDATE_FAIL : FW_UPDATE_PASS;
+		ipio_info("idev->fw_update_stat = %d\n", idev->fw_update_stat);
 	} else if (strncmp(cmd, "edge_palm_ctrl", strlen(cmd)) == 0) {
 		ilitek_tddi_ic_func_ctrl("edge_palm", data[1]);
 	} else if (strncmp(cmd, "uart_mode_ctrl", strlen(cmd)) == 0) {

@@ -153,8 +153,8 @@ static int host_download_dma_check(u32 start_addr, u32 block_size)
 
 static int ilitek_tddi_fw_iram_read(u8 *buf, u32 start, int len)
 {
-	int i, limit = SPI_RX_BUF_SIZE;
-	int addr = 0, end = len - 1;
+	int limit = SPI_RX_BUF_SIZE;
+	int addr = 0, loop = 0, tmp_len = len, cnt = 0;
 	u8 cmd[4] = {0};
 
 	if (!buf) {
@@ -162,9 +162,14 @@ static int ilitek_tddi_fw_iram_read(u8 *buf, u32 start, int len)
 		return -ENOMEM;
 	}
 
-	for (i = 0, addr = start; addr < end; i += limit, addr += limit) {
-		if ((addr + limit) > len)
-			limit = end % limit;
+	if (len % limit)
+		loop = (len / limit) + 1;
+	else
+		loop = len / limit;
+
+	for (cnt = 0, addr = start; cnt < loop; cnt++, addr += limit) {
+		if (tmp_len > limit)
+			tmp_len = limit;
 
 		cmd[0] = 0x25;
 		cmd[3] = (char)((addr & 0x00FF0000) >> 16);
@@ -176,53 +181,66 @@ static int ilitek_tddi_fw_iram_read(u8 *buf, u32 start, int len)
 			return -ENODEV;
 		}
 
-		if (idev->read(buf + i, limit) < 0) {
+		if (idev->read(buf + cnt * limit, tmp_len) < 0) {
 			ipio_err("Failed to Read iram data\n");
 			return -ENODEV;
 		}
+
+		tmp_len = len - cnt * limit;
+		idev->fw_update_stat = ((len - tmp_len) * 100) / len;
+		ipio_info("Reading iram data .... %d%c", idev->fw_update_stat, '%');
 	}
 	return 0;
 }
 
-void ilitek_fw_dump_iram_data(u32 start, u32 end, bool save)
+int ilitek_fw_dump_iram_data(u32 start, u32 end, bool save)
 {
 	struct file *f = NULL;
 	mm_segment_t old_fs;
 	loff_t pos = 0;
-	int wdt, i;
+	int wdt, i, ret = 0;
 	int len, tmp = ipio_debug_level;
 	bool ice = atomic_read(&idev->ice_stat);
 
 	if (!ice) {
-		if (ilitek_ice_mode_ctrl(ENABLE, OFF) < 0) {
+		ret = ilitek_ice_mode_ctrl(ENABLE, OFF);
+		if (ret < 0) {
 			ipio_err("Enable ice mode failed\n");
-			return;
+			return ret;
 		}
 	}
 
 	wdt = ilitek_tddi_ic_watch_dog_ctrl(ILI_READ, DISABLE);
 	if (wdt) {
-		if (ilitek_tddi_ic_watch_dog_ctrl(ILI_WRITE, DISABLE) < 0)
+		ret = ilitek_tddi_ic_watch_dog_ctrl(ILI_WRITE, DISABLE);
+		if (ret < 0) {
 			ipio_err("Disable WDT failed during dumping iram\n");
+			goto out;
+		}
 	}
 
 	len = end - start + 1;
 
-	if (len > MAX_HEX_FILE_SIZE) {
+	if (len >= MAX_HEX_FILE_SIZE) {
 		ipio_err("len is larger than buffer, abort\n");
+		ret = -EINVAL;
 		goto out;
 	}
 
 	for (i = 0; i < MAX_HEX_FILE_SIZE; i++)
 		idev->update_buf[i] = 0xFF;
 
-	if (ilitek_tddi_fw_iram_read(idev->update_buf, start, len) < 0)
+	ret = ilitek_tddi_fw_iram_read(idev->update_buf, start, len);
+	if (ret < 0) {
 		ipio_err("Read IRAM data failed\n");
+		goto out;
+	}
 
 	if (save) {
 		f = filp_open(DUMP_IRAM_PATH, O_WRONLY | O_CREAT | O_TRUNC, 644);
 		if (ERR_ALLOC_MEM(f)) {
 			ipio_err("Failed to open the file at %ld.\n", PTR_ERR(f));
+			ret = -ENOMEM;
 			goto out;
 		}
 
@@ -251,7 +269,8 @@ out:
 			ipio_err("Enable ice mode failed after code reset\n");
 	}
 
-	ipio_info("dump iram data completed\n");
+	ipio_info("Dump IRAM %s\n", (ret < 0) ? "FAIL" : "SUCCESS");
+	return ret;
 }
 
 static int ilitek_tddi_fw_iram_program(u32 start, u8 *w_buf, u32 w_len, u32 split_len)
@@ -280,6 +299,7 @@ static int ilitek_tddi_fw_iram_program(u32 start, u8 *w_buf, u32 w_len, u32 spli
 				ipio_err("Failed to write data via SPI in host download (%x)\n", split_len + 5);
 				return -EIO;
 			}
+			idev->fw_update_stat = (i * 100) / w_len;
 		}
 	} else {
 		idev->update_buf[0] = SPI_WRITE;
@@ -335,7 +355,7 @@ static int ilitek_tddi_fw_iram_upgrade(u8 *pfw)
 
 	/* Program data to iram acorrding to each block */
 	for (i = 0; i < FW_BLOCK_INFO_NUM; i++) {
-		if ((fbi[i].mode == mode) && (fbi[i].len != 0)) {
+		if (fbi[i].mode == mode && fbi[i].len != 0) {
 			ipio_debug("Download %s code from hex 0x%x to IRAM 0x%x, len = 0x%x\n",
 					fbi[i].name, fbi[i].start, fbi[i].mem_start, fbi[i].len);
 
@@ -358,7 +378,6 @@ static int ilitek_tddi_fw_iram_upgrade(u8 *pfw)
 				ilitek_fw_dump_iram_data(0x0, 0xF, false);
 				return -EFW_CRC;
 			}
-			idev->fw_update_stat = FW_UPDATING;
 		}
 	}
 

@@ -93,8 +93,8 @@ static int CalculateCRC32(u32 start_addr, u32 len, u8 *pfw)
 
 static int ilitek_tddi_fw_iram_read(u8 *buf, u32 start, int len)
 {
-	int i, limit = 4*K;
-	int addr = 0, end = len - 1;
+	int limit = 4*K;
+	int addr = 0, loop = 0, tmp_len = len, cnt = 0;
 	u8 cmd[4] = {0};
 
 	if (!buf) {
@@ -102,9 +102,14 @@ static int ilitek_tddi_fw_iram_read(u8 *buf, u32 start, int len)
 		return -ENOMEM;
 	}
 
-	for (i = 0, addr = start; addr < end; i += limit, addr += limit) {
-		if ((addr + limit) > len)
-			limit = end % limit;
+	if (len % limit)
+		loop = (len / limit) + 1;
+	else
+		loop = len / limit;
+
+	for (cnt = 0, addr = start; cnt < loop; cnt++, addr += limit) {
+		if (tmp_len > limit)
+			tmp_len = limit;
 
 		cmd[0] = 0x25;
 		cmd[3] = (char)((addr & 0x00FF0000) >> 16);
@@ -116,25 +121,25 @@ static int ilitek_tddi_fw_iram_read(u8 *buf, u32 start, int len)
 			return -ENODEV;
 		}
 
-		if (idev->read(buf + i, limit) < 0) {
+		if (idev->read(buf + cnt * limit, tmp_len) < 0) {
 			ipio_err("Failed to Read iram data\n");
 			return -ENODEV;
 		}
-		idev->fw_update_stat = (i * 100) / end;
+
+		tmp_len = len - cnt * limit;
+		idev->fw_update_stat = ((len - tmp_len) * 100) / len;
 		ipio_debug("Reading iram data .... %d%c", idev->fw_update_stat, '%');
 	}
 	return 0;
 }
 
-void ilitek_fw_dump_iram_data(u32 start, u32 end, bool save)
+int ilitek_fw_dump_iram_data(u32 start, u32 end, bool save)
 {
 	struct file *f = NULL;
 	mm_segment_t old_fs;
 	loff_t pos = 0;
 	int i, ret, len;
 	u8 *fw_buf = NULL;
-
-	idev->fw_update_stat = FW_STAT_INIT;
 
 	if (ilitek_ice_mode_ctrl(ENABLE, OFF) < 0) {
 		ipio_err("Enable ice mode failed\n");
@@ -183,8 +188,8 @@ void ilitek_fw_dump_iram_data(u32 start, u32 end, bool save)
 out:
 	ilitek_ice_mode_ctrl(DISABLE, OFF);
 	ipio_info("Dump IRAM %s\n", (ret < 0) ? "FAIL" : "SUCCESS");
-	idev->fw_update_stat = (ret < 0) ? FW_UPDATE_FAIL : FW_UPDATE_PASS;
 	ipio_kfree((void **)&fw_buf);
+	return ret;
 }
 
 static int ilitek_tddi_fw_check_hex_hw_crc(u8 *pfw)
@@ -461,7 +466,7 @@ u32 ilitek_tddi_fw_read_hw_crc(u32 start, u32 end)
 
 int ilitek_tddi_fw_read_flash_data(u32 start, u32 end, u8 *data, int len)
 {
-	u32 i, index = 0;
+	u32 i, j, index = 0;
 	u32 tmp;
 
 	if (end - start > len) {
@@ -487,7 +492,7 @@ int ilitek_tddi_fw_read_flash_data(u32 start, u32 end, u8 *data, int len)
 	if (ilitek_ice_mode_write(FLASH2_ADDR, (start & 0x0000FF), 1) < 0)
 		ipio_err("Write address failed\n");
 
-	for (i = start; i <= end; i++) {
+	for (i = start, j = 0; i <= end; i++, j++) {
 		if (ilitek_ice_mode_write(FLASH2_ADDR, 0xFF, 1) < 0)
 			ipio_err("Write dummy failed\n");
 
@@ -496,7 +501,7 @@ int ilitek_tddi_fw_read_flash_data(u32 start, u32 end, u8 *data, int len)
 
 		data[index] = tmp;
 		index++;
-		idev->fw_update_stat = (i * 100) / end;
+		idev->fw_update_stat = (j * 100) / len;
 		ipio_debug("Reading flash data .... %d%c", idev->fw_update_stat, '%');
 	}
 
@@ -514,8 +519,6 @@ int ilitek_tddi_fw_dump_flash_data(u32 start, u32 end, bool user)
 	loff_t pos = 0;
 	u32 start_addr, end_addr;
 	int ret, length;
-
-	idev->fw_update_stat = FW_STAT_INIT;
 
 	f = filp_open(DUMP_FLASH_PATH, O_WRONLY | O_CREAT | O_TRUNC, 644);
 	if (ERR_ALLOC_MEM(f)) {
@@ -563,7 +566,6 @@ int ilitek_tddi_fw_dump_flash_data(u32 start, u32 end, bool user)
 out:
 	ilitek_ice_mode_ctrl(DISABLE, OFF);
 	ipio_info("Dump flash %s\n", (ret < 0) ? "FAIL" : "SUCCESS");
-	idev->fw_update_stat = (ret < 0) ? FW_UPDATE_FAIL : FW_UPDATE_PASS;
 	return ret;
 }
 
@@ -683,7 +685,8 @@ static int ilitek_tddi_fw_check_ver(u8 *pfw)
 static int ilitek_tddi_fw_flash_program(u8 *pfw)
 {
 	u8 buf[512] = {0};
-	u32 i = 0, addr = 0, k = 0, recv_addr = 0;
+	u32 i = 0, j = 0, addr = 0, k = 0, recv_addr = 0;
+	int page = idev->program_page;
 	bool skip = true;
 
 	for (i = 0; i < FW_BLOCK_INFO_NUM; i++) {
@@ -696,13 +699,13 @@ static int ilitek_tddi_fw_flash_program(u8 *pfw)
 
 		ipio_info("Block[%d]: Programing from (0x%x) to (0x%x)\n", i, fbi[i].start, fbi[i].end);
 
-		for (addr = fbi[i].start; addr < fbi[i].end; addr += idev->program_page) {
+		for (addr = fbi[i].start; addr < fbi[i].end; j += page, addr += page) {
 			buf[0] = 0x25;
 			buf[3] = 0x04;
 			buf[2] = 0x10;
 			buf[1] = 0x08;
 
-			for (k = 0; k < idev->program_page; k++) {
+			for (k = 0; k < page; k++) {
 				if (addr + k <= tfd.end_addr)
 					buf[4 + k] = pfw[addr + k];
 				else
@@ -733,7 +736,7 @@ static int ilitek_tddi_fw_flash_program(u8 *pfw)
 			if (ilitek_ice_mode_write(FLASH2_ADDR, recv_addr, 3) < 0)
 				ipio_err("Write address failed\n");
 
-			if (idev->write(buf, idev->program_page + 4) < 0) {
+			if (idev->write(buf, page + 4) < 0) {
 				ipio_err("Failed to program data at start_addr = 0x%X, k = 0x%X, addr = 0x%x\n",
 				addr, k, addr + k);
 				if (ilitek_ice_mode_write(FLASH_BASED_ADDR, 0x1, 1) < 0)
@@ -750,11 +753,8 @@ static int ilitek_tddi_fw_flash_program(u8 *pfw)
 				if (ilitek_tddi_flash_poll_busy(TIMEOUT_PROGRAM) < 0)
 					return UPDATE_FAIL;
 			}
-
-			/* holding the status until finish this upgrade. */
-			idev->fw_update_stat = (addr * 101) / tfd.end_addr;
-			if (idev->fw_update_stat > 90)
-				idev->fw_update_stat = FW_UPDATING;
+			idev->fw_update_stat = (j * 100) / tfd.end_addr;
+			ipio_debug("Reading flahse data .... %d%c", idev->fw_update_stat, '%');
 		}
 	}
 	return UPDATE_PASS;

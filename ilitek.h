@@ -215,7 +215,6 @@ enum TP_FW_UPGRADE_TYPE {
 
 enum TP_FW_UPGRADE_STATUS {
 	FW_STAT_INIT = 0,
-	FW_UPDATING = 90,
 	FW_UPDATE_PASS = 100,
 	FW_UPDATE_FAIL = -1
 };
@@ -886,7 +885,7 @@ extern void ilitek_tddi_flash_clear_dma(void);
 extern void ilitek_tddi_fw_read_flash_info(void);
 extern u32 ilitek_tddi_fw_read_hw_crc(u32 start, u32 end);
 extern int ilitek_tddi_fw_read_flash(u32 start, u32 end, u8 *data, int len);
-extern void ilitek_fw_dump_iram_data(u32 start, u32 end, bool save);
+extern int ilitek_fw_dump_iram_data(u32 start, u32 end, bool save);
 extern int ilitek_tddi_fw_dump_flash_data(u32 start, u32 end, bool user);
 extern int ilitek_tddi_fw_upgrade(int op);
 
