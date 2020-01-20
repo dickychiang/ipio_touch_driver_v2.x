@@ -1003,9 +1003,6 @@ static int ilitek_tddi_fw_ili_convert(u8 *pfw)
 
 			fbi[num].len = fbi[num].end - fbi[num].start + 1;
 			ipio_info("Block[%d]: start_addr = %x, end = %x\n", num, fbi[num].start, fbi[num].end);
-
-			if (num == GESTURE)
-				idev->gesture_load_code = true;
 		}
 	}
 
@@ -1072,10 +1069,6 @@ static int ilitek_tddi_fw_hex_convert(u8 *phex, int size, u8 *pfw)
 			fbi[num].fix_mem_start = INT_MAX;
 			fbi[num].len = fbi[num].end - fbi[num].start + 1;
 			ipio_info("Block[%d]: start_addr = %x, end = %x", num, fbi[num].start, fbi[num].end);
-
-			if (num == GESTURE)
-				idev->gesture_load_code = true;
-
 			block++;
 		} else if (type == BLOCK_TAG_B0 && tfd.hex_tag == BLOCK_TAG_AF) {
 			num = HexToDec(&phex[i + 9 + 6], 2);

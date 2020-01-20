@@ -470,7 +470,7 @@ int ilitek_tddi_move_gesture_code_iram(int mode)
 		ipio_debug("gesture ready byte = 0x%x\n", cmd[0]);
 
 		if (cmd[0] == 0x91) {
-			ipio_info("Gesture check fw ready\n");
+			ipio_info("Ready to load gesture code\n");
 			break;
 		}
 	}
