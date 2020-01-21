@@ -1,3 +1,26 @@
+v2.0.7.0
+[New features]
+1. Add reading latch value when doing spi recovery.
+2. Add a device node that shows all version information.
+3. Add reading FW MP version.
+4. Add reading core version with 4 bytes.
+5. Add the mp test when the item of peak to peak td fails.
+6. Shows variation in csv log.
+7. Add reading TVCH and TVCL in short test from ini file.
+
+[Improvements]
+1. Optimized the order of command when switches to mp test mode.
+2. No longer disable i2cuart flag when it is opened by users.
+3. Optimized the flow of i2c/spi esd gesture.
+4. Optimized the flow of writting dummy command in suspend.
+5. Optimized the display of fw upgrade process.
+
+[Bug fixed]
+1. Some variables wasn't freed when driver initializtion failed.
+2. The return in strstr() is fixed.
+3. Fix the error when reading ini file by request_firmware.
+4. Modified the formula of short test.
+
 v2.0.6.0
 [New features]
 1. Able to adjust spi clock by echoing ioctl (if platforms support).
