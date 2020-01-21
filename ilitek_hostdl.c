@@ -592,7 +592,7 @@ static int ilitek_tddi_fw_ili_convert(u8 *pfw)
 			if (fbi[num].start == fbi[num].end)
 				continue;
 			fbi[num].len = fbi[num].end - fbi[num].start + 1;
-			ipio_info("Block[%d]: start_addr = %x, end = %x\n", num, fbi[num].start, fbi[num].end);
+			ipio_debug("Block[%d]: start_addr = %x, end = %x\n", num, fbi[num].start, fbi[num].end);
 
 			if (num == GESTURE)
 				idev->gesture_load_code = true;
@@ -606,7 +606,7 @@ static int ilitek_tddi_fw_ili_convert(u8 *pfw)
 
 			if ((block != 0) && (Addr != 0x000000)) {
 				fbi[block].fix_mem_start = Addr;
-				ipio_info("Tag 0xB0: change Block[%d] to addr = 0x%x\n", block, fbi[block].fix_mem_start);
+				ipio_debug("Tag 0xB0: change Block[%d] to addr = 0x%x\n", block, fbi[block].fix_mem_start);
 			}
 		}
 	}
