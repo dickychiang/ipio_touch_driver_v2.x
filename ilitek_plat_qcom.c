@@ -275,7 +275,7 @@ static irqreturn_t ilitek_plat_isr_top_half(int irq, void *dev_id)
 
 	if (atomic_read(&idev->mp_int_check) == ENABLE) {
 		atomic_set(&idev->mp_int_check, DISABLE);
-		ipio_debug("MP INT detected, ignore\n")
+		ipio_debug("MP INT detected, ignore\n");
 		wake_up(&(idev->inq));
 		return IRQ_HANDLED;
 	}
