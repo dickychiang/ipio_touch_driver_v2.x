@@ -1379,8 +1379,17 @@ static int codeToOhm(s32 Code, u16 *v_tdf, u16 *h_tdf)
 	parser_get_int_data("short test", "variation", str, sizeof(str));
 	if (katoi(str) == 1)
 		douVariation = 100;
-
 	core_mp.short_varia = douVariation;
+
+	parser_get_int_data("short test", "tvch", str, sizeof(str));
+	if (katoi(str) != 0)
+		douTVCH = katoi(str);
+
+	parser_get_int_data("short test", "tvcl", str, sizeof(str));
+	if (katoi(str) != 0)
+		douTVCL = katoi(str);
+
+	ILI_DBG("TVCH = %d, TVCL = %d\n", douTVCH, douTVCL);
 
 	if (core_mp.isLongV) {
 		douTDF1 = *v_tdf;
