@@ -1389,7 +1389,7 @@ static int codeToOhm(s32 Code, u16 *v_tdf, u16 *h_tdf)
 	if (katoi(str) != 0)
 		douTVCL = katoi(str);
 
-	ILI_DBG("TVCH = %d, TVCL = %d\n", douTVCH, douTVCL);
+	ipio_debug("TVCH = %d, TVCL = %d\n", douTVCH, douTVCL);
 
 	if (core_mp.isLongV) {
 		douTDF1 = *v_tdf;
