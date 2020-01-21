@@ -516,7 +516,7 @@ int ilitek_tddi_touch_esd_gesture_flash(void)
 	ret = ilitek_ice_mode_ctrl(ENABLE, OFF);
 	if (ret < 0) {
 		ipio_err("Enable ice mode failed during gesture recovery\n");
-		goto out;
+		return ret;
 	}
 
 	ipio_info("ESD Gesture PWD Addr = 0x%X, PWD = 0x%X\n",
@@ -526,7 +526,7 @@ int ilitek_tddi_touch_esd_gesture_flash(void)
 	ret = ilitek_ice_mode_write(I2C_ESD_GESTURE_PWD_ADDR, ESD_GESTURE_PWD, 4);
 	if (ret < 0) {
 		ipio_err("write password failed\n");
-		goto out;
+		goto fail;
 	}
 
 	/* HW reset gives effect to FW receives password successed */
@@ -534,13 +534,13 @@ int ilitek_tddi_touch_esd_gesture_flash(void)
 	ret = ilitek_tddi_reset_ctrl(idev->reset);
 	if (ret < 0) {
 		ipio_err("TP Reset failed during gesture recovery\n");
-		goto out;
+		goto fail;
 	}
 
 	ret = ilitek_ice_mode_ctrl(ENABLE, ON);
 	if (ret < 0) {
 		ipio_err("Enable ice mode failed during gesture recovery\n");
-		goto out;
+		goto fail;
 	}
 
 	/* polling another specific register to see if gesutre is enabled properly */
@@ -548,7 +548,7 @@ int ilitek_tddi_touch_esd_gesture_flash(void)
 		ret = ilitek_ice_mode_read(I2C_ESD_GESTURE_PWD_ADDR, &answer, sizeof(u32));
 		if (ret < 0) {
 			ipio_err("Read gesture answer error\n");
-			goto out;
+			goto fail;
 		}
 
 		if (answer != I2C_ESD_GESTURE_RUN)
@@ -560,7 +560,7 @@ int ilitek_tddi_touch_esd_gesture_flash(void)
 	if (retry <= 0) {
 		ipio_err("Enter gesture failed\n");
 		ret = -1;
-		goto out;
+		goto fail;
 	}
 
 	ipio_info("Enter gesture successfully\n");
@@ -568,13 +568,15 @@ int ilitek_tddi_touch_esd_gesture_flash(void)
 	ret = ilitek_ice_mode_ctrl(DISABLE, ON);
 	if (ret < 0) {
 		ipio_err("Disable ice mode failed during gesture recovery\n");
-		goto out;
+		goto fail;
 	}
 
 	idev->actual_tp_mode = P5_X_FW_GESTURE_MODE;
 	ilitek_set_tp_data_len(idev->gesture_mode, false);
+	return ret;
 
-out:
+fail:
+	ilitek_ice_mode_ctrl(DISABLE, ON);
 	return ret;
 }
 
@@ -587,7 +589,7 @@ int ilitek_tddi_touch_esd_gesture_iram(void)
 	ret = ilitek_ice_mode_ctrl(ENABLE, OFF);
 	if (ret < 0) {
 		ipio_err("Enable ice mode failed during gesture recovery\n");
-		goto out;
+		return ret;
 	}
 
 	if (idev->chip->core_ver >= CORE_VER_1420)
@@ -602,7 +604,7 @@ int ilitek_tddi_touch_esd_gesture_iram(void)
 	ret = ilitek_ice_mode_write(esd_ges_pwd_addr, ESD_GESTURE_PWD, 4);
 	if (ret < 0) {
 		ipio_err("write password failed\n");
-		goto out;
+		goto fail;
 	}
 
 	/* Host download gives effect to FW receives password successed */
@@ -610,7 +612,7 @@ int ilitek_tddi_touch_esd_gesture_iram(void)
 	ret = ilitek_tddi_fw_upgrade_handler(NULL);
 	if (ret < 0) {
 		ipio_err("FW upgrade failed during gesture recovery\n");
-		goto out;
+		goto fail;
 	}
 
 	/* Wait for fw running code finished. */
@@ -620,7 +622,7 @@ int ilitek_tddi_touch_esd_gesture_iram(void)
 	ret = ilitek_ice_mode_ctrl(ENABLE, ON);
 	if (ret < 0) {
 		ipio_err("Enable ice mode failed during gesture recovery\n");
-		goto out;
+		goto fail;
 	}
 
 	/* polling another specific register to see if gesutre is enabled properly */
@@ -628,7 +630,7 @@ int ilitek_tddi_touch_esd_gesture_iram(void)
 		ret = ilitek_ice_mode_read(esd_ges_pwd_addr, &answer, sizeof(u32));
 		if (ret < 0) {
 			ipio_err("Read gesture answer error\n");
-			goto out;
+			break;
 		}
 
 		if (answer != SPI_ESD_GESTURE_RUN)
@@ -640,7 +642,7 @@ int ilitek_tddi_touch_esd_gesture_iram(void)
 	if (retry <= 0) {
 		ipio_err("Enter gesture failed\n");
 		ret = -1;
-		goto out;
+		goto fail;
 	}
 
 	ipio_info("Enter gesture successfully\n");
@@ -648,7 +650,7 @@ int ilitek_tddi_touch_esd_gesture_iram(void)
 	ret = ilitek_ice_mode_ctrl(DISABLE, ON);
 	if (ret < 0) {
 		ipio_err("Disable ice mode failed during gesture recovery\n");
-		goto out;
+		goto fail;
 	}
 
 	/* Load gesture code */
@@ -657,17 +659,20 @@ int ilitek_tddi_touch_esd_gesture_iram(void)
 	ret = ilitek_tddi_fw_upgrade_handler(NULL);
 	if (ret < 0) {
 		ipio_err("Failed to load code during gesture recovery\n");
-		goto out;
+		goto fail;
 	}
 
 	/* Resume gesture loader */
 	ret = ilitek_tddi_ic_func_ctrl("lpwg", 0x6);
 	if (ret < 0) {
 		ipio_err("write resume loader error");
-		goto out;
+		goto fail;
 	}
 
-out:
+	return ret;
+
+fail:
+	ilitek_ice_mode_ctrl(DISABLE, ON);
 	return ret;
 }
 
